@@ -1,0 +1,2 @@
+unit role Red::ResultSet;
+
