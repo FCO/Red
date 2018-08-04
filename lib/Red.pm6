@@ -1,5 +1,6 @@
 use v6.d.PREVIEW;
-use Red::ResultSet;
+use Red::Model;
+use Red::AttrColumn;
 use Red::Column;
 use Red::Utils;
 
@@ -15,39 +16,60 @@ class MetamodelX::ResultSource is Metamodel::ClassHOW {
         %!attr-to-column
     }
     method compose(Mu \type) {
-        self.Metamodel::ClassHOW::compose(type);
-        for type.^attributes.grep: Red::Column:D -> Red::Column:D $column {
-            %!columns ∪= $column;
-            %!attr-to-column{$column.name} = $column.column-name
+        self.add_role: type, Red::Model;
+        type.^compose-columns;
+        self.add_role: type, role :: {
+            method TWEAK(|) {
+                self.^set-dirty: self.^columns
+            }
         }
-        self.add_role: type, Red::ResultSet;
-        type.^compose-columns
+        self.Metamodel::ClassHOW::compose(type);
+        for type.^attributes.grep: Red::AttrColumn:D -> Red::AttrColumn:D $column {
+            %!attr-to-column{$column.name} = $column.column.name;
+        }
     }
 
-    method compose-columns(\type) {
-        for type.^columns.keys.grep(*.has_accessor).flatmap: { $_, type.^lookup(.name.substr: 2) } -> Attribute $attr, &meth {
-            my \meta = self;
-            &meth.wrap: method () is rw {
-                my \obj = self;
-                Proxy.new:
-                    FETCH => method {
-                        $attr.get_value: obj
-                    },
-                    STORE => method (\value) {
-                        meta.dirty-cols ∪= $attr;
-                        $attr.set_value: obj, value;
-                    }
+    method add-column(Red::Model:U \type, Red::AttrColumn $attr) {
+        %!columns ∪= $attr;
+        my $name = $attr.name.substr: 2;
+        type.^add_multi_method: $name, method (Red::Model:U:) {
+            $attr.column
+        }
+        if $attr.has_accessor {
+            if $attr.rw {
+                type.^add_multi_method: $name, method () is rw {
+                    my \obj = self;
+                    Proxy.new:
+                        FETCH => method {
+                            $attr.get_value: obj
+                        },
+                        STORE => method (\value) {
+                            return if value === $attr.get_value: obj;
+                            obj.^set-dirty: $attr;
+                            $attr.set_value: obj, value;
+                        }
+                    ;
+                }
+            } else {
+                type.^add_multi_method: $name, method () {
+                    $attr.get_value: self
+                }
             }
         }
     }
 
+    method compose-columns(Red::Model:U \type) {
+        for type.^attributes.grep: Red::AttrColumn -> Red::AttrColumn $attr {
+            type.^add-column: $attr
+        }
+    }
+
+    method set-dirty($, $attr) {
+        self.dirty-cols ∪= $attr;
+    }
     method is-dirty(Any:D \obj) { so self.dirty-cols }
     method clean-up(Any:D \obj) { self.dirty-cols = set() }
     method dirty-columns(|)     { self.dirty-cols }
-
-    method add-column($obj, Red::Column $col) {
-        $obj.columns: $obj.columns ∪ $col
-    }
 }
 
 my package EXPORTHOW {
@@ -59,8 +81,10 @@ my package EXPORTHOW {
 multi trait_mod:<is>(Attribute $attr, Bool :$column!) is export {
     trait_mod:<is>($attr, :column{}) if $column
 }
+
 multi trait_mod:<is>(Attribute $attr, :%column!) is export {
-    $attr does Red::Column;
-    $attr.^attributes.first('$!column-name').set_value: $attr, %column<name> if %column<name>:exists;
-    $attr.^attributes.first('$!is-id').set_value: $attr, %column<id> if %column<id>:exists;
+    $attr does Red::AttrColumn;
+    my $obj = Red::Column.new: |%column, :$attr;
+    my \at = $attr.^attributes.first({ .name ~~ '$!column' });
+    at.set_value: $attr, $obj;
 }

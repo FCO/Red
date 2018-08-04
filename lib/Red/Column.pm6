@@ -1,8 +1,9 @@
 use Red::Utils;
-use Red::ResultSet;
-unit role Red::Column;
+use Red::Model;
+unit class Red::Column;
 
-has Bool $.is-id            = False;
-has Bool $.is-relationship  = self.type ~~ Red::ResultSet;
-has Bool $.is-nullable      = quietly (self.type.^name ~~ /<!after ":"> ":" ["_" | "U" | "D"]/).Str !eq ":D";
-has Str  $.column-name      = kebab-to-snake-case self.name.substr: 2;
+has Attribute   $.attr is required;
+has Bool        $.id               = False;
+has Bool        $.relationship     = self.attr.type ~~ Red::Model;
+has Bool        $.null             = quietly (self.attr.type.^name ~~ /<!after ":"> ":" ["_" | "U" | "D"]/).Str !eq ":D";
+has Str         $.name             = kebab-to-snake-case self.attr.name.substr: 2;
