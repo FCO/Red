@@ -3,6 +3,7 @@ use Test;
 use-ok "Red";
 
 use Red;
+use Red::ResultSet;
 
 #isa-ok model {}.HOW, MetamodelX::ResultSource;
 
@@ -72,6 +73,27 @@ given model {
     is .c.name, "column_c";
     ok .c.id;
     ok not .c.null;
+
+    my $a = 42;
+    is (.a == 42).WHICH, Red::Filter.new(:op(Red::Op::eq), :args[.a, 42]            ).WHICH;
+    is (42 == .a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args[42, .a]            ).WHICH;
+    is (.a == $a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args[.a, *], :bind[42]  ).WHICH;
+    is ($a == .a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args[*, .a], :bind[42]  ).WHICH;
+
+    is (.a != 42).WHICH, Red::Filter.new(:op(Red::Op::ne), :args[.a, 42]            ).WHICH;
+    is (42 != .a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args[42, .a]            ).WHICH;
+    is (.a != $a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args[.a, *], :bind[42]  ).WHICH;
+    is ($a != .a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args[*, .a], :bind[42]  ).WHICH;
+}
+
+given model A {} {
+    isa-ok .^rs, Red::ResultSet;
+}
+
+class B::ResultSet { has $.works = True }
+given model B {} {
+    isa-ok .^rs, B::ResultSet;
+    ok .^rs.works;
 }
 
 done-testing

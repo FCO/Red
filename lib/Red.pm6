@@ -3,19 +3,32 @@ use Red::Model;
 use Red::AttrColumn;
 use Red::Column;
 use Red::Utils;
+use Red::ResultSet;
+use Red::Filter;
 
-class MetamodelX::ResultSource is Metamodel::ClassHOW {
+class MetamodelX::Model is Metamodel::ClassHOW {
     has %!columns{Attribute};
     has %!attr-to-column;
     has %.dirty-cols is rw;
+    has $!rs-class;
 
     method columns(|) is rw {
         %!columns
     }
+
     method attr-to-column(|) is rw {
         %!attr-to-column
     }
+
     method compose(Mu \type) {
+        my $rs-class = "{type.^name}::ResultSet";
+        if try ::($rs-class) !~~ Nil {
+            $!rs-class = ::($rs-class)
+        } else {
+            $!rs-class = Metamodel::ClassHOW.new_type: :name($rs-class);
+            $!rs-class.^add_parent: Red::ResultSet;
+            $!rs-class.^compose;
+        }
         self.add_role: type, Red::Model;
         type.^compose-columns;
         self.add_role: type, role :: {
@@ -70,11 +83,12 @@ class MetamodelX::ResultSource is Metamodel::ClassHOW {
     method is-dirty(Any:D \obj) { so self.dirty-cols }
     method clean-up(Any:D \obj) { self.dirty-cols = set() }
     method dirty-columns(|)     { self.dirty-cols }
+    method rs($)                { $!rs-class.new }
 }
 
 my package EXPORTHOW {
     package DECLARE {
-        constant model = MetamodelX::ResultSource;
+        constant model = MetamodelX::Model;
     }
 }
 
@@ -88,3 +102,14 @@ multi trait_mod:<is>(Attribute $attr, :%column!) is export {
     my \at = $attr.^attributes.first({ .name ~~ '$!column' });
     at.set_value: $attr, $obj;
 }
+
+multi infix:<==>(Red::Column $a, $b is rw)          is export { Red::Filter.new: :op(Red::Op::eq), :args[$a, * ], :bind[$b] }
+multi infix:<==>(Red::Column $a, $b is readonly)    is export { Red::Filter.new: :op(Red::Op::eq), :args[$a, $b], :bind[  ] }
+multi infix:<==>($a is rw, Red::Column $b)          is export { Red::Filter.new: :op(Red::Op::eq), :args[* , $b], :bind[$a] }
+multi infix:<==>($a is readonly, Red::Column $b)    is export { Red::Filter.new: :op(Red::Op::eq), :args[$a, $b], :bind[  ] }
+
+multi infix:<!=>(Red::Column $a, $b is rw)          is export { Red::Filter.new: :op(Red::Op::ne), :args[$a, * ], :bind[$b] }
+multi infix:<!=>(Red::Column $a, $b is readonly)    is export { Red::Filter.new: :op(Red::Op::ne), :args[$a, $b], :bind[  ] }
+multi infix:<!=>($a is rw, Red::Column $b)          is export { Red::Filter.new: :op(Red::Op::ne), :args[* , $b], :bind[$a] }
+multi infix:<!=>($a is readonly, Red::Column $b)    is export { Red::Filter.new: :op(Red::Op::ne), :args[$a, $b], :bind[  ] }
+
