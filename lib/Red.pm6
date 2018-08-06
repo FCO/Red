@@ -113,7 +113,8 @@ multi trait_mod:<is>(Attribute $attr, Bool :$column!) is export {
 
 multi trait_mod:<is>(Attribute $attr, :%column!) is export {
     $attr does Red::AttrColumn;
-    my $obj = Red::Column.new: |%column, :$attr;
+    my $class = $attr.package;
+    my $obj = Red::Column.new: |%column, :$attr, :$class;
     my \at = $attr.^attributes.first({ .name ~~ '$!column' });
     at.set_value: $attr, $obj;
 }
