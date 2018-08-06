@@ -13,7 +13,8 @@ class MetamodelX::Model is Metamodel::ClassHOW {
     has %.dirty-cols is rw;
     has $.rs-class;
 
-    method rs-class-name(Str $type) { "{$type}::ResultSet" }
+    method table(Mu \type) { camel-to-snake-case type.^name }
+    method rs-class-name(Mu \type) { "{type.^name}::ResultSet" }
     method columns(|) is rw {
         %!columns
     }
@@ -24,7 +25,7 @@ class MetamodelX::Model is Metamodel::ClassHOW {
 
     method compose(Mu \type) {
         if $.rs-class === Any {
-            my $rs-class-name = $.rs-class-name(type.^name);
+            my $rs-class-name = $.rs-class-name(type);
             if try ::($rs-class-name) !~~ Nil {
                 $!rs-class = ::($rs-class-name)
             } else {
@@ -115,6 +116,12 @@ multi trait_mod:<is>(Attribute $attr, :%column!) is export {
     my $obj = Red::Column.new: |%column, :$attr;
     my \at = $attr.^attributes.first({ .name ~~ '$!column' });
     at.set_value: $attr, $obj;
+}
+
+multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
+    $model.HOW does role :: {
+        method table(|) { $table<> }
+    }
 }
 
 multi infix:<==>(Red::Column $a, $b is rw)          is export { Red::Filter.new: :op(Red::Op::eq), :args[$a, * ], :bind[$b] }

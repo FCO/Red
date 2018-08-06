@@ -125,4 +125,12 @@ eval-lives-ok q[
 ];
 }}}
 
+given model BlaBleBli {} {
+    is .^table, "bla_ble_bli";
+}
+
+given model BlaBleBli22 is table<not_that> {} {
+    is .^table, "not_that";
+}
+
 done-testing
