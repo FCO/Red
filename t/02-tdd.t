@@ -87,13 +87,42 @@ given model {
 }
 
 given model A {} {
-    isa-ok .^rs, Red::ResultSet;
+    isa-ok .^rs, Red::DefaultResultSet;
 }
 
-class B::ResultSet { has $.works = True }
+class B::ResultSet does Red::ResultSet { has $.works = True }
 given model B {} {
     isa-ok .^rs, B::ResultSet;
     ok .^rs.works;
 }
+
+class MyResultSet does Red::ResultSet {has $.is-it-custom = True}
+given model C is rs-class(MyResultSet) {} {
+    isa-ok .^rs, MyResultSet;
+    ok .^rs.is-it-custom
+}
+
+given model D is rs-class<MyResultSet> {} {
+    isa-ok .^rs, MyResultSet;
+    ok .^rs.is-it-custom
+}
+
+#`{{{
+eval-lives-ok q[
+    use Red;
+    class B::ResultSet {}
+    model B {}
+];
+
+eval-lives-ok q[
+    class MyResultSet {}
+    model C is rs-class(MyResultSet) {}
+];
+
+eval-lives-ok q[
+    class MyResultSet {}
+    model D is rs-class<MyResultSet> {}
+];
+}}}
 
 done-testing

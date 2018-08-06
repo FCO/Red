@@ -1,2 +1,2 @@
-unit class Red::ResultSet;
+unit role Red::ResultSet;
 

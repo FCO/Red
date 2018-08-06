@@ -4,14 +4,16 @@ use Red::AttrColumn;
 use Red::Column;
 use Red::Utils;
 use Red::ResultSet;
+use Red::DefaultResultSet;
 use Red::Filter;
 
 class MetamodelX::Model is Metamodel::ClassHOW {
     has %!columns{Attribute};
     has %!attr-to-column;
     has %.dirty-cols is rw;
-    has $!rs-class;
+    has $.rs-class;
 
+    method rs-class-name(Str $type) { "{$type}::ResultSet" }
     method columns(|) is rw {
         %!columns
     }
@@ -21,14 +23,17 @@ class MetamodelX::Model is Metamodel::ClassHOW {
     }
 
     method compose(Mu \type) {
-        my $rs-class = "{type.^name}::ResultSet";
-        if try ::($rs-class) !~~ Nil {
-            $!rs-class = ::($rs-class)
-        } else {
-            $!rs-class = Metamodel::ClassHOW.new_type: :name($rs-class);
-            $!rs-class.^add_parent: Red::ResultSet;
-            $!rs-class.^compose;
+        if $.rs-class === Any {
+            my $rs-class-name = $.rs-class-name(type.^name);
+            if try ::($rs-class-name) !~~ Nil {
+                $!rs-class = ::($rs-class-name)
+            } else {
+                $!rs-class = Metamodel::ClassHOW.new_type: :name($rs-class-name);
+                $!rs-class.^add_parent: Red::DefaultResultSet;
+                $!rs-class.^compose;
+            }
         }
+        die "{$.rs-class.^name} should do the Red::ResultSet role" unless $.rs-class ~~ Red::ResultSet;
         self.add_role: type, Red::Model;
         type.^compose-columns;
         self.add_role: type, role :: {
@@ -83,13 +88,22 @@ class MetamodelX::Model is Metamodel::ClassHOW {
     method is-dirty(Any:D \obj) { so self.dirty-cols }
     method clean-up(Any:D \obj) { self.dirty-cols = set() }
     method dirty-columns(|)     { self.dirty-cols }
-    method rs($)                { $!rs-class.new }
+    method rs($)                { $.rs-class.new }
 }
 
 my package EXPORTHOW {
     package DECLARE {
         constant model = MetamodelX::Model;
     }
+}
+
+multi trait_mod:<is>(Mu:U $model, Str:D :$rs-class!) {
+    trait_mod:<is>($model, :rs-class(::($rs-class)))
+}
+
+multi trait_mod:<is>(Mu:U $model, Mu:U :$rs-class!) {
+    die "{$rs-class.^name} should do the Red::ResultSet role" unless $rs-class ~~ Red::ResultSet;
+    $model.HOW does role :: { method rs-class(|) { $rs-class<> } }
 }
 
 multi trait_mod:<is>(Attribute $attr, Bool :$column!) is export {
