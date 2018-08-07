@@ -133,4 +133,26 @@ given model BlaBleBli2 is table<not_that> {} {
     is .^table, "not_that";
 }
 
+model TestDate {
+    has $.date is query('select now()');
+}
+
+ok now < TestDate.new.date < now;
+
+model Person { ... }
+
+model Post {
+    has         $.id        is column{ :id };
+    has Person  $.author    is column{ :references{ .id } }
+}
+
+model Person {
+    has $.id            is column{ :id };
+    has Post @.posts    is referenced-by(method ($_) { .author == $!id })
+}
+
+is Post.^id>>.name, < $!id >;
+
+say Person.new(:42id).posts;
+
 done-testing

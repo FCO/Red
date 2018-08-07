@@ -5,6 +5,8 @@ use Red::Column;
 use Red::Utils;
 use Red::ResultSet;
 use Red::DefaultResultSet;
+use Red::AttrReferencedBy;
+use Red::AttrQuery;
 use Red::Filter;
 
 class MetamodelX::Model is Metamodel::ClassHOW {
@@ -17,6 +19,10 @@ class MetamodelX::Model is Metamodel::ClassHOW {
     method rs-class-name(Mu \type) { "{type.^name}::ResultSet" }
     method columns(|) is rw {
         %!columns
+    }
+
+    method id(Mu \type) {
+        %!columns.keys.grep(*.column.id).list
     }
 
     method attr-to-column(|) is rw {
@@ -43,8 +49,8 @@ class MetamodelX::Model is Metamodel::ClassHOW {
             }
         }
         self.Metamodel::ClassHOW::compose(type);
-        for type.^attributes.grep: Red::AttrColumn:D -> Red::AttrColumn:D $column {
-            %!attr-to-column{$column.name} = $column.column.name;
+        for type.^attributes -> $attr {
+            %!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::AttrColumn:D;
         }
     }
 
@@ -123,6 +129,17 @@ multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
     $model.HOW does role :: {
         method table(|) { $table<> }
     }
+}
+
+multi trait_mod:<is>(Attribute $attr, :&referenced-by!) is export {
+    $attr does Red::AttrReferencedBy;
+    $attr.wrap-data: &referenced-by
+}
+
+multi trait_mod:<is>(Attribute $attr, Str :$query!) is export {
+    #TODO
+    $attr does Red::AttrQuery;
+    $attr.wrap-data: $query
 }
 
 multi infix:<==>(Red::Column $a, $b is rw)          is export { Red::Filter.new: :op(Red::Op::eq), :args[$a, * ], :bind[$b] }
