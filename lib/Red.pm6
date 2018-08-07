@@ -25,6 +25,10 @@ class MetamodelX::Model is Metamodel::ClassHOW {
         %!columns.keys.grep(*.column.id).list
     }
 
+    method id-values(Red::Model:D $model) {
+        self.id($model).map({ .get_value: $model }).list
+    }
+
     method attr-to-column(|) is rw {
         %!attr-to-column
     }

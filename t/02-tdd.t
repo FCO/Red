@@ -152,6 +152,7 @@ model Person {
 }
 
 is Post.^id>>.name, < $!id >;
+is Post.new(:42id).^id-values, < 42 >;
 
 say Person.new(:42id).posts;
 
