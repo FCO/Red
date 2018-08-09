@@ -155,6 +155,7 @@ model Person {
 is Post.^id>>.name, < $!id >;
 is Post.new(:42id).^id-values, < 42 >;
 
-say Person.new(:42id).posts;
+isa-ok Person.new(:42id).posts, Post::ResultSet;
+isa-ok Post.new(:123author-id).author, Person;
 
 done-testing
