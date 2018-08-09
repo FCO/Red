@@ -39,9 +39,11 @@ class MetamodelX::Model is Metamodel::ClassHOW {
             if try ::($rs-class-name) !~~ Nil {
                 $!rs-class = ::($rs-class-name)
             } else {
-                $!rs-class = Metamodel::ClassHOW.new_type: :name($rs-class-name);
+                $!rs-class := Metamodel::ClassHOW.new_type: :name($rs-class-name);
                 $!rs-class.^add_parent: Red::DefaultResultSet;
+                $!rs-class.^add_method: "of", method { type }
                 $!rs-class.^compose;
+                type.WHO<ResultSet> := $!rs-class
             }
         }
         die "{$.rs-class.^name} should do the Red::ResultSet role" unless $.rs-class ~~ Red::ResultSet;
@@ -146,13 +148,13 @@ multi trait_mod:<is>(Attribute $attr, Str :$query!) is export {
     $attr.wrap-data: $query
 }
 
-multi infix:<==>(Red::Column $a, $b is rw)          is export { Red::Filter.new: :op(Red::Op::eq), :args[$a, * ], :bind[$b] }
-multi infix:<==>(Red::Column $a, $b is readonly)    is export { Red::Filter.new: :op(Red::Op::eq), :args[$a, $b], :bind[  ] }
-multi infix:<==>($a is rw, Red::Column $b)          is export { Red::Filter.new: :op(Red::Op::eq), :args[* , $b], :bind[$a] }
-multi infix:<==>($a is readonly, Red::Column $b)    is export { Red::Filter.new: :op(Red::Op::eq), :args[$a, $b], :bind[  ] }
+multi infix:<==>(Red::Column $a, $b is rw)          is export { Red::Filter.new: :op(Red::Op::eq), :args($a, * ), :bind($b,) }
+multi infix:<==>(Red::Column $a, $b is readonly)    is export { Red::Filter.new: :op(Red::Op::eq), :args($a, $b), :bind(   ) }
+multi infix:<==>($a is rw, Red::Column $b)          is export { Red::Filter.new: :op(Red::Op::eq), :args(* , $b), :bind($a,) }
+multi infix:<==>($a is readonly, Red::Column $b)    is export { Red::Filter.new: :op(Red::Op::eq), :args($a, $b), :bind(   ) }
 
-multi infix:<!=>(Red::Column $a, $b is rw)          is export { Red::Filter.new: :op(Red::Op::ne), :args[$a, * ], :bind[$b] }
-multi infix:<!=>(Red::Column $a, $b is readonly)    is export { Red::Filter.new: :op(Red::Op::ne), :args[$a, $b], :bind[  ] }
-multi infix:<!=>($a is rw, Red::Column $b)          is export { Red::Filter.new: :op(Red::Op::ne), :args[* , $b], :bind[$a] }
-multi infix:<!=>($a is readonly, Red::Column $b)    is export { Red::Filter.new: :op(Red::Op::ne), :args[$a, $b], :bind[  ] }
+multi infix:<!=>(Red::Column $a, $b is rw)          is export { Red::Filter.new: :op(Red::Op::ne), :args($a, * ), :bind($b,) }
+multi infix:<!=>(Red::Column $a, $b is readonly)    is export { Red::Filter.new: :op(Red::Op::ne), :args($a, $b), :bind(   ) }
+multi infix:<!=>($a is rw, Red::Column $b)          is export { Red::Filter.new: :op(Red::Op::ne), :args(* , $b), :bind($a,) }
+multi infix:<!=>($a is readonly, Red::Column $b)    is export { Red::Filter.new: :op(Red::Op::ne), :args($a, $b), :bind(   ) }
 

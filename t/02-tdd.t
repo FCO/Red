@@ -75,15 +75,15 @@ given model {
     ok not .c.null;
 
     my $a = 42;
-    is (.a == 42).WHICH, Red::Filter.new(:op(Red::Op::eq), :args[.a, 42]            ).WHICH;
-    is (42 == .a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args[42, .a]            ).WHICH;
-    is (.a == $a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args[.a, *], :bind[42]  ).WHICH;
-    is ($a == .a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args[*, .a], :bind[42]  ).WHICH;
+    is (.a == 42).WHICH, Red::Filter.new(:op(Red::Op::eq), :args(.a, 42)  :bind(    )  ).WHICH;
+    is (42 == .a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args(42, .a)  :bind(    )  ).WHICH;
+    is (.a == $a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args(.a, * ), :bind(42, )  ).WHICH;
+    is ($a == .a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args(*,  .a), :bind(42, )  ).WHICH;
 
-    is (.a != 42).WHICH, Red::Filter.new(:op(Red::Op::ne), :args[.a, 42]            ).WHICH;
-    is (42 != .a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args[42, .a]            ).WHICH;
-    is (.a != $a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args[.a, *], :bind[42]  ).WHICH;
-    is ($a != .a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args[*, .a], :bind[42]  ).WHICH;
+    is (.a != 42).WHICH, Red::Filter.new(:op(Red::Op::ne), :args(.a, 42)  :bind(    )  ).WHICH;
+    is (42 != .a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args(42, .a)  :bind(    )  ).WHICH;
+    is (.a != $a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args(.a, * ), :bind(42, )  ).WHICH;
+    is ($a != .a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args(*,  .a), :bind(42, )  ).WHICH;
 }
 
 given model A {} {
@@ -142,13 +142,14 @@ ok now < TestDate.new.date < now;
 model Person { ... }
 
 model Post {
-    has         $.id        is column{ :id };
-    has Person  $.author    is column{ :references{ .id } }
+    has Int     $.id        is column{ :id };
+    has Int     $.author-id is column;
+    has Person  $.author    = .where: .id == $!author-id;
 }
 
 model Person {
-    has $.id            is column{ :id };
-    has Post @.posts    is referenced-by(method ($_) { .author == $!id })
+    has Int             $.id    is column{ :id };
+    has Post::ResultSet $.posts = .where: .of.author-id == $!id;
 }
 
 is Post.^id>>.name, < $!id >;
