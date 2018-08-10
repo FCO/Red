@@ -74,16 +74,41 @@ given model {
     ok .c.id;
     ok not .c.nullable;
 
+    use Red::Filter;
     my $a = 42;
-    is (.a == 42).WHICH, Red::Filter.new(:op(Red::Op::eq), :args(.a, 42)  :bind(    )  ).WHICH;
-    is (42 == .a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args(42, .a)  :bind(    )  ).WHICH;
-    is (.a == $a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args(.a, * ), :bind(42, )  ).WHICH;
-    is ($a == .a).WHICH, Red::Filter.new(:op(Red::Op::eq), :args(*,  .a), :bind(42, )  ).WHICH;
+    is
+        (.a == 42).perl,
+        Red::Filter.new(:op(Red::Op::eq), :args(Red::Filter.new(:op(Red::Op::cast), :args("num", .a)), 42), :bind()).perl
+    ;
+    is
+        (42 == .a).perl,
+        Red::Filter.new(:op(Red::Op::eq), :args(42, Red::Filter.new(:op(Red::Op::cast), :args("num", .a))), :bind()).perl
+    ;
+    is
+        (.a == $a).perl,
+        Red::Filter.new(:op(Red::Op::eq), :args(Red::Filter.new(:op(Red::Op::cast), :args("num",.a)), * ), :bind(42,)).perl
+    ;
+    is
+        ($a == .a).perl,
+        Red::Filter.new(:op(Red::Op::eq), :args(*,  Red::Filter.new(:op(Red::Op::cast), :args("num",.a))), :bind(42,)).perl
+    ;
 
-    is (.a != 42).WHICH, Red::Filter.new(:op(Red::Op::ne), :args(.a, 42)  :bind(    )  ).WHICH;
-    is (42 != .a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args(42, .a)  :bind(    )  ).WHICH;
-    is (.a != $a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args(.a, * ), :bind(42, )  ).WHICH;
-    is ($a != .a).WHICH, Red::Filter.new(:op(Red::Op::ne), :args(*,  .a), :bind(42, )  ).WHICH;
+    is
+        (.a != 42).perl,
+        Red::Filter.new(:op(Red::Op::ne), :args(Red::Filter.new(:op(Red::Op::cast), :args("num",.a)), 42), :bind()).perl
+    ;
+    is
+        (42 != .a).perl,
+        Red::Filter.new(:op(Red::Op::ne), :args(42, Red::Filter.new(:op(Red::Op::cast), :args("num",.a))), :bind()).perl
+    ;
+    is
+        (.a != $a).perl,
+        Red::Filter.new(:op(Red::Op::ne), :args(Red::Filter.new(:op(Red::Op::cast), :args("num",.a)), * ), :bind(42,)).perl
+    ;
+    is
+        ($a != .a).perl,
+        Red::Filter.new(:op(Red::Op::ne), :args(*,  Red::Filter.new(:op(Red::Op::cast), :args("num",.a))), :bind(42,)).perl
+    ;
 }
 
 given model A {} {
