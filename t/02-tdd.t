@@ -109,6 +109,42 @@ given model {
         ($a != .a).perl,
         Red::Filter.new(:op(Red::Op::ne), :args(*,  Red::Filter.new(:op(Red::Op::cast), :args("num", .a))), :bind(42,)).perl
     ;
+
+
+    my $b = "loren ipsum";
+    is
+        (.a eq "loren ipsum").perl,
+        Red::Filter.new(:op(Red::Op::eq), :args(Red::Filter.new(:op(Red::Op::cast), :args("str", .a)), "loren ipsum"), :bind()).perl
+    ;
+    is
+        ("loren ipsum" eq .a).perl,
+        Red::Filter.new(:op(Red::Op::eq), :args("loren ipsum", Red::Filter.new(:op(Red::Op::cast), :args("str", .a))), :bind()).perl
+    ;
+    is
+        (.a eq $b).perl,
+        Red::Filter.new(:op(Red::Op::eq), :args(Red::Filter.new(:op(Red::Op::cast), :args("str", .a)), * ), :bind("loren ipsum",)).perl
+    ;
+    is
+        ($b eq .a).perl,
+        Red::Filter.new(:op(Red::Op::eq), :args(*,  Red::Filter.new(:op(Red::Op::cast), :args("str", .a))), :bind("loren ipsum",)).perl
+    ;
+
+    is
+        (.a ne "loren ipsum").perl,
+        Red::Filter.new(:op(Red::Op::ne), :args(Red::Filter.new(:op(Red::Op::cast), :args("str", .a)), "loren ipsum"), :bind()).perl
+    ;
+    is
+        ("loren ipsum" ne .a).perl,
+        Red::Filter.new(:op(Red::Op::ne), :args("loren ipsum", Red::Filter.new(:op(Red::Op::cast), :args("str", .a))), :bind()).perl
+    ;
+    is
+        (.a ne $b).perl,
+        Red::Filter.new(:op(Red::Op::ne), :args(Red::Filter.new(:op(Red::Op::cast), :args("str", .a)), * ), :bind("loren ipsum",)).perl
+    ;
+    is
+        ($b ne .a).perl,
+        Red::Filter.new(:op(Red::Op::ne), :args(*,  Red::Filter.new(:op(Red::Op::cast), :args("str", .a))), :bind("loren ipsum",)).perl
+    ;
 }
 
 given model A {} {
