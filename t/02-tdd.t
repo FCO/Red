@@ -86,28 +86,28 @@ given model {
     ;
     is
         (.a == $a).perl,
-        Red::Filter.new(:op(Red::Op::eq), :args(Red::Filter.new(:op(Red::Op::cast), :args("num",.a)), * ), :bind(42,)).perl
+        Red::Filter.new(:op(Red::Op::eq), :args(Red::Filter.new(:op(Red::Op::cast), :args("num", .a)), * ), :bind(42,)).perl
     ;
     is
         ($a == .a).perl,
-        Red::Filter.new(:op(Red::Op::eq), :args(*,  Red::Filter.new(:op(Red::Op::cast), :args("num",.a))), :bind(42,)).perl
+        Red::Filter.new(:op(Red::Op::eq), :args(*,  Red::Filter.new(:op(Red::Op::cast), :args("num", .a))), :bind(42,)).perl
     ;
 
     is
         (.a != 42).perl,
-        Red::Filter.new(:op(Red::Op::ne), :args(Red::Filter.new(:op(Red::Op::cast), :args("num",.a)), 42), :bind()).perl
+        Red::Filter.new(:op(Red::Op::ne), :args(Red::Filter.new(:op(Red::Op::cast), :args("num", .a)), 42), :bind()).perl
     ;
     is
         (42 != .a).perl,
-        Red::Filter.new(:op(Red::Op::ne), :args(42, Red::Filter.new(:op(Red::Op::cast), :args("num",.a))), :bind()).perl
+        Red::Filter.new(:op(Red::Op::ne), :args(42, Red::Filter.new(:op(Red::Op::cast), :args("num", .a))), :bind()).perl
     ;
     is
         (.a != $a).perl,
-        Red::Filter.new(:op(Red::Op::ne), :args(Red::Filter.new(:op(Red::Op::cast), :args("num",.a)), * ), :bind(42,)).perl
+        Red::Filter.new(:op(Red::Op::ne), :args(Red::Filter.new(:op(Red::Op::cast), :args("num", .a)), * ), :bind(42,)).perl
     ;
     is
         ($a != .a).perl,
-        Red::Filter.new(:op(Red::Op::ne), :args(*,  Red::Filter.new(:op(Red::Op::cast), :args("num",.a))), :bind(42,)).perl
+        Red::Filter.new(:op(Red::Op::ne), :args(*,  Red::Filter.new(:op(Red::Op::cast), :args("num", .a))), :bind(42,)).perl
     ;
 }
 
