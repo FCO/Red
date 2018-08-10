@@ -158,5 +158,5 @@ is Post.new(:42id).^id-values, < 42 >;
 isa-ok Person.new(:42id).posts, Post::ResultSet;
 isa-ok Post.new(:123author-id).author, Person;
 
-    ok False;
+ok False;
 done-testing
