@@ -62,7 +62,7 @@ given model { has $.a is rw is column; has $.b is rw is column }.new {
 given model {
     has $.a is column;
     has $!b is column;
-    has $!c is column{:id, :name<column_c>, :!null};
+    has $!c is column{:id, :name<column_c>, :!nullable};
 } {
     use Red::Column;
     isa-ok .a, Red::Column;
@@ -72,7 +72,7 @@ given model {
     isa-ok .c, Red::Column;
     is .c.name, "column_c";
     ok .c.id;
-    ok not .c.null;
+    ok not .c.nullable;
 
     my $a = 42;
     is (.a == 42).WHICH, Red::Filter.new(:op(Red::Op::eq), :args(.a, 42)  :bind(    )  ).WHICH;
