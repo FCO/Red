@@ -204,7 +204,7 @@ model Person { ... }
 
 model Post {
     has Int     $.id        is column{ :id };
-    has Int     $.author-id is column;
+    has Int     $.author-id is column{ :references{ Person.id } };
     has Person  $.author    = .where: .id == $!author-id;
 }
 
@@ -218,5 +218,19 @@ is Post.new(:42id).^id-values, < 42 >;
 
 isa-ok Person.new(:42id).posts, Post::ResultSet;
 isa-ok Post.new(:123author-id).author, Person;
+
+model Person2 { ... }
+
+model Post2 {
+    has Int      $.id        is column{ :id };
+    has Int      $.author-id is column{ :references{ Person2.id } };
+    has Person2  $.author    = self.^relationship: "author-id";
+}
+
+model Person2 {
+    has Int              $.id    is column{ :id };
+    has Post2::ResultSet $.posts = Post2.^relationship: self, "author-id";
+}
+
 
 done-testing
