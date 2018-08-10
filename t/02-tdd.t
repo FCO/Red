@@ -133,11 +133,11 @@ given model BlaBleBli2 is table<not_that> {} {
     is .^table, "not_that";
 }
 
-model TestDate {
-    has $.date is query('select now()');
-}
-
-ok now < TestDate.new.date < now;
+#model TestDate {
+#    has $.date is query('select now()');
+#}
+#
+#ok now < TestDate.new.date < now;
 
 model Person { ... }
 

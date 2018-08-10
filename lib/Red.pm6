@@ -137,16 +137,16 @@ multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
     }
 }
 
-multi trait_mod:<is>(Attribute $attr, :&referenced-by!) is export {
-    $attr does Red::AttrReferencedBy;
-    $attr.wrap-data: &referenced-by
-}
-
-multi trait_mod:<is>(Attribute $attr, Str :$query!) is export {
-    #TODO
-    $attr does Red::AttrQuery;
-    $attr.wrap-data: $query
-}
+#multi trait_mod:<is>(Attribute $attr, :&referenced-by!) is export {
+#    $attr does Red::AttrReferencedBy;
+#    $attr.wrap-data: &referenced-by
+#}
+#
+#multi trait_mod:<is>(Attribute $attr, Str :$query!) is export {
+#    #TODO
+#    $attr does Red::AttrQuery;
+#    $attr.wrap-data: $query
+#}
 
 multi infix:<==>(Red::Column $a, $b is rw)          is export { Red::Filter.new: :op(Red::Op::eq), :args($a, * ), :bind($b,) }
 multi infix:<==>(Red::Column $a, $b is readonly)    is export { Red::Filter.new: :op(Red::Op::eq), :args($a, $b), :bind(   ) }
