@@ -2,8 +2,8 @@ use Red::Model;
 use Red::AttrColumn;
 use Red::Column;
 use Red::Utils;
-use Red::ResultSet;
-use Red::DefaultResultSet;
+use Red::ResultSeq;
+use Red::DefaultResultSeq;
 use Red::AttrReferencedBy;
 use Red::AttrQuery;
 use Red::Filter;
@@ -16,7 +16,7 @@ class MetamodelX::Model is Metamodel::ClassHOW {
     has $.rs-class;
 
     method table(Mu \type) { camel-to-snake-case type.^name }
-    method rs-class-name(Mu \type) { "{type.^name}::ResultSet" }
+    method rs-class-name(Mu \type) { "{type.^name}::ResultSeq" }
     method columns(|) is rw {
         %!columns
     }
@@ -33,15 +33,14 @@ class MetamodelX::Model is Metamodel::ClassHOW {
         %!attr-to-column
     }
 
-    multi method relationship(Red::Model:D $self, Str $name) is rw {
+    multi method to-one(Red::Model:D $self, Str $name) is rw {
         my \col-rel = %!relations{$name};
         my \col-ref = col-rel.references.();
         Proxy.new:
             FETCH => {
                 col-ref.attr.package.^rs.where(
                     Red::Filter.new: :op(Red::Op::eq), :args(col-ref, col-rel.attr.get_value: $self)
-                ).head;
-                col-ref.attr.package.new # FIXME remove when ResultSet is implemented
+                ).head
             },
             STORE => -> ::(col-rel.attr.type.^name) $new-value {
                 col-rel.attr.set_value: $self, col-ref.attr.get_value: $new-value
@@ -55,13 +54,13 @@ class MetamodelX::Model is Metamodel::ClassHOW {
                 $!rs-class = ::($rs-class-name)
             } else {
                 $!rs-class := Metamodel::ClassHOW.new_type: :name($rs-class-name);
-                $!rs-class.^add_parent: Red::DefaultResultSet;
+                $!rs-class.^add_parent: Red::DefaultResultSeq;
                 $!rs-class.^add_method: "of", method { type }
                 $!rs-class.^compose;
-                type.WHO<ResultSet> := $!rs-class
+                type.WHO<ResultSeq> := $!rs-class
             }
         }
-        die "{$.rs-class.^name} should do the Red::ResultSet role" unless $.rs-class ~~ Red::ResultSet;
+        die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
         self.add_role: type, Red::Model;
         type.^compose-columns;
         self.add_role: type, role :: {

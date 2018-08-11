@@ -3,7 +3,7 @@ use Test;
 use-ok "Red";
 
 use Red;
-use Red::ResultSet;
+use Red::ResultSeq;
 
 #isa-ok model {}.HOW, MetamodelX::ResultSource;
 
@@ -148,16 +148,16 @@ given model {
 }
 
 given model A {} {
-    isa-ok .^rs, Red::DefaultResultSet;
+    isa-ok .^rs, Red::DefaultResultSeq;
 }
 
-class B::ResultSet does Red::ResultSet { has $.works = True }
+class B::ResultSeq does Red::ResultSeq { has $.works = True }
 given model B {} {
-    isa-ok .^rs, B::ResultSet;
+    isa-ok .^rs, B::ResultSeq;
     ok .^rs.works;
 }
 
-class MyResultSet does Red::ResultSet {has $.is-it-custom = True}
+class MyResultSet does Red::ResultSeq {has $.is-it-custom = True}
 given model C is rs-class(MyResultSet) {} {
     isa-ok .^rs, MyResultSet;
     ok .^rs.is-it-custom
@@ -171,7 +171,7 @@ given model D is rs-class<MyResultSet> {} {
 #`{{{
 eval-lives-ok q[
     use Red;
-    class B::ResultSet {}
+    class B::ResultSeq {}
     model B {}
 ];
 
@@ -210,13 +210,13 @@ model Post {
 
 model Person {
     has Int             $.id    is column{ :id };
-    has Post::ResultSet $.posts = .where: .of.author-id == $!id;
+    has Post::ResultSeq $.posts = .where: .of.author-id == $!id;
 }
 
 is Post.^id>>.name, < $!id >;
 is Post.new(:42id).^id-values, < 42 >;
 
-isa-ok Person.new(:42id).posts, Post::ResultSet;
+isa-ok Person.new(:42id).posts, Post::ResultSeq;
 isa-ok Post.new(:123author-id).author, Person;
 
 model Person2 { ... }
@@ -224,12 +224,12 @@ model Person2 { ... }
 model Post2 {
     has Int      $.id        is column{ :id };
     has Int      $.author-id is column{ :references{ Person2.id } };
-    has Person2  $.author    = self.^relationship: "author-id";
+    has Person2  $.author    = self.^to-one: "author-id";
 }
 
 model Person2 {
     has Int              $.id    is column{ :id };
-    has Post2::ResultSet $.posts = .relationship: self, "author-id";
+    has Post2::ResultSeq $.posts = .to-many: self, "author-id";
 }
 
 say Post2.new.author;
