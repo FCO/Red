@@ -11,7 +11,7 @@ multi method WHICH(::?CLASS:U:) { "{self.^name}" }
 
 multi method perl(::?CLASS:U:) { "{self.^name}" }
 
-multi method perl(::?CLASS:U:) { "{self.^name}.new(:op({$!op}), :args({$!args.perl}), :bind({$!bind.perl}))" }
+multi method perl(::?CLASS:D:) { "{self.^name}.new(:op({$!op}), :args({$!args.perl}), :bind({$!bind.perl}))" }
 
 multi method merge(::?CLASS:U: ::?CLASS:D $filter) { $filter }
 

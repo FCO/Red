@@ -229,8 +229,9 @@ model Post2 {
 
 model Person2 {
     has Int              $.id    is column{ :id };
-    has Post2::ResultSet $.posts = Post2.^relationship: self, "author-id";
+    has Post2::ResultSet $.posts = .relationship: self, "author-id";
 }
 
+say Post2.new.author;
 
 done-testing

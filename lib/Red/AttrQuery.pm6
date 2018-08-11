@@ -2,7 +2,6 @@ unit role Red::AttrQuery;
 
 method wrapper($obj, $query) {
     #TODO
-    note "QUERY: $query";
     now # FIXME: run the query
 }
 

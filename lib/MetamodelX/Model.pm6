@@ -10,7 +10,7 @@ use Red::Filter;
 
 class MetamodelX::Model is Metamodel::ClassHOW {
     has %!columns{Attribute};
-    has Red::Column %!relations;
+    has Red::Column %.relations;
     has %!attr-to-column;
     has %.dirty-cols is rw;
     has $.rs-class;
@@ -33,12 +33,19 @@ class MetamodelX::Model is Metamodel::ClassHOW {
         %!attr-to-column
     }
 
-    multi method relationship(Red::Model:U $referenced, Red::Model:U $self, Str $name) {
-        #TODO
-    }
-
-    multi method relationship(Red::Model:U $self, Str $name) {
-        #TODO
+    multi method relationship(Red::Model:D $self, Str $name) is rw {
+        my \col-rel = %!relations{$name};
+        my \col-ref = col-rel.references.();
+        Proxy.new:
+            FETCH => {
+                col-ref.attr.package.^rs.where(
+                    Red::Filter.new: :op(Red::Op::eq), :args(col-ref, col-rel.attr.get_value: $self)
+                ).head;
+                col-ref.attr.package.new # FIXME remove when ResultSet is implemented
+            },
+            STORE => -> ::(col-rel.attr.type.^name) $new-value {
+                col-rel.attr.set_value: $self, col-ref.attr.get_value: $new-value
+            }
     }
 
     method compose(Mu \type) {
