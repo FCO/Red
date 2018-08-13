@@ -24,6 +24,10 @@ multi trait_mod:<is>(Attribute $attr, :%column!) is export {
     at.set_value: $attr, $obj;
 }
 
+multi trait_mod:<is>(Attribute $attr, :&referencing!) is export {
+	trait_mod:<is>($attr, :column{ :references(&referencing) })
+}
+
 multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
     $model.HOW does role :: {
         method table(|) { $table<> }

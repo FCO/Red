@@ -223,7 +223,7 @@ model Person2 { ... }
 
 model Post2 {
     has Int      $.id        is column{ :id };
-    has Int      $.author-id is column{ :references{ Person2.id } };
+    has Int      $.author-id is referencing{ Person2.id };
     has Person2  $.author    = self.^to-one: "author-id";
 }
 
