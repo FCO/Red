@@ -6,3 +6,5 @@
 /resources/*.dylib
 .precomp/
 /Red-*
+*.sw[po]
+.cloned
