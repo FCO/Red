@@ -11,10 +11,12 @@ use Red::Comparate;
 
 unit class MetamodelX::Model is Metamodel::ClassHOW does Red::Comparate;
 has %!columns{Attribute};
-has Red::Column %.relations;
+has Red::Column %!relations;
 has %!attr-to-column;
 has %.dirty-cols is rw;
 has $.rs-class;
+
+method relations(|) { %!relations }
 
 method table(Mu \type) { camel-to-snake-case type.^name }
 method rs-class-name(Mu \type) { "{type.^name}::ResultSeq" }
@@ -32,20 +34,6 @@ method id-values(Red::Model:D $model) {
 
 method attr-to-column(|) is rw {
 	%!attr-to-column
-}
-
-multi method to-one(Red::Model:D $self, Str $name) is rw {
-	my \col-rel = %!relations{$name};
-	my \col-ref = col-rel.references.();
-	Proxy.new:
-		FETCH => {
-			col-ref.attr.package.^rs.where(
-				Red::Filter.new: :op(Red::Op::eq), :args(col-ref, col-rel.attr.get_value: $self)
-			).head
-		},
-		STORE => -> ::(col-rel.attr.type.^name) $new-value {
-			col-rel.attr.set_value: $self, col-ref.attr.get_value: $new-value
-		}
 }
 
 method compose(Mu \type) {

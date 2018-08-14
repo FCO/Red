@@ -18,3 +18,23 @@ multi method merge(::?CLASS:U: ::?CLASS:D $filter) { $filter }
 multi method merge(::?CLASS:D: ::?CLASS:D $filter) {
     ::?CLASS.new: :op(merge), :args(self, $filter)
 }
+
+multi substitute(%alias, $item) { $item }
+
+multi substitute(%alias, Red::Filter $item) {
+    $item.substitute: %alias
+}
+
+multi substitute(%alias, $item where { .^can("attr") and $item.attr.column.class ~~ any(%alias.keys) }) {
+    $item.clone: attr => $item.attr.clone: column => $item.attr.column.clone: class => %alias{ $item.attr.column.class }
+}
+
+multi substitute(%alias, $item where { .^can("class") and $item.class ~~ any(%alias.keys) }) {
+    $item.clone: :class(%alias{ $item.class })
+}
+
+method substitute(%alias) {
+    #my &subst = &substitute.assuming: %alias;
+    #Red::Filter.new: :$!op, :args($!args>>.&subst), :bind($!bind>>.&subst)
+    self
+}
