@@ -55,7 +55,16 @@ say Person.new(:2id)
 DESCRIPTION
 ===========
 
-Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing it is only ask for help validating the APIs.
+Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is only ask for help validating the APIs.
+
+## traits:
+
+* `is column`
+* `is column{}`
+* `is referencing`
+* `is rs-class()`
+* `is rs-class<>`
+* `is table<>`
 
 AUTHOR
 ======
