@@ -7,9 +7,10 @@ use Red::DefaultResultSeq;
 use Red::AttrReferencedBy;
 use Red::AttrQuery;
 use Red::Filter;
-use Red::Comparate;
+use MetamodelX::Red::Comparate;
+use MetamodelX::Red::Relate;
 
-unit class MetamodelX::Model is Metamodel::ClassHOW does Red::Comparate;
+unit class MetamodelX::Red::Model is Metamodel::ClassHOW does MetamodelX::Red::Comparate does MetamodelX::Red::Relate;
 has %!columns{Attribute};
 has Red::Column %!relations;
 has %!attr-to-column;
@@ -42,7 +43,7 @@ method compose(Mu \type) {
 		if try ::($rs-class-name) !~~ Nil {
 			$!rs-class = ::($rs-class-name)
 		} else {
-			$!rs-class := Metamodel::ClassHOW.new_type: :name($rs-class-name);
+			$!rs-class := class :: is Metamodel::ClassHOW does MetamodelX::Red::Relate {}.new_type: :name($rs-class-name);
 			$!rs-class.^add_parent: Red::DefaultResultSeq;
 			$!rs-class.^add_method: "of", method { type }
 			$!rs-class.^compose;
@@ -70,7 +71,7 @@ method add-relationship($name, Red::Column $col) {
 my UInt $alias_num = 1;
 method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
 	my \alias = Metamodel::ClassHOW.new_type(:$name);
-	alias.HOW does Red::Comparate;
+	alias.HOW does MetamodelX::Red::Comparate;
 	for %!columns.keys -> $col {
 		alias.^add-comparate-methods: $col
 	}

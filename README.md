@@ -1,17 +1,59 @@
+WiP
+===
+
 NAME
 ====
 
-Red - blah blah blah
+Red - A *WiP* ORM for perl6
 
 SYNOPSIS
 ========
 
-    use Red;
+```perl6
+use Red;
+
+model Person {...}
+
+model Post {
+    has Int     $.id        is column{ :id };
+    has Int     $.author-id is column{ :references{ Person.id } };
+    has Person  $.author    = .^relates: { .id == $!author-id };
+    has Bool    $.deleted   is column = False;
+    has Instant $.created   is column = now;
+}
+
+model Person {
+    has Int             $.id            is column{ :id };
+    has Post::ResultSeq $.posts         = .^relates: { .author-id == $!id };
+    has Post::ResultSeq $.active-posts  = .^relates: { .author-id == $!id AND not .deleted }
+}
+
+my Post $post1 = Post.^load: :42id;  # Returns a Post object with data returned by
+                                     # SELECT * FROM post me WHERE id = 42
+my $id = 13;
+my Post $post2 = Post.^load: :42id;  # Returns a Post object with data returned by
+                                     # SELECT * FROM post me WHERE id = ? with [13] as bind
+
+say $post2.author;  # Prints an Person object with data returned by
+                    # SELECT * FROM person me WHERE me.id = ?
+
+say Person.new(:1id).posts; # Prints a Seq (Post::ResultSeq) with
+                            # the return of:
+                            # SELECT * FROM post me WHERE me.author_id = ?
+                            # with [1] as bind.
+                            # converted for Post objects
+
+say Person.new(:2id)
+    .active-posts
+    .where: { .created > Date.today }   # SELECT * FROM post me WHERE
+;                                       # me.author_id = ? AND me.deleted = 't' AND me.created > '2018-08-14'::datetime
+                                        # with [2] as bind.
+```
 
 DESCRIPTION
 ===========
 
-Red is ...
+Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is only ask for help validating the APIs.
 
 AUTHOR
 ======

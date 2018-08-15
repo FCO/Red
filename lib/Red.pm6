@@ -11,8 +11,8 @@ use Red::Filter;
 
 my package EXPORTHOW {
     package DECLARE {
-        use MetamodelX::Model;
-        constant model = MetamodelX::Model;
+        use MetamodelX::Red::Model;
+        constant model = MetamodelX::Red::Model;
     }
 }
 

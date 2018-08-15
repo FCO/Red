@@ -205,12 +205,12 @@ model Person { ... }
 model Post {
     has Int     $.id        is column{ :id };
     has Int     $.author-id is column{ :references{ Person.id } };
-    has Person  $.author    = .relates: { .id == $!author-id };
+    has Person  $.author    = .^relates: { .id == $!author-id };
 }
 
 model Person {
     has Int             $.id    is column{ :id };
-    has Post::ResultSeq $.posts = .relates: { .author-id == $!id };
+    has Post::ResultSeq $.posts = .^relates: { .author-id == $!id };
 }
 
 is Post.^id>>.name, < $!id >;
@@ -224,12 +224,12 @@ model Person2 { ... }
 model Post2 {
     has Int      $.id        is column{ :id };
     has Int      $.author-id is referencing{ Person2.id };
-    has Person2  $.author    = .relates: { .id == $!author-id }
+    has Person2  $.author    = .^relates: { .id == $!author-id }
 }
 
 model Person2 {
     has Int              $.id    is column{ :id };
-    has Post2::ResultSeq $.posts = .relates: { .author-id == $!id };
+    has Post2::ResultSeq $.posts = .^relates: { .author-id == $!id };
 }
 
 say Post2.new.author;

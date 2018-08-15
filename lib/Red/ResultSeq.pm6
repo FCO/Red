@@ -5,13 +5,9 @@ unit role Red::ResultSeq;
 
 has Red::Filter $.filter;
 
-multi method where(::?CLASS: &filter) { nextwith :filter( filter self.of ) }
+multi method where(::?CLASS: &filter) { nextwith :filter( filter self.of.^alias: "me" ) }
 multi method where(::?CLASS:U: Red::Filter:D $filter) { self.new: :$filter }
 multi method where(::?CLASS:D: Red::Filter:D $filter) { self.clone: :filter($!filter.merge: $filter) }
-
-method relates( &filter ) {
-    self.where( &filter )
-}
 
 method transform-item(*%data) {
     self.of.bless: |%data

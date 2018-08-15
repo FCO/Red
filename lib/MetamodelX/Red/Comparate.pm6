@@ -1,6 +1,6 @@
 use Red::Model;
 use Red::AttrColumn;
-unit role Red::Comparate;
+unit role MetamodelX::Red::Comparate;
 
 method add-comparate-methods(Mu:U \type, Red::AttrColumn $attr) {
 	my $name = $attr.column.attr-name;

@@ -10,10 +10,6 @@ multi method where(&filter) {
     self.^rs.where: filter ::?CLASS
 }
 
-method relates( &filter ) {
-    self.where( &filter ).head
-}
-
 method all { self.^rs }
 
 method gist { self.perl }
