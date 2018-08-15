@@ -50,7 +50,6 @@ say Person.new(:2id)
     .active-posts
     .where: { .created > Date.today }   # SELECT * FROM post me WHERE
 ;                                       # me.author_id = ? AND me.deleted = 't'
-datetime
                                         # AND me.created > '2018-08-14'::datetime
                                         # with [2] as bind.
 
