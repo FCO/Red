@@ -34,10 +34,10 @@ model Person {
 my $*REDDB = database 'postgres', :host<localhost>; 
 
 my Post $post1 = Post.^load: :42id;  # Returns a Post object with data returned by
-                                     # SELECT * FROM post me WHERE id = 42
+                                     # SELECT * FROM post me WHERE me.id = 42
 my $id = 13;
 my Post $post2 = Post.^load: :$id;  # Returns a Post object with data returned by
-                                     # SELECT * FROM post me WHERE id = ? with [13] as bind
+                                     # SELECT * FROM post me WHERE me.id = ? with [13] as bind
 
 say $post2.author;  # Prints a Person object with data returned by
                     # SELECT * FROM person me WHERE me.id = ?
