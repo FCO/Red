@@ -9,9 +9,9 @@
   "name" : "Red",
   "perl" : "6.c",
   "provides" : {
-    "MetamodelX::Red::Model"     : "lib/MetamodelX/Model.pm6",
-    "MetamodelX::Red::Comparate" : "lib/MetamodelX/Comparate.pm6",
-    "MetamodelX::Red::Relate"    : "lib/MetamodelX/Relate.pm6",
+    "MetamodelX::Red::Model"     : "lib/MetamodelX/Red/Model.pm6",
+    "MetamodelX::Red::Comparate" : "lib/MetamodelX/Red/Comparate.pm6",
+    "MetamodelX::Red::Relate"    : "lib/MetamodelX/Red/Relate.pm6",
     "Red::AttrColumn"            : "lib/Red/AttrColumn.pm6",
     "Red::Column"                : "lib/Red/Column.pm6",
     "Red::Database"              : "lib/Red/Database.pm6",
