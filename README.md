@@ -24,6 +24,7 @@ model Post {
 
 model Person {
     has Int             $.id            is column{ :id };
+    has Str             $.name          is column;
     has Post::ResultSeq $.posts         = .^relates: { .author-id == $!id };
     has Post::ResultSeq $.active-posts  = .^relates: { .author-id == $!id AND not .deleted }
 }
@@ -50,6 +51,10 @@ say Person.new(:2id)
     .where: { .created > Date.today }   # SELECT * FROM post me WHERE
 ;                                       # me.author_id = ? AND me.deleted = 't' AND me.created > '2018-08-14'::datetime
                                         # with [2] as bind.
+
+my $author = $post2.author;
+$author.name = "John Doe";
+$author.^save;
 ```
 
 DESCRIPTION
