@@ -28,6 +28,8 @@ model Person {
     has Post::ResultSeq $.active-posts  = .^relates: { .author-id == $!id AND not .deleted }
 }
 
+my $*REDDB = database 'postgres', :host<localhost>; 
+
 my Post $post1 = Post.^load: :42id;  # Returns a Post object with data returned by
                                      # SELECT * FROM post me WHERE id = 42
 my $id = 13;
