@@ -33,31 +33,32 @@ model Person {
 
 my $*REDDB = database 'postgres', :host<localhost>; 
 
-my Post $post1 = Post.^load: :42id;  # Returns a Post object with data returned by
-                                     # SELECT * FROM post me WHERE me.id = 42
+my Post $post1 = Post.^load: :42id;   # Returns a Post object with data returned by
+                                      # SELECT * FROM post me WHERE me.id = 42
 my $id = 13;
-my Post $post2 = Post.^load: :$id;  # Returns a Post object with data returned by
-                                     # SELECT * FROM post me WHERE me.id = ? with [13] as bind
+my Post $post2 = Post.^load: :$id;    # Returns a Post object with data returned by
+                                      # SELECT * FROM post me WHERE me.id = ? with [13] as bind
 
-say $post2.author;  # Prints a Person object with data returned by
-                    # SELECT * FROM person me WHERE me.id = ?
+say $post2.author;                    # Prints a Person object with data returned by
+                                      # SELECT * FROM person me WHERE me.id = ?
 
-say Person.new(:1id).posts; # Prints a Seq (Post::ResultSeq) with
-                            # the return of:
-                            # SELECT * FROM post me WHERE me.author_id = ?
-                            # with [1] as bind.
-                            # converted for Post objects
+say Person.new(:1id).posts;           # Prints a Seq (Post::ResultSeq) with
+                                      # the return of:
+                                      # SELECT * FROM post me WHERE me.author_id = ?
+                                      # with [1] as bind.
+                                      # converted for Post objects
 
 say Person.new(:2id)
     .active-posts
-    .where: { .created > Date.today }   # SELECT * FROM post me WHERE
-;                                       # me.author_id = ? AND me.deleted = 't'
-                                        # AND me.created > '2018-08-14'::datetime
-                                        # with [2] as bind.
+    .where: { .created > Date.today } # SELECT * FROM post me WHERE
+;                                     # me.author_id = ? AND me.deleted = 't'
+                                      # AND me.created > '2018-08-14'::datetime
+                                      # with [2] as bind.
 
 my $author = $post2.author;
 $author.name = "John Doe";
-$author.^save;
+$author.^save;                        # UPDATE person set name = 'John Doe'
+                                      # WHERE id = ? with [13] as bind
 ```
 
 DESCRIPTION
