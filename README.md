@@ -58,6 +58,7 @@ say Person.new(:2id)
 
 my $author = $post2.author;
 $author.name = "John Doe";
+
 $author.^save;                        # UPDATE person set name = 'John Doe'
                                       # WHERE id = ? with [13] as bind
 ```
