@@ -70,7 +70,7 @@ method add-relationship($name, Red::Column $col) {
 	%!relations{$name} = $col
 }
 
-method add-unique-constraint(Mu \type, &columns) {
+method add-unique-constraint(Mu:U \type, &columns) {
         @!constraints.push: "unique" => columns(type)
 }
 
