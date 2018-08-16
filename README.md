@@ -3,7 +3,7 @@
 WiP
 ===
 
-Take a look on our Wiki: <https://github.com/FCO/Red/wiki>
+Take a look at our Wiki: <https://github.com/FCO/Red/wiki>
 
 NAME
 ====
