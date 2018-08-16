@@ -283,4 +283,14 @@ is Post2.^name,                     "Post2";
 
 #is Post2.where({ .id == 42 }).query.perl, 42;
 
+is Post2.author-id.as("bla").name, "bla";
+is Post2.author-id.as("bla").attr-name, "bla";
+ok not Post2.author-id.as("bla").id;
+ok Post2.author-id.as("bla").nullable;
+ok not Post2.author-id.as("bla", :!nullable).nullable;
+
+given model { has $.a is column{ :unique }; has $.b is column; ::?CLASS.^add-unique-constraint: { .a, .b } } {
+    is .^constraints<unique>.elems, 2;
+}
+
 done-testing

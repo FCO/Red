@@ -16,8 +16,10 @@ has Red::Column %!relations;
 has %!attr-to-column;
 has %.dirty-cols is rw;
 has $.rs-class;
+has @!constraints;
 
 method relations(|) { %!relations }
+method constraints(|) { @!constraints.classify: *.key, :as{ .value } }
 
 method table(Mu \type) { camel-to-snake-case type.^name }
 method rs-class-name(Mu \type) { "{type.^name}::ResultSeq" }
@@ -66,6 +68,10 @@ method compose(Mu \type) {
 
 method add-relationship($name, Red::Column $col) {
 	%!relations{$name} = $col
+}
+
+method add-unique-constraint(Mu \type, &columns) {
+        @!constraints.push: "unique" => columns(type)
 }
 
 my UInt $alias_num = 1;
