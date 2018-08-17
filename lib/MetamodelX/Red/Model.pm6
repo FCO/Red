@@ -6,7 +6,7 @@ use Red::ResultSeq;
 use Red::DefaultResultSeq;
 use Red::AttrReferencedBy;
 use Red::AttrQuery;
-use Red::Filter;
+use Red::AST;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Relate;
 

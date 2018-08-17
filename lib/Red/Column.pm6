@@ -1,6 +1,6 @@
 use Red::Utils;
 use Red::Model;
-use Red::Filter;
+use Red::AST;
 unit class Red::Column;
 
 has Attribute   $.attr is required;
@@ -13,7 +13,7 @@ has Mu          $.class is required;
 has Str         $.name-alias;
 
 method cast(Str $type) {
-    Red::Filter.new: :op(cast), :args($type<>, self<>)
+    Red::AST.new: :op(cast), :args($type<>, self<>)
 }
 
 method alias(Str $name) {

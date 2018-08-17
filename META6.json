@@ -16,7 +16,7 @@
     "Red::Column"                : "lib/Red/Column.pm6",
     "Red::Database"              : "lib/Red/Database.pm6",
     "Red::DefaultResultSeq"      : "lib/Red/DefaultResultSeq.pm6",
-    "Red::Filter"                : "lib/Red/Filter.pm6",
+    "Red::AST"                   : "lib/Red/Filter.pm6",
     "Red::Model"                 : "lib/Red/Model.pm6",
     "Red::Operators"             : "lib/Red/Operators.pm6",
     "Red::ResultSeq"             : "lib/Red/ResultSeq.pm6",

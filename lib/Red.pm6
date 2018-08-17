@@ -7,7 +7,7 @@ use Red::ResultSeq;
 use Red::DefaultResultSeq;
 use Red::AttrReferencedBy;
 use Red::AttrQuery;
-use Red::Filter;
+use Red::AST;
 
 my package EXPORTHOW {
     package DECLARE {

@@ -1,8 +1,8 @@
-use Red::Filter;
+use Red::AST;
 unit role Red::Model;
 
 has $!filter;
-multi method where(Red::Filter $filter) {
+multi method where(Red::AST $filter) {
     self.^rs.where: $filter
 }
 

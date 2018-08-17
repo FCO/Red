@@ -1,10 +1,10 @@
 use Red::Model;
-use Red::Filter;
+use Red::AST;
 
 unit class Red::Query;
 
 has Mu:U        $.base-table is required;
-has Red::Filter $.filter = $!base-table.all;
+has Red::AST $.filter = $!base-table.all;
 
 method TWEAK(|) {
     my \Alias = $!base-table.^alias: "me";

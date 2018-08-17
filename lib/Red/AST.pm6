@@ -1,5 +1,5 @@
 enum Red::Op << merge eq ne lt gt le ge like ilike not cast >>;
-unit class Red::Filter;
+unit class Red::AST;
 
 has Red::Op $.op;
 has List    $.args;
@@ -21,7 +21,7 @@ multi method merge(::?CLASS:D: ::?CLASS:D $filter) {
 
 multi substitute(%alias, $item) { $item }
 
-multi substitute(%alias, Red::Filter $item) {
+multi substitute(%alias, Red::AST $item) {
     $item.substitute: %alias
 }
 
@@ -35,6 +35,6 @@ multi substitute(%alias, $item where { .^can("class") and $item.class ~~ any(%al
 
 method substitute(%alias) {
     #my &subst = &substitute.assuming: %alias;
-    #Red::Filter.new: :$!op, :args($!args>>.&subst), :bind($!bind>>.&subst)
+    #Red::AST.new: :$!op, :args($!args>>.&subst), :bind($!bind>>.&subst)
     self
 }
