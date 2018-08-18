@@ -98,6 +98,25 @@ model AnotherModel is rs-class(CustomResultSeq) {
 }
 ```
 
+### load object from database
+
+```perl6
+MyModel.^load: 42;
+MyModel.^load: id => 42;
+```
+
+### save object on the database
+
+```perl6
+$object.^save;
+```
+
+### search for a list of object
+
+```perl6
+Question.where: .answer == 42; # returns a result seq
+```
+
 AUTHOR
 ======
 
