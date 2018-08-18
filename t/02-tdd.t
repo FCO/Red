@@ -40,6 +40,8 @@ given model { has $.a is rw is column }.new {
     ok .^is-dirty;
     is .^dirty-columns.keys.sort, < $!a >;
     .^clean-up;
+    .a(:clean) = 13;
+    is .a, 13;
     ok not .^is-dirty;
 }
 
@@ -288,6 +290,11 @@ is Post2.author-id.as("bla").attr-name, "bla";
 ok not Post2.author-id.as("bla").id;
 ok Post2.author-id.as("bla").nullable;
 ok not Post2.author-id.as("bla", :!nullable).nullable;
+
+#say (Post2.id == 42).tables;
+#say (Post2.author-id == Person2.id).tables;
+#is (Post2.id == 42).tables.elems, 1;
+#is (Post2.author-id == Person2.id).tables.elems, 2;
 
 given model { has $.a is column{ :unique }; has $.b is column; ::?CLASS.^add-unique-constraint: { .a, .b } } {
     is .^constraints<unique>.elems, 2;

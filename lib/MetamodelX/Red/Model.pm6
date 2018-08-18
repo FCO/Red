@@ -94,7 +94,7 @@ method add-column(Red::Model:U \type, Red::AttrColumn $attr) {
 	type.^add-comparate-methods($attr);
 	if $attr.has_accessor {
 		if $attr.rw {
-			type.^add_multi_method: $name, method (Red::Model:D:) is rw {
+			type.^add_multi_method: $name, method (Red::Model:D: Bool :$clean = False) is rw {
 				my \obj = self;
 				Proxy.new:
 					FETCH => method {
@@ -102,7 +102,7 @@ method add-column(Red::Model:U \type, Red::AttrColumn $attr) {
 					},
 					STORE => method (\value) {
 						return if value === $attr.get_value: obj;
-						obj.^set-dirty: $attr;
+						obj.^set-dirty: $attr unless $clean;
 						$attr.set_value: obj, value;
 					}
 				;
