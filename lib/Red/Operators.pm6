@@ -3,6 +3,9 @@ use Red::AST;
 unit module Red::Operators;
 
 # ==
+multi infix:<==>(Red::Column $a, Red::Column $b)          is export {
+    Red::AST.new: :op(Red::Op::eq), :args($a.cast("num"), $b.cast("num") ), :bind()
+}
 multi infix:<==>(Red::Column $a, Numeric() $b is rw)          is export {
     Red::AST.new: :op(Red::Op::eq), :args($a.cast("num"), * ), :bind($b<>,)
 }
@@ -17,6 +20,9 @@ multi infix:<==>(Numeric() $a is readonly, Red::Column $b)    is export {
 }
 
 # !=
+multi infix:<!=>(Red::Column $a, Red::Column $b)          is export {
+    Red::AST.new: :op(Red::Op::ne), :args($a.cast("num"), $b.cast("num") ), :bind()
+}
 multi infix:<!=>(Red::Column $a, Numeric() $b is rw)          is export {
     Red::AST.new: :op(Red::Op::ne), :args($a.cast("num"), * ), :bind($b<>,)
 }
