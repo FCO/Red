@@ -64,3 +64,10 @@ multi infix:<ne>(Str() $a is readonly, Red::Column $b)    is export {
     Red::AST.new: :op(Red::Op::ne), :args($a<>, $b.cast("str")), :bind(   )
 }
 
+#multi infix:<AND>(Red::AST $a, Red::AST $b) is export {
+#    Red::AST.new: :op(Red::Op::and), :args($a, $b)
+#}
+#
+#multi infix:<OR>(Red::AST $a, Red::AST $b) is export {
+#    Red::AST.new: :op(Red::Op::or), :args($a, $b)
+#}

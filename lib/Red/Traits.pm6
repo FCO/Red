@@ -34,6 +34,14 @@ multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
     }
 }
 
+multi trait_mod:<is>(Attribute $attr, :&relationship!) is export {
+    $attr.package.^add-relationship: $attr, &relationship
+}
+
+multi trait_mod:<is>(Attribute $attr, Callable :@relationship! where *.elems == 2) {
+    $attr.package.^add-relationship: $attr, |@relationship
+}
+
 #multi trait_mod:<is>(Attribute $attr, :&referenced-by!) is export {
 #    $attr does Red::AttrReferencedBy;
 #    $attr.wrap-data: &referenced-by

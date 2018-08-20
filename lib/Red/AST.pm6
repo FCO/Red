@@ -1,9 +1,23 @@
-enum Red::Op << merge eq ne lt gt le ge like ilike not cast >>;
+enum Red::Op << merge eq ne lt gt le ge like ilike not cast and or >>;
 unit class Red::AST;
 
 has Red::Op $.op;
 has List    $.args;
 has List    $.bind;
+has Set     $.tables = ∅;
+
+submethod TWEAK(|) {
+    for $!args<> // [] {
+        if .^can: "class" {
+            $!tables ∪= .class
+        }
+    }
+    for $!bind<> // [] {
+        if .^can: "class" {
+            $!tables ∪= .class
+        }
+    }
+}
 
 multi method WHICH(::?CLASS:D:) { "{self.^name}|$!op|{$!args>>.WHICH}|{$!bind>>.WHICH}" }
 

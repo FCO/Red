@@ -9,16 +9,21 @@ use Red::AttrQuery;
 use Red::AST;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Relate;
+use MetamodelX::Red::Relationship;
 
-unit class MetamodelX::Red::Model is Metamodel::ClassHOW does MetamodelX::Red::Comparate does MetamodelX::Red::Relate;
+unit class MetamodelX::Red::Model is Metamodel::ClassHOW;
+also does MetamodelX::Red::Comparate;
+also does MetamodelX::Red::Relate;
+also does MetamodelX::Red::Relationship;
+
 has %!columns{Attribute};
-has Red::Column %!relations;
+has Red::Column %!references;
 has %!attr-to-column;
 has %.dirty-cols is rw;
 has $.rs-class;
 has @!constraints;
 
-method relations(|) { %!relations }
+method references(|) { %!references }
 method constraints(|) { @!constraints.classify: *.key, :as{ .value } }
 
 method table(Mu \type) { camel-to-snake-case type.^name }
@@ -40,6 +45,7 @@ method attr-to-column(|) is rw {
 }
 
 method compose(Mu \type) {
+    type.^prepare-relationships;
 	if $.rs-class === Any {
 		my $rs-class-name = $.rs-class-name(type);
 		if try ::($rs-class-name) !~~ Nil {
@@ -66,8 +72,8 @@ method compose(Mu \type) {
 	}
 }
 
-method add-relationship($name, Red::Column $col) {
-	%!relations{$name} = $col
+method add-reference($name, Red::Column $col) {
+	%!references{$name} = $col
 }
 
 method add-unique-constraint(Mu:U \type, &columns) {
@@ -89,7 +95,7 @@ method add-column(Red::Model:U \type, Red::AttrColumn $attr) {
 	%!columns ∪= $attr;
 	my $name = $attr.column.attr-name;
 	with $attr.column.references {
-		self.add-relationship: $name, $attr.column
+		self.add-reference: $name, $attr.column
 	}
 	type.^add-comparate-methods($attr);
 	if $attr.has_accessor {

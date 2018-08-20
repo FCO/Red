@@ -226,12 +226,12 @@ model Person2 { ... }
 model Post2 {
     has Int      $.id        is column{ :id };
     has Int      $.author-id is referencing{ Person2.id };
-    has Person2  $.author    = .^relates: { .id == $!author-id }
+    has Person2  $.author    is relationship{ .author-id };
 }
 
 model Person2 {
-    has Int              $.id    is column{ :id };
-    has Post2::ResultSeq $.posts = .^relates: { .author-id == $!id };
+    has Int     $.id    is column{ :id };
+    has Post2   @.posts is relationship{ .author-id };
 }
 
 say Post2.new.author;
