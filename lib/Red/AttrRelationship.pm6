@@ -14,7 +14,7 @@ method build-relationship(\instance) {
                 my $rel = rel1 instance.WHAT;
                 my \ref = $rel.references.();
                 my \value = $rel.attr.get_value: instance;
-                type.where(Red::AST.new: :op(Red::Op::eq), :args(ref,), :bind(value, )).head
+                type.where(Red::AST.new: :op(Red::Op::eq), :args(ref,), :bind(value, )) # TODO: .head
             }
         },
         STORE => method ($value) {
