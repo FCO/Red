@@ -13,6 +13,7 @@
     "MetamodelX::Red::Comparate" : "lib/MetamodelX/Red/Comparate.pm6",
     "MetamodelX::Red::Relate"    : "lib/MetamodelX/Red/Relate.pm6",
     "Red::AttrColumn"            : "lib/Red/AttrColumn.pm6",
+    "Red::FakeSeq"               : "lib/Red/FakeSeq.pm6",
     "Red::Column"                : "lib/Red/Column.pm6",
     "Red::Database"              : "lib/Red/Database.pm6",
     "Red::DefaultResultSeq"      : "lib/Red/DefaultResultSeq.pm6",
