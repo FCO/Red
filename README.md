@@ -69,10 +69,13 @@ $author.^save;                        # UPDATE person SET name = 'John Doe'
 $author.posts.elems;                  # SELECT COUNT(*) FROM post
                                       # WHERE author_id = ?
 
-$author.posts.new:                    # create a new post of $author
+my $p = $author.posts.new:            # create a new post of $author
     :title<Bla>,
     :body<body>
 ;
+
+$p.^save;                             # INSERT INTO post(author_id, title, body, deleted, created)
+                                      # VALUES(?, ?, ?, ?, ?)
 ```
 
 DESCRIPTION
