@@ -97,18 +97,15 @@ Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is o
 ### custom table name
 
 ```perl6
-model MyModel is table<custom_table_name> {
-}
+model MyModel is table<custom_table_name> {}
 ```
 
 ### custom result seq class
 
 ```perl6
-class CustomResultSeq does Red::ResultSeq {
-}
+class CustomResultSeq does Red::ResultSeq {}
 
-model AnotherModel is rs-class(CustomResultSeq) {
-}
+model AnotherModel is rs-class(CustomResultSeq) {}
 ```
 
 ### load object from database
