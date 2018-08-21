@@ -19,18 +19,20 @@ use Red;
 model Person {...}
 
 model Post {
-    has Int     $.id        is column{ :id };
-    has Int     $.author-id is column{ :references{ Person.id } };
-    has Person  $.author    = .^relates: { .id == $!author-id };
+    has Int     $.id        is id;
+    has Int     $!author-id is referencing{ Person.id };
+    has Str     $.title     is unique;
+    has Str     $.body      is column;
+    has Person  $.author    is relationship{ .author-id };
     has Bool    $.deleted   is column = False;
     has Instant $.created   is column = now;
 }
 
 model Person {
-    has Int             $.id            is column{ :id };
-    has Str             $.name          is column;
-    has Post::ResultSeq $.posts         = .^relates: { .author-id == $!id };
-    has Post::ResultSeq $.active-posts  = .^relates: { .author-id == $!id AND not .deleted }
+    has Int  $.id            is id;
+    has Str  $.name          is column;
+    has Post @.posts         is relationship{ .author-id };
+    has Post @.active-posts  = @!posts.grep: { not .deleted };
 }
 
 my $*REDDB = database 'postgres', :host<localhost>; 
@@ -63,6 +65,14 @@ $author.name = "John Doe";
 
 $author.^save;                        # UPDATE person SET name = 'John Doe'
                                       # WHERE id = ? with [13] as bind
+
+$author.posts.elems;                  # SELECT COUNT(*) FROM post
+                                      # WHERE author_id = ?
+
+$author.posts.new:                    # create a new post of $author
+    :title<Bla>,
+    :body<body>
+;
 ```
 
 DESCRIPTION
