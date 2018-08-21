@@ -1,3 +1,4 @@
+use Red::FakeSeq;
 use Red::AttrRelationship;
 
 unit role MetamodelX::Red::Relationship;
@@ -28,5 +29,15 @@ multi method add-relationship(Mu:U $self, Attribute $attr, &ref1, &ref2) {
 }
 
 multi method add-relationship(Mu:U $self, Red::AttrRelationship $attr) {
-    %!relationships ∪= $attr
+    %!relationships ∪= $attr;
+    my $name = $attr.name.substr(2);
+    $self.^add_multi_method: $name, my method (Mu:D:) {
+        $attr.get_value: self
+    } if $attr.has_accessor;
+    $self.^add_multi_method: $name, my method (Mu:U:) {
+        # TODO: use fake seq
+    #    Red::FakeSeq.new: :of($self.WHAT), :ast($attr.relationship-ast)
+        my $ast = $attr.relationship-ast;
+        Red::FakeSeq.new: :of($self.WHAT), :$ast
+    }
 }

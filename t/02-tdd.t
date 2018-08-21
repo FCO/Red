@@ -4,6 +4,7 @@ use-ok "Red";
 
 use Red;
 use Red::ResultSeq;
+use Red::FakeSeq;
 
 #isa-ok model {}.HOW, MetamodelX::ResultSource;
 
@@ -234,7 +235,7 @@ model Person2 {
     has Post2   @.posts is relationship{ .author-id };
 }
 
-say Post2.new.author;
+#say Post2.new.author;
 
 my $alias1 = Post2.^alias;
 is $alias1.^name,                   "Post2_1";
@@ -299,5 +300,9 @@ ok not Post2.author-id.as("bla", :!nullable).nullable;
 given model { has $.a is column{ :unique }; has $.b is column; ::?CLASS.^add-unique-constraint: { .a, .b } } {
     is .^constraints<unique>.elems, 2;
 }
+
+isa-ok Person2.new.posts, Post2::ResultSeq;
+
+isa-ok Person2.posts, Red::FakeSeq;
 
 done-testing

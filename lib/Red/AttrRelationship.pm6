@@ -1,6 +1,7 @@
 use Red::AST;
 use Red::Operators;
 unit role Red::AttrRelationship[&rel1, &rel2?];
+has Mu:U $!type;
 
 method build-relationship(\instance) {
     my \type = self.type;
@@ -20,4 +21,11 @@ method build-relationship(\instance) {
         STORE => method ($value) {
             die "Couldnt set value"
         }
+}
+
+method relationship-ast {
+    my \type = self.type ~~ Positional ?? self.type.of !! self.type;
+    my $col1 = rel1 type;
+    my $col2 = $col1.references.();
+    Red::AST.new: :op(Red::Op::eq), :args($col1, $col2)
 }
