@@ -124,7 +124,7 @@ $object.^save;
 ### search for a list of object
 
 ```perl6
-Question.where: { .answer == 42 }; # returns a result seq
+Question.grep: { .answer == 42 }; # returns a result seq
 ```
 
 AUTHOR
