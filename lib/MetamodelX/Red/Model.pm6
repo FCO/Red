@@ -1,11 +1,11 @@
 use Red::Model;
-use Red::AttrColumn;
+use Red::Attr::Column;
 use Red::Column;
 use Red::Utils;
 use Red::ResultSeq;
 use Red::DefaultResultSeq;
-use Red::AttrReferencedBy;
-use Red::AttrQuery;
+use Red::Attr::ReferencedBy;
+use Red::Attr::Query;
 use Red::AST;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Relationship;
@@ -66,7 +66,7 @@ method compose(Mu \type) {
 	}
 	self.Metamodel::ClassHOW::compose(type);
 	for type.^attributes -> $attr {
-		%!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::AttrColumn:D;
+		%!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;
 	}
 }
 
@@ -89,7 +89,7 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
 	alias
 }
 
-method add-column(Red::Model:U \type, Red::AttrColumn $attr) {
+method add-column(Red::Model:U \type, Red::Attr::Column $attr) {
 	%!columns ∪= $attr;
 	my $name = $attr.column.attr-name;
 	with $attr.column.references {
@@ -120,7 +120,7 @@ method add-column(Red::Model:U \type, Red::AttrColumn $attr) {
 }
 
 method compose-columns(Red::Model:U \type) {
-	for type.^attributes.grep: Red::AttrColumn -> Red::AttrColumn $attr {
+	for type.^attributes.grep: Red::Attr::Column -> Red::Attr::Column $attr {
 		type.^add-column: $attr
 	}
 }

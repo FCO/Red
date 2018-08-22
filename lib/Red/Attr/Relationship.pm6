@@ -1,6 +1,6 @@
 use Red::AST;
 use Red::Operators;
-unit role Red::AttrRelationship[&rel1, &rel2?];
+unit role Red::Attr::Relationship[&rel1, &rel2?];
 has Mu:U $!type;
 
 method build-relationship(\instance) {

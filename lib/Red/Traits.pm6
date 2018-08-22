@@ -1,5 +1,5 @@
 use Red::Column;
-use Red::AttrColumn;
+use Red::Attr::Column;
 use Red::ResultSeq;
 unit module Red::Traits;
 
@@ -17,7 +17,7 @@ multi trait_mod:<is>(Attribute $attr, Bool :$column!) is export {
 }
 
 multi trait_mod:<is>(Attribute $attr, :%column!) is export {
-    $attr does Red::AttrColumn;
+    $attr does Red::Attr::Column;
     my $class = $attr.package;
     my $obj = Red::Column.new: |%column, :$attr, :$class;
     my \at = $attr.^attributes.first({ .name ~~ '$!column' });
@@ -43,13 +43,13 @@ multi trait_mod:<is>(Attribute $attr, Callable :@relationship! where *.elems == 
 }
 
 #multi trait_mod:<is>(Attribute $attr, :&referenced-by!) is export {
-#    $attr does Red::AttrReferencedBy;
+#    $attr does Red::Attr::ReferencedBy;
 #    $attr.wrap-data: &referenced-by
 #}
 #
 #multi trait_mod:<is>(Attribute $attr, Str :$query!) is export {
 #    #TODO
-#    $attr does Red::AttrQuery;
+#    $attr does Red::Attr::Query;
 #    $attr.wrap-data: $query
 #}
 

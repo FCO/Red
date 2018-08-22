@@ -11,7 +11,7 @@
   "provides" : {
     "MetamodelX::Red::Model"     : "lib/MetamodelX/Red/Model.pm6",
     "MetamodelX::Red::Comparate" : "lib/MetamodelX/Red/Comparate.pm6",
-    "Red::AttrColumn"            : "lib/Red/AttrColumn.pm6",
+    "Red::Attr::Column"          : "lib/Red/Attr/Column.pm6",
     "Red::FakeSeq"               : "lib/Red/FakeSeq.pm6",
     "Red::Column"                : "lib/Red/Column.pm6",
     "Red::Database"              : "lib/Red/Database.pm6",

@@ -1,4 +1,4 @@
-unit role Red::AttrQuery;
+unit role Red::Attr::Query;
 
 method wrapper($obj, $query) {
     #TODO

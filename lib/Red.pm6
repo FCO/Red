@@ -1,12 +1,12 @@
 use v6.d.PREVIEW;
 use Red::Model;
-use Red::AttrColumn;
+use Red::Attr::Column;
 use Red::Column;
 use Red::Utils;
 use Red::ResultSeq;
 use Red::DefaultResultSeq;
-use Red::AttrReferencedBy;
-use Red::AttrQuery;
+use Red::Attr::ReferencedBy;
+use Red::Attr::Query;
 use Red::AST;
 
 my package EXPORTHOW {
