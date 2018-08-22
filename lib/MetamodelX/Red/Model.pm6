@@ -8,12 +8,10 @@ use Red::AttrReferencedBy;
 use Red::AttrQuery;
 use Red::AST;
 use MetamodelX::Red::Comparate;
-use MetamodelX::Red::Relate;
 use MetamodelX::Red::Relationship;
 
 unit class MetamodelX::Red::Model is Metamodel::ClassHOW;
 also does MetamodelX::Red::Comparate;
-also does MetamodelX::Red::Relate;
 also does MetamodelX::Red::Relationship;
 
 has %!columns{Attribute};
@@ -51,7 +49,7 @@ method compose(Mu \type) {
 		if try ::($rs-class-name) !~~ Nil {
 			$!rs-class = ::($rs-class-name)
 		} else {
-			$!rs-class := class :: is Metamodel::ClassHOW does MetamodelX::Red::Relate {}.new_type: :name($rs-class-name);
+			$!rs-class := Metamodel::ClassHOW.new_type: :name($rs-class-name);
 			$!rs-class.^add_parent: Red::DefaultResultSeq;
 			$!rs-class.^add_method: "of", method { type }
 			$!rs-class.^compose;
