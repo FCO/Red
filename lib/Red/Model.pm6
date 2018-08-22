@@ -2,12 +2,12 @@ use Red::AST;
 unit role Red::Model;
 
 has $!filter;
-multi method where(Red::AST $filter) {
-    self.^rs.where: $filter
+multi method grep(Red::AST $filter) {
+    self.^rs.grep: $filter
 }
 
-multi method where(&filter) {
-    self.^rs.where: filter ::?CLASS
+multi method grep(&filter) {
+    self.^rs.grep: filter ::?CLASS
 }
 
 method all { self.^rs }

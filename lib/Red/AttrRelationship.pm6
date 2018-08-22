@@ -10,12 +10,12 @@ method build-relationship(\instance) {
             do if type ~~ Positional {
                 my $rel = rel1 type.of;
                 my \value = $rel.references.().attr.get_value: instance;
-                type.of.where: Red::AST.new: :op(Red::Op::eq), :args($rel,), :bind(value, )
+                type.of.grep: Red::AST.new: :op(Red::Op::eq), :args($rel,), :bind(value, )
             } else {
                 my $rel = rel1 instance.WHAT;
                 my \ref = $rel.references.();
                 my \value = $rel.attr.get_value: instance;
-                type.where(Red::AST.new: :op(Red::Op::eq), :args(ref,), :bind(value, )) # TODO: .head
+                type.grep(Red::AST.new: :op(Red::Op::eq), :args(ref,), :bind(value, )).head
             }
         },
         STORE => method ($value) {

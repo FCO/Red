@@ -5,9 +5,9 @@ unit role Red::ResultSeq;
 
 has Red::AST $.filter;
 
-multi method where(::?CLASS: &filter) { nextwith :filter( filter self.of.^alias: "me" ) }
-multi method where(::?CLASS:U: Red::AST:D $filter) { self.new: :$filter }
-multi method where(::?CLASS:D: Red::AST:D $filter) { self.clone: :filter($!filter.merge: $filter) }
+multi method grep(::?CLASS: &filter) { nextwith :filter( filter self.of.^alias: "me" ) }
+multi method grep(::?CLASS:U: Red::AST:D $filter) { self.new: :$filter }
+multi method grep(::?CLASS:D: Red::AST:D $filter) { self.clone: :filter($!filter.merge: $filter) }
 
 method transform-item(*%data) {
     self.of.bless: |%data

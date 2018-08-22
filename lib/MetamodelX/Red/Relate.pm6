@@ -5,9 +5,9 @@ unit role MetamodelX::Red::Relate;
 #proto method relates( $, & ) {*}
 
 multi method relates( Red::ResultSeq $obj, &filter ) {
-    $obj.where( &filter )
+    $obj.grep( &filter )
 }
 
 multi method relates( Red::Model $obj, &filter ) {
-    $obj.where( &filter ).head
+    $obj.grep( &filter ).head
 }
