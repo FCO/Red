@@ -14,3 +14,9 @@ method iterator {
         }
     }
 }
+
+method grep(&func) {
+    my $ast = $!ast.merge: func $!of;
+    say $ast;
+    self.WHAT.new: :$!of, :$ast
+}

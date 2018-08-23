@@ -5,6 +5,7 @@ use-ok "Red";
 use Red;
 use Red::ResultSeq;
 use Red::FakeSeq;
+use Red::AST::Infixes;
 
 #isa-ok model {}.HOW, MetamodelX::ResultSource;
 
@@ -81,72 +82,72 @@ given model {
     my $a = 42;
     is
         (.a == 42).perl,
-        Red::AST.new(:op(Red::Op::eq), :args(Red::AST.new(:op(Red::Op::cast), :args("num", .a)), 42), :bind()).perl
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "num"), 42).perl
     ;
     is
         (42 == .a).perl,
-        Red::AST.new(:op(Red::Op::eq), :args(42, Red::AST.new(:op(Red::Op::cast), :args("num", .a))), :bind()).perl
+        Red::AST::Eq.new(42, Red::AST::Cast.new(.a, "num")).perl
     ;
     is
         (.a == $a).perl,
-        Red::AST.new(:op(Red::Op::eq), :args(Red::AST.new(:op(Red::Op::cast), :args("num", .a)), * ), :bind(42,)).perl
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "num"), 42, :bind-right).perl
     ;
     is
         ($a == .a).perl,
-        Red::AST.new(:op(Red::Op::eq), :args(*,  Red::AST.new(:op(Red::Op::cast), :args("num", .a))), :bind(42,)).perl
+        Red::AST::Eq.new(42, Red::AST::Cast.new(.a, "num"), :bind-left).perl
     ;
 
     is
         (.a != 42).perl,
-        Red::AST.new(:op(Red::Op::ne), :args(Red::AST.new(:op(Red::Op::cast), :args("num", .a)), 42), :bind()).perl
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "num"), 42).perl
     ;
     is
         (42 != .a).perl,
-        Red::AST.new(:op(Red::Op::ne), :args(42, Red::AST.new(:op(Red::Op::cast), :args("num", .a))), :bind()).perl
+        Red::AST::Ne.new(42, Red::AST::Cast.new(.a, "num")).perl
     ;
     is
         (.a != $a).perl,
-        Red::AST.new(:op(Red::Op::ne), :args(Red::AST.new(:op(Red::Op::cast), :args("num", .a)), * ), :bind(42,)).perl
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "num"), 42, :bind-right).perl
     ;
     is
         ($a != .a).perl,
-        Red::AST.new(:op(Red::Op::ne), :args(*,  Red::AST.new(:op(Red::Op::cast), :args("num", .a))), :bind(42,)).perl
+        Red::AST::Ne.new(42, Red::AST::Cast.new(.a, "num"), :bind-left).perl
     ;
 
 
-    my $b = "loren ipsum";
+    my $b = "lorem ipsum";
     is
-        (.a eq "loren ipsum").perl,
-        Red::AST.new(:op(Red::Op::eq), :args(Red::AST.new(:op(Red::Op::cast), :args("str", .a)), "loren ipsum"), :bind()).perl
+        (.a eq "lorem ipsum").perl,
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "str"), "lorem ipsum").perl
     ;
     is
-        ("loren ipsum" eq .a).perl,
-        Red::AST.new(:op(Red::Op::eq), :args("loren ipsum", Red::AST.new(:op(Red::Op::cast), :args("str", .a))), :bind()).perl
+        ("lorem ipsum" eq .a).perl,
+        Red::AST::Eq.new("lorem ipsum", Red::AST::Cast.new(.a, "str")).perl
     ;
     is
         (.a eq $b).perl,
-        Red::AST.new(:op(Red::Op::eq), :args(Red::AST.new(:op(Red::Op::cast), :args("str", .a)), * ), :bind("loren ipsum",)).perl
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "str"), "lorem ipsum", :bind-right).perl
     ;
     is
         ($b eq .a).perl,
-        Red::AST.new(:op(Red::Op::eq), :args(*,  Red::AST.new(:op(Red::Op::cast), :args("str", .a))), :bind("loren ipsum",)).perl
+        Red::AST::Eq.new("lorem ipsum", Red::AST::Cast.new(.a, "str"), :bind-left).perl
     ;
 
     is
-        (.a ne "loren ipsum").perl,
-        Red::AST.new(:op(Red::Op::ne), :args(Red::AST.new(:op(Red::Op::cast), :args("str", .a)), "loren ipsum"), :bind()).perl
+        (.a ne "lorem ipsum").perl,
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "str"), "lorem ipsum").perl
     ;
     is
-        ("loren ipsum" ne .a).perl,
-        Red::AST.new(:op(Red::Op::ne), :args("loren ipsum", Red::AST.new(:op(Red::Op::cast), :args("str", .a))), :bind()).perl
+        ("lorem ipsum" ne .a).perl,
+        Red::AST::Ne.new("lorem ipsum", Red::AST::Cast.new(.a, "str")).perl
     ;
     is
         (.a ne $b).perl,
-        Red::AST.new(:op(Red::Op::ne), :args(Red::AST.new(:op(Red::Op::cast), :args("str", .a)), * ), :bind("loren ipsum",)).perl
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "str"), "lorem ipsum", :bind-right).perl
     ;
     is
         ($b ne .a).perl,
-        Red::AST.new(:op(Red::Op::ne), :args(*,  Red::AST.new(:op(Red::Op::cast), :args("str", .a))), :bind("loren ipsum",)).perl
+        Red::AST::Ne.new("lorem ipsum", Red::AST::Cast.new(.a, "str"), :bind-left).perl
     ;
 }
 
