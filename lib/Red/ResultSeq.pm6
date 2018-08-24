@@ -1,6 +1,6 @@
 use Red::AST;
 use Red::FakeSeq;
-unit role Red::ResultSeq does Positional;
+unit role Red::ResultSeq is Array does Positional;
 
 has Red::AST $.filter;
 
