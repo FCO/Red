@@ -9,7 +9,7 @@ multi method where(::?CLASS:U: Red::AST:U $filter) { self.WHAT  }
 multi method where(::?CLASS:D: Red::AST:U $filter) { self.clone }
 multi method where(::?CLASS:U: Red::AST:D $filter) { self.new: :$filter }
 multi method where(::?CLASS:D: Red::AST:D $filter) {
-    self.WHAT.new: :filter($!filter.merge: $filter)
+    self.WHAT.new: :filter($!filter.add: $filter)
 }
 
 method transform-item(*%data) {

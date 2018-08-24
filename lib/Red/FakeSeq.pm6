@@ -7,16 +7,10 @@ has Mu:U        $.of;
 has Red::AST    $.ast;
 
 method iterator {
-    my \of = $!of;
-    class :: does Iterator {
-        method pull-one {
-            [of, IterationEnd xx *][$++]
-        }
-    }
+    [$!of].iterator
 }
 
 method grep(&func) {
-    my $ast = $!ast.merge: func $!of;
-    say $ast;
+    my $ast = $!ast.add: func $!of;
     self.WHAT.new: :$!of, :$ast
 }
