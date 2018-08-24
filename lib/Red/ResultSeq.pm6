@@ -17,12 +17,7 @@ method transform-item(*%data) {
 }
 
 method iterator {
-    my $resultseq = self;
-    class :: does Iterator {
-        method pull-one {
-            $resultseq.transform-item
-        }
-    }
+    [self.of].iterator
 }
 
 method grep(&filter) { self.where: filter self.of }
