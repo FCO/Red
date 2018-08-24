@@ -43,7 +43,6 @@ method attr-to-column(|) is rw {
 }
 
 method compose(Mu \type) {
-    type.^prepare-relationships;
 	if $.rs-class === Any {
 		my $rs-class-name = $.rs-class-name(type);
 		if try ::($rs-class-name) !~~ Nil {

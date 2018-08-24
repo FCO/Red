@@ -1,6 +1,6 @@
 use Red::AST;
 use Red::FakeSeq;
-unit role Red::ResultSeq;
+unit role Red::ResultSeq does Positional;
 
 has Red::AST $.filter;
 
@@ -17,12 +17,7 @@ method transform-item(*%data) {
 }
 
 method iterator {
-    my $resultseq = self;
-    class :: does Iterator {
-        method pull-one {
-            $resultseq.transform-item
-        }
-    }
+    [self.of].iterator
 }
 
 method grep(&filter) { self.where: filter self.of }
