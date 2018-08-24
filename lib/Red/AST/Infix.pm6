@@ -8,6 +8,12 @@ has Bool    $.bind-right = False;
 
 method op { ... }
 
+method transpose(&func) {
+    my \ldata = $!left.transpose: &func;
+    my \rdata = $!right.transpose: &func;
+    func self
+}
+
 method args {
     $!bind-left  ?? * !! $!left,
     $!bind-right ?? * !! $!right

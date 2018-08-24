@@ -1,7 +1,8 @@
 use Red::Utils;
 use Red::Model;
+use Red::AST;
 use Red::AST::Infixes;
-unit class Red::Column;
+unit class Red::Column does Red::AST;
 
 has Attribute   $.attr is required;
 has Str         $.attr-name        = $!attr.name.substr: 2;
@@ -11,6 +12,8 @@ has Bool        $.nullable         = quietly (self.attr.type.^name ~~ /<!after "
 has Str         $.name             = kebab-to-snake-case self.attr.name.substr: 2;
 has Mu          $.class is required;
 has Str         $.name-alias       = $!name;
+
+method transpose(&func) { func self }
 
 method gist { "{$!class.^table}.{$!name-alias}" }
 

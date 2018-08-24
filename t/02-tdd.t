@@ -69,6 +69,7 @@ given model {
     has $!c is column{:id, :name<column_c>, :!nullable};
 } {
     use Red::Column;
+    use Red::AST::Value;
     isa-ok .a, Red::Column;
     is .a.name, "a";
     isa-ok .b, Red::Column;
@@ -82,72 +83,72 @@ given model {
     my $a = 42;
     is
         (.a == 42).perl,
-        Red::AST::Eq.new(Red::AST::Cast.new(.a, "num"), 42).perl
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "num"), ast-value(42)).perl
     ;
     is
         (42 == .a).perl,
-        Red::AST::Eq.new(42, Red::AST::Cast.new(.a, "num")).perl
+        Red::AST::Eq.new(ast-value(42), Red::AST::Cast.new(.a, "num")).perl
     ;
     is
         (.a == $a).perl,
-        Red::AST::Eq.new(Red::AST::Cast.new(.a, "num"), 42, :bind-right).perl
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "num"), ast-value(42), :bind-right).perl
     ;
     is
         ($a == .a).perl,
-        Red::AST::Eq.new(42, Red::AST::Cast.new(.a, "num"), :bind-left).perl
+        Red::AST::Eq.new(ast-value(42), Red::AST::Cast.new(.a, "num"), :bind-left).perl
     ;
 
     is
         (.a != 42).perl,
-        Red::AST::Ne.new(Red::AST::Cast.new(.a, "num"), 42).perl
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "num"), ast-value(42)).perl
     ;
     is
         (42 != .a).perl,
-        Red::AST::Ne.new(42, Red::AST::Cast.new(.a, "num")).perl
+        Red::AST::Ne.new(ast-value(42), Red::AST::Cast.new(.a, "num")).perl
     ;
     is
         (.a != $a).perl,
-        Red::AST::Ne.new(Red::AST::Cast.new(.a, "num"), 42, :bind-right).perl
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "num"), ast-value(42), :bind-right).perl
     ;
     is
         ($a != .a).perl,
-        Red::AST::Ne.new(42, Red::AST::Cast.new(.a, "num"), :bind-left).perl
+        Red::AST::Ne.new(ast-value(42), Red::AST::Cast.new(.a, "num"), :bind-left).perl
     ;
 
 
     my $b = "lorem ipsum";
     is
         (.a eq "lorem ipsum").perl,
-        Red::AST::Eq.new(Red::AST::Cast.new(.a, "str"), "lorem ipsum").perl
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum")).perl
     ;
     is
         ("lorem ipsum" eq .a).perl,
-        Red::AST::Eq.new("lorem ipsum", Red::AST::Cast.new(.a, "str")).perl
+        Red::AST::Eq.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str")).perl
     ;
     is
         (.a eq $b).perl,
-        Red::AST::Eq.new(Red::AST::Cast.new(.a, "str"), "lorem ipsum", :bind-right).perl
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum"), :bind-right).perl
     ;
     is
         ($b eq .a).perl,
-        Red::AST::Eq.new("lorem ipsum", Red::AST::Cast.new(.a, "str"), :bind-left).perl
+        Red::AST::Eq.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str"), :bind-left).perl
     ;
 
     is
         (.a ne "lorem ipsum").perl,
-        Red::AST::Ne.new(Red::AST::Cast.new(.a, "str"), "lorem ipsum").perl
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum")).perl
     ;
     is
         ("lorem ipsum" ne .a).perl,
-        Red::AST::Ne.new("lorem ipsum", Red::AST::Cast.new(.a, "str")).perl
+        Red::AST::Ne.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str")).perl
     ;
     is
         (.a ne $b).perl,
-        Red::AST::Ne.new(Red::AST::Cast.new(.a, "str"), "lorem ipsum", :bind-right).perl
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum"), :bind-right).perl
     ;
     is
         ($b ne .a).perl,
-        Red::AST::Ne.new("lorem ipsum", Red::AST::Cast.new(.a, "str"), :bind-left).perl
+        Red::AST::Ne.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str"), :bind-left).perl
     ;
 }
 
