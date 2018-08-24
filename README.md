@@ -63,8 +63,8 @@ say Person.new(:2id)
 my $author = $post2.author;
 $author.name = "John Doe";
 
-$author.^save;                        # UPDATE person SET name = 'John Doe'
-                                      # WHERE id = ? with [13] as bind
+$author.^save;                        # UPDATE person SET name = ?
+                                      # WHERE id = ? with ['John Doe', 13] as bind
 
 $author.posts.elems;                  # SELECT COUNT(*) FROM post
                                       # WHERE author_id = ?
