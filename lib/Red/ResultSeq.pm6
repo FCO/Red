@@ -19,4 +19,9 @@ method iterator {
     [self.of].iterator
 }
 
-method grep(&filter) { self.where: filter self.of }
+method grep(&filter)        { self.where: filter self.of }
+method map(&filter)         {  }
+method flatmap(&filter)     {
+    self.map: &filter
+    # TODO: flat
+}
