@@ -1,5 +1,4 @@
 use Red::AST;
-use Red::FakeSeq;
 unit role Red::ResultSeq;
 
 has Red::AST $.filter;
