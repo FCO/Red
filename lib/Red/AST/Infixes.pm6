@@ -16,11 +16,3 @@ class Red::AST::Ne does Red::AST::Infix {
 
     method should-validate {}
 }
-
-class Red::AST::Cast does Red::AST::Infix {
-    has $.op = "::";
-
-    method should-set(|) { }
-
-    method should-validate {}
-}

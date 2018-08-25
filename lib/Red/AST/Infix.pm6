@@ -1,25 +1,18 @@
-use Red::AST;
-unit role Red::AST::Infix does Red::AST;
+use Red::AST::Operator;
+unit role Red::AST::Infix does Red::AST::Operator;
 
-has         $.left  is required;
-has         $.right is required;
-has Bool    $.bind-left  = False;
-has Bool    $.bind-right = False;
-
-method op { ... }
+has Red::AST $.left  is required;
+has Red::AST $.right is required;
+has Bool     $.bind-left  = False;
+has Bool     $.bind-right = False;
 
 method transpose(&func) {
-    my \ldata = $!left.transpose: &func;
-    my \rdata = $!right.transpose: &func;
+    $!left.transpose: &func;
+    $!right.transpose: &func;
     func self
 }
 
-method args {
-    $!bind-left  ?? * !! $!left,
-    $!bind-right ?? * !! $!right
-}
-
-proto method new($left, $right, |) {*}
+proto method new(Red::AST $left, Red::AST $right, |) {*}
 
 multi method new($left, $right, Bool() :$bind-left = False, Bool() :$bind-right = False, Str() :$cast!) {
     ::?CLASS.new:
@@ -32,7 +25,3 @@ multi method new($left, $right, Bool() :$bind-left = False, Bool() :$bind-right 
 multi method new($left, $right, Bool :$bind-left = False, Bool :$bind-right = False) {
     ::?CLASS.Mu::new: :$left, :$right, :$bind-left, :$bind-right
 }
-
-method bind { |$!left xx $!bind-left, |$!right xx $!bind-right }
-
-method gist { "{$!left}{$.op}{$!right}" }

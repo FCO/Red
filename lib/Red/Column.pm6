@@ -2,6 +2,7 @@ use Red::Utils;
 use Red::Model;
 use Red::AST;
 use Red::AST::Infixes;
+use Red::AST::Unary;
 unit class Red::Column does Red::AST;
 
 has Attribute   $.attr is required;
