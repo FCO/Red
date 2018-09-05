@@ -49,10 +49,7 @@ method compose(Mu \type) {
 		if try ::($rs-class-name) !~~ Nil {
 			$!rs-class = ::($rs-class-name)
 		} else {
-			$!rs-class := Metamodel::ClassHOW.new_type: :name($rs-class-name);
-			$!rs-class.^add_parent: Red::DefaultResultSeq;
-			$!rs-class.^add_method: "of", method { type }
-			$!rs-class.^compose;
+			$!rs-class := create-resultseq($rs-class-name, type);
 			type.WHO<ResultSeq> := $!rs-class
 		}
 	}

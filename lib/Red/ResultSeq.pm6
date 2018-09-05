@@ -1,8 +1,23 @@
 use Red::AST;
 unit role Red::ResultSeq;
 
+sub create-resultseq($rs-class-name, Mu \type) is export is raw {
+    use Red::DefaultResultSeq;
+    my $rs-class := Metamodel::ClassHOW.new_type: :name($rs-class-name);
+    $rs-class.^add_parent: Red::DefaultResultSeq;
+    $rs-class.^add_role: Red::ResultSeq;
+    $rs-class.^add_method: "of", method { type }
+    $rs-class.^compose;
+    $rs-class
+}
+
+# method of {}
 has Red::AST $.filter;
 
+method do-it {
+    use Red::DoneResultSeq;
+    Red::DoneResultSeq.new: :of(self.of), :$!filter
+}
 #multi method grep(::?CLASS: &filter) { nextwith :filter( filter self.of.^alias: "me" ) }
 multi method where(::?CLASS:U: Red::AST:U $filter) { self.WHAT  }
 multi method where(::?CLASS:D: Red::AST:U $filter) { self.clone }

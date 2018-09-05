@@ -5,6 +5,7 @@ use-ok "Red";
 use Red;
 use Red::ResultSeq;
 use Red::AST::Infixes;
+use Red::DoneResultSeq;
 
 #isa-ok model {}.HOW, MetamodelX::ResultSource;
 
@@ -305,5 +306,9 @@ given model { has $.a is column{ :unique }; has $.b is column; ::?CLASS.^add-uni
 isa-ok Person2.new.posts, Post2::ResultSeq;
 
 isa-ok Person2.posts, Person2::ResultSeq;
+
+isa-ok Person2.posts.do-it, Red::DoneResultSeq;
+
+isa-ok Person2.posts.do-it.head, Person2;
 
 done-testing

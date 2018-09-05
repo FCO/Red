@@ -1,2 +1,3 @@
-use Red::ResultSeq;
-unit class Red::DefaultResultSeq does Red::ResultSeq;
+#use Red::ResultSeq;
+unit class Red::DefaultResultSeq;
+# does Red::ResultSeq;
