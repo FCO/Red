@@ -247,7 +247,7 @@ is Post2,                           Post2.id.class;
 is $alias1.id.attr,                 Post2.id.attr;
 is $alias1.id.attr-name,            Post2.id.attr-name;
 is $alias1.id.id,                   Post2.id.id;
-is $alias1.id.references,           Post2.id.references;
+cmp-ok $alias1.id.references, "===", Post2.id.references;
 is $alias1.id.nullable,             Post2.id.nullable;
 is $alias1.id.name,                 Post2.id.name;
 
@@ -256,8 +256,7 @@ is Post2,                           Post2.author-id.class;
 
 is $alias1.author-id.attr,          Post2.author-id.attr;
 is $alias1.author-id.attr-name,     Post2.author-id.attr-name;
-is $alias1.author-id.id,            Post2.author-id.id;
-is $alias1.author-id.references,    Post2.author-id.references;
+cmp-ok $alias1.author-id.references, "===", Post2.author-id.references;
 is $alias1.author-id.nullable,      Post2.author-id.nullable;
 is $alias1.author-id.name,          Post2.author-id.name;
 
@@ -269,7 +268,7 @@ is Post2,                           Post2.id.class;
 is $alias2.id.attr,                 Post2.id.attr;
 is $alias2.id.attr-name,            Post2.id.attr-name;
 is $alias2.id.id,                   Post2.id.id;
-is $alias2.id.references,           Post2.id.references;
+cmp-ok $alias2.id.references, "===", Post2.id.references;
 is $alias2.id.nullable,             Post2.id.nullable;
 is $alias2.id.name,                 Post2.id.name;
 
@@ -279,7 +278,7 @@ is Post2,                           Post2.author-id.class;
 is $alias2.author-id.attr,          Post2.author-id.attr;
 is $alias2.author-id.attr-name,     Post2.author-id.attr-name;
 is $alias2.author-id.id,            Post2.author-id.id;
-is $alias2.author-id.references,    Post2.author-id.references;
+cmp-ok $alias2.author-id.references, "===", Post2.author-id.references;
 is $alias2.author-id.nullable,      Post2.author-id.nullable;
 is $alias2.author-id.name,          Post2.author-id.name;
 
