@@ -1,4 +1,5 @@
 use Red::AST;
+use Red::Column;
 unit role Red::ResultSeq;
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
@@ -35,27 +36,17 @@ method transform-item(*%data) {
 #}
 
 method grep(&filter)        { self.where: filter self.of }
+
+multi treat-map($filter, Red::Model     $_, &filter, Bool :$flat                 ) { .^where: $filter }
+multi treat-map($filter, Red::Column    $_, &filter, Bool :$flat                 ) { Red::DoneResultSeq.new: :of(.attr.type), :$filter }
+multi treat-map($filter,                $_, &filter, Bool :$flat                 ) { .do-it.map: &filter } # FIXME: change to use count
+multi treat-map($filter, Red::ResultSeq $_, &filter, Bool :$flat! where * == True) { $_ }
+
 method map(&filter)         {
-    use Red::Column;
-    do given filter self.of {
-        when Red::Model {
-            .^where: $!filter
-        }
-        when Red::Column {
-            Red::DoneResultSeq.new: :of(.attr.type), :$!filter
-        }
-    }
+    treat-map $!filter, filter(self.of), &filter
 }
 method flatmap(&filter)     {
-    use Red::Column;
-    do given filter self.of {
-        when Red::ResultSeq {
-            $_
-        }
-        when Red::Column {
-            Red::DoneResultSeq.new: :of(.attr.type), :$!filter
-        }
-    }
+    treat-map :flat, $!filter, filter(self.of), &filter
 }
 
 method head { self.of.new } # FIXME
