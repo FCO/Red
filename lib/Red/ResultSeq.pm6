@@ -30,13 +30,32 @@ method transform-item(*%data) {
     self.of.bless: |%data
 }
 
-method iterator {
-    [self.of].iterator
-}
+#method iterator {
+#    [self.of].iterator
+#}
 
 method grep(&filter)        { self.where: filter self.of }
-method map(&filter)         {  }
-method flatmap(&filter)     {
-    self.map: &filter
-    # TODO: flat
+method map(&filter)         {
+    use Red::Column;
+    do given filter self.of {
+        when Red::Model {
+            .^where: $!filter
+        }
+        when Red::Column {
+            Red::DoneResultSeq.new: :of(.attr.type), :$!filter
+        }
+    }
 }
+method flatmap(&filter)     {
+    use Red::Column;
+    do given filter self.of {
+        when Red::ResultSeq {
+            $_
+        }
+        when Red::Column {
+            Red::DoneResultSeq.new: :of(.attr.type), :$!filter
+        }
+    }
+}
+
+method head { self.of.new } # FIXME
