@@ -310,9 +310,10 @@ isa-ok Person2.posts.do-it, Red::DoneResultSeq;
 
 isa-ok Person2.posts.do-it.head, Person2;
 
-my $seq = Person2.posts.map(*.id);
+my $seq = Person2.posts.map: *.id;
 isa-ok $seq, Red::DoneResultSeq;
 isa-ok $seq.of, Int;
+isa-ok $seq.head, Int;
 is $seq.filter.perl, Person2.posts.filter.perl;
 
 done-testing
