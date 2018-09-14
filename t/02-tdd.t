@@ -302,6 +302,8 @@ given model { has $.a is column{ :unique }; has $.b is column; ::?CLASS.^add-uni
     is .^constraints<unique>.elems, 2;
 }
 
+my $*RED-DB = database "SQLite";
+
 isa-ok Person2.new.posts, Post2::ResultSeq;
 
 isa-ok Person2.posts, Person2::ResultSeq;

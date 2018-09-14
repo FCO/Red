@@ -1,7 +1,7 @@
-unit class Red::Database:ver<v0.0.1>;
+use Red::Driver;
 
-has %!connections;
-
-multi method new(%connections) {
-
+sub database(Str $type, |c) is export {
+    my $driver-name = "Red::Driver::$type";
+    require ::($driver-name);
+    my Red::Driver $driver = ::($driver-name).new: |c;
 }
