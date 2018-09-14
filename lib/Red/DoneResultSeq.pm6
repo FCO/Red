@@ -1,7 +1,7 @@
 use Red::AST;
 unit class Red::DoneResultSeq is Seq;
 
-sub run-query(:$of, $filter) {
+sub run-query(:$of, :$filter) {
 }
 
 class ResultSeq::Iterator does Iterator {
