@@ -3,7 +3,9 @@
     "Fernando Correa de Oliveira"
   ],
   "build-depends" : [ ],
-  "depends" : [ ],
+  "depends" : [
+    "DBIish"
+  ],
   "description" : "A perl6 ORM",
   "license" : "Artistic-2.0",
   "name" : "Red",
