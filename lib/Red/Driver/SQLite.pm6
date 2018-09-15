@@ -5,8 +5,6 @@ unit class Red::Driver::SQLite does Red::Driver;
 
 has $!database = q<:memory:>;
 
-method is-connected(--> True) {}
-
 method dbh { $ //= DBIish.connect: "SQLite", :$!database }
 
-method translate(Red::AST) { "SELECT 42", [] } # FIXME
+method translate(Red::AST) { "SELECT 42 as value", [] } # FIXME
