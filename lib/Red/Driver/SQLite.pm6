@@ -7,4 +7,7 @@ has $!database = q<:memory:>;
 
 method dbh { $ //= DBIish.connect: "SQLite", :$!database }
 
-method translate(Red::AST) { "SELECT 42 as value", [] } # FIXME
+method translate(Red::AST $ast) {
+    say $ast;
+    "SELECT 42 as value", []
+} # FIXME
