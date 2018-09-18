@@ -35,3 +35,5 @@ method TWEAK(:$unique) {
         $!attr.package.^add-unique-constraint: { self }
     }
 }
+
+method args {}

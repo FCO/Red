@@ -31,10 +31,6 @@ method transform-item(*%data) {
     self.of.bless: |%data
 }
 
-#method iterator {
-#    [self.of].iterator
-#}
-
 method grep(&filter)        { self.where: filter self.of }
 
 multi treat-map($filter, Red::Model     $_, &filter, Bool :$flat                 ) { .^where: $filter }

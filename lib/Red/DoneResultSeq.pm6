@@ -19,11 +19,13 @@ class ResultSeq::Iterator does Iterator {
                 .rethrow
             }
         }
-        my ($sql, $bind) = $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter;
-        note "SQL : $sql";
-        note "bind: $bind<>.perl()";
+        my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter;
+        if $*ENV<RED_DEBUG> {
+            note "SQL : $sql";
+            note "bind: @bind.perl()";
+        }
         $!st-handler = $!driver.dbh.prepare: $sql;
-        $!st-handler.execute: |$bind
+        $!st-handler.execute: |@bind
     }
 
     method pull-one {

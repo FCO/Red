@@ -6,8 +6,10 @@ class Red::AST::Value does Red::AST is Any {
     method TWEAK {
         $!type = $!value.WHAT
     }
+    method args { $!value }
 }
 
 sub ast-value($value) is export {
     Red::AST::Value.new: :$value
 }
+

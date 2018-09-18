@@ -11,4 +11,6 @@ class Red::AST::Cast does Red::AST::Operator {
     method new($value, $type) {
         ::?CLASS.bless: :$value, :$type
     }
+
+    method args { $!value }
 }

@@ -9,6 +9,17 @@ multi method add(Red::AST:U: Red::AST:D $next) { $next }
 #method should-set($class       --> Hash()) { ... }
 #method should-validate(%values --> Bool()) { ... }
 
+#method args { ... }
+
 method transpose(&func) {
-    func self
+    func self;
+    for self.args -> $arg {
+        $arg.transpose: &func
+    }
+}
+
+method tables {
+    my @tables;
+    self.transpose: -> $ast {
+    }
 }

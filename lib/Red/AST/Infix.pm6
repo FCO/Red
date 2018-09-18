@@ -25,3 +25,5 @@ multi method new($left, $right, Bool() :$bind-left = False, Bool() :$bind-right 
 multi method new($left, $right, Bool :$bind-left = False, Bool :$bind-right = False) {
     ::?CLASS.Mu::new: :$left, :$right, :$bind-left, :$bind-right
 }
+
+method args { $!left, $!right }
