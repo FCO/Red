@@ -6,11 +6,11 @@ has Red::AST $.right is required;
 has Bool     $.bind-left  = False;
 has Bool     $.bind-right = False;
 
-method transpose(&func) {
-    $!left.transpose: &func;
-    $!right.transpose: &func;
-    func self
-}
+#method transpose(&func) {
+#    $!left.transpose: &func;
+#    $!right.transpose: &func;
+#    func self
+#}
 
 proto method new(Red::AST $left, Red::AST $right, |) {*}
 

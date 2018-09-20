@@ -12,14 +12,18 @@ multi method add(Red::AST:U: Red::AST:D $next) { $next }
 #method args { ... }
 
 method transpose(&func) {
-    func self;
     for self.args -> $arg {
-        $arg.transpose: &func
+        $arg.?transpose: &func
     }
+    func self;
 }
 
 method tables {
     my @tables;
     self.transpose: -> $ast {
+        if $ast.^name eq "Red::Column" {
+            @tables.push: $ast.class
+        }
     }
+    |@tables
 }

@@ -7,6 +7,9 @@ use Red::ResultSeq;
 use Red::AST::Infixes;
 use Red::DoneResultSeq;
 
+my $*RED-DRY-RUN = True;
+my $*RED-DEBUG = True;
+
 #isa-ok model {}.HOW, MetamodelX::ResultSource;
 
 can-ok model {}.HOW, "columns";

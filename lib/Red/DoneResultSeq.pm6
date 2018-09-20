@@ -20,15 +20,19 @@ class ResultSeq::Iterator does Iterator {
             }
         }
         my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter;
-        if $*ENV<RED_DEBUG> {
+        if $*RED-DEBUG {
             note "SQL : $sql";
             note "bind: @bind.perl()";
         }
-        $!st-handler = $!driver.dbh.prepare: $sql;
-        $!st-handler.execute: |@bind
+
+        unless $*RED-DRY-RUN {
+            $!st-handler = $!driver.dbh.prepare: $sql;
+            $!st-handler.execute: |@bind
+        }
     }
 
     method pull-one {
+        if $*RED-DRY-RUN { return $!of.bless }
         my %data = $!st-handler.row: :hash;
         return IterationEnd unless %data;
         $!of.bless: |%data
