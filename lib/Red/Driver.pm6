@@ -1,7 +1,7 @@
 use Red::AST;
 unit role Red::Driver;
 
-method dbh                  { ... }
 method translate(Red::AST)  { ... }
+method prepare(Str)         { ... }
 
 method optimize(Red::AST $in) { $in }

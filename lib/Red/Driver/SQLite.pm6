@@ -9,8 +9,17 @@ use Red::AST::Value;
 unit class Red::Driver::SQLite does Red::Driver;
 
 has $!database = q<:memory:>;
+has $!dbh = DBIish.connect: "SQLite", :$!database;
 
-method dbh { $ //= DBIish.connect: "SQLite", :$!database }
+class Statement {
+    has $.statement;
+
+    method execute(*@binds) { $!statement.execute: |@binds }
+}
+
+method prepare($query) {
+    Statement.new: :dbh($!dbh.prepare: $query)
+}
 
 proto method translate(Red::AST) {*}
 

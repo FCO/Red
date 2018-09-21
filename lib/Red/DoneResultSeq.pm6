@@ -26,7 +26,7 @@ class ResultSeq::Iterator does Iterator {
         }
 
         unless $*RED-DRY-RUN {
-            $!st-handler = $!driver.dbh.prepare: $sql;
+            $!st-handler = $!driver.prepare: $sql;
             $!st-handler.execute: |@bind
         }
     }
