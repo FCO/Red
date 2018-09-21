@@ -20,9 +20,9 @@ method transpose(&func) {
 
 method tables {
     my @tables;
-    self.transpose: -> $ast {
-        if $ast.^name eq "Red::Column" {
-            @tables.push: $ast.class
+    self.transpose: {
+        if .^name eq "Red::Column" {
+            @tables.push: .class
         }
     }
     |@tables

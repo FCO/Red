@@ -1,6 +1,6 @@
 use Red::AST;
 use Red::Column;
-unit role Red::ResultSeq;
+unit role Red::ResultSeq does Sequence;
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
     use Red::DefaultResultSeq;
@@ -19,6 +19,11 @@ method do-it {
     use Red::DoneResultSeq;
     Red::DoneResultSeq.new: :of(self.of), :$!filter
 }
+
+method iterator {
+       self.do-it.iterator
+}
+
 #multi method grep(::?CLASS: &filter) { nextwith :filter( filter self.of.^alias: "me" ) }
 multi method where(::?CLASS:U: Red::AST:U $filter) { self.WHAT  }
 multi method where(::?CLASS:D: Red::AST:U $filter) { self.clone }

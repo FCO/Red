@@ -1,6 +1,6 @@
 use Red::AST::Infix;
 class Red::AST::Eq does Red::AST::Infix {
-    has $.op = " = ";
+    has $.op = "=";
 
     method should-set($class) {
         return if $.left.?class === $class and $.right.?class === $class;
@@ -10,7 +10,7 @@ class Red::AST::Eq does Red::AST::Infix {
 }
 
 class Red::AST::Ne does Red::AST::Infix {
-    has $.op = " != ";
+    has $.op = "!=";
 
     method should-set { }
 
