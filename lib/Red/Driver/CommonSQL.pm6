@@ -10,7 +10,6 @@ unit role Red::Driver::CommonSQL does Red::Driver;
 proto method translate(Red::AST) {*}
 
 multi method translate(Red::AST::Select $_) {
-    say .filter;
     my $tables = .tables.map({ .^table }).join: ", ";
     my $where  = self.translate: .filter;
     "SELECT * FROM $tables WHERE $where", []

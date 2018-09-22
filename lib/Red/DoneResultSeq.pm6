@@ -33,9 +33,9 @@ class ResultSeq::Iterator does Iterator {
 
     method pull-one {
         if $*RED-DRY-RUN { return $!of.bless }
-        my %data = $!st-handler.row: :hash;
-        return IterationEnd unless %data;
-        $!of.bless: |%data
+        my $data := $!st-handler.row;
+        return IterationEnd if $data =:= IterationEnd or not $data;
+        $!of.bless: |%$data
     }
 }
 
