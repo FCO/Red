@@ -37,4 +37,3 @@ multi method prepare(Red::AST $query) {
 multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
-
