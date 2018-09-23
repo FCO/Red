@@ -43,7 +43,7 @@ has Mu:U        $.of;
 has Red::AST    $.filter;
 has Int         $.limit;
 
-method new(:$of, :$filter, :$limit) {
+method new(:$of, :$filter, Int :$limit) {
     ::?CLASS.bless: :$of, :$filter, :$limit
 }
 
