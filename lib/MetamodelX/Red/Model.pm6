@@ -42,8 +42,18 @@ method id-values(Red::Model:D $model) {
 	self.id($model).map({ .get_value: $model }).list
 }
 
-method id-filter(Red::Model:D $model) {
+multi method id-filter(Red::Model:D $model) {
     $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(.get_value: $model), :type(.type) })
+        .reduce: { Red::AST::AND.new: $^a, $^b }
+}
+
+multi method id-filter(Red::Model:U $model, $id) {
+    die "Model must have only 1 id to use id-filter this way" if $model.^id.elems != 1;
+    self.id-filter: $model, |{$model.^id.head.column.attr-name => $id}
+}
+
+multi method id-filter(Red::Model:U $model, *%data) {
+    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(%data{.column.attr-name}), :type(.type) })
         .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
@@ -160,4 +170,13 @@ method create(\model, |pars) {
     my $obj = model.new: |pars;
     $obj.^save: :insert;
     $obj
+}
+
+method load(Red::Model:U \model, |ids) {
+    my $filter = model.^id-filter: |ids;
+    model.^rs.grep({ $filter }).head
+}
+
+method search(Red::Model:U \model, Red::AST $filter) {
+    model.^rs.grep: { $filter }
 }
