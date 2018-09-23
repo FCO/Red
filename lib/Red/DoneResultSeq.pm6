@@ -9,6 +9,7 @@ sub run-query(:$of, :$filter) {
 class ResultSeq::Iterator does Iterator {
     has Mu:U        $.of            is required;
     has Red::AST    $.filter        is required;
+    has Int         $.limit;
     has             &.post;
     has Red::Driver $!driver        = $*RED-DB // die Q[$*RED-DB wasn't defined];
     has             $!st-handler;
@@ -20,7 +21,7 @@ class ResultSeq::Iterator does Iterator {
                 .rethrow
             }
         }
-        my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter;
+        my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter, :$!limit;
 
         unless $*RED-DRY-RUN {
             $!st-handler = $!driver.prepare: $sql;
@@ -40,11 +41,12 @@ class ResultSeq::Iterator does Iterator {
 
 has Mu:U        $.of;
 has Red::AST    $.filter;
+has Int         $.limit;
 
-method new(:$of, :$filter) {
-    ::?CLASS.bless: :$of, :$filter
+method new(:$of, :$filter, :$limit) {
+    ::?CLASS.bless: :$of, :$filter, :$limit
 }
 
 method iterator {
-    ResultSeq::Iterator.new: :$!of, :$!filter
+    ResultSeq::Iterator.new: :$!of, :$!filter, :$!limit
 }

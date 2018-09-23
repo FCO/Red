@@ -25,7 +25,7 @@ multi method translate(Red::AST::Select $ast, $context?) {
     my $tables = $ast.tables.map({ .^table }).join: ", ";
     my $where  = self.translate: $ast.filter;
     my $limit  = $ast.limit;
-    quietly "SELECT\n{ $sel ?? $sel.indent: 3 !! "*" }\n{ "FROM\n{ .indent: 3 }" with $tables }\n{ "WHERE\n{ .indent: 3 }" with $where } { "\n LIMIT $_" with $limit }", []
+    quietly "SELECT\n{ $sel ?? $sel.indent: 3 !! "*" }\n{ "FROM\n{ .indent: 3 }" with $tables }\n{ "WHERE\n{ .indent: 3 }" with $where } { "\nLIMIT $_" with $limit }", []
 }
 
 multi method translate(Red::AST::Infix $_, $context?) {
