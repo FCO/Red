@@ -20,10 +20,6 @@ class ResultSeq::Iterator does Iterator {
             }
         }
         my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter;
-        if $*RED-DEBUG {
-            note "SQL : $sql";
-            note "bind: @bind.perl()";
-        }
 
         unless $*RED-DRY-RUN {
             $!st-handler = $!driver.prepare: $sql;

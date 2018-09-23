@@ -17,16 +17,17 @@ class Statement does Red::Statement {
 }
 
 multi method prepare(Red::AST $query) {
-    self does role :: { has $.predefined-bind = True }
     my ($sql, @bind) := self.translate: self.optimize: $query;
     do unless $*RED-DRY-RUN {
         my $stt = self.prepare: $sql;
-        $stt.bind = @bind;
+        $stt.predefined-bind;
+        $stt.binds = @bind;
         $stt
     }
 }
 
 multi method prepare(Str $query) {
+    self.debug: $query;
     Statement.new: :driver(self), :statement($!dbh.prepare: $query)
 }
 

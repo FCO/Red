@@ -7,6 +7,7 @@ use Red::DefaultResultSeq;
 use Red::Attr::ReferencedBy;
 use Red::Attr::Query;
 use Red::AST;
+use Red::AST::CreateTable;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Relationship;
 
@@ -129,4 +130,8 @@ method is-dirty(Any:D \obj) { so self.dirty-cols }
 method clean-up(Any:D \obj) { self.dirty-cols = set() }
 method dirty-columns(|)     { self.dirty-cols }
 method rs($)                { $.rs-class.new }
+
+method create-table(\model) {
+    $*RED-DB.execute: Red::AST::CreateTable.new: :name(model.^table), :columns[|model.^columns.keys.map(*.column)]
+}
 

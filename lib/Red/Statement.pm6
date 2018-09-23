@@ -1,12 +1,15 @@
 unit role Red::Statement;
 has $.statement;
-has @.binds;
+has @.binds is rw;
 has $.driver is required;
+has Bool $!predefined-bind = False;
 
 method stt-exec($, *@) { ... }
 
+method predefined-bind { $!predefined-bind = True }
+
 method execute(*@binds) {
-    $!statement = do if self.?predefined-bind {
+    $!statement = do if $!predefined-bind {
         self.stt-exec: $!statement, |@binds
     } else {
         self.stt-exec: $!statement, |@!binds
