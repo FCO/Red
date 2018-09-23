@@ -14,10 +14,11 @@ sub create-resultseq($rs-class-name, Mu \type) is export is raw {
 
 # method of {}
 has Red::AST $.filter;
+has Int      $.limit;
 
-method do-it {
+method do-it(*%pars) {
     use Red::DoneResultSeq;
-    Red::DoneResultSeq.new: :of(self.of), :$!filter
+    Red::DoneResultSeq.new: :of(self.of), :$!filter, :$!limit, |%pars
 }
 
 method iterator {
@@ -39,9 +40,20 @@ method transform-item(*%data) {
 method grep(&filter)        { self.where: filter self.of }
 
 multi treat-map($filter, Red::Model     $_, &filter, Bool :$flat                 ) { .^where: $filter }
-multi treat-map($filter, Red::Column    $_, &filter, Bool :$flat                 ) { Red::DoneResultSeq.new: :of(.attr.type), :$filter }
 multi treat-map($filter,                $_, &filter, Bool :$flat                 ) { .do-it.map: &filter } # FIXME: change to use count
 multi treat-map($filter, Red::ResultSeq $_, &filter, Bool :$flat! where * == True) { $_ }
+multi treat-map($filter, Red::Column    $_, &filter, Bool :$flat                 ) {
+    my $attr = .attr.clone: :name<data>;
+    my \Meta = .class.HOW.WHAT;
+    my \model = Meta.new.new_type;
+    model.^add_attribute: $attr;
+    model.^compose;
+    model.^add-column: $attr;
+    Red::DoneResultSeq.new:
+        :of(model),
+        :$filter,
+        :post(*.data)
+}
 
 method map(&filter)         {
     treat-map $!filter, filter(self.of), &filter
@@ -50,4 +62,6 @@ method flatmap(&filter)     {
     treat-map :flat, $!filter, filter(self.of), &filter
 }
 
-method head { self.of.new } # FIXME
+method head {
+    self.do-it(:1limit).head
+}

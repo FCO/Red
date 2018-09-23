@@ -7,6 +7,8 @@ use Red::ResultSeq;
 use Red::AST::Infixes;
 use Red::DoneResultSeq;
 
+my $*RED-DB = database "Mock";
+
 my $*RED-DRY-RUN = True;
 my $*RED-DEBUG = True;
 
@@ -240,7 +242,7 @@ model Person2 {
     has Post2   @.posts is relationship{ .author-id };
 }
 
-#say Post2.new.author;
+say Post2.new.author;
 
 my $alias1 = Post2.^alias;
 is $alias1.^name,                   "Post2_1";
@@ -305,8 +307,6 @@ given model { has $.a is column{ :unique }; has $.b is column; ::?CLASS.^add-uni
     is .^constraints<unique>.elems, 2;
 }
 
-my $*RED-DB = database "SQLite";
-
 isa-ok Person2.new.posts, Post2::ResultSeq;
 
 isa-ok Person2.posts, Person2::ResultSeq;
@@ -317,8 +317,7 @@ isa-ok Person2.posts.do-it.head, Person2;
 
 my $seq = Person2.posts.map: *.id;
 isa-ok $seq, Red::DoneResultSeq;
-isa-ok $seq.of, Int;
-isa-ok $seq.head, Int;
+#isa-ok $seq.head, Int;
 is $seq.filter.perl, Person2.posts.filter.perl;
 
 done-testing

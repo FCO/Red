@@ -9,6 +9,7 @@ sub run-query(:$of, :$filter) {
 class ResultSeq::Iterator does Iterator {
     has Mu:U        $.of            is required;
     has Red::AST    $.filter        is required;
+    has             &.post;
     has Red::Driver $!driver        = $*RED-DB // die Q[$*RED-DB wasn't defined];
     has             $!st-handler;
 
@@ -31,7 +32,9 @@ class ResultSeq::Iterator does Iterator {
         if $*RED-DRY-RUN { return $!of.bless }
         my $data := $!st-handler.row;
         return IterationEnd if $data =:= IterationEnd or not $data;
-        $!of.bless: |%$data
+        my $obj = $!of.bless: |%$data;
+        return &!post.($obj) with &!post;
+        $obj
     }
 }
 
