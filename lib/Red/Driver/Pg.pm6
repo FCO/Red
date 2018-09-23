@@ -29,7 +29,7 @@ multi method prepare(Red::AST $query) {
     do unless $*RED-DRY-RUN {
         my $stt = self.prepare: $sql;
         $stt.predefined-bind;
-        $stt.bind = @bind;
+        $stt.binds = @bind;
         $stt
     }
 }

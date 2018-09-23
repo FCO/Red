@@ -7,6 +7,7 @@ use Red::DefaultResultSeq;
 use Red::Attr::ReferencedBy;
 use Red::Attr::Query;
 use Red::AST;
+use Red::AST::Insert;
 use Red::AST::CreateTable;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Relationship;
@@ -135,3 +136,14 @@ method create-table(\model) {
     $*RED-DB.execute: Red::AST::CreateTable.new: :name(model.^table), :columns[|model.^columns.keys.map(*.column)]
 }
 
+multi method save($obj, :$insert! where * == True) {
+    my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
+    $obj.^clean-up;
+    $ret
+}
+
+method create(\model, |pars) {
+    my $obj = model.new: |pars;
+    $obj.^save: :insert;
+    $obj
+}
