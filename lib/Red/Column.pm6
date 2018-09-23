@@ -8,6 +8,7 @@ unit class Red::Column does Red::AST;
 has Attribute   $.attr is required;
 has Str         $.attr-name        = $!attr.name.substr: 2;
 has Bool        $.id               = False;
+has Bool        $.auto-increment   = False;
 has             &.references;
 has Bool        $.nullable         = quietly (self.attr.type.^name ~~ /<!after ":"> ":" ["_" | "U" | "D"]/).Str !eq ":D";
 has Str         $.name             = kebab-to-snake-case self.attr.name.substr: 2;

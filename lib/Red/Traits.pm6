@@ -16,6 +16,18 @@ multi trait_mod:<is>(Attribute $attr, Bool :$column!) is export {
     trait_mod:<is>($attr, :column{}) if $column
 }
 
+multi trait_mod:<is>(Attribute $attr, Str :$column!) is export {
+    trait_mod:<is>($attr, :column{:name($column)}) if $column
+}
+
+multi trait_mod:<is>(Attribute $attr, Bool :$id! where $_ == True) is export {
+    trait_mod:<is>($attr, :column{:id, :!nullable})
+}
+
+multi trait_mod:<is>(Attribute $attr, Bool :$serial! where $_ == True) is export {
+    trait_mod:<is>($attr, :column{:id, :!nullable, :auto-increment})
+}
+
 multi trait_mod:<is>(Attribute $attr, :%column!) is export {
     my $class = $attr.package;
     my $obj = Red::Column.new: |%column, :$attr, :$class;

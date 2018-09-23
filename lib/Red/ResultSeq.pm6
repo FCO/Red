@@ -62,6 +62,10 @@ method flatmap(&filter)     {
     treat-map :flat, $!filter, filter(self.of), &filter
 }
 
-method head(Int $num = 1) {
+multi method head {
+    self.do-it(:1limit).head
+}
+
+multi method head(UInt:D $num) {
     self.do-it(:limit(min $num, $!limit)).head: $num
 }
