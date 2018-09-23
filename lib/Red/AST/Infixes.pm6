@@ -16,3 +16,22 @@ class Red::AST::Ne does Red::AST::Infix {
 
     method should-validate {}
 }
+
+class Red::AST::AND does Red::AST::Infix {
+    has $.op = "AND";
+
+    method should-set($class) {
+    }
+
+    method should-validate {}
+}
+
+class Red::AST::OR does Red::AST::Infix {
+    has $.op = "OR";
+
+    method should-set($class) {
+    }
+
+    method should-validate {}
+}
+

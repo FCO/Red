@@ -8,6 +8,8 @@ use Red::Attr::ReferencedBy;
 use Red::Attr::Query;
 use Red::AST;
 use Red::AST::Insert;
+use Red::AST::Update;
+use Red::AST::Infixes;
 use Red::AST::CreateTable;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Relationship;
@@ -38,6 +40,11 @@ method id(Mu \type) {
 
 method id-values(Red::Model:D $model) {
 	self.id($model).map({ .get_value: $model }).list
+}
+
+method id-filter(Red::Model:D $model) {
+    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(.get_value: $model), :type(.type) })
+        .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
 method attr-to-column(|) is rw {
@@ -124,13 +131,14 @@ method compose-columns(Red::Model:U \type) {
 	}
 }
 
-method set-dirty($, $attr) {
-	self.dirty-cols ∪= $attr;
+method set-dirty(\obj, $attr) {
+	self.dirty-cols{obj} ∪= $attr;
 }
-method is-dirty(Any:D \obj) { so self.dirty-cols }
-method clean-up(Any:D \obj) { self.dirty-cols = set() }
-method dirty-columns(|)     { self.dirty-cols }
-method rs($)                { $.rs-class.new }
+method is-dirty(Any:D \obj)         { so self.dirty-cols{obj} }
+method clean-up(Any:D \obj)         { self.dirty-cols{obj} = set() }
+method dirty-columns(Any:D \obj)    { self.dirty-cols{obj} }
+method rs($)                        { $.rs-class.new }
+method all($obj)                    { $obj.^rs }
 
 method create-table(\model) {
     $*RED-DB.execute: Red::AST::CreateTable.new: :name(model.^table), :columns[|model.^columns.keys.map(*.column)]
@@ -138,6 +146,12 @@ method create-table(\model) {
 
 multi method save($obj, :$insert! where * == True) {
     my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
+    $obj.^clean-up;
+    $ret
+}
+
+multi method save($obj, :$update! where * == True) {
+    my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
     $obj.^clean-up;
     $ret
 }

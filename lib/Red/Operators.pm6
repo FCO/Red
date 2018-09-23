@@ -66,9 +66,9 @@ multi infix:<ne>(Str() $a is readonly, Red::Column $b) is export {
 }
 
 #multi infix:<AND>(Red::AST $a, Red::AST $b) is export {
-#    Red::AST.new: :op(Red::Op::and), :args($a, $b)
+#    Red::AST::AND.new: $a, $b
 #}
 #
 #multi infix:<OR>(Red::AST $a, Red::AST $b) is export {
-#    Red::AST.new: :op(Red::Op::or), :args($a, $b)
+#    Red::AST::OR.new: $a, $b
 #}
