@@ -8,12 +8,24 @@ method relationships(|) {
 }
 
 method prepare-relationships(::Type Mu \type) {
-    type.^add_method: 'new', my method new(Type: *%data) {
-        my \instance = callsame;
-        for self.^relationships.keys -> $rel {
+    my %rels := %!relationships;
+    my &meth = my submethod BUILD(*%data) {
+        my \instance = self;
+        for %rels.keys -> $rel {
             $rel.build-relationship: instance
         }
-        instance
+        for self.^attributes -> $attr {
+            with %data{ $attr.name.substr: 2 } {
+                $attr.set_value: self, $_
+            }
+        }
+        nextsame
+    }
+
+    if type.^declares_method("BUILD") {
+        type.^find_method("BUILD", :no_fallback(1)).wrap: &meth;
+    } else {
+        type.^add_method: "BUILD", &meth
     }
 }
 

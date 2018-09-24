@@ -5,9 +5,10 @@ has Mu:U $!type;
 
 method build-relationship(\instance) {
     my \type = self.type;
-    self.set_value: instance, Proxy.new:
+    use nqp;
+    nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:
         FETCH => method () {
-            do if type ~~ Positional {
+            $ //= do if type ~~ Positional {
                 my $rel = rel1 type.of;
                 my \value = ast-value $rel.references.().attr.get_value: instance;
                 type.of.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
@@ -19,8 +20,10 @@ method build-relationship(\instance) {
             }
         },
         STORE => method ($value) {
-            die "Couldnt set value"
+            die "NYI Couldnt set value"
         }
+    );
+    return
 }
 
 method relationship-ast {
