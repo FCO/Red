@@ -154,13 +154,13 @@ method create-table(\model) {
     $*RED-DB.execute: Red::AST::CreateTable.new: :name(model.^table), :columns[|model.^columns.keys.map(*.column)]
 }
 
-multi method save($obj, :$insert! where * == True) {
+multi method save($obj, Bool :$insert! where * == True) {
     my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
     $obj.^clean-up;
     $ret
 }
 
-multi method save($obj, :$update! where * == True) {
+multi method save($obj, Bool :$update where * == True = True) {
     my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
     $obj.^clean-up;
     $ret

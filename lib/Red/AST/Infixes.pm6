@@ -17,6 +17,30 @@ class Red::AST::Ne does Red::AST::Infix {
     method should-validate {}
 }
 
+class Red::AST::Lt does Red::AST::Infix {
+    has $.op = "<";
+    method should-set($class) { }
+    method should-validate {}
+}
+
+class Red::AST::Gt does Red::AST::Infix {
+    has $.op = ">";
+    method should-set($class) { }
+    method should-validate {}
+}
+
+class Red::AST::Le does Red::AST::Infix {
+    has $.op = "<=";
+    method should-set($class) { }
+    method should-validate {}
+}
+
+class Red::AST::Ge does Red::AST::Infix {
+    has $.op = ">=";
+    method should-set($class) { }
+    method should-validate {}
+}
+
 class Red::AST::AND does Red::AST::Infix {
     has $.op = "AND";
 

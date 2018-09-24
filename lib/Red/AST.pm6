@@ -12,6 +12,7 @@ multi method add(Red::AST:U: Red::AST:D $next) { $next }
 #method args { ... }
 
 method transpose(&func) {
+    die self unless self.^can: "args";
     for self.args -> $arg {
         $arg.?transpose: &func
     }
@@ -25,5 +26,5 @@ method tables {
             @tables.push: .class
         }
     }
-    |@tables
+    |@tables.unique
 }

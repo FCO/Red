@@ -22,10 +22,21 @@ multi method translate(Red::AST::Select $ast, $context?) {
             self.translate: $_, "select"
         }
     }
-    my $tables = $ast.tables.map({ .^table }).join: ", ";
-    my $where  = self.translate: $ast.filter;
+    my $tables = $ast.tables.map({ .^table }).join: ", "    if $ast.tables;
+    my $where  = self.translate: $ast.filter                if $ast.filter;
+    my $order  = $ast.order.map({ .name }).join: ", "       if $ast.order;
     my $limit  = $ast.limit;
-    quietly "SELECT\n{ $sel ?? $sel.indent: 3 !! "*" }\n{ "FROM\n{ .indent: 3 }" with $tables }\n{ "WHERE\n{ .indent: 3 }" with $where } { "\nLIMIT $_" with $limit }", []
+    quietly "SELECT\n{
+        $sel ?? $sel.indent: 3 !! "*"
+    }\n{
+        "FROM\n{ .indent: 3 }" with $tables
+    }\n{
+        "WHERE\n{ .indent: 3 }" with $where
+    }{
+        "\nORDER BY\n{ .indent: 3 }" with $order
+    }{
+        "\nLIMIT $_" with $limit
+    }", []
 }
 
 multi method translate(Red::AST::Infix $_, $context?) {
