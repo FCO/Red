@@ -7,6 +7,7 @@ use Red::DefaultResultSeq;
 use Red::Attr::ReferencedBy;
 use Red::Attr::Query;
 use Red::AST;
+use Red::AST::Value;
 use Red::AST::Insert;
 use Red::AST::Update;
 use Red::AST::Infixes;
@@ -21,7 +22,7 @@ also does MetamodelX::Red::Relationship;
 has %!columns{Attribute};
 has Red::Column %!references;
 has %!attr-to-column;
-has %.dirty-cols is rw;
+has %.dirty-cols{Mu} is rw;
 has $.rs-class;
 has @!constraints;
 
@@ -84,6 +85,38 @@ method compose(Mu \type) {
 	for type.^attributes -> $attr {
 		%!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;
 	}
+
+    my @columns = %!columns.keys;
+    my &meth = my submethod BUILD(\instance: *%data) {
+        for @columns -> \col {
+            my $built := col.build;
+            my $data = do if $built =:= Mu {
+                col.type
+            } else {
+                $built
+            }
+            col.set_value: instance, Proxy.new:
+                FETCH => method {
+                    $data
+                },
+                STORE => method (\value) {
+                    instance.^set-dirty: col;
+                    $data = value
+                }
+        }
+        for self.^attributes -> $attr {
+            with %data{ $attr.name.substr: 2 } {
+                $attr.set_value: self, $_
+            }
+        }
+        nextsame
+    }
+
+    if type.^declares_method("BUILD") {
+        type.^find_method("BUILD", :no_fallback(1)).wrap: &meth;
+    } else {
+        type.^add_method: "BUILD", &meth
+    }
 }
 
 method add-reference($name, Red::Column $col) {
@@ -112,20 +145,10 @@ method add-column(Red::Model:U \type, Red::Attr::Column $attr) {
 		self.add-reference: $name, $attr.column
 	}
 	type.^add-comparate-methods($attr);
-	if $attr.has_accessor {
+    if $attr.has_accessor {
 		if $attr.rw {
-			type.^add_multi_method: $name, method (Red::Model:D: Bool :$clean = False) is rw {
-				my \obj = self;
-				Proxy.new:
-					FETCH => method {
-						$attr.get_value: obj
-					},
-					STORE => method (\value) {
-						return if value === $attr.get_value: obj;
-						obj.^set-dirty: $attr unless $clean;
-						$attr.set_value: obj, value;
-					}
-				;
+			type.^add_multi_method: $name, method (Red::Model:D:) is rw {
+				$attr.get_value: self
 			}
 		} else {
 			type.^add_multi_method: $name, method (Red::Model:D:) {
@@ -177,6 +200,20 @@ method load(Red::Model:U \model, |ids) {
     model.^rs.grep({ $filter }).head
 }
 
-method search(Red::Model:U \model, Red::AST $filter) {
-    model.^rs.grep: { $filter }
+multi method search(Red::Model:U \model, &filter) {
+    model.^rs.grep: &filter
 }
+
+multi method search(Red::Model:U \model, Red::AST $filter) {
+    samewith model, { $filter }
+}
+
+multi method search(Red::Model:U \model, *%filter) {
+    samewith
+        model,
+        %filter.kv
+            .map(-> $k, $value { Red::AST::Eq.new: model."$k"(), Red::AST::Value.new: :$value })
+            .reduce: { Red::AST::AND.new: $^a, $^b }
+}
+
+method find(|c) { self.search(|c).head }

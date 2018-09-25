@@ -5,7 +5,6 @@ use-ok "Red";
 use Red;
 use Red::ResultSeq;
 use Red::AST::Infixes;
-use Red::DoneResultSeq;
 
 my $*RED-DB = database "Mock";
 
@@ -47,9 +46,9 @@ given model { has $.a is rw is column }.new {
     ok .^is-dirty;
     is .^dirty-columns.keys.sort, < $!a >;
     .^clean-up;
-    .a(:clean) = 13;
-    is .a, 13;
-    ok not .^is-dirty;
+    #.a(:clean) = 13;
+    #is .a, 13;
+    #ok not .^is-dirty;
 }
 
 given model { has $.a is rw is column; has $.b is rw is column }.new {
@@ -311,7 +310,7 @@ isa-ok Person2.new.posts, Post2::ResultSeq;
 
 isa-ok Person2.posts, Person2::ResultSeq;
 
-isa-ok Person2.posts.do-it, Red::DoneResultSeq;
+isa-ok Person2.posts.do-it, Seq;
 
 isa-ok Person2.posts.do-it.head, Person2;
 

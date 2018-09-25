@@ -43,8 +43,12 @@ multi method translate(Red::AST::Infix $_, $context?) {
     "{ self.translate: .left, $context } { .op } { self.translate: .right, $context }"
 }
 
+multi method translate(Red::AST::Not $_, $context?) {
+    "not { self.translate: .value, $context }"
+}
+
 multi method translate(Red::Column $_, "select") {
-    "{.name} as {.attr-name}"
+    qq[{.name} {qq<as "{.attr-name}"> unless .name eq .attr-name}]
 }
 
 multi method translate(Red::Column $_, $context?) {
@@ -85,6 +89,8 @@ multi method translate(Red::AST::Update $_, $context?) {
     "UPDATE { .into } SET\n{ .values.kv.map(-> $col, $val { "{$col} = {self.translate: $val, "update"}" }).join(",\n").indent: 3 }\nWHERE { self.translate: .filter }", []
 }
 
-multi method default-type-for(Any --> "varchar(255)")   {}
-multi method default-type-for(Str --> "varchar(255)")   {}
-multi method default-type-for(Int --> "integer")        {}
+multi method default-type-for($    --> "varchar(255)")   {}
+multi method default-type-for(Mu   --> "varchar(255)")   {}
+multi method default-type-for(Str  --> "varchar(255)")   {}
+multi method default-type-for(Int  --> "integer")        {}
+multi method default-type-for(Bool --> "boolean")        {}

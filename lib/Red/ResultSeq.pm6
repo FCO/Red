@@ -1,7 +1,8 @@
 use Red::AST;
+use Red::Column;
 use Red::Attr::Column;
 use Red::AST::Infixes;
-use Red::Column;
+use Red::ResultSeq::Iterator;
 unit role Red::ResultSeq[Mu $of = Any] does Sequence does Positional[$of];
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
@@ -19,13 +20,12 @@ has Int         $.limit;
 has             &.post;
 has Red::Column @.order;
 
-method do-it(*%pars) {
-    use Red::DoneResultSeq;
-    Red::DoneResultSeq.new: :of(self.of), :$!filter, :$!limit, :&!post, :@!order, |%pars
+method iterator {
+    Red::ResultSeq::Iterator.new: :of($.of), :$!filter, :$!limit, :&!post, :@!order
 }
 
-method iterator {
-    self.do-it.iterator
+method do-it(*%pars) {
+    Seq.new: self.iterator
 }
 
 #multi method grep(::?CLASS: &filter) { nextwith :filter( filter self.of.^alias: "me" ) }
@@ -40,7 +40,7 @@ method transform-item(*%data) {
     self.of.bless: |%data
 }
 
-method grep(&filter)        { say filter self.of; self.where: filter self.of }
+method grep(&filter)        { self.where: filter self.of }
 method first(&filter)       { self.grep(&filter).head }
 
 multi treat-map($seq, $filter, Red::Model     $_, &filter, Bool :$flat                 ) { .^where: $filter }
