@@ -203,6 +203,10 @@ multi infix:<ge>(Str() $a is readonly, Red::Column $b) is export {
     Red::AST::Ge.new: ast-value($a), $b, :cast<str>
 }
 
+multi prefix:<not>(Red::AST $a) is export {
+    Red::AST::Not.new: $a
+}
+
 multi infix:<AND>(Red::AST $a, Red::AST $b) is export is tighter(&infix:<==>) {
     Red::AST::AND.new: $a, $b
 }

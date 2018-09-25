@@ -2,19 +2,18 @@ use Red::AST;
 use Red::Attr::Column;
 use Red::AST::Infixes;
 use Red::Column;
-unit role Red::ResultSeq does Sequence;
+unit role Red::ResultSeq[Mu $of = Any] does Sequence does Positional[$of];
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
     use Red::DefaultResultSeq;
     my $rs-class := Metamodel::ClassHOW.new_type: :name($rs-class-name);
     $rs-class.^add_parent: Red::DefaultResultSeq;
-    $rs-class.^add_role: Red::ResultSeq;
-    $rs-class.^add_method: "of", method { type }
+    $rs-class.^add_role: Red::ResultSeq[type];
     $rs-class.^compose;
     $rs-class
 }
 
-# method of {}
+method of { $of }
 has Red::AST    $.filter;
 has Int         $.limit;
 has             &.post;
@@ -26,7 +25,7 @@ method do-it(*%pars) {
 }
 
 method iterator {
-       self.do-it.iterator
+    self.do-it.iterator
 }
 
 #multi method grep(::?CLASS: &filter) { nextwith :filter( filter self.of.^alias: "me" ) }
@@ -41,7 +40,7 @@ method transform-item(*%data) {
     self.of.bless: |%data
 }
 
-method grep(&filter)        { self.where: filter self.of }
+method grep(&filter)        { say filter self.of; self.where: filter self.of }
 method first(&filter)       { self.grep(&filter).head }
 
 multi treat-map($seq, $filter, Red::Model     $_, &filter, Bool :$flat                 ) { .^where: $filter }
