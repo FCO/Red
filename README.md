@@ -26,13 +26,19 @@ model Post {
     has Person  $.author    is relationship{ .author-id };
     has Bool    $.deleted   is column = False;
     has Instant $.created   is column = now;
+    
+    method delete {
+        $!deleted = True;
+        self.^save
+    }
 }
 
 model Person {
     has Int  $.id            is id;
     has Str  $.name          is column;
     has Post @.posts         is relationship{ .author-id };
-    has Post @.active-posts  = @!posts.grep: { not .deleted };
+
+    method active-posts { @!posts.grep: { not .deleted } }
 }
 
 my $*REDDB = database 'postgres', :host<localhost>; 
