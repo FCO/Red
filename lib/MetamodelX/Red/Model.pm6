@@ -44,7 +44,8 @@ method id-values(Red::Model:D $model) {
 }
 
 multi method id-filter(Red::Model:D $model) {
-    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(.get_value: $model), :type(.type) })
+    my &meth = $model.^private_method_table<_columns_data_>;
+    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(meth $model, .name.substr: 2), :type(.type) })
         .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
@@ -87,21 +88,33 @@ method compose(Mu \type) {
 	}
 
     my @columns = %!columns.keys;
+
+    type.^add_private_method: "_columns_data_", my method _columns_data_(\instance: $name?) is rw {
+        state %data;
+        do with $name {
+            %data{ $name }
+        } else {
+            %data
+        }
+    }
+
     my &meth = my submethod BUILD(\instance: *%data) {
+        my &meth = type.^private_method_table<_columns_data_>;
+        meth instance, %data;
         for @columns -> \col {
             my $built := col.build;
-            my $data = do if $built =:= Mu {
+            meth(instance, col.column.attr-name) = do if $built =:= Mu {
                 col.type
             } else {
                 $built
             }
             col.set_value: instance, Proxy.new:
                 FETCH => method {
-                    $data
+                    meth(instance, col.column.attr-name)
                 },
                 STORE => method (\value) {
                     instance.^set-dirty: col;
-                    $data = value
+                    meth(instance, col.column.attr-name) = value
                 }
         }
         for self.^attributes -> $attr {
@@ -217,3 +230,8 @@ multi method search(Red::Model:U \model, *%filter) {
 }
 
 method find(|c) { self.search(|c).head }
+
+method set-attr(\instance, $name, \value) {
+    my &meth = instance.^private_method_table<_columns_data_>;
+    meth(instance, $name) = value
+}

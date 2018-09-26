@@ -84,7 +84,11 @@ multi method head(UInt:D $num) {
 
 method new-object(::?CLASS:D: *%pars) {
     my %data = $!filter.should-set;
-    self.of.bless: |%pars, |%data
+    my \obj = self.of.bless;#: |%pars, |%data;
+    for %(|%pars, |%data).kv -> $key, $val {
+        obj.^set-attr: $key, $val
+    }
+    obj
 }
 
 method create(::?CLASS:D: *%pars) {
