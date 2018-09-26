@@ -8,7 +8,7 @@ Take a look at our Wiki: <https://github.com/FCO/Red/wiki>
 NAME
 ====
 
-Red - A *WiP* ORM for perl6
+Red - A **WiP** ORM for perl6
 
 SYNOPSIS
 ========
