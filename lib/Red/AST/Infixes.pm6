@@ -4,7 +4,6 @@ class Red::AST::Eq does Red::AST::Infix {
     has $.op = "=";
 
     method should-set(--> Hash()) {
-        say self;
         self.find-column-name => self.find-value
     }
 
