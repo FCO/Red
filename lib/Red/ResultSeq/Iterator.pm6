@@ -11,12 +11,6 @@ has             &.post;
 has             $!st-handler;
 
 submethod TWEAK(|) {
-    CATCH {
-        default {
-            .say;
-            .rethrow
-        }
-    }
     my Red::Driver $driver = $*RED-DB // die Q[$*RED-DB wasn't defined];
     my ($sql, @bind) := $driver.translate: $driver.optimize: Red::AST::Select.new: :$!of, :$!filter, :$!limit, :@!order;
 

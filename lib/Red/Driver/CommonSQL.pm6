@@ -22,9 +22,10 @@ multi method translate(Red::AST::Select $ast, $context?) {
             self.translate: $_, "select"
         }
     }
-    my $tables = $ast.tables.map({ .^table }).join: ", "    if $ast.tables;
-    my $where  = self.translate: $ast.filter                if $ast.filter;
-    my $order  = $ast.order.map({ .name }).join: ", "       if $ast.order;
+    my $tables = $ast.tables.grep({ not .?no-table }).unique
+        .map({ .^table }).join: ", "                        if $ast.^can: "tables";
+    my $where  = self.translate: $ast.filter                if $ast.?filter;
+    my $order  = $ast.order.map({ .name }).join: ", "       if $ast.?order;
     my $limit  = $ast.limit;
     quietly "SELECT\n{
         $sel ?? $sel.indent: 3 !! "*"

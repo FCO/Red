@@ -1,7 +1,6 @@
 use Red::Utils;
 use Red::Model;
 use Red::AST;
-use Red::AST::Infixes;
 use Red::AST::Unary;
 unit class Red::Column does Red::AST;
 
@@ -21,6 +20,10 @@ method gist { "{$!class.^table}.{$!name-alias}" }
 
 method cast(Str $type) {
     Red::AST::Cast.new: self, $type
+}
+
+method find-column-name {
+    $!attr-name
 }
 
 method alias(Str $name) {

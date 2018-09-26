@@ -53,6 +53,7 @@ multi treat-map($seq, $filter, Red::Column    $_, &filter, Bool :$flat          
     my $col  = .attr.column.clone: :name-alias<data>, :attr-name<data>;
     $attr does Red::Attr::Column($col);
     model.^add_attribute: $attr;
+    model.^add_method: "no-table", my method no-table { True }
     model.^compose;
     model.^add-column: $attr;
     $seq.clone(
@@ -79,4 +80,15 @@ multi method head {
 
 multi method head(UInt:D $num) {
     self.do-it(:limit(min $num, $!limit)).head: $num
+}
+
+method new-object(::?CLASS:D: *%pars) {
+    my %data = $!filter.should-set;
+    self.of.bless: |%pars, |%data
+}
+
+method create(::?CLASS:D: *%pars) {
+    my $new = self.new-object: |%pars;
+    $new.^save: :insert;
+    $new
 }

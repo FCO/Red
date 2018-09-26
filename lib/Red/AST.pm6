@@ -11,15 +11,15 @@ multi method add(Red::AST:U: Red::AST:D $next) { $next }
 
 #method args { ... }
 
-method transpose(&func) {
+method transpose(::?CLASS:D: &func) {
     die self unless self.^can: "args";
-    for self.args -> $arg {
-        $arg.?transpose: &func
+    for self.args.grep: Red::AST -> $arg {
+        .transpose: &func with $arg
     }
     func self;
 }
 
-method tables {
+method tables(::?CLASS:D:) {
     my @tables;
     self.transpose: {
         if .^name eq "Red::Column" {

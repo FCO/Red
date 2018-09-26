@@ -7,6 +7,8 @@ class Red::AST::Value does Red::AST is Any {
         $!type = $!value.WHAT
     }
     method args { $!value }
+
+    method find-value { $!value }
 }
 
 sub ast-value($value) is export {
