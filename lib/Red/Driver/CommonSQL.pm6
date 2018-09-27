@@ -87,7 +87,7 @@ multi method translate(Red::AST::Insert $_, $context?) {
 }
 
 multi method translate(Red::AST::Update $_, $context?) {
-    "UPDATE { .into } SET\n{ .values.kv.map(-> $col, $val { "{$col} = {say $val; self.translate: $val, "update"}" }).join(",\n").indent: 3 }\nWHERE { self.translate: .filter }", []
+    "UPDATE { .into } SET\n{ .values.kv.map(-> $col, $val { "{$col} = {self.translate: $val, "update"}" }).join(",\n").indent: 3 }\nWHERE { self.translate: .filter }", []
 }
 
 multi method default-type-for($    --> "varchar(255)")   {}
