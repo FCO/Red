@@ -24,9 +24,9 @@ model Post {
     has Str     $.title     is unique;
     has Str     $.body      is column;
     has Person  $.author    is relationship{ .author-id };
-    has Bool    $.deleted   is column = False;
+    has Bool    $.deleted   is column is rw = False;
     has Instant $.created   is column = now;
-    
+
     method delete {
         $!deleted = True;
         self.^save
@@ -41,7 +41,7 @@ model Person {
     method active-posts { @!posts.grep: { not .deleted } }
 }
 
-my $*REDDB = database 'postgres', :host<localhost>; 
+my $*REDDB = database 'Pg';
 
 my Post $post1 = Post.^load: :42id;   # Returns a Post object with data returned by
                                       # SELECT * FROM post me WHERE me.id = 42
