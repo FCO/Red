@@ -31,3 +31,13 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh.prepare: $query)
 }
 
+multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
+    .value ?? 1 !! 0
+}
+
+multi method translate(Red::AST::Not $_, $context?) {
+	my $val = self.translate: .value, $context;
+    "($val == 0 OR $val IS NULL)"
+}
+
+multi method default-type-for(Bool --> "integer")        {}

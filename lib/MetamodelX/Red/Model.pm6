@@ -25,6 +25,8 @@ has %!attr-to-column;
 has %.dirty-cols{Mu} is rw;
 has $.rs-class;
 has @!constraints;
+has $!col-data-attr;
+has $!dirty-cols-attr;
 
 method references(|) { %!references }
 method constraints(|) { @!constraints.classify: *.key, :as{ .value } }
@@ -44,8 +46,7 @@ method id-values(Red::Model:D $model) {
 }
 
 multi method id-filter(Red::Model:D $model) {
-    my &meth = $model.^private_method_table<_columns_data_>;
-    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(meth $model, .name.substr: 2), :type(.type) })
+    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(self.get-attr: $model, $_), :type(.type) })
         .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
@@ -64,6 +65,12 @@ method attr-to-column(|) is rw {
 }
 
 method compose(Mu \type) {
+    $!col-data-attr = Attribute.new: :name<%___COLUMNS_DATA___>, :package(type), :type(Any), :!has_accessor;
+    $!col-data-attr.set_build(-> | {{}});
+    type.^add_attribute: $!col-data-attr;
+    $!dirty-cols-attr = Attribute.new: :name<%___DIRTY_COLS_DATA___>, :package(type), :type(Any), :!has_accessor;
+    $!dirty-cols-attr.set_build(-> | {SetHash.new});
+    type.^add_attribute: $!dirty-cols-attr;
     type.^prepare-relationships;
 	if $.rs-class === Any {
 		my $rs-class-name = $.rs-class-name(type);
@@ -89,46 +96,44 @@ method compose(Mu \type) {
 
     my @columns = %!columns.keys;
 
-    type.^add_private_method: "_columns_data_", my method _columns_data_(\instance: $name?) is rw {
-        state %data;
-        do with $name {
-            %data{ $name }
-        } else {
-            %data
-        }
-    }
+    my $col-data-attr := $!col-data-attr;
+    my &build = my submethod TWEAK(\instance: *%data) {
+        my %new = |@columns.map: {
+            my Mu $built := .build;
+            next if $built =:= Mu;
+            .column.attr-name => $built
+        };
 
-    my &meth = my submethod BUILD(\instance: *%data) {
-        my &meth = type.^private_method_table<_columns_data_>;
-        meth instance, %data;
+        for %data.kv -> $k, $v { %new{$k} = $v }
+
+        $col-data-attr.set_value: instance, %new;
         for @columns -> \col {
-            my $built := col.build;
-            meth(instance, col.column.attr-name) = do if $built =:= Mu {
-                col.type
-            } else {
-                $built
-            }
-            col.set_value: instance, Proxy.new:
+            my \proxy = Proxy.new:
                 FETCH => method {
-                    meth(instance, col.column.attr-name)
+                    $col-data-attr.get_value(instance).{ col.column.attr-name }
                 },
                 STORE => method (\value) {
+                    die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
                     instance.^set-dirty: col;
-                    meth(instance, col.column.attr-name) = value
+                    $col-data-attr.get_value(instance).{ col.column.attr-name } = value
                 }
+            use nqp;
+            nqp::bindattr(nqp::decont(instance), type, col.name, proxy);
         }
         for self.^attributes -> $attr {
             with %data{ $attr.name.substr: 2 } {
-                $attr.set_value: self, $_
+                unless $attr ~~ Red::Attr::Column {
+                    $attr.set_value: self, $_
+                }
             }
         }
         nextsame
     }
 
-    if type.^declares_method("BUILD") {
-        type.^find_method("BUILD", :no_fallback(1)).wrap: &meth;
+    if type.^declares_method("TWEAK") {
+        type.^find_method("TWEAK", :no_fallback(1)).wrap: &build;
     } else {
-        type.^add_method: "BUILD", &meth
+        type.^add_method: "TWEAK", &build
     }
 }
 
@@ -177,12 +182,13 @@ method compose-columns(Red::Model:U \type) {
 	}
 }
 
-method set-dirty(\obj, $attr) {
-	self.dirty-cols{obj} ∪= $attr;
+multi method set-dirty(\obj, Set() $attr) {
+    $!dirty-cols-attr.get_value(obj).{$_}++ for $attr.keys
 }
-method is-dirty(Any:D \obj)         { so self.dirty-cols{obj} }
-method clean-up(Any:D \obj)         { self.dirty-cols{obj} = set() }
-method dirty-columns(Any:D \obj)    { self.dirty-cols{obj} }
+
+method is-dirty(Any:D \obj)         { so $!dirty-cols-attr.get_value(obj) }
+method clean-up(Any:D \obj)         { $!dirty-cols-attr.set_value(obj, SetHash.new) }
+method dirty-columns(Any:D \obj)    { $!dirty-cols-attr.get_value(obj) }
 method rs($)                        { $.rs-class.new }
 method all($obj)                    { $obj.^rs }
 
@@ -205,6 +211,7 @@ multi method save($obj, Bool :$update where * == True = True) {
 method create(\model, |pars) {
     my $obj = model.new: |pars;
     $obj.^save: :insert;
+    $obj.^clean-up;
     $obj
 }
 
@@ -231,7 +238,18 @@ multi method search(Red::Model:U \model, *%filter) {
 
 method find(|c) { self.search(|c).head }
 
-method set-attr(\instance, $name, \value) {
-    my &meth = instance.^private_method_table<_columns_data_>;
-    meth(instance, $name) = value
+multi method get-attr(\instance, Str $name) {
+    $!col-data-attr.get_value(instance).{ $name }
+}
+
+multi method set-attr(\instance, Str $name, \value) {
+    $!col-data-attr.get_value(instance).{ $name } = value
+}
+
+multi method get-attr(\instance, Red::Attr::Column $attr) {
+    samewith instance, $attr.column.attr-name
+}
+
+multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
+    samewith instance, $attr.column.attr-name, value
 }

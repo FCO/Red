@@ -241,8 +241,6 @@ model Person2 {
     has Post2   @.posts is relationship{ .author-id };
 }
 
-say Post2.new.author;
-
 my $alias1 = Post2.^alias;
 is $alias1.^name,                   "Post2_1";
 is $alias1,                         $alias1.id.class;
@@ -318,5 +316,26 @@ my $seq = Person2.posts.map: *.id;
 isa-ok $seq, Person2::ResultSeq;
 #isa-ok $seq.head, Int;
 is $seq.filter.perl, Person2.posts.filter.perl;
+
+given my model {
+    has Int  $.int-u  is column{ :id };
+    has Str  $.str-u  is column;
+    has Bool $.bool-u is column;
+    has Int  $.int-d  is column = 42;
+    has Str  $.str-d  is column = "answer";
+    has Bool $.bool-d is column = False;
+} {
+    my $a = .new: :143int-u;
+    my $b = .new;
+    my $c = .new: :1int-u, :str-u<bla>, :!bool-u, :2int-u, :str-u<ble>, :bool-d;
+
+    use Red::AST::Insert;
+    my $a-i = Red::AST::Insert.new: $a;
+    is $a-i.values.keys.sort, <int_u str_u bool_u int_d str_d bool_d>.sort;
+    is $a.^id-filter.right.value, 143;
+    is $a.int-d, 42;
+    is $a.str-d, "answer";
+    is $a.bool-d, False;
+}
 
 done-testing

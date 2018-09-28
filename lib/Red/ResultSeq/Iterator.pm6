@@ -24,7 +24,8 @@ method pull-one {
     if $*RED-DRY-RUN { return $!of.bless }
     my $data := $!st-handler.row;
     return IterationEnd if $data =:= IterationEnd or not $data;
-    my $obj = $!of.bless: |%$data;
+    my $obj = $!of.new: |%$data;
+    $obj.^clean-up;
     return .($obj) with &!post;
     $obj
 }

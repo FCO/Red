@@ -11,6 +11,7 @@ has Red::AST    $.filter;
 method args { |%!values.keys }
 
 multi method new(Red::Model $model) {
+    die "No data to be updated on object of type '{ $model.^name }'." unless $model.^is-dirty;
     ::?CLASS.bless:
         :into($model.^table),
         :filter($model.^id-filter),
