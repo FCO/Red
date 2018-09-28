@@ -45,7 +45,7 @@ method id-values(Red::Model:D $model) {
 
 multi method id-filter(Red::Model:D $model) {
     my &meth = $model.^private_method_table<_columns_data_>;
-    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(meth $model, .column.attr-name), :type(.type) })
+    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(meth $model, .name.substr: 2), :type(.type) })
         .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
@@ -98,11 +98,16 @@ method compose(Mu \type) {
         }
     }
 
-    my &build = my submethod BUILD(\instance: *%data) {
+    my &meth = my submethod BUILD(\instance: *%data) {
         my &meth = type.^private_method_table<_columns_data_>;
+        meth instance, %data;
         for @columns -> \col {
-            #my $built := col.build;
-            #meth(instance, col.column.attr-name) = $built =:= Mu ?? col.type !! $built;
+            my $built := col.build;
+            meth(instance, col.column.attr-name) = do if $built =:= Mu {
+                col.type
+            } else {
+                $built
+            }
             col.set_value: instance, Proxy.new:
                 FETCH => method {
                     meth(instance, col.column.attr-name)
@@ -114,17 +119,16 @@ method compose(Mu \type) {
         }
         for self.^attributes -> $attr {
             with %data{ $attr.name.substr: 2 } {
-                #$attr.set_value: self, $_;
-                meth(instance, $attr.column.attr-name) = $_ if $attr ~~ Red::Attr::Column
+                $attr.set_value: self, $_
             }
         }
         nextsame
     }
 
     if type.^declares_method("BUILD") {
-        type.^find_method("BUILD", :no_fallback(1)).wrap: &build;
+        type.^find_method("BUILD", :no_fallback(1)).wrap: &meth;
     } else {
-        type.^add_method: "BUILD", &build
+        type.^add_method: "BUILD", &meth
     }
 }
 
