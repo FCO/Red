@@ -12,21 +12,20 @@ use Red::AST::Insert;
 use Red::AST::Update;
 use Red::AST::Infixes;
 use Red::AST::CreateTable;
+use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Relationship;
 
 unit class MetamodelX::Red::Model is Metamodel::ClassHOW;
+also does MetamodelX::Red::Dirtable;
 also does MetamodelX::Red::Comparate;
 also does MetamodelX::Red::Relationship;
 
 has %!columns{Attribute};
 has Red::Column %!references;
 has %!attr-to-column;
-has %.dirty-cols{Mu} is rw;
 has $.rs-class;
 has @!constraints;
-has $!col-data-attr;
-has $!dirty-cols-attr;
 
 method references(|) { %!references }
 method constraints(|) { @!constraints.classify: *.key, :as{ .value } }
@@ -65,13 +64,10 @@ method attr-to-column(|) is rw {
 }
 
 method compose(Mu \type) {
-    $!col-data-attr = Attribute.new: :name<%___COLUMNS_DATA___>, :package(type), :type(Any), :!has_accessor;
-    $!col-data-attr.set_build(-> | {{}});
-    type.^add_attribute: $!col-data-attr;
-    $!dirty-cols-attr = Attribute.new: :name<%___DIRTY_COLS_DATA___>, :package(type), :type(Any), :!has_accessor;
-    $!dirty-cols-attr.set_build(-> | {SetHash.new});
-    type.^add_attribute: $!dirty-cols-attr;
+	self.set-helper-attrs: type;
+
     type.^prepare-relationships;
+
 	if $.rs-class === Any {
 		my $rs-class-name = $.rs-class-name(type);
 		if try ::($rs-class-name) !~~ Nil {
@@ -96,45 +92,7 @@ method compose(Mu \type) {
 
     my @columns = %!columns.keys;
 
-    my $col-data-attr := $!col-data-attr;
-    my &build = my submethod TWEAK(\instance: *%data) {
-        my %new = |@columns.map: {
-            my Mu $built := .build;
-            next if $built =:= Mu;
-            .column.attr-name => $built
-        };
-
-        for %data.kv -> $k, $v { %new{$k} = $v }
-
-        $col-data-attr.set_value: instance, %new;
-        for @columns -> \col {
-            my \proxy = Proxy.new:
-                FETCH => method {
-                    $col-data-attr.get_value(instance).{ col.column.attr-name }
-                },
-                STORE => method (\value) {
-                    die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
-                    instance.^set-dirty: col;
-                    $col-data-attr.get_value(instance).{ col.column.attr-name } = value
-                }
-            use nqp;
-            nqp::bindattr(nqp::decont(instance), type, col.name, proxy);
-        }
-        for self.^attributes -> $attr {
-            with %data{ $attr.name.substr: 2 } {
-                unless $attr ~~ Red::Attr::Column {
-                    $attr.set_value: self, $_
-                }
-            }
-        }
-        nextsame
-    }
-
-    if type.^declares_method("TWEAK") {
-        type.^find_method("TWEAK", :no_fallback(1)).wrap: &build;
-    } else {
-        type.^add_method: "TWEAK", &build
-    }
+	self.compose-dirtable: type;
 }
 
 method add-reference($name, Red::Column $col) {
@@ -182,13 +140,6 @@ method compose-columns(Red::Model:U \type) {
 	}
 }
 
-multi method set-dirty(\obj, Set() $attr) {
-    $!dirty-cols-attr.get_value(obj).{$_}++ for $attr.keys
-}
-
-method is-dirty(Any:D \obj)         { so $!dirty-cols-attr.get_value(obj) }
-method clean-up(Any:D \obj)         { $!dirty-cols-attr.set_value(obj, SetHash.new) }
-method dirty-columns(Any:D \obj)    { $!dirty-cols-attr.get_value(obj) }
 method rs($)                        { $.rs-class.new }
 method all($obj)                    { $obj.^rs }
 
