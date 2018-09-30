@@ -6,9 +6,12 @@ multi method prepare(Str)                   { ... }
 multi method prepare(Red::AST)              { ... }
 multi method default-type-for($ --> Str:D)  { ... }
 
+multi method prepare("") {class :: { method execute(|) {} }}
+
 method execute($query, *@bind) {
-    self.prepare($query).execute: |@bind;
-    self
+    my $stt = self.prepare($query);
+    $stt.execute: |@bind;
+    $stt
 }
 
 method optimize(Red::AST $in --> Red::AST) { $in }

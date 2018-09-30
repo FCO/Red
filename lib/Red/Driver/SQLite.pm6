@@ -2,7 +2,12 @@ use DBIish;
 use Red::AST;
 use Red::Driver;
 use Red::Statement;
+use Red::AST::Value;
+use Red::AST::Select;
+use Red::AST::Infixes;
+use Red::AST::Function;
 use Red::Driver::CommonSQL;
+use Red::AST::LastInsertedRow;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
 has $!database = q<:memory:>;
@@ -38,6 +43,12 @@ multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
 multi method translate(Red::AST::Not $_, $context?) {
 	my $val = self.translate: .value, $context;
     "($val == 0 OR $val IS NULL)"
+}
+
+multi method translate(Red::AST::LastInsertedRow $_, $context?) {
+    my $of     = .of;
+    my $filter = Red::AST::Eq.new: $of.^id.head.column, Red::AST::Function.new: :func<last_insert_rowid>;
+    self.translate(Red::AST::Select.new: :$of, :$filter, :1limit)
 }
 
 multi method default-type-for(Bool --> "integer")        {}

@@ -12,6 +12,7 @@ use Red::AST::Insert;
 use Red::AST::Update;
 use Red::AST::Infixes;
 use Red::AST::CreateTable;
+use Red::AST::LastInsertedRow;
 use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Relationship;
@@ -161,7 +162,10 @@ multi method save($obj, Bool :$update where * == True = True) {
 
 method create(\model, |pars) {
     my $obj = model.new: |pars;
-    $obj.^save: :insert;
+    my %data := $obj.^save(:insert).row;
+    unless %data {
+        $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row;
+    }
     $obj.^clean-up;
     $obj
 }

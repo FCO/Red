@@ -7,7 +7,9 @@ use Red::AST::Unary;
 use Red::AST::Value;
 use Red::AST::Insert;
 use Red::AST::Update;
+use Red::AST::Function;
 use Red::AST::CreateTable;
+use Red::AST::LastInsertedRow;
 use Red::Driver;
 unit role Red::Driver::CommonSQL does Red::Driver;
 
@@ -38,6 +40,10 @@ multi method translate(Red::AST::Select $ast, $context?) {
     }{
         "\nLIMIT $_" with $limit
     }", []
+}
+
+multi method translate(Red::AST::Function $_, $context?) {
+    "{ .func }({ .args.map({ self.translate: $_ }).join: ", " })"
 }
 
 multi method translate(Red::AST::Infix $_, $context?) {
@@ -74,7 +80,7 @@ multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
 }
 
 multi method translate(Red::Column $_, "create-table") {
-    quietly "{ .name } { self.default-type-for: .attr.type } { .nullable ?? "NULL" !! "NOT NULL" }{ " primary key" if .id }"
+    quietly "{ .name } { self.default-type-for: .attr.type } { .nullable ?? "NULL" !! "NOT NULL" }{ " primary key" if .id }{ " autoincrement" if .auto-increment }"
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
@@ -83,12 +89,14 @@ multi method translate(Red::AST::CreateTable $_, $context?) {
 
 multi method translate(Red::AST::Insert $_, $context?) {
     my @values = .values.grep({ .value.value.defined });
-    "INSERT INTO { .into }(\n{ @values>>.key.join(",\n").indent: 3 }\n)\nVALUES(\n{ @values>>.value.map(-> $val { self.translate: $val, "insert" }).join(",\n").indent: 3 }\n)", []
+    "INSERT INTO { .into.^table }(\n{ @values>>.key.join(",\n").indent: 3 }\n)\nVALUES(\n{ @values>>.value.map(-> $val { self.translate: $val, "insert" }).join(",\n").indent: 3 }\n)", []
 }
 
 multi method translate(Red::AST::Update $_, $context?) {
     "UPDATE { .into } SET\n{ .values.kv.map(-> $col, $val { "{$col} = {self.translate: $val, "update"}" }).join(",\n").indent: 3 }\nWHERE { self.translate: .filter }", []
 }
+
+multi method translate(Red::AST::LastInsertedRow $_, $context?) { "", [] }
 
 multi method default-type-for($    --> "varchar(255)")   {}
 multi method default-type-for(Mu   --> "varchar(255)")   {}

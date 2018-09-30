@@ -92,7 +92,5 @@ method new-object(::?CLASS:D: *%pars) {
 }
 
 method create(::?CLASS:D: *%pars) {
-    my $new = self.new-object: |%pars;
-    $new.^save: :insert;
-    $new
+    $.of.^create: |%pars, |$!filter.should-set;
 }

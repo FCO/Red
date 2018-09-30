@@ -4,7 +4,7 @@ use Red;
 model Person {...}
 
 model Post is rw {
-    has Int     $.id        is id;
+    has Int     $.id        is serial;
     has Int     $!author-id is referencing{ Person.id };
     has Str     $.title     is column{ :unique };
     has Str     $.body      is column;
@@ -14,7 +14,7 @@ model Post is rw {
 }
 
 model Person is rw {
-    has Int  $.id            is id;
+    has Int  $.id            is serial;
     has Str  $.name          is column;
     has Post @.posts         is relationship{ .author-id };
     method active-posts { @!posts.grep: not *.deleted }
@@ -26,11 +26,11 @@ my $*RED-DB = database "SQLite";
 Person.^create-table;
 Post.^create-table;
 
-my $p  = Person.^create: :1id, :name<Fernando>;
+my $p  = Person.^create: :name<Fernando>;
 
-my $post = $p.posts.create: :1id, :title<Bla>, :body<BlaBle1>;
+my $post = $p.posts.create: :title<Bla>, :body<BlaBle1>;
 
-$p.posts.create: :2id, :title<Ble>, :body<BlaBle2>;
+$p.posts.create: :title<Ble>, :body<BlaBle2>;
 
 say $p.posts.map: *.title;
 
