@@ -80,7 +80,20 @@ multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
 }
 
 multi method translate(Red::Column $_, "create-table") {
-    quietly "{ .name } { self.default-type-for: $_ } { .nullable ?? "NULL" !! "NOT NULL" }{ " primary key" if .id }{ " auto_increment" if .auto-increment }"
+    my $ref = .() with .references;
+    quietly "{
+        .name
+    } {
+        self.default-type-for: $_
+    } {
+        .nullable ?? "NULL" !! "NOT NULL"
+    }{
+        " primary key" if .id
+    }{
+        " auto_increment" if .auto-increment
+    }{
+        " references { $ref.class.^table }({ $ref.name })" with $ref
+    }"
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {

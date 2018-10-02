@@ -52,7 +52,20 @@ multi method translate(Red::AST::LastInsertedRow $_, $context?) {
 }
 
 multi method translate(Red::Column $_, "create-table") {
-    quietly "{ .name } { self.default-type-for: $_ } { .nullable ?? "NULL" !! "NOT NULL" }{ " primary key" if .id }{ " AUTOINCREMENT" if .auto-increment }"
+    my $ref = .() with .references;
+    quietly "{
+        .name
+    } {
+        self.default-type-for: $_
+    } {
+        .nullable ?? "NULL" !! "NOT NULL"
+    }{
+        " primary key" if .id
+    }{
+        " AUTOINCREMENT" if .auto-increment
+    }{
+        " references { .class.^table }({ .name })" with $ref
+    }"
 }
 
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> "integer")        {}

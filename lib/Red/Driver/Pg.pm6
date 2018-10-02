@@ -12,7 +12,18 @@ has Str $!dbname;
 has $!dbh = DB::Pg.new: conninfo => "{ "user=$_" with $!user } { "password=$_" with $!password } { "host=$_" with $!host } { "port=$_" with $!port } { "dbname=$_" with $!dbname }";
 
 multi method translate(Red::Column $_, "create-table") {
-    quietly "{ .name } { self.default-type-for: $_ } { .nullable ?? "NULL" !! "NOT NULL" }{ " primary key" if .id }"
+    my $ref = .() with .references;
+    quietly "{
+        .name
+    } {
+        self.default-type-for: $_
+    } {
+        .nullable ?? "NULL" !! "NOT NULL"
+    }{
+        " primary key" if .id
+    }{
+        " references { .class.^table }({ .name })" with $ref
+    }"
 }
 
 multi method translate(Red::AST::Insert $_, $context?) {
