@@ -51,4 +51,9 @@ multi method translate(Red::AST::LastInsertedRow $_, $context?) {
     self.translate(Red::AST::Select.new: :$of, :$filter, :1limit)
 }
 
-multi method default-type-for(Bool --> "integer")        {}
+multi method translate(Red::Column $_, "create-table") {
+    quietly "{ .name } { self.default-type-for: $_ } { .nullable ?? "NULL" !! "NOT NULL" }{ " primary key" if .id }{ " AUTOINCREMENT" if .auto-increment }"
+}
+
+multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> "integer")        {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> "integer")       {}

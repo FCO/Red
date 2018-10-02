@@ -12,7 +12,7 @@ model Chat {
         @!people.grep: { .is-alive }
     }
 
-    method give-birth(Str $id, Str $nick) {
+    method give-birth(Int $id, Str $nick) {
         my $user = @!people.create: :$id, :$nick;
         @!logs.create(:msg<born>, :impacted-id($id)).print;
         $user
@@ -42,7 +42,7 @@ model Log {
 }
 
 model Person {
-    has Str     $.id        is id;
+    has Int     $.id        is id;
     has Str     $.nick      is column;
     has Bool    $.is-alive  is column is rw = True;
     has Str     $.chat-id   is referencing{  Chat.id };

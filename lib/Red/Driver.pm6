@@ -1,10 +1,11 @@
 use Red::AST;
+use Red::Column;
 unit role Red::Driver;
 
-method translate(Red::AST, $?)              { ... }
-multi method prepare(Str)                   { ... }
-multi method prepare(Red::AST)              { ... }
-multi method default-type-for($ --> Str:D)  { ... }
+method translate(Red::AST, $?)                          { ... }
+multi method prepare(Str)                               { ... }
+multi method prepare(Red::AST)                          { ... }
+multi method default-type-for(Red::Column $ --> Str:D)  { ... }
 
 multi method prepare("") {class :: { method execute(|) {} }}
 

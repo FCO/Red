@@ -80,7 +80,7 @@ multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
 }
 
 multi method translate(Red::Column $_, "create-table") {
-    quietly "{ .name } { self.default-type-for: .attr.type } { .nullable ?? "NULL" !! "NOT NULL" }{ " primary key" if .id }{ " autoincrement" if .auto-increment }"
+    quietly "{ .name } { self.default-type-for: $_ } { .nullable ?? "NULL" !! "NOT NULL" }{ " primary key" if .id }{ " auto_increment" if .auto-increment }"
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
@@ -98,8 +98,8 @@ multi method translate(Red::AST::Update $_, $context?) {
 
 multi method translate(Red::AST::LastInsertedRow $_, $context?) { "", [] }
 
-multi method default-type-for($    --> "varchar(255)")   {}
-multi method default-type-for(Mu   --> "varchar(255)")   {}
-multi method default-type-for(Str  --> "varchar(255)")   {}
-multi method default-type-for(Int  --> "integer")        {}
-multi method default-type-for(Bool --> "boolean")        {}
+multi method default-type-for(Red::Column                            --> "varchar(255)")   {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Mu   --> "varchar(255)")   {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Str  --> "varchar(255)")   {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Int  --> "integer")        {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Bool --> "boolean")        {}

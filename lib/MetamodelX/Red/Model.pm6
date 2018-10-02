@@ -162,9 +162,11 @@ multi method save($obj, Bool :$update where * == True = True) {
 
 method create(\model, |pars) {
     my $obj = model.new: |pars;
-    my %data := $obj.^save(:insert).row;
-    if model.^id.elems and not %data.elems {
-        $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row;
+    my $data := $obj.^save(:insert).row;
+    if model.^id.elems and $data.defined and not $data.elems {
+        $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
+    } else {
+        $obj = model.new: |$data
     }
     $obj.^clean-up;
     $obj

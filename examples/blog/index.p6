@@ -21,19 +21,20 @@ model Person is rw {
 }
 
 my $*RED-DEBUG = True;
-my $*RED-DB = database "SQLite";
+for database("Pg"), database("SQLite") -> $*RED-DB {
 
-Person.^create-table;
-Post.^create-table;
+    Person.^create-table;
+    Post.^create-table;
 
-my $p  = Person.^create: :name<Fernando>;
+    my $p  = Person.^create: :name<Fernando>;
 
-my $post = $p.posts.create: :title<Bla>, :body<BlaBle1>;
+    my $post = $p.posts.create: :title<Bla>, :body<BlaBle1>;
 
-$p.posts.create: :title<Ble>, :body<BlaBle2>;
+    $p.posts.create: :title<Ble>, :body<BlaBle2>;
 
-say $p.posts.map: *.title;
+    say $p.posts.map: *.title;
 
-$post.delete;
+    $post.delete;
 
-say $p.active-posts.map: *.id;
+    say $p.active-posts.map: *.id;
+}
