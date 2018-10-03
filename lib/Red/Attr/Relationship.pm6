@@ -5,6 +5,7 @@ has Mu:U $!type;
 
 method build-relationship(\instance) {
     my \type = self.type;
+    my \attr = self;
     use nqp;
     nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:
         FETCH => method () {
@@ -19,8 +20,14 @@ method build-relationship(\instance) {
                 type.^rs.where(Red::AST::Eq.new: ref, value, :bind-right).head
             }
         },
-        STORE => method ($value) {
-            die "NYI Couldnt set value"
+        STORE => method ($value where type) {
+            die X::Assignment::RO.new(value => attr.type) unless attr.rw;
+            if type !~~ Positional {
+                rel1(attr.package).attr.set_value: instance, rel1(attr.package).references.().attr.get_value: $value;
+
+            } else {
+                die "NYI Couldnt set value"
+            }
         }
     );
     return
