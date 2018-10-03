@@ -80,20 +80,34 @@ multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
 }
 
 multi method translate(Red::Column $_, "create-table") {
+    <
+        column-name
+        column-type
+        nullable-column
+        column-pk
+        column-auto-increment
+        column-references
+    >
+        .map(-> $context {
+            self.translate: $_, $context
+        })
+        .grep( *.defined )
+        .join: " "
+}
+
+multi method translate(Red::Column $_, "column-name")           { .name // "" }
+
+multi method translate(Red::Column $_, "column-type")           { self.default-type-for: $_ }
+
+multi method translate(Red::Column $_, "nullable-column")       { .nullable ?? "NULL" !! "NOT NULL" }
+
+multi method translate(Red::Column $_, "column-pk")             { "primary key" if .id }
+
+multi method translate(Red::Column $_, "column-auto-increment") { "auto_increment" if .auto-increment }
+
+multi method translate(Red::Column $_, "column-references")     {
     my $ref = .() with .references;
-    quietly "{
-        .name
-    } {
-        self.default-type-for: $_
-    } {
-        .nullable ?? "NULL" !! "NOT NULL"
-    }{
-        " primary key" if .id
-    }{
-        " auto_increment" if .auto-increment
-    }{
-        " references { $ref.class.^table }({ $ref.name })" with $ref
-    }"
+    "references { $ref.class.^table }({ $ref.name })" with $ref
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
