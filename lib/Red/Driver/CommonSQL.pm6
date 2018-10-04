@@ -7,6 +7,7 @@ use Red::AST::Unary;
 use Red::AST::Value;
 use Red::AST::Insert;
 use Red::AST::Update;
+use Red::AST::Delete;
 use Red::AST::Function;
 use Red::AST::CreateTable;
 use Red::AST::LastInsertedRow;
@@ -119,11 +120,17 @@ multi method translate(Red::AST::Insert $_, $context?) {
     "INSERT INTO { .into.^table }(\n{ @values>>.key.join(",\n").indent: 3 }\n)\nVALUES(\n{ @values>>.value.map(-> $val { self.translate: $val, "insert" }).join(",\n").indent: 3 }\n)", []
 }
 
+multi method translate(Red::AST::Delete $_, $context?) {
+    "DELETE FROM { .from }\n{ "WHERE { self.translate: $_ }" with .filter }", []
+}
+
 multi method translate(Red::AST::Update $_, $context?) {
     "UPDATE { .into } SET\n{ .values.kv.map(-> $col, $val { "{$col} = {self.translate: $val, "update"}" }).join(",\n").indent: 3 }\nWHERE { self.translate: .filter }", []
 }
 
 multi method translate(Red::AST::LastInsertedRow $_, $context?) { "", [] }
+
+multi method translate(Red::AST:U $_, $context?) { Empty, [] }
 
 multi method default-type-for(Red::Column                            --> "varchar(255)")   {}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Mu   --> "varchar(255)")   {}

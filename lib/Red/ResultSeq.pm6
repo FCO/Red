@@ -1,5 +1,6 @@
 use Red::AST;
 use Red::Column;
+use Red::AST::Delete;
 use Red::Attr::Column;
 use Red::AST::Infixes;
 use Red::ResultSeq::Iterator;
@@ -24,8 +25,12 @@ method iterator {
     Red::ResultSeq::Iterator.new: :of($.of), :$!filter, :$!limit, :&!post, :@!order
 }
 
-method do-it(*%pars) {
+method Seq {
     Seq.new: self.iterator
+}
+
+method do-it(*%pars) {
+    self.clone(|%pars).Seq
 }
 
 #multi method grep(::?CLASS: &filter) { nextwith :filter( filter self.of.^alias: "me" ) }
@@ -93,4 +98,8 @@ method new-object(::?CLASS:D: *%pars) {
 
 method create(::?CLASS:D: *%pars) {
     $.of.^create: |%pars, |$!filter.should-set;
+}
+
+method delete(::?CLASS:D:) {
+    $*RED-DB.execute: Red::AST::Delete.new: $.of, $!filter
 }

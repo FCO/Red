@@ -9,6 +9,7 @@ use Red::Attr::Query;
 use Red::AST;
 use Red::AST::Value;
 use Red::AST::Insert;
+use Red::AST::Delete;
 use Red::AST::Update;
 use Red::AST::Infixes;
 use Red::AST::CreateTable;
@@ -170,6 +171,10 @@ method create(\model, |pars) {
     }
     $obj.^clean-up;
     $obj
+}
+
+method delete(\model) {
+    $*RED-DB. execute: Red::AST::Delete.new: model
 }
 
 method load(Red::Model:U \model, |ids) {
