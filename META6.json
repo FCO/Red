@@ -17,6 +17,7 @@
     "Red"                       : "lib/Red.pm6",
     "Red::AST"                  : "lib/Red/AST.pm6",
     "Red::AST::CreateTable"     : "lib/Red/AST/CreateTable.pm6",
+    "Red::AST::Delete"          : "lib/Red/AST/Delete.pm6",
     "Red::AST::Infix"           : "lib/Red/AST/Infix.pm6",
     "Red::AST::Eq"              : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Ne"              : "lib/Red/AST/Infixes.pm6",
