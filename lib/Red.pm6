@@ -5,7 +5,6 @@ use Red::Column;
 use Red::Utils;
 use Red::ResultSeq;
 use Red::DefaultResultSeq;
-use Red::Attr::ReferencedBy;
 use Red::Attr::Query;
 use Red::AST;
 

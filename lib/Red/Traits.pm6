@@ -51,15 +51,3 @@ multi trait_mod:<is>(Attribute $attr, :&relationship!) is export {
 multi trait_mod:<is>(Attribute $attr, Callable :@relationship! where *.elems == 2) {
     $attr.package.^add-relationship: $attr, |@relationship
 }
-
-#multi trait_mod:<is>(Attribute $attr, :&referenced-by!) is export {
-#    $attr does Red::Attr::ReferencedBy;
-#    $attr.wrap-data: &referenced-by
-#}
-#
-#multi trait_mod:<is>(Attribute $attr, Str :$query!) is export {
-#    #TODO
-#    $attr does Red::Attr::Query;
-#    $attr.wrap-data: $query
-#}
-
