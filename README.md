@@ -19,6 +19,12 @@ It's not published yet, so you'll have to clone the repo:
 git clone https://github.com/FCO/Red.git
 ```
 
+install it's dependencies
+
+```
+zef install . --deps-only
+```
+
 once cloned, you can run it with `-Ilib` on the repo's root
 
 ```
