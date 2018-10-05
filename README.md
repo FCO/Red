@@ -10,6 +10,42 @@ NAME
 
 Red - A **WiP** ORM for perl6
 
+INSTALL
+=======
+
+It's not published yet, so you'll have to clone the repo:
+
+```
+git clone https://github.com/FCO/Red.git
+```
+
+once cloned, you can run it with `-Ilib` on the repo's root
+
+```
+perl6 -Ilib examples/blog/index.p6
+```
+
+
+```
+perl6 -Ilib -MRed -e 'your code here'
+```
+
+```
+perl6 -Ilib t/02-tdd.t # this runs 1 test file
+```
+
+or you can run the tests with
+
+```
+zef test .
+```
+
+or install it with
+
+```
+zef install .
+```
+
 SYNOPSIS
 ========
 
