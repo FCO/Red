@@ -73,7 +73,7 @@ multi method translate(Red::AST::Cast $_, $context?) {
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Str, $context?) {
-    quietly qq|'{ .value }'|
+    quietly qq|'{ .value.subst: "'", q"''", :g }'|
 }
 
 multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {

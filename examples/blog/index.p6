@@ -35,9 +35,9 @@ say "✓ Creating a Person";
 my $p  = Person.^create: :name<Fernando>;
 
 say "✓ Creating a blog Post";
-my $post = $p.posts.create: :title<Bla>, :body<BlaBle1>;
+my $post = $p.posts.create: :title("Red's commit"), :body("Merge branch 'master' of https://github.com/FCO/Red");
 
-$p.posts.create: :title<Ble>, :body<BlaBle2>;
+$p.posts.create: :title("Another commit"), :body("Blablabla");
 
 say "✓ Available post title(s) →\n\t", $p.posts.map: *.title;
 
