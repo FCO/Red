@@ -25,7 +25,9 @@ install it's dependencies
 zef install . --deps-only
 ```
 
-once cloned, you can run it with `-Ilib` on the repo's root
+once cloned, you can run it with `-Ilib` on the repo's root after
+firing up your PostgreSQL database:
+
 
 ```
 perl6 -Ilib examples/blog/index.p6
