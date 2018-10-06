@@ -35,7 +35,7 @@ say "✓ Creating a Person";
 my $p  = Person.^create: :name<Fernando>;
 
 say "✓ Creating a blog Post";
-my $post = $p.posts.create: :title<Bla>, :body<BlaBle1>, :author<Fernando>;
+my $post = $p.posts.create: :title<Bla>, :body<BlaBle1>;
 
 $p.posts.create: :title<Ble>, :body<BlaBle2>;
 
