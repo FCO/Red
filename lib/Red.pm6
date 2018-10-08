@@ -22,6 +22,6 @@ sub EXPORT {
     return %(
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
-        database => &database,
+        '&database' => &database,
     );
 }
