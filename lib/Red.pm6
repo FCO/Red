@@ -15,15 +15,13 @@ my package EXPORTHOW {
     }
 }
 
-my package EXPORT::DEFAULT {
+sub EXPORT {
     use Red::Traits;
     use Red::Operators;
     use Red::Database;
-    for Red::Traits::EXPORT::ALL::.keys -> $key {
-        OUR::{$key} := Red::Traits::EXPORT::ALL::{ $key }
-    }
-    for Red::Operators::EXPORT::ALL::.keys -> $key {
-        OUR::{$key} := Red::Operators::EXPORT::ALL::{ $key }
-    }
-    OUR::{"&database"} := &database;
+    return %(
+        Red::Traits::EXPORT::ALL::,
+        Red::Operators::EXPORT::ALL::,
+        '&database' => &database,
+    );
 }
