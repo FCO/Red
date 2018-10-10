@@ -9,13 +9,13 @@ has Int         $.limit;
 has Red::Column @.order;
 has             &.post;
 has             $!st-handler;
+has Red::Driver $!driver = $*RED-DB // die Q[$*RED-DB wasn't defined];
 
 submethod TWEAK(|) {
-    my Red::Driver $driver = $*RED-DB // die Q[$*RED-DB wasn't defined];
-    my ($sql, @bind) := $driver.translate: $driver.optimize: Red::AST::Select.new: :$!of, :$!filter, :$!limit, :@!order;
+    my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter, :$!limit, :@!order;
 
     unless $*RED-DRY-RUN {
-        $!st-handler = $driver.prepare: $sql;
+        $!st-handler = $!driver.prepare: $sql;
         $!st-handler.execute: |@bind
     }
 }
@@ -24,7 +24,7 @@ method pull-one {
     if $*RED-DRY-RUN { return $!of.bless }
     my $data := $!st-handler.row;
     return IterationEnd if $data =:= IterationEnd or not $data;
-    my $obj = $!of.new: |%$data;
+    my $obj = $!of.new: |%($data).kv.map(-> $k, $v { $k => $!driver.inflate: $v, :to($!of."$k"().attr.type) }).Hash;
     $obj.^clean-up;
     return .($obj) with &!post;
     $obj

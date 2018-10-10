@@ -40,10 +40,12 @@ my $post = $p.posts.create: :title("Red's commit"), :body("Merge branch 'master'
 
 $p.posts.create: :title("Another commit"), :body("Blablabla");
 
-say "✓ Available post title(s) →\n\t", $p.posts.map: *.title;
+say "✓ Available post title(s) → ", $p.posts.map: *.title;
 
 say "✘ Deleting Post";
 $post.delete;
 
-say "✓ Available post id(s) →\n\t", $p.active-posts.map: *.id;
+say "✓ Available post id(s) → ", $p.active-posts.map: *.id;
+
+say "✓ Create dates → ", $p.posts.map: *.created;
 

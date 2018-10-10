@@ -9,6 +9,8 @@ multi method default-type-for(Red::Column $ --> Str:D)  { ... }
 
 multi method prepare("") {class :: { method execute(|) {} }}
 
+multi method inflate(Any $value, Any :$to) { $value }
+
 method execute($query, *@bind) {
     my $stt = self.prepare($query);
     $stt.execute: |@bind;
