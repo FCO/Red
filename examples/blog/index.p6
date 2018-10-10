@@ -14,6 +14,7 @@ model Post is rw {
     has Str     $.body      is column;
     has Person  $.author    is relationship{ .author-id };
     has Bool    $.deleted   is column = False;
+    has Instant $.created   is column = now;
     method delete { $!deleted = True; self.^save }
 }
 

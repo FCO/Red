@@ -1,10 +1,12 @@
 use Red::AST;
+use Red::Column;
 class Red::AST::Value does Red::AST is Any {
-    has Mu:U $.type;
-    has      $.value is required;
+    has Mu:U        $.type;
+    has             $.value is required;
+    has Red::Column $.column;
 
     method TWEAK {
-        $!type = $!value.WHAT
+        $!type = $!column.defined ?? $!column.attr.type !! $!value.WHAT
     }
     method args { $!value }
 

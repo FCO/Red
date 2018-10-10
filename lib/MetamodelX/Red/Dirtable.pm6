@@ -23,6 +23,7 @@ method compose-dirtable(Mu \type) {
 
         my %new = |@columns.map: {
             my Mu $built := .build;
+            $built := $built.(type, Mu) if $built ~~ Method;
             next if $built =:= Mu;
             .column.attr-name => $built
         };

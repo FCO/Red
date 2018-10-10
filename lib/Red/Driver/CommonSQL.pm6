@@ -76,6 +76,10 @@ multi method translate(Red::AST::Value $_ where .type ~~ Str, $context?) {
     quietly qq|'{ .value.subst: "'", q"''", :g }'|
 }
 
+multi method translate(Red::AST::Value $_ where .type ~~ Instant, $context?) {
+    quietly qq|{ .value.?Int }|
+}
+
 multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
     quietly qq|{ .value }|
 }
@@ -112,12 +116,22 @@ multi method translate(Red::Column $_, "column-references")     {
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
-    "CREATE TABLE { .name }(\n{ .columns.map({ self.translate: $_, "create-table" }).join(",\n").indent: 3 }\n)", []
+    "CREATE TABLE {
+        .name
+    }(\n{
+        .columns.map({ self.translate: $_, "create-table" }).join(",\n").indent: 3
+    }\n)", []
 }
 
 multi method translate(Red::AST::Insert $_, $context?) {
     my @values = .values.grep({ .value.value.defined });
-    "INSERT INTO { .into.^table }(\n{ @values>>.key.join(",\n").indent: 3 }\n)\nVALUES(\n{ @values>>.value.map(-> $val { self.translate: $val, "insert" }).join(",\n").indent: 3 }\n)", []
+    "INSERT INTO {
+        .into.^table
+    }(\n{
+        @values>>.key.join(",\n").indent: 3
+    }\n)\nVALUES(\n{
+        @values>>.value.map(-> $val { self.translate: $val, "insert" }).join(",\n").indent: 3
+    }\n)", []
 }
 
 multi method translate(Red::AST::Delete $_, $context?) {
@@ -132,8 +146,9 @@ multi method translate(Red::AST::LastInsertedRow $_, $context?) { "", [] }
 
 multi method translate(Red::AST:U $_, $context?) { Empty, [] }
 
-multi method default-type-for(Red::Column                            --> "varchar(255)")   {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Mu   --> "varchar(255)")   {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Str  --> "varchar(255)")   {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Int  --> "integer")        {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Bool --> "boolean")        {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> "integer")        {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Mu          --> "varchar(255)")   {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Str         --> "varchar(255)")   {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --> "integer")        {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> "boolean")        {}
+multi method default-type-for(Red::Column                                   --> "varchar(255)")   {}
