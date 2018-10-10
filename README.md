@@ -176,7 +176,7 @@ $object.^save;
 ### search for a list of object
 
 ```perl6
-Question.grep: { .answer == 42 }; # returns a result seq
+Question.^all.grep: { .answer == 42 }; # returns a result seq
 ```
 
 AUTHOR
