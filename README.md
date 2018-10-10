@@ -135,7 +135,11 @@ Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is o
 
 * `is column`
 * `is column{}`
-* `is referencing`
+* `is id`
+* `is id{}`
+* `is serial`
+* `is referencing{}`
+* `is relationship{}`
 * `is rs-class()`
 * `is rs-class<>`
 * `is table<>`
