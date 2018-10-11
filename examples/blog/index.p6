@@ -8,13 +8,13 @@ use Red;
 model Person {...}
 
 model Post is rw {
-    has Int     $.id        is serial;
-    has Int     $!author-id is referencing{ Person.id };
-    has Str     $.title     is column{ :unique };
-    has Str     $.body      is column;
-    has Person  $.author    is relationship{ .author-id };
-    has Bool    $.deleted   is column = False;
-    has Instant $.created   is column = now;
+    has Int         $.id        is serial;
+    has Int         $!author-id is referencing{ Person.id };
+    has Str         $.title     is column{ :unique };
+    has Str         $.body      is column;
+    has Person      $.author    is relationship{ .author-id };
+    has Bool        $.deleted   is column = False;
+    has DateTime    $.created   is column .= now;
     method delete { $!deleted = True; self.^save }
 }
 
@@ -47,5 +47,5 @@ $post.delete;
 
 say "✓ Available post id(s) → ", $p.active-posts.map: *.id;
 
-say "✓ Create dates → ", $p.posts.map: *.created;
+say "✓ Date Inflated → ", $p.posts.head.created.^name;
 

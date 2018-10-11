@@ -76,8 +76,12 @@ multi method translate(Red::AST::Value $_ where .type ~~ Str, $context?) {
     quietly qq|'{ .value.subst: "'", q"''", :g }'|
 }
 
+multi method translate(Red::AST::Value $_ where .type ~~ DateTime, $context?) {
+    self.translate: Red::AST::Value.new(:value(.value.Str)), $context
+}
+
 multi method translate(Red::AST::Value $_ where .type ~~ Instant, $context?) {
-    quietly qq|{ .value.?to-posix.head }|
+    self.translate: Red::AST::Value.new(:value(.value.?to-posix.head)), $context
 }
 
 multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
@@ -147,6 +151,7 @@ multi method translate(Red::AST::LastInsertedRow $_, $context?) { "", [] }
 multi method translate(Red::AST:U $_, $context?) { Empty, [] }
 
 multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> "real")           {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --> "varchar(32)")    {}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Mu          --> "varchar(255)")   {}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Str         --> "varchar(255)")   {}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --> "integer")        {}
@@ -154,4 +159,5 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> 
 multi method default-type-for(Red::Column                                   --> "varchar(255)")   {}
 
 
-multi method inflate(Num $value, Instant :$to) { Instant.from-posix: $value }
+multi method inflate(Num $value, Instant :$to!)  { Instant.from-posix: $value }
+multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
