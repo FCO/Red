@@ -27,7 +27,9 @@ method pull-one {
     my %cols = $!of.^columns.keys.map: { .column.attr-name => .column }
     my $obj = $!of.new: |(%($data).kv
         .map(-> $k, $v {
-            $k => $!driver.inflate: %cols{$k}.inflate.($v), :to($!of."$k"().attr.type)
+            do with $v {
+                $k => $!driver.inflate: %cols{$k}.inflate.($v), :to($!of."$k"().attr.type)
+            } else { Empty }
         }).Hash)
     ;
     $obj.^clean-up;

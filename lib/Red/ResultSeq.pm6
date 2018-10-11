@@ -54,7 +54,7 @@ multi treat-map($seq, $filter, Red::ResultSeq $_, &filter, Bool :$flat! where * 
 multi treat-map($seq, $filter, Red::Column    $_, &filter, Bool :$flat                 ) {
     my \Meta = .class.HOW.WHAT;
     my \model = Meta.new.new_type;
-    my $attr = Attribute.new: :name<$!data>, :package(model), :type(.attr.type), :has_accessor;
+    my $attr = Attribute.new: :name<$!data>, :package(model), :type(.attr.type), :has_accessor, :build(.attr.type);
     my $col  = .attr.column.clone: :name-alias<data>, :attr-name<data>;
     $attr does Red::Attr::Column($col);
     model.^add_attribute: $attr;

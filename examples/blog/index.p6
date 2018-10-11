@@ -18,12 +18,7 @@ model Post is rw {
     has Set         $.tags      is column{
         :type<string>,
         :deflate{ .keys.join: "," },
-        :inflate{ do if .defined {
-                set(.split: ",")
-            } else {
-                set()
-            }
-        }
+        :inflate{ set(.split: ",") }
     };
     method delete { $!deleted = True; self.^save }
 }
