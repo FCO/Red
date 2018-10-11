@@ -15,6 +15,16 @@ model Post is rw {
     has Person      $.author    is relationship{ .author-id };
     has Bool        $.deleted   is column = False;
     has DateTime    $.created   is column .= now;
+    has Set         $.tags      is column{
+        :type<string>,
+        :deflate{ .keys.join: "," },
+        :inflate{ do if .defined {
+                set(.split: ",")
+            } else {
+                set()
+            }
+        }
+    };
     method delete { $!deleted = True; self.^save }
 }
 
@@ -38,7 +48,7 @@ my $p  = Person.^create: :name<Fernando>;
 say "✓ Creating a blog Post";
 my $post = $p.posts.create: :title("Red's commit"), :body("Merge branch 'master' of https://github.com/FCO/Red");
 
-$p.posts.create: :title("Another commit"), :body("Blablabla");
+$p.posts.create: :title("Another commit"), :body("Blablabla"), :tags(set <bla ble>);
 
 say "✓ Available post title(s) → ", $p.posts.map: *.title;
 
@@ -49,3 +59,4 @@ say "✓ Available post id(s) → ", $p.active-posts.map: *.id;
 
 say "✓ Date Inflated → ", $p.posts.head.created.^name;
 
+say "✓ Data with custom inflator → ", $p.posts.map: *.tags;

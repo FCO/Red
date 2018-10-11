@@ -7,6 +7,9 @@ multi method prepare(Str)                               { ... }
 multi method prepare(Red::AST)                          { ... }
 multi method default-type-for(Red::Column $ --> Str:D)  { ... }
 
+multi method type-by-name("string" --> "text")          {}
+multi method type-by-name("int"    --> "integer")       {}
+
 multi method prepare("") {class :: { method execute(|) {} }}
 
 multi method inflate(Any $value, Any :$to) { $value }

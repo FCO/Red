@@ -24,7 +24,12 @@ method pull-one {
     if $*RED-DRY-RUN { return $!of.bless }
     my $data := $!st-handler.row;
     return IterationEnd if $data =:= IterationEnd or not $data;
-    my $obj = $!of.new: |%($data).kv.map(-> $k, $v { $k => $!driver.inflate: $v, :to($!of."$k"().attr.type) }).Hash;
+    my %cols = $!of.^columns.keys.map: { .column.attr-name => .column }
+    my $obj = $!of.new: |(%($data).kv
+        .map(-> $k, $v {
+            $k => $!driver.inflate: %cols{$k}.inflate.($v), :to($!of."$k"().attr.type)
+        }).Hash)
+    ;
     $obj.^clean-up;
     return .($obj) with &!post;
     $obj

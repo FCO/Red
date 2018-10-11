@@ -13,6 +13,9 @@ has Bool        $.nullable         = quietly (self.attr.type.^name ~~ /<!after "
 has Str         $.name             = kebab-to-snake-case self.attr.name.substr: 2;
 has Mu          $.class is required;
 has Str         $.name-alias       = $!name;
+has Str         $.type;
+has             &.inflate          = *.self;
+has             &.deflate          = *.self;
 
 method transpose(&func) { func self }
 

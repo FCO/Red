@@ -73,19 +73,20 @@ multi method translate(Red::AST::Cast $_, $context?) {
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Str, $context?) {
-    quietly qq|'{ .value.subst: "'", q"''", :g }'|
+    quietly qq|'{ .get-value.subst: "'", q"''", :g }'|
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ DateTime, $context?) {
-    self.translate: Red::AST::Value.new(:value(.value.Str)), $context
+    self.translate: ast-value(.get-value.Str), $context
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Instant, $context?) {
-    self.translate: Red::AST::Value.new(:value(.value.?to-posix.head)), $context
+    self.translate: ast-value(.get-value.?to-posix.head), $context
 }
 
 multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
-    quietly qq|{ .value }|
+    return self.translate: ast-value(.get-value), $context if .column.defined;
+    quietly qq|{ .get-value }|
 }
 
 multi method translate(Red::Column $_, "create-table") {
@@ -106,7 +107,9 @@ multi method translate(Red::Column $_, "create-table") {
 
 multi method translate(Red::Column $_, "column-name")           { .name // "" }
 
-multi method translate(Red::Column $_, "column-type")           { self.default-type-for: $_ }
+multi method translate(Red::Column $_, "column-type")           {
+    .type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_
+}
 
 multi method translate(Red::Column $_, "nullable-column")       { .nullable ?? "NULL" !! "NOT NULL" }
 
@@ -161,3 +164,5 @@ multi method default-type-for(Red::Column                                   --> 
 
 multi method inflate(Num $value, Instant :$to!)  { Instant.from-posix: $value }
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
+
+multi method type-by-name("string" --> "varchar(255)") {}
