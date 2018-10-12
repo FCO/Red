@@ -49,7 +49,7 @@ method grep(&filter)        { self.where: filter self.of }
 method first(&filter)       { self.grep(&filter).head }
 
 multi treat-map($seq, $filter, Red::Model     $_, &filter, Bool :$flat                 ) { .^where: $filter }
-multi treat-map($seq, $filter,                $_, &filter, Bool :$flat                 ) { .do-it.map: &filter } # FIXME: change to use count
+multi treat-map($seq, $filter,                $_, &filter, Bool :$flat                 ) { $seq.do-it.map: &filter }
 multi treat-map($seq, $filter, Red::ResultSeq $_, &filter, Bool :$flat! where * == True) { $_ }
 multi treat-map($seq, $filter, Red::Column    $_, &filter, Bool :$flat                 ) {
     my \Meta = .class.HOW.WHAT;
