@@ -20,9 +20,10 @@ has Red::AST    $.filter;
 has Int         $.limit;
 has             &.post;
 has Red::Column @.order;
+has             @.table-list;
 
 method iterator {
-    Red::ResultSeq::Iterator.new: :of($.of), :$!filter, :$!limit, :&!post, :@!order
+    Red::ResultSeq::Iterator.new: :of($.of), :$!filter, :$!limit, :&!post, :@!order, :@!table-list
 }
 
 method Seq {
@@ -64,13 +65,14 @@ multi treat-map($seq, $filter, Red::Column    $_, &filter, Bool :$flat          
     $seq.clone(
         :post({ .data }),
         :$filter,
+        :table-list[(|$seq.table-list, $seq.of).unique]
     ) but role :: { method of { model } }
 }
 
-method map(&filter)         {
+method map(&filter) {
     treat-map self, $!filter, filter(self.of), &filter
 }
-method flatmap(&filter)     {
+method flatmap(&filter) {
     treat-map :flat, $!filter, filter(self.of), &filter
 }
 

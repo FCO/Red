@@ -8,11 +8,12 @@ has Red::AST    $.filter        is required;
 has Int         $.limit;
 has Red::Column @.order;
 has             &.post;
+has             @.table-list;
 has             $!st-handler;
 has Red::Driver $!driver = $*RED-DB // die Q[$*RED-DB wasn't defined];
 
 submethod TWEAK(|) {
-    my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter, :$!limit, :@!order;
+    my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter, :$!limit, :@!order, :@!table-list;
 
     unless $*RED-DRY-RUN {
         $!st-handler = $!driver.prepare: $sql;

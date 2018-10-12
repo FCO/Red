@@ -26,5 +26,5 @@ method tables(::?CLASS:D:) {
             @tables.push: .class
         }
     }
-    |@tables.unique
+    |@tables.grep(-> \v { v !=:= Nil }).unique
 }
