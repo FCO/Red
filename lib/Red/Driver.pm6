@@ -7,6 +7,8 @@ multi method prepare(Str)                               { ... }
 multi method prepare(Red::AST)                          { ... }
 multi method default-type-for(Red::Column $ --> Str:D)  { ... }
 
+multi method is-valid-table-name(Str --> Bool)          { True }
+
 multi method type-by-name("string" --> "text")          {}
 multi method type-by-name("int"    --> "integer")       {}
 

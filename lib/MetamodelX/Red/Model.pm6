@@ -16,6 +16,7 @@ use Red::AST::LastInsertedRow;
 use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Relationship;
+use X::Red::InvalidTableName;
 
 unit class MetamodelX::Red::Model is Metamodel::ClassHOW;
 also does MetamodelX::Red::Dirtable;
@@ -145,6 +146,8 @@ method rs($)                        { $.rs-class.new }
 method all($obj)                    { $obj.^rs }
 
 method create-table(\model) {
+    die X::Red::InvalidTableName.new: :table(model.^table), :driver($*RED-DB.^name)
+        unless $*RED-DB.is-valid-table-name: model.^table;
     $*RED-DB.execute: Red::AST::CreateTable.new: :name(model.^table), :columns[|model.^columns.keys.map(*.column)]
 }
 

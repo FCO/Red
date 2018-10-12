@@ -54,7 +54,8 @@
     "Red::ResultSeq::Iterator"  : "lib/Red/ResultSeq/Iterator.pm6",
     "Red::Statement"            : "lib/Red/Statement.pm6",
     "Red::Traits"               : "lib/Red/Traits.pm6",
-    "Red::Utils"                : "lib/Red/Utils.pm6"
+    "Red::Utils"                : "lib/Red/Utils.pm6",
+    "X::Red::InvalidTableName"  : "lib/X/Red/InvalidTableName.pm6"
   },
   "resources" : [ ],
   "source-url" : "",
