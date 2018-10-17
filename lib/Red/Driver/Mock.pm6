@@ -8,19 +8,10 @@ unit class Red::Driver::Mock does Red::Driver;
 multi prepare-sql(Str:U $_) { Str }
 multi prepare-sql(Str:D $_) { .lc.subst(/\s+/, " ", :g).trim }
 
-#has Red::Driver $.driver-obj handles <
-#    translate
-#    prepare
-#    default-type-for
-#    is-valid-table-name
-#    type-by-name
-#    prepare
-#    inflate
-#> = Red::Driver::SQLite.new;
 has Red::Driver $.driver-obj = Red::Driver::SQLite.new;
-has Positional  %.when-str{Str};
-has Positional  %.when-re{Regex};
-has Positional  $.default-return is rw = [];
+has Callable    %.when-str{Str};
+has Callable    %.when-re{Regex};
+has             &.default-return = { [] };
 
 method translate(Red::AST $a, $b?)                  { $!driver-obj.translate($a, $b)        }
 multi method prepare(|c)                            { $!driver-obj.prepare(|c)              }
@@ -38,24 +29,41 @@ class Statement does Red::Statement {
     method stt-row($stt) { $!iterator.pull-one }
 }
 
+multi method default(:@return!) {
+    &!default-return = { @return }
+}
+
+multi method default(:$throw!) {
+    &!default-return = { die $throw }
+}
+
 proto method when($, $?) {
     {*};
     self
 }
 
-multi method when(%pairs) {
-    for %pairs.kv -> $k, $v {
-        self.when: $k, $v
-    }
-
+multi method when(Str $when, :&run!) {
+    %!when-str{$when.&prepare-sql} = &run;
 }
 
-multi method when(Str $when, @return) {
-    %!when-str{$when.&prepare-sql} = @return;
+multi method when(Regex $when, :&run!) {
+    %!when-re{$when} = &run;
 }
 
-multi method when(Regex $when, @return) {
-    %!when-re{$when} = @return;
+multi method when(Str $when, :@return!) {
+    self.when: $when.&prepare-sql, :run{ @return };
+}
+
+multi method when(Regex $when, :@return!) {
+    self.when: $when, :run{ @return };
+}
+
+multi method when(Str $when, :$throw!) {
+    self.when: $when.&prepare-sql, :run{ die $throw };
+}
+
+multi method when(Regex $when, :$throw!) {
+    self.when: $when, :run{ die $throw };
 }
 
 multi method prepare(Red::AST $query) {
@@ -67,12 +75,18 @@ multi method prepare(Str $query) {
     self.debug: $query;
     given $query.&prepare-sql {
         with %!when-str{$_} {
-            return Statement.new: :driver(self), :iterator(.iterator)
+            return Statement.new: :driver(self), :iterator(.().iterator)
         }
-        for %!when-re.kv -> Regex $re, @value {
-            return Statement.new: :driver(self), :iterator(@value.iterator) if .match: $re
+        my $size = 0;
+        my &re-value;
+        for %!when-re.kv -> Regex $re, &value {
+            if .match($re) && $/.Str.chars > $size {
+                $size = $/.Str.chars;
+                &re-value = &value;
+            }
         }
+        return Statement.new: :driver(self), :iterator(re-value.iterator) if $size
     }
-    Statement.new: :driver(self), :iterator($!default-return.iterator)
+    Statement.new: :driver(self), :iterator(&!default-return.().iterator)
 }
 
