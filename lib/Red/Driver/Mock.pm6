@@ -8,12 +8,11 @@ unit class Red::Driver::Mock does Red::Driver;
 multi prepare-sql(Str:U $_) { Str }
 multi prepare-sql(Str:D $_) { .lc.subst(/\s+/, " ", :g).trim }
 
-has Red::Driver $.driver-obj = Red::Driver::SQLite.new;
-has Callable    %.when-str{Str};
-has Callable    %.when-re{Regex};
+has Hash        %.when-str{Str};
+has Hash        %.when-re{Regex};
 has             &.default-return = { [] };
+has Red::Driver $.driver-obj handles <translate> = Red::Driver::SQLite.new;
 
-method translate(Red::AST $a, $b?)                  { $!driver-obj.translate($a, $b)        }
 multi method prepare(|c)                            { $!driver-obj.prepare(|c)              }
 multi method default-type-for(Red::Column $a)       { $!driver-obj.default-type-for($a)     }
 multi method is-valid-table-name(|c)                { $!driver-obj.is-valid-table-name(|c)  }
@@ -37,33 +36,43 @@ multi method default(:$throw!) {
     &!default-return = { die $throw }
 }
 
-proto method when($, $?) {
+proto method when(
+    $when,
+    Int :$times,
+    Bool :$once,
+    Bool :$twice
+) {
+    my $*times = $times // ($once ?? 1 !! $twice ?? 2 !! Inf);
     {*};
     self
 }
 
+multi method when($when where Str | Regex, Bool :$never! where * === True) {
+    self.when: $when, :run{ die "This should never be called" }, :0times;
+}
+
 multi method when(Str $when, :&run!) {
-    %!when-str{$when.&prepare-sql} = &run;
+    %!when-str{$when.&prepare-sql} = {:&run, :$*times};
 }
 
 multi method when(Regex $when, :&run!) {
-    %!when-re{$when} = &run;
+    %!when-re{$when} = {:&run, :$*times};
 }
 
 multi method when(Str $when, :@return!) {
-    self.when: $when.&prepare-sql, :run{ @return };
+    self.when: $when.&prepare-sql, :run{ @return }, :$*times;
 }
 
 multi method when(Regex $when, :@return!) {
-    self.when: $when, :run{ @return };
+    self.when: $when, :run{ @return }, :$*times;
 }
 
 multi method when(Str $when, :$throw!) {
-    self.when: $when.&prepare-sql, :run{ die $throw };
+    self.when: $when.&prepare-sql, :run{ die $throw }, :$*times;
 }
 
 multi method when(Regex $when, :$throw!) {
-    self.when: $when, :run{ die $throw };
+    self.when: $when, :run{ die $throw }, :$*times;
 }
 
 multi method prepare(Red::AST $query) {
@@ -74,19 +83,44 @@ multi method prepare(Red::AST $query) {
 multi method prepare(Str $query) {
     self.debug: $query;
     given $query.&prepare-sql {
-        with %!when-str{$_} {
-            return Statement.new: :driver(self), :iterator(.().iterator)
+        with %!when-str{$_} -> % (:$times!, :$counter! is rw, :&run!) {
+            $counter++;
+            die "The query '$_' should never be ran" unless $times;
+            die "The query '$_' should run $times time(s) but was ran $counter times" if $counter > $times;
+            return Statement.new: :driver(self), :iterator(run.iterator)
         }
         my $size = 0;
-        my &re-value;
-        for %!when-re.kv -> Regex $re, &value {
+        my %data;
+        for %!when-re.kv -> Regex $re, %value {
             if .match($re) && $/.Str.chars > $size {
                 $size = $/.Str.chars;
-                &re-value = &value;
+                %data := %value;
             }
         }
-        return Statement.new: :driver(self), :iterator(re-value.iterator) if $size
+        if %data {
+            %data<counter>++;
+            die "The query '$_' should never be ran" unless %data<times> > 0;
+            die "The query '$_' should run %data<times> time(s) but was ran %data<counter> times" if %data<counter> > %data<times>;
+            return Statement.new: :driver(self), :iterator(%data<run>.().iterator)
+        }
     }
     Statement.new: :driver(self), :iterator(&!default-return.().iterator)
+}
+
+method verify {
+    use Test;
+
+    subtest {
+        plan %!when-str + %!when-re;
+        for %!when-str.kv -> Str $str, % (:$counter = 0, :$times, |) {
+            ok ($times == Inf or $counter == $times),
+                "Query '$str' should be called $times times and was called $counter time(s)";
+        }
+
+        for %!when-re.kv -> Regex $re, % (:$counter = 0, :$times, |) {
+            ok ($times == Inf or $counter == $times),
+                "Query that matches '$re.perl()' should be called $times times and was called $counter time(s)";
+        }
+    }, "Red Mock verify"
 }
 
