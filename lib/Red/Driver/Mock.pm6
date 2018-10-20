@@ -78,12 +78,13 @@ multi method prepare(Red::AST $query) {
 }
 
 multi method prepare(Str $query) {
+    my $t-query = $query.trans(("\n", "\t") => <␤ ␉>);
     self.debug: $query;
     given $query.&prepare-sql {
         with %!when-str{$_} -> % (:$times!, :$counter! is rw, :&run!) {
             $counter++;
-            die "The query '$_' should never be ran" unless $times;
-            die "The query '$_' should run $times time(s) but was ran $counter times" if $counter > $times;
+            die "The query '$t-query' should never be ran" unless $times;
+            die "The query '$t-query' should run $times time(s) but was ran $counter times" if $counter > $times;
             return Statement.new: :driver(self), :iterator(run.iterator)
         }
         my $size = 0;
@@ -96,8 +97,8 @@ multi method prepare(Str $query) {
         }
         if %data {
             %data<counter>++;
-            die "The query '$_' should never be ran" unless %data<times> > 0;
-            die "The query '$_' should run %data<times> time(s) but was ran %data<counter> times" if %data<counter> > %data<times>;
+            die "The query '$t-query' should never be ran" unless %data<times> > 0;
+            die "The query '$t-query' should run %data<times> time(s) but was ran %data<counter> times" if %data<counter> > %data<times>;
             return Statement.new: :driver(self), :iterator(%data<run>.().iterator)
         }
     }
