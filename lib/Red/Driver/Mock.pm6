@@ -1,16 +1,17 @@
+use Test;
 use Red::AST;
 use Red::Driver;
-use Red::Driver::SQLite;
 use Red::Statement;
+use Red::Driver::SQLite;
 use Red::Driver::CommonSQL;
 unit class Red::Driver::Mock does Red::Driver;
 
 multi prepare-sql(Str:U $_) { Str }
-multi prepare-sql(Str:D $_) { .lc.subst(/\s+/, " ", :g).trim }
+multi prepare-sql(Str:D $_) { .lc.subst(/\w+/, { " $_ " }, :g).subst(/\s+/, " ", :g).trim }
 
 has Hash        %.when-str{Str};
 has Hash        %.when-re{Regex};
-has             &.default-return = { [] };
+has Bool        $!die-on-unexpected = False;
 has Red::Driver $.driver-obj handles <translate> = Red::Driver::SQLite.new;
 
 multi method prepare(|c)                            { $!driver-obj.prepare(|c)              }
@@ -28,17 +29,13 @@ class Statement does Red::Statement {
     method stt-row($stt) { $!iterator.pull-one }
 }
 
-multi method default(:@return!) {
-    &!default-return = { @return }
-}
-
-multi method default(:$throw!) {
-    &!default-return = { die $throw }
+method die-on-unexpected() {
+  $!die-on-unexpected = True
 }
 
 proto method when(
     $when,
-    Int :$times,
+    Int  :$times,
     Bool :$once,
     Bool :$twice
 ) {
@@ -52,11 +49,11 @@ multi method when($when where Str | Regex, Bool :$never! where * === True) {
 }
 
 multi method when(Str $when, :&run!) {
-    %!when-str{$when.&prepare-sql} = {:&run, :$*times};
+    %!when-str{$when.&prepare-sql} = {:&run, :$*times, :0counter};
 }
 
 multi method when(Regex $when, :&run!) {
-    %!when-re{$when} = {:&run, :$*times};
+    %!when-re{$when} = {:&run, :$*times, :0counter};
 }
 
 multi method when(Str $when, :@return!) {
@@ -104,12 +101,11 @@ multi method prepare(Str $query) {
             return Statement.new: :driver(self), :iterator(%data<run>.().iterator)
         }
     }
-    Statement.new: :driver(self), :iterator(&!default-return.().iterator)
+    flunk "Unexpected query: $_" if $!die-on-unexpected;
+    Statement.new: :driver(self), :iterator([].iterator)
 }
 
 method verify {
-    use Test;
-
     subtest {
         plan %!when-str + %!when-re;
         for %!when-str.kv -> Str $str, % (:$counter = 0, :$times, |) {
@@ -123,4 +119,3 @@ method verify {
         }
     }, "Red Mock verify"
 }
-
