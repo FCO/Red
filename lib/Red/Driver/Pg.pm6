@@ -50,10 +50,10 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
 
-multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime                    --> "timestamp")     {}
-multi method default-type-for(Red::Column $ where { .attr.type ~~ Int and .auto-increment } --> "serial")        {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)              --> "integer")       {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Bool                        --> "boolean")       {}
-multi method default-type-for(Red::Column $                                                 --> "varchar(255)")  {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime                    --> Str:D) {"timestamp"}
+multi method default-type-for(Red::Column $ where { .attr.type ~~ Int and .auto-increment } --> Str:D) {"serial"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)              --> Str:D) {"integer"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Bool                        --> Str:D) {"boolean"}
+multi method default-type-for(Red::Column $                                                 --> Str:D) {"varchar(255)"}
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }

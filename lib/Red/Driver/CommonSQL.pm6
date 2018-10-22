@@ -221,13 +221,13 @@ multi method translate(Red::AST::LastInsertedRow $_, $context?) { "", [] }
 
 multi method translate(Red::AST:U $_, $context?) { Empty, [] }
 
-multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> "real")           {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --> "varchar(32)")    {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Mu          --> "varchar(255)")   {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Str         --> "varchar(255)")   {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --> "integer")        {}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> "boolean")        {}
-multi method default-type-for(Red::Column                                   --> "varchar(255)")   {}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> Str:D) {"real"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --> Str:D) {"varchar(32)"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Mu          --> Str:D) {"varchar(255)"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Str         --> Str:D) {"varchar(255)"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --> Str:D) {"integer"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> Str:D) {"boolean"}
+multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
 
 
 multi method inflate(Num $value, Instant  :$to!) { Instant.from-posix: $value }
@@ -236,6 +236,6 @@ multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
 multi method type-by-name("string" --> "varchar(255)") {}
 
 multi method is-valid-table-name(Str $ where .fc ~~ self.reserved-words.any.fc) { False }
-multi method is-valid-table-name(Str $str) {
+multi method is-valid-table-name(Str $str) is default {
     so $str ~~ /^ <[\w_]>+ $/
 }

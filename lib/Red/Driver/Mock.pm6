@@ -14,12 +14,12 @@ has Hash        %.when-re{Regex};
 has Bool        $!die-on-unexpected = False;
 has Red::Driver $.driver-obj handles <translate> = Red::Driver::SQLite.new;
 
-multi method prepare(|c)                            { $!driver-obj.prepare(|c)              }
-multi method default-type-for(Red::Column $a)       { $!driver-obj.default-type-for($a)     }
-multi method is-valid-table-name(|c)                { $!driver-obj.is-valid-table-name(|c)  }
-multi method type-by-name(|c)                       { $!driver-obj.type-by-name(|c)         }
-multi method prepare(|c)                            { $!driver-obj.prepare(|c)              }
-multi method inflate(|c)                            { $!driver-obj.inflate(|c)              }
+multi method prepare(|c)                                { $!driver-obj.prepare(|c)              }
+multi method default-type-for(Red::Column $a --> Str:D) { $!driver-obj.default-type-for($a)     }
+multi method is-valid-table-name(|c)                    { $!driver-obj.is-valid-table-name(|c)  }
+multi method type-by-name(|c)                           { $!driver-obj.type-by-name(|c)         }
+multi method prepare(|c)                                { $!driver-obj.prepare(|c)              }
+multi method inflate(|c)                                { $!driver-obj.inflate(|c)              }
 
 class Statement does Red::Statement {
     has Iterator $.iterator;
