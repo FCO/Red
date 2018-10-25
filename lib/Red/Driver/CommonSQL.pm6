@@ -94,18 +94,29 @@ multi method translate(Red::AST::Select $ast, $context?) {
         }
     }
     my $tables = $ast.tables.grep({ not .?no-table }).unique
-        .map({ .^table }).join: ", "                        if $ast.^can: "tables";
-    my $where  = self.translate: $ast.filter                if $ast.?filter;
-    my $order  = $ast.order.map({ .name }).join: ", "       if $ast.?order;
-    my $limit  = $ast.limit;
-    quietly "SELECT\n{
+        .map({ .^table }).join: ", "                            if $ast.^can: "tables";
+    my $where   = self.translate: $ast.filter                   if $ast.?filter;
+    my $order   = $ast.order.map({ .name }).join: ", "          if $ast.?order;
+    my $limit   = $ast.limit;
+    my $group;
+    if $ast.?group -> $g {
+        when Red::Column {
+            $group = $g.map({ .name }).join: ", ";
+        }
+        default {
+            $group = $g.map({ self.translate: $_, "group-by" }).join: ", ";
+        }
+    }
+    "SELECT\n{
         $sel ?? $sel.indent: 3 !! "*"
-    }\n{
-        "FROM\n{ .indent: 3 }" with $tables
-    }\n{
-        "WHERE\n{ .indent: 3 }" with $where
+    }{
+        "\nFROM\n{ .indent: 3 }" with $tables
+    }{
+        "\nWHERE\n{ .indent: 3 }" with $where
     }{
         "\nORDER BY\n{ .indent: 3 }" with $order
+    }{
+        "\nGROUP BY\n{ .indent: 3 }" with $group
     }{
         "\nLIMIT $_" with $limit
     }", []
@@ -115,6 +126,10 @@ multi method translate(Red::AST::Function $_, $context?) {
     "{ .func }({ .args.map({ self.translate: $_ }).join: ", " })"
 }
 
+#multi method translate(Red::AST::Divisable $_, $context?) {
+#    Red::AST::Eq.new: Red::AST::Mod.new(.left, .right), 0
+#}
+
 multi method translate(Red::AST::Infix $_, $context?) {
     "{ self.translate: .left, $context } { .op } { self.translate: .right, $context }"
 }
@@ -123,8 +138,14 @@ multi method translate(Red::AST::Not $_, $context?) {
     "not { self.translate: .value, $context }"
 }
 
-multi method translate(Red::Column $_, "select") {
-    qq[{.name} {qq<as "{.attr-name}"> unless .name eq .attr-name}]
+multi method translate(Red::Column $col, "select") {
+    qq[{
+        with $col.computation {
+            self.translate: $_
+        } else {
+            $col.name
+        }
+    } {qq<as "{$col.attr-name}"> if $col.computation || $col.name ne $col.attr-name}]
 }
 
 multi method translate(Red::Column $_, $context?) {

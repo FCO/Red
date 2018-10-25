@@ -1,8 +1,11 @@
 use Red::AST;
 use Red::Column;
+use Red::AST::Value;
 use Red::AST::Delete;
 use Red::Attr::Column;
 use Red::AST::Infixes;
+use Red::AST::Function;
+use Red::ResultAssociative;
 use Red::ResultSeq::Iterator;
 unit role Red::ResultSeq[Mu $of = Any] does Sequence does Positional[$of];
 
@@ -20,10 +23,11 @@ has Red::AST    $.filter;
 has Int         $.limit;
 has             &.post;
 has Red::Column @.order;
+has Red::AST    @.group;
 has             @.table-list;
 
 method iterator {
-    Red::ResultSeq::Iterator.new: :of($.of), :$!filter, :$!limit, :&!post, :@!order, :@!table-list
+    Red::ResultSeq::Iterator.new: :of($.of), :$!filter, :$!limit, :&!post, :@!order, :@!table-list, :@!group
 }
 
 method Seq {
@@ -49,36 +53,67 @@ method transform-item(*%data) {
 method grep(&filter)        { self.where: filter self.of }
 method first(&filter)       { self.grep(&filter).head }
 
-multi treat-map($seq, $filter, Red::Model     $_, &filter, Bool :$flat                 ) { .^where: $filter }
-multi treat-map($seq, $filter,                $_, &filter, Bool :$flat                 ) { $seq.do-it.map: &filter }
-multi treat-map($seq, $filter, Red::ResultSeq $_, &filter, Bool :$flat! where * == True) { $_ }
-multi treat-map($seq, $filter, Red::Column    $_, &filter, Bool :$flat                 ) {
-    my \Meta = .class.HOW.WHAT;
+#multi treat-map($seq, $filter, Red::Model     $_, &filter, Bool :$flat                 ) { .^where: $filter }
+#multi treat-map($seq, $filter,                $_, &filter, Bool :$flat                 ) { $seq.do-it.map: &filter }
+#multi treat-map($seq, $filter, Red::ResultSeq $_, &filter, Bool :$flat! where * == True) { $_ }
+#multi treat-map($seq, $filter, Red::Column    $_, &filter, Bool :$flat                 ) {
+#}
+
+multi method create-map($_, &filter)        { self.do-it.map: &filter }
+multi method create-map(Red::Model  $_, &?) { .^where: $!filter }
+multi method create-map(Red::AST    $_, &?) {
+    require ::("MetamodelX::Red::Model");
+    my \Meta  = ::("MetamodelX::Red::Model").WHAT;
     my \model = Meta.new.new_type;
-    my $attr = Attribute.new: :name<$!data>, :package(model), :type(.attr.type), :has_accessor, :build(.attr.type);
-    my $col  = .attr.column.clone: :name-alias<data>, :attr-name<data>;
+    my $attr  = Attribute.new: :name<$!data>, :package(model), :type(.returns), :has_accessor, :build(.returns);
+    my $col   = Red::Column.new: :name-alias<data>, :attr-name<data>, :type(.returns.^name), :$attr, :class(model), :computation($_);
     $attr does Red::Attr::Column($col);
     model.^add_attribute: $attr;
     model.^add_method: "no-table", my method no-table { True }
     model.^compose;
     model.^add-column: $attr;
-    $seq.clone(
+    self.clone(
         :post({ .data }),
-        :$filter,
-        :table-list[(|$seq.table-list, $seq.of).unique]
+        :$!filter,
+        :table-list[(|self.table-list, self.of).unique],
+        |%_
+    ) but role :: { method of { model } }
+}
+multi method create-map(Red::Column $_, &?) {
+    my \Meta  = .class.HOW.WHAT;
+    my \model = Meta.new.new_type;
+    my $attr  = Attribute.new: :name<$!data>, :package(model), :type(.attr.type), :has_accessor, :build(.attr.type);
+    my $col   = .attr.column.clone: :name-alias<data>, :attr-name<data>;
+    $attr does Red::Attr::Column($col);
+    model.^add_attribute: $attr;
+    model.^add_method: "no-table", my method no-table { True }
+    model.^compose;
+    model.^add-column: $attr;
+    self.clone(
+        :post({ .data }),
+        :$!filter,
+        :table-list[(|self.table-list, self.of).unique],
+        |%_
     ) but role :: { method of { model } }
 }
 
 method map(&filter) {
-    treat-map self, $!filter, filter(self.of), &filter
+    self.create-map: filter(self.of), &filter
 }
-method flatmap(&filter) {
-    treat-map :flat, $!filter, filter(self.of), &filter
-}
+#method flatmap(&filter) {
+#    treat-map :flat, $!filter, filter(self.of), &filter
+#}
 
 method sort(&order) {
     my @order = order self.of;
     self.clone: :@order
+}
+
+method classify(&func, :&as = { $_ }) {
+    my $key   = func self.of;
+    my $value = as   self.of;
+    #self.clone(:group(func self.of)) but role :: { method of { Associative[$value.WHAT, Str] } }
+    Red::ResultAssociative[$value, $key].new: :$!filter, :rs(self)
 }
 
 multi method head {
@@ -87,6 +122,10 @@ multi method head {
 
 multi method head(UInt:D $num) {
     self.do-it(:limit(min $num, $!limit)).head: $num
+}
+
+method elems {
+    self.create-map: Red::AST::Function.new: :func<count>, :args[ast-value *]
 }
 
 method new-object(::?CLASS:D: *%pars) {

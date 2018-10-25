@@ -1,7 +1,10 @@
 use Red::AST::Operator;
 class Red::AST::Cast does Red::AST::Operator {
-    has Str $.type;
-    has     $.value;
+    has Str     $.type;
+    has         $.value;
+
+    method returns { $!type }
+
     method op { "::{$!type}" };
 
     method should-set {
@@ -24,8 +27,9 @@ class Red::AST::Cast does Red::AST::Operator {
 }
 
 class Red::AST::Not does Red::AST::Operator {
-    has Str $.type;
-    has     $.value;
+    has Str     $.type;
+    has         $.value;
+    has Bool    $.returns;
     method op { "not" };
 
     method should-set(|) { }

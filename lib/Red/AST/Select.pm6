@@ -1,12 +1,16 @@
 use Red::AST;
 use Red::Column;
+use Red::Model;
 unit class Red::AST::Select does Red::AST;
 
 has Mu:U        $.of;
 has Red::AST    $.filter;
 has Red::Column @.order;
 has Int         $.limit;
+has Red::AST    @.group;
 has             @.table-list;
+
+method returns { Red::Model }
 
 method args { $!of, $!filter, |@!order }
 

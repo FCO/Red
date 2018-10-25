@@ -7,6 +7,8 @@ unit class Red::AST::Delete does Red::AST;
 has Str         $.from;
 has Red::AST    $.filter;
 
+method returns { Nil }
+
 method args { Empty }
 
 multi method new(Red::Model:D $model) {

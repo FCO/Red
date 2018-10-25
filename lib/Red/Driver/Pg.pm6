@@ -2,6 +2,7 @@ use DB::Pg;
 use Red::Driver;
 use Red::Driver::CommonSQL;
 use Red::Statement;
+use Red::AST::Infixes;
 unit class Red::Driver::Pg does Red::Driver::CommonSQL;
 
 has Str $!user;
@@ -16,6 +17,10 @@ multi method translate(Red::Column $_, "column-auto-increment") { Empty }
 multi method translate(Red::AST::Insert $_, $context?) {
     my @values = .values.grep({ .value.value.defined });
     "INSERT INTO { .into.^table }(\n{ @values>>.key.join(",\n").indent: 3 }\n)\nVALUES(\n{ @values>>.value.map(-> $val { self.translate: $val, "insert" }).join(",\n").indent: 3 }\n) RETURNING *", []
+}
+
+multi method translate(Red::AST::Mod $_, $context?) {
+    "mod({ self.translate: .left, $context }, { self.translate: .right, $context })"
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {

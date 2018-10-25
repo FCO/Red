@@ -7,6 +7,8 @@ unit class Red::AST::Insert does Red::AST;
 has Red::Model  $.into;
 has             %.values;
 
+method returns { Nil }
+
 method args { |%!values.keys }
 
 multi method new(Red::Model $model) {

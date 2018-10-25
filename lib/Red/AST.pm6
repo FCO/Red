@@ -10,6 +10,7 @@ multi method add(Red::AST:U: Red::AST:D $next) { $next }
 #method should-validate(%values --> Bool()) { ... }
 
 #method args { ... }
+method returns { ... }
 
 method transpose(::?CLASS:D: &func) {
     die self unless self.^can: "args";

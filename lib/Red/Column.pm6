@@ -16,6 +16,9 @@ has Str         $.name-alias       = $!name;
 has Str         $.type;
 has             &.inflate          = *.self;
 has             &.deflate          = *.self;
+has             $.computation;
+
+method returns { $!class }
 
 method transpose(&func) { func self }
 

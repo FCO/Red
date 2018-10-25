@@ -8,6 +8,7 @@ has Str         $.into;
 has             %.values;
 has Red::AST    $.filter;
 
+method returns { Nil }
 method args { |%!values.keys }
 
 multi method new(Red::Model $model) {

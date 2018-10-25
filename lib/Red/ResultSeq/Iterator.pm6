@@ -7,13 +7,14 @@ has Mu:U        $.of            is required;
 has Red::AST    $.filter        is required;
 has Int         $.limit;
 has Red::Column @.order;
+has Red::AST    @.group;
 has             &.post;
 has             @.table-list;
 has             $!st-handler;
 has Red::Driver $!driver = $*RED-DB // die Q[$*RED-DB wasn't defined];
 
 submethod TWEAK(|) {
-    my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter, :$!limit, :@!order, :@!table-list;
+    my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter, :$!limit, :@!order, :@!table-list, :@!group;
 
     unless $*RED-DRY-RUN {
         $!st-handler = $!driver.prepare: $sql;
@@ -29,7 +30,7 @@ method pull-one {
     my $obj = $!of.new: |(%($data).kv
         .map(-> $k, $v {
             do with $v {
-                $k => $!driver.inflate: %cols{$k}.inflate.($v), :to($!of."$k"().attr.type)
+                $k => try { $!driver.inflate(%cols{$k}.inflate.($v), :to($!of."$k"().attr.type)) } // %cols{$k}.inflate.($v)
             } else { Empty }
         }).Hash)
     ;

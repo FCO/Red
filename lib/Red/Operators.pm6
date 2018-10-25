@@ -203,6 +203,74 @@ multi infix:<ge>(Str() $a is readonly, Red::Column $b) is export {
     Red::AST::Ge.new: ast-value($a), $b, :cast<str>
 }
 
+# *
+multi infix:<*>(Red::Column $a, Red::Column $b) is export {
+    Red::AST::Mul.new: $a, $b, :cast<int>
+}
+multi infix:<*>(Red::Column $a, Int() $b is rw) is export {
+    Red::AST::Mul.new: $a, ast-value($b), :cast<int>, :bind-right
+}
+multi infix:<*>(Red::Column $a, Int() $b is readonly) is export {
+    Red::AST::Mul.new: $a, ast-value($b), :cast<int>
+}
+multi infix:<*>(Int() $a is rw, Red::Column $b) is export {
+    Red::AST::Mul.new: ast-value($a), $b, :cast<int>, :bind-left
+}
+multi infix:<*>(Int() $a is readonly, Red::Column $b) is export {
+    Red::AST::Mul.new: ast-value($a), $b, :cast<int>
+}
+
+# /
+multi infix:</>(Red::Column $a, Red::Column $b) is export {
+    Red::AST::Div.new: $a, $b, :cast<int>
+}
+multi infix:</>(Red::Column $a, Int() $b is rw) is export {
+    Red::AST::Div.new: $a, ast-value($b), :cast<int>, :bind-right
+}
+multi infix:</>(Red::Column $a, Int() $b is readonly) is export {
+    Red::AST::Div.new: $a, ast-value($b), :cast<int>
+}
+multi infix:</>(Int() $a is rw, Red::Column $b) is export {
+    Red::AST::Div.new: ast-value($a), $b, :cast<int>, :bind-left
+}
+multi infix:</>(Int() $a is readonly, Red::Column $b) is export {
+    Red::AST::Div.new: ast-value($a), $b, :cast<int>
+}
+
+# %
+multi infix:<%>(Red::Column $a, Red::Column $b) is export {
+    Red::AST::Mod.new: $a, $b, :cast<int>
+}
+multi infix:<%>(Red::Column $a, Int() $b is rw) is export {
+    Red::AST::Mod.new: $a, ast-value($b), :cast<int>, :bind-right
+}
+multi infix:<%>(Red::Column $a, Int() $b is readonly) is export {
+    Red::AST::Mod.new: $a, ast-value($b), :cast<int>
+}
+multi infix:<%>(Int() $a is rw, Red::Column $b) is export {
+    Red::AST::Mod.new: ast-value($a), $b, :cast<int>, :bind-left
+}
+multi infix:<%>(Int() $a is readonly, Red::Column $b) is export {
+    Red::AST::Mod.new: ast-value($a), $b, :cast<int>
+}
+
+# %%
+multi infix:<%%>(Red::Column $a, Red::Column $b) is export {
+    Red::AST::Divisable.new: $a, $b, :cast<int>
+}
+multi infix:<%%>(Red::Column $a, Int() $b is rw) is export {
+    Red::AST::Divisable.new: $a, ast-value($b), :cast<int>, :bind-right
+}
+multi infix:<%%>(Red::Column $a, Int() $b is readonly) is export {
+    Red::AST::Divisable.new: $a, ast-value($b), :cast<int>
+}
+multi infix:<%%>(Int() $a is rw, Red::Column $b) is export {
+    Red::AST::Divisable.new: ast-value($a), $b, :cast<int>, :bind-left
+}
+multi infix:<%%>(Int() $a is readonly, Red::Column $b) is export {
+    Red::AST::Divisable.new: ast-value($a), $b, :cast<int>
+}
+
 multi prefix:<not>(Red::AST $a) is export {
     Red::AST::Not.new: $a
 }
