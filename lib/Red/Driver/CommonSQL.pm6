@@ -94,9 +94,9 @@ multi method translate(Red::AST::Select $ast, $context?) {
         }
     }
     my $tables = $ast.tables.grep({ not .?no-table }).unique
-        .map({ .^table }).join: ", "                            if $ast.^can: "tables";
+        .map({ .^table }).join: ",\n"                           if $ast.^can: "tables";
     my $where   = self.translate: $ast.filter                   if $ast.?filter;
-    my $order   = $ast.order.map({ .name }).join: ", "          if $ast.?order;
+    my $order   = $ast.order.map({ .name }).join: ",\n"         if $ast.?order;
     my $limit   = $ast.limit;
     my $group;
     if $ast.?group -> $g {

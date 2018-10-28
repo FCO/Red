@@ -4,6 +4,7 @@ use Red::AST::Value;
 use Red::AST::Delete;
 use Red::Attr::Column;
 use Red::AST::Infixes;
+use Red::AST::Chained;
 use Red::AST::Function;
 use Red::ResultAssociative;
 use Red::ResultSeq::Iterator;
@@ -19,15 +20,11 @@ sub create-resultseq($rs-class-name, Mu \type) is export is raw {
 }
 
 method of { $of }
-has Red::AST    $.filter;
-has Int         $.limit;
-has             &.post;
-has Red::Column @.order;
-has Red::AST    @.group;
-has             @.table-list;
+
+has Red::AST::Chained $.chain handles <filter limit post order group table-list> .= new;
 
 method iterator {
-    Red::ResultSeq::Iterator.new: :of($.of), :$!filter, :$!limit, :&!post, :@!order, :@!table-list, :@!group
+    Red::ResultSeq::Iterator.new: :of($.of), :$.filter, :$.limit, :&.post, :@.order, :@.table-list, :@.group
 }
 
 method Seq {
@@ -43,7 +40,7 @@ multi method where(::?CLASS:U: Red::AST:U $filter) { self.WHAT  }
 multi method where(::?CLASS:D: Red::AST:U $filter) { self.clone }
 multi method where(::?CLASS:U: Red::AST:D $filter) { self.new: :$filter }
 multi method where(::?CLASS:D: Red::AST:D $filter) {
-    self.clone: :filter(($!filter, $filter).grep({ .defined }).reduce: { Red::AST::AND.new: $^a, $^b })
+    self.clone: :filter(($.filter, $filter).grep({ .defined }).reduce: { Red::AST::AND.new: $^a, $^b })
 }
 
 method transform-item(*%data) {
@@ -60,7 +57,7 @@ method first(&filter)       { self.grep(&filter).head }
 #}
 
 multi method create-map($_, &filter)        { self.do-it.map: &filter }
-multi method create-map(Red::Model  $_, &?) { .^where: $!filter }
+multi method create-map(Red::Model  $_, &?) { .^where: $.filter }
 multi method create-map(Red::AST    $_, &?) {
     require ::("MetamodelX::Red::Model");
     my \Meta  = ::("MetamodelX::Red::Model").WHAT;
@@ -73,10 +70,12 @@ multi method create-map(Red::AST    $_, &?) {
     model.^compose;
     model.^add-column: $attr;
     self.clone(
-        :post({ .data }),
-        :$!filter,
-        :table-list[(|self.table-list, self.of).unique],
-        |%_
+        :chain($!chain.clone:
+            :post({ .data }),
+            :$.filter,
+            :table-list[(|@.table-list, self.of).unique],
+            |%_
+        )
     ) but role :: { method of { model } }
 }
 multi method create-map(Red::Column $_, &?) {
@@ -90,10 +89,12 @@ multi method create-map(Red::Column $_, &?) {
     model.^compose;
     model.^add-column: $attr;
     self.clone(
-        :post({ .data }),
-        :$!filter,
-        :table-list[(|self.table-list, self.of).unique],
-        |%_
+        :chain($!chain.clone:
+            :post({ .data }),
+            :$.filter,
+            :table-list[(|@.table-list, self.of).unique],
+            |%_
+        )
     ) but role :: { method of { model } }
 }
 
@@ -101,7 +102,7 @@ method map(&filter) {
     self.create-map: filter(self.of), &filter
 }
 #method flatmap(&filter) {
-#    treat-map :flat, $!filter, filter(self.of), &filter
+#    treat-map :flat, $.filter, filter(self.of), &filter
 #}
 
 method sort(&order) {
@@ -113,7 +114,7 @@ method classify(&func, :&as = { $_ }) {
     my $key   = func self.of;
     my $value = as   self.of;
     #self.clone(:group(func self.of)) but role :: { method of { Associative[$value.WHAT, Str] } }
-    Red::ResultAssociative[$value, $key].new: :$!filter, :rs(self)
+    Red::ResultAssociative[$value, $key].new: :$.filter, :rs(self)
 }
 
 multi method head {
@@ -121,7 +122,7 @@ multi method head {
 }
 
 multi method head(UInt:D $num) {
-    self.do-it(:limit(min $num, $!limit)).head: $num
+    self.do-it(:limit(min $num, $.limit)).head: $num
 }
 
 method elems {
@@ -129,7 +130,7 @@ method elems {
 }
 
 method new-object(::?CLASS:D: *%pars) {
-    my %data = $!filter.should-set;
+    my %data = $.filter.should-set;
     my \obj = self.of.bless;#: |%pars, |%data;
     for %(|%pars, |%data).kv -> $key, $val {
         obj.^set-attr: $key, $val
@@ -138,9 +139,9 @@ method new-object(::?CLASS:D: *%pars) {
 }
 
 method create(::?CLASS:D: *%pars) {
-    $.of.^create: |%pars, |$!filter.should-set;
+    $.of.^create: |%pars, |(.should-set with $.filter);
 }
 
 method delete(::?CLASS:D:) {
-    $*RED-DB.execute: Red::AST::Delete.new: $.of, $!filter
+    $*RED-DB.execute: Red::AST::Delete.new: $.of, $.filter
 }
