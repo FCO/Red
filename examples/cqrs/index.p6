@@ -1,9 +1,6 @@
 use lib <lib ../../lib>;
 use Red;
 
-#enum EventType <new-ticket change-status>;
-#enum TicketStatus <opened closed>;
-
 model Event { ... }
 
 model Ticket is rw {
