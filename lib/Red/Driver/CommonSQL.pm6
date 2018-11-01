@@ -161,6 +161,10 @@ multi method translate(Red::AST::Cast $_, $context?) {
     }
 }
 
+multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW, $context?) {
+    self.translate: ast-value(.get-value.Str), $context
+}
+
 multi method translate(Red::AST::Value $_ where .type ~~ Str, $context?) {
     quietly qq|'{ .get-value.subst: "'", q"''", :g }'|
 }
@@ -235,7 +239,19 @@ multi method translate(Red::AST::Delete $_, $context?) {
 }
 
 multi method translate(Red::AST::Update $_, $context?) {
-    "UPDATE { .into } SET\n{ .values.kv.map(-> $col, $val { "{$col} = {self.translate: $val, "update"}" }).join(",\n").indent: 3 }\nWHERE { self.translate: .filter }", []
+    qq:to/END/, [];
+    UPDATE {
+        .into
+    } SET
+    {
+        .values.kv.map(-> $col, $val {
+            $col ~ ' = ' ~ self.translate: $val, 'update'
+        }).join(",\n").indent: 3
+    }
+    WHERE {
+        self.translate: .filter
+    }
+    END
 }
 
 multi method translate(Red::AST::LastInsertedRow $_, $context?) { "", [] }
