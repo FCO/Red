@@ -1,6 +1,4 @@
-use Red::Column;
 use Red::AST::Infix;
-use Red::AST::Divisable;
 class Red::AST::Eq does Red::AST::Infix {
     has $.op = "=";
     has Bool $.returns;
