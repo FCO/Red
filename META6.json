@@ -31,7 +31,6 @@
     "Red::AST::AND"             : "lib/Red/AST/Infixes.pm6",
     "Red::AST::OR"              : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Infixes"         : "lib/Red/AST/Infixes.pm6",
-    "Red::AST::Infixes"         : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Insert"          : "lib/Red/AST/Insert.pm6",
     "Red::AST::Operator"        : "lib/Red/AST/Operator.pm6",
     "Red::AST::Select"          : "lib/Red/AST/Select.pm6",
