@@ -38,9 +38,9 @@ method do-it(*%pars) {
 #multi method grep(::?CLASS: &filter) { nextwith :filter( filter self.of.^alias: "me" ) }
 multi method where(::?CLASS:U: Red::AST:U $filter) { self.WHAT  }
 multi method where(::?CLASS:D: Red::AST:U $filter) { self.clone }
-multi method where(::?CLASS:U: Red::AST:D $filter) { self.new: :$filter }
+multi method where(::?CLASS:U: Red::AST:D $filter) { self.new: :chain($!chain.clone: :$filter) }
 multi method where(::?CLASS:D: Red::AST:D $filter) {
-    self.clone: :filter(($.filter, $filter).grep({ .defined }).reduce: { Red::AST::AND.new: $^a, $^b })
+    self.clone: :chain($!chain.clone: :filter(($.filter, $filter).grep({ .defined }).reduce: { Red::AST::AND.new: $^a, $^b }))
 }
 
 method transform-item(*%data) {
