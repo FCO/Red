@@ -9,7 +9,7 @@ method build-relationship(\instance) {
     use nqp;
     nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:
         FETCH => method () {
-            $ //= do if type ~~ Positional {
+            do if type ~~ Positional {
                 my $rel = rel1 type.of;
                 my \value = ast-value $rel.references.().attr.get_value: instance;
                 type.of.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right

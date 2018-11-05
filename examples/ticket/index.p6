@@ -51,7 +51,8 @@ me.tickets.create: :title("novo ticket 03"), :body("Creating one more ticket jus
 me.tickets.create: :title("novo ticket 04"), :body("Creating the last ticket just to be sure it works");
 
 say "Tickets from { me.name }:";
-say "{ .status.name } - { .title }" for |me.tickets;
+say me.tickets<>;
+say "{ .status.name } - { .title }" for me.tickets;
 #given me.tickets.head {
 #    .status-id = closed.id;
 #    .^save;

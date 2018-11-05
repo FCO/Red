@@ -2,7 +2,6 @@ use Red::Model;
 use Red::Attr::Column;
 use Red::Column;
 use Red::Utils;
-use Red::ResultSeq;
 use Red::DefaultResultSeq;
 use Red::Attr::Query;
 use Red::AST;
