@@ -50,12 +50,9 @@ me.tickets.create: :title("novo ticket 02"), :body("Creating another ticket just
 me.tickets.create: :title("novo ticket 03"), :body("Creating one more ticket just to be sure it works");
 me.tickets.create: :title("novo ticket 04"), :body("Creating the last ticket just to be sure it works");
 
-say "Tickets from { me.name }:";
-say me.tickets<>;
+say me.tickets;
+say me.tickets.does: Iterable;
+say "1: me.tickets.Seq";
+say "{ .status.name } - { .title }" for me.tickets.Seq;
+say "2: me.tickets";
 say "{ .status.name } - { .title }" for me.tickets;
-#given me.tickets.head {
-#    .status-id = closed.id;
-#    .^save;
-#}
-
-#say "{ .status.name } - { .title }" for |me.tickets;
