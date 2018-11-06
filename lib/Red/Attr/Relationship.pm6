@@ -3,13 +3,17 @@ use Red::AST::Value;
 unit role Red::Attr::Relationship[&rel1, &rel2?];
 has Mu:U $!type;
 
+method set-data(\instance, Mu $value) {
+    rel1(self.package).attr.set_value: instance, rel1(self.package).references.().attr.get_value: $value;
+}
+
 method build-relationship(\instance) {
     my \type = self.type;
     my \attr = self;
     use nqp;
     nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:
         FETCH => method () {
-            $ //= do if type ~~ Positional {
+            my $a //= do if type ~~ Positional {
                 my $rel = rel1 type.of;
                 my \value = ast-value $rel.references.().attr.get_value: instance;
                 type.of.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
@@ -19,12 +23,12 @@ method build-relationship(\instance) {
                 my \value = ast-value $rel.attr.get_value: instance;
                 type.^rs.where(Red::AST::Eq.new: ref, value, :bind-right).head
             }
+            $a
         },
         STORE => method ($value where type) {
             die X::Assignment::RO.new(value => attr.type) unless attr.rw;
             if type !~~ Positional {
-                rel1(attr.package).attr.set_value: instance, rel1(attr.package).references.().attr.get_value: $value;
-
+                attr.set-data: instance, $value
             } else {
                 die "NYI Couldnt set value"
             }

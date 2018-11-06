@@ -1,5 +1,6 @@
 use nqp;
 use Red::Attr::Column;
+use Red::Attr::Relationship;
 unit role MetamodelX::Red::Dirtable;
 
 has %.dirty-cols{Mu} is rw;
@@ -49,6 +50,11 @@ method compose-dirtable(Mu \type) {
                 unless $attr ~~ Red::Attr::Column {
                     $attr.set_value: self, $_
                 }
+            }
+            if $attr ~~ Red::Attr::Relationship {
+                my Mu $built := $attr.build;
+                $built := $built.(type, Mu) if $built ~~ Method;
+                $attr.set-data: instance, $_ with $built
             }
         }
         nextsame

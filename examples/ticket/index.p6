@@ -1,10 +1,20 @@
 use lib <lib ../../lib>;
 use Red;
 
+
+my $*RED-DB = database "SQLite";
 model TicketStatus {
     has UInt $.id       is serial;
     has Str  $.name     is column{ :unique };
 }
+
+TicketStatus.^create-table;
+
+my \new     = TicketStatus.^create: :name<new>;
+my \opened  = TicketStatus.^create: :name<opened>;
+my \closed  = TicketStatus.^create: :name<closed>;
+my \blocked = TicketStatus.^create: :name<blocked>;
+my \paused  = TicketStatus.^create: :name<paused>;
 
 model Ticket { ... }
 
@@ -20,24 +30,10 @@ model Ticket is rw {
     has Str             $.title     is column;
     has Str             $.body      is column;
     has UInt            $.status-id is referencing{  TicketStatus.id };
-    has TicketStatus    $.status    is relationship{ .status-id }
+    has TicketStatus    $.status    is relationship{ .status-id } = new;
     has UInt            $.author-id is referencing{  Person.id }
     has Person          $.author    is relationship{ .author-id }
-
-    method TWEAK(|) {
-        $!status = TicketStatus.^find: :name<new>
-    }
 }
-
-my $*RED-DB = database "SQLite";
-
-TicketStatus.^create-table;
-
-my \new     = TicketStatus.^create: :name<new>;
-my \opened  = TicketStatus.^create: :name<opened>;
-my \closed  = TicketStatus.^create: :name<closed>;
-my \blocked = TicketStatus.^create: :name<blocked>;
-my \paused  = TicketStatus.^create: :name<paused>;
 
 Ticket.^create-table;
 Person.^create-table;
@@ -51,10 +47,12 @@ me.tickets.create: :title("novo ticket 03"), :body("Creating one more ticket jus
 me.tickets.create: :title("novo ticket 04"), :body("Creating the last ticket just to be sure it works");
 
 say "Tickets from { me.name }:";
-say "{ .status.name } - { .title }" for |me.tickets;
+say "{ .status.name } - { .title }" for me.tickets;
+
 #given me.tickets.head {
-#    .status-id = closed.id;
+#    .&dd;
+#    .status = closed;
 #    .^save;
 #}
 
-#say "{ .status.name } - { .title }" for |me.tickets;
+#say "{ .status.name } - { .title }" for me.tickets;
