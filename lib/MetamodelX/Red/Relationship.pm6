@@ -43,7 +43,7 @@ multi method add-relationship(Mu:U $self, Red::Attr::Relationship $attr) {
     %!relationships ∪= $attr;
     my $name = $attr.name.substr(2);
     $self.^add_multi_method: $name, my method (Mu:D:) {
-        $attr.get_value: self
+        $attr.get_value(self).self
     } if $attr.has_accessor;
     $self.^add_multi_method: $name, my method (Mu:U:) {
         my $ast = $attr.relationship-ast;
