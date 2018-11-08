@@ -4,7 +4,10 @@ unit role Red::Attr::Relationship[&rel1, &rel2?];
 has Mu:U $!type;
 
 method set-data(\instance, Mu $value) {
-    rel1(self.package).attr.set_value: instance, rel1(self.package).references.().attr.get_value: $value;
+    my $attr = rel1(self.package).attr;
+    my $ref = rel1(self.package).references.();
+    $attr.set_value: instance, $ref.attr.get_value: $value;
+    instance.^set-dirty: $attr;
 }
 
 method build-relationship(\instance) {
@@ -13,17 +16,23 @@ method build-relationship(\instance) {
     use nqp;
     nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:
         FETCH => method () {
-            my $a //= do if type ~~ Positional {
+            do if type ~~ Positional {
                 my $rel = rel1 type.of;
-                my \value = ast-value $rel.references.().attr.get_value: instance;
+                my $col = $rel.references.();
+                my $val = $col.attr.get_value: instance;
+                my \value = ast-value $val;
                 type.of.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
             } else {
                 my $rel = rel1 instance.WHAT;
                 my \ref = $rel.references.();
-                my \value = ast-value $rel.attr.get_value: instance;
-                type.^rs.where(Red::AST::Eq.new: ref, value, :bind-right).head
+                my $val = $rel.attr.get_value: instance;
+                do with $val {
+                    my \value = ast-value $val;
+                    type.^rs.where(Red::AST::Eq.new: ref, value, :bind-right).head
+                } else {
+                    type
+                }
             }
-            $a
         },
         STORE => method ($value where type) {
             die X::Assignment::RO.new(value => attr.type) unless attr.rw;

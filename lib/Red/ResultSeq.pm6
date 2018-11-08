@@ -8,18 +8,23 @@ use Red::AST::Chained;
 use Red::AST::Function;
 use Red::ResultAssociative;
 use Red::ResultSeq::Iterator;
-unit role Red::ResultSeq[Mu $of = Any] does Sequence does Positional[$of];
+unit role Red::ResultSeq[Mu $of = Any] does Sequence;
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
     use Red::DefaultResultSeq;
     my $rs-class := Metamodel::ClassHOW.new_type: :name($rs-class-name);
     $rs-class.^add_parent: Red::DefaultResultSeq;
     $rs-class.^add_role: Red::ResultSeq[type];
+    $rs-class.^add_role: Iterable;
     $rs-class.^compose;
     $rs-class
 }
 
 method of { $of }
+#method is-lazy { True }
+method cache {
+    List.from-iterator: self.iterator
+}
 
 has Red::AST::Chained $.chain handles <filter limit post order group table-list> .= new;
 
@@ -107,7 +112,11 @@ method map(&filter) {
 
 method sort(&order) {
     my @order = order self.of;
-    self.clone: :@order
+    self.clone: :chain($!chain.clone: :@order)
+}
+
+method pick(Whatever) {
+    self.clone: :chain($!chain.clone: :order[Red::AST::Function.new: :func<random>])
 }
 
 method classify(&func, :&as = { $_ }) {

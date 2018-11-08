@@ -7,7 +7,7 @@ use Red::Driver::CommonSQL;
 unit class Red::Driver::Mock does Red::Driver;
 
 multi prepare-sql(Str:U $_) { Str }
-multi prepare-sql(Str:D $_) { .lc.subst(/\w+/, { " $_ " }, :g).subst(/\s+/, " ", :g).trim }
+multi prepare-sql(Str:D $_) { .lc.subst(/<[\w.]>+/, { " $_ " }, :g).subst(/\s+/, " ", :g).trim }
 
 has Hash        %.when-str{Str};
 has Hash        %.when-re{Regex};
@@ -102,8 +102,9 @@ multi method prepare(Str $query) {
             die "The query '$t-query' should run %data<times> time(s) but was ran %data<counter> times" if %data<counter> > %data<times>;
             return Statement.new: :driver(self), :iterator(%data<run>.().iterator)
         }
+
+        flunk "Unexpected query: $_" if $!die-on-unexpected;
     }
-    flunk "Unexpected query: $_" if $!die-on-unexpected;
     Statement.new: :driver(self), :iterator([].iterator)
 }
 

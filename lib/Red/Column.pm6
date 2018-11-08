@@ -22,7 +22,7 @@ method returns { $!class }
 
 method transpose(&func) { func self }
 
-method gist { "{$!class.^table}.{$!name-alias}" }
+method gist { "{$!class.^as}.{$!name-alias}" }
 
 method cast(Str $type) {
     Red::AST::Cast.new: self, $type

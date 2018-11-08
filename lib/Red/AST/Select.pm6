@@ -1,11 +1,10 @@
 use Red::AST;
-use Red::Column;
 use Red::Model;
 unit class Red::AST::Select does Red::AST;
 
 has Mu:U        $.of;
 has Red::AST    $.filter;
-has Red::Column @.order;
+has Red::AST    @.order;
 has Int         $.limit;
 has Red::AST    @.group;
 has             @.table-list;

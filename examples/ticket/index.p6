@@ -41,18 +41,19 @@ Person.^create-table;
 #my $*RED-DEBUG = True;
 my \me = Person.^create: :name<Me>;
 
-me.tickets.create: :title("novo ticket 01"), :body("Creating a ticket just to be sure it works");
-me.tickets.create: :title("novo ticket 02"), :body("Creating another ticket just to be sure it works");
-me.tickets.create: :title("novo ticket 03"), :body("Creating one more ticket just to be sure it works");
-me.tickets.create: :title("novo ticket 04"), :body("Creating the last ticket just to be sure it works");
+me.tickets.create: :title("new ticket 01"), :body("Creating a ticket just to be sure it works");
+me.tickets.create: :title("new ticket 02"), :body("Creating another ticket just to be sure it works");
+me.tickets.create: :title("new ticket 03"), :body("Creating one more ticket just to be sure it works");
+me.tickets.create: :title("new ticket 04"), :body("Creating the last ticket just to be sure it works");
 
 say "Tickets from { me.name }:";
 say "{ .status.name } - { .title }" for me.tickets;
 
-#given me.tickets.head {
-#    .&dd;
-#    .status = closed;
-#    .^save;
-#}
+given me.tickets.head {
+    say "closing ticket { .title }";
+    .status = closed;
+    .^save;
+}
 
+#say "Tickets from { me.name }:";
 #say "{ .status.name } - { .title }" for me.tickets;

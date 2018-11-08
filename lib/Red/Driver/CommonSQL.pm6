@@ -94,9 +94,15 @@ multi method translate(Red::AST::Select $ast, $context?) {
         }
     }
     my $tables = $ast.tables.grep({ not .?no-table }).unique
-        .map({ .^table }).join: ",\n"                           if $ast.^can: "tables";
-    my $where   = self.translate: $ast.filter                   if $ast.?filter;
-    my $order   = $ast.order.map({ .name }).join: ",\n"         if $ast.?order;
+        .map({
+            "{
+                .^table
+            }{
+                " as { .^as }" if .^table ne .^as
+            }"
+        }).join: ",\n"                                                          if $ast.^can: "tables";
+    my $where   = self.translate: $ast.filter                                   if $ast.?filter;
+    my $order   = $ast.order.map({ self.translate: $_, "order" }).join: ",\n"   if $ast.?order;
     my $limit   = $ast.limit;
     my $group;
     if $ast.?group -> $g {
@@ -143,7 +149,7 @@ multi method translate(Red::Column $col, "select") {
         with $col.computation {
             self.translate: $_
         } else {
-            $col.name
+            "{ $col.class.^as }.{ $col.name }"
         }
     } {qq<as "{$col.attr-name}"> if $col.computation || $col.name ne $col.attr-name}]
 }

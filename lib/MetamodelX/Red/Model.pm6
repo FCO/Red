@@ -33,6 +33,8 @@ method references(|) { %!references }
 method constraints(|) { @!constraints.classify: *.key, :as{ .value } }
 
 method table(Mu \type) { camel-to-snake-case type.^name }
+method as(Mu \type) { self.table: type }
+method orig(Mu \type) { type.WHAT }
 method rs-class-name(Mu \type) { "{type.^name}::ResultSeq" }
 method columns(|) is rw {
 	%!columns
@@ -107,8 +109,12 @@ method add-unique-constraint(Mu:U \type, &columns) {
 
 my UInt $alias_num = 1;
 method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
-	my \alias = Metamodel::ClassHOW.new_type(:$name);
-	alias.HOW does MetamodelX::Red::Comparate;
+	my \alias = ::?CLASS.new_type(:$name);
+	alias.HOW does role :: {
+        method table(|) { type.^table }
+        method as(|)    { camel-to-snake-case $name }
+        method orig(|)  { type }
+    }
 	for %!columns.keys -> $col {
 		alias.^add-comparate-methods: $col
 	}

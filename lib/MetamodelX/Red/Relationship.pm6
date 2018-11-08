@@ -39,12 +39,30 @@ multi method add-relationship(Mu:U $self, Attribute $attr, &ref1, &ref2) {
     self.add-relationship: $self, $attr
 }
 
-multi method add-relationship(Mu:U $self, Red::Attr::Relationship $attr) {
+multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) {
     %!relationships ∪= $attr;
-    my $name = $attr.name.substr(2);
-    $self.^add_multi_method: $name, my method (Mu:D:) {
-        $attr.get_value(self).self
-    } if $attr.has_accessor;
+    my $name = $attr.name.substr: 2;
+    if $attr.has_accessor {
+        if $attr.type ~~ Positional {
+            $self.^add_multi_method: $name, my method (Mu:D:) {
+                $attr.get_value(self).self
+            }
+        } elsif($attr.rw) {
+            $self.^add_multi_method: $name, my method (Mu:D:) is rw {
+                my \SELF = self;
+                Proxy.new:
+                    FETCH => method { $attr.get_value(SELF) },
+                    STORE => method (\value) {
+                        $attr.set-data: SELF, value
+                    }
+                ;
+            }
+        } else {
+            $self.^add_multi_method: $name, my method (Mu:D:) is rw {
+                 $attr.get_value: self
+            }
+        }
+    }
     $self.^add_multi_method: $name, my method (Mu:U:) {
         my $ast = $attr.relationship-ast;
         $attr.package.^rs.new: :filter($ast)

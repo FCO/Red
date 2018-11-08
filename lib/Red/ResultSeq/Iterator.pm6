@@ -1,12 +1,11 @@
 use Red::AST;
-use Red::Column;
 use Red::Driver;
 use Red::AST::Select;
 unit class Red::ResultSeq::Iterator does Iterator;
 has Mu:U        $.of            is required;
 has Red::AST    $.filter        is required;
 has Int         $.limit;
-has Red::Column @.order;
+has Red::AST    @.order;
 has Red::AST    @.group;
 has             &.post;
 has             @.table-list;
@@ -21,6 +20,8 @@ submethod TWEAK(|) {
         $!st-handler.execute: |@bind
     }
 }
+
+#method is-lazy { True }
 
 method pull-one {
     if $*RED-DRY-RUN { return $!of.bless }
