@@ -18,17 +18,15 @@ method build-relationship(\instance) {
         FETCH => method () {
             do if type ~~ Positional {
                 my $rel = rel1 type.of;
-                my $col = $rel.ref;
-                my $val = $col.attr.get_value: instance;
+                my $val = $rel.ref.attr.get_value: instance;
                 my \value = ast-value $val;
                 type.of.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
             } else {
                 my $rel = rel1 instance.WHAT;
-                my \ref = $rel.ref;
                 my $val = $rel.attr.get_value: instance;
                 do with $val {
                     my \value = ast-value $val;
-                    type.^rs.where(Red::AST::Eq.new: ref, value, :bind-right).head
+                    type.^rs.where(Red::AST::Eq.new: $rel.ref, value, :bind-right).head
                 } else {
                     type
                 }
