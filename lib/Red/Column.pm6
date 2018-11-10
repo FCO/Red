@@ -1,6 +1,7 @@
 use Red::Utils;
 use Red::Model;
 use Red::AST;
+use Red::AST::IsDefined;
 use Red::AST::Unary;
 unit class Red::Column does Red::AST;
 
@@ -49,6 +50,10 @@ method TWEAK(:$unique) {
     if $unique {
         $!attr.package.^add-unique-constraint: { self }
     }
+}
+
+method defined {
+    Red::AST::IsDefined.new: self
 }
 
 method args {}

@@ -9,6 +9,7 @@ use Red::AST::Insert;
 use Red::AST::Update;
 use Red::AST::Delete;
 use Red::AST::Function;
+use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::LastInsertedRow;
 use Red::Driver;
@@ -130,6 +131,11 @@ multi method translate(Red::AST::Select $ast, $context?) {
 
 multi method translate(Red::AST::Function $_, $context?) {
     "{ .func }({ .args.map({ self.translate: $_ }).join: ", " })"
+}
+
+multi method translate(Red::AST::IsDefined $_, $context?) {
+    # TODO: make it work with `not`
+    "{ self.translate: .col, "is defined" } IS NOT NULL"
 }
 
 #multi method translate(Red::AST::Divisable $_, $context?) {
