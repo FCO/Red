@@ -24,6 +24,7 @@
     "Red::AST::Divisable"           : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Eq"                  : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Function"            : "lib/Red/AST/Function.pm6",
+    "Red::AST::IsDefined"           : "lib/Red/AST/IsDefined.pm6",
     "Red::AST::Infix"               : "lib/Red/AST/Infix.pm6",
     "Red::AST::Mod"                 : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Ne"                  : "lib/Red/AST/Infixes.pm6",
