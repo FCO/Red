@@ -5,7 +5,7 @@ has Mu:U $!type;
 
 method set-data(\instance, Mu $value) {
     my $attr = rel1(self.package).attr;
-    my $ref = rel1(self.package).references.();
+    my $ref = rel1(self.package).ref;
     $attr.set_value: instance, $ref.attr.get_value: $value;
     instance.^set-dirty: $attr;
 }
@@ -18,13 +18,13 @@ method build-relationship(\instance) {
         FETCH => method () {
             do if type ~~ Positional {
                 my $rel = rel1 type.of;
-                my $col = $rel.references.();
+                my $col = $rel.ref;
                 my $val = $col.attr.get_value: instance;
                 my \value = ast-value $val;
                 type.of.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
             } else {
                 my $rel = rel1 instance.WHAT;
-                my \ref = $rel.references.();
+                my \ref = $rel.ref;
                 my $val = $rel.attr.get_value: instance;
                 do with $val {
                     my \value = ast-value $val;
@@ -49,6 +49,6 @@ method build-relationship(\instance) {
 method relationship-ast {
     my \type = self.type ~~ Positional ?? self.type.of !! self.type;
     my $col1 = rel1 type;
-    my $col2 = $col1.references.();
+    my $col2 = $col1.ref;
     Red::AST::Eq.new: $col1, $col2
 }

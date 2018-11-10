@@ -217,8 +217,7 @@ multi method translate(Red::Column $_, "column-pk")             { "primary key" 
 multi method translate(Red::Column $_, "column-auto-increment") { "auto_increment" if .auto-increment }
 
 multi method translate(Red::Column $_, "column-references")     {
-    my $ref = .() with .references;
-    "references { $ref.class.^table }({ $ref.name })" with $ref
+    "references { .class.^table }({ .name })" with .ref
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
