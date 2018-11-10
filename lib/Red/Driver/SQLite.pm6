@@ -10,7 +10,7 @@ use Red::Driver::CommonSQL;
 use Red::AST::LastInsertedRow;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
-has $!database = q<:memory:>;
+has $.database = q<:memory:>;
 has $!dbh = DBIish.connect: "SQLite", :$!database;
 
 class Statement does Red::Statement {

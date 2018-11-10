@@ -29,7 +29,7 @@ model Person is rw {
 }
 
 my $*RED-DEBUG = $_ with %*ENV<RED-DEBUG>;
-my $*RED-DB = database "SQLite", |(:database($_) with %*ENV<RED-DATABASE>);
+my $*RED-DB = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
 
 lives-ok { Person.^create-table }
 lives-ok { Post.^create-table }
