@@ -22,5 +22,7 @@ method prepare($query) { $!driver.prepare: $query }
 method stt-row($ --> Hash()) { ... }
 
 method row {
-    self.stt-row: $!statement
+    my \resp = self.stt-row: $!statement;
+    note resp if $*RED-DEBUG-RESPONSE;
+    resp
 }

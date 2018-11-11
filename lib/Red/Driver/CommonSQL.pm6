@@ -190,7 +190,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ Instant, $context?) {
 }
 
 multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
-    return self.translate: ast-value(.get-value), $context if .column.defined;
+    return self.translate: ast-value(.get-value), $context if .column.DEFINITE;
     quietly qq|{ .get-value }|
 }
 

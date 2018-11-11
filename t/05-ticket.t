@@ -1,7 +1,9 @@
 use Test;
 use Red;
 
-my $*RED-DB = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
 
 model TicketStatus {
     has UInt $.id       is serial;

@@ -28,8 +28,9 @@ model Person is rw {
     method active-posts { @!posts.grep: not *.deleted }
 }
 
-my $*RED-DEBUG = $_ with %*ENV<RED-DEBUG>;
-my $*RED-DB = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
 
 lives-ok { Person.^create-table }
 lives-ok { Post.^create-table }
@@ -58,13 +59,12 @@ ok $post2.tags ~~ set <bla ble>;
 
 lives-ok { $post.^delete }
 ok not Post.^load($post.id).defined;
-todo "NYI";
-isa-ok Post.^load($post.id), Post;
+isa-ok Post.^load($post.id), Nil;
 
 is $p.active-posts.map(*.id), (2);
 
 isa-ok $p.posts.head.created, DateTime;
 
-ok $p.posts.map(*.tags).head ~~ set <bla ble>;
+cmp-ok $p.posts.map(*.tags).head, &[~~], set <bla ble>;
 
 done-testing
