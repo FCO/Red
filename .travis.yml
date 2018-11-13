@@ -10,7 +10,6 @@ addons:
     packages:
       - rakudo-pkg
 install:
-  - rakudobrew build zef
   - zef install Test::META
   - zef install --deps-only --/test .
 script:
