@@ -1,13 +1,17 @@
-os:
-  - linux
-  - osx
-language: perl6
-perl6:
-  - latest
+language: generic
+env:
+  global:
+    - export PATH="/opt/rakudo-pkg/bin:/opt/rakudo-pkg/share/perl6/site/bin:$PATH"
+addons:
+  apt:
+    sources:
+      - sourceline: 'deb https://dl.bintray.com/nxadm/rakudo-pkg-debs $(lsb_release -cs) main'
+        key_url: 'http://keyserver.ubuntu.com/pks/lookup?search=0x379CE192D401AB61&op=get'
+    packages:
+      - rakudo-pkg
 install:
   - rakudobrew build zef
   - zef install Test::META
   - zef install --deps-only --/test .
 script:
-  - zef test .
-sudo: false
+  - zef install .
