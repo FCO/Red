@@ -1,3 +1,4 @@
+use CX::Red::Bool;
 unit role Red::AST;
 #has Red::AST $.next;
 
@@ -11,6 +12,12 @@ unit role Red::AST;
 
 #method args { ... }
 method returns { ... }
+
+method Bool {
+    my Bool $value = [ True, False ].[$++ % 2];
+    CX::Red::Bool.new(:ast(self), :$value).throw;
+    $value
+}
 
 method transpose(::?CLASS:D: &func) {
     die self unless self.^can: "args";

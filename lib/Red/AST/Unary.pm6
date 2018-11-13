@@ -3,6 +3,8 @@ class Red::AST::Cast does Red::AST::Operator {
     has Str     $.type;
     has         $.value;
 
+    method gist { "($!value.gist())::$!type" }
+
     method returns { $!type }
 
     method op { "::{$!type}" };

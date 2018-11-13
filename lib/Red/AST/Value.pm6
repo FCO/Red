@@ -5,6 +5,7 @@ class Red::AST::Value does Red::AST is Any {
     has Red::Column $.column;
     has Mu:U        $.type = $!value.WHAT; # $!column.DEFINITE ?? $!column.attr.type !! $!value.WHAT
 
+    method gist { $!value.gist }
     method returns { $!type }
 
     method args { $!value }
