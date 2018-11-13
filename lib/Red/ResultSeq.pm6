@@ -61,6 +61,33 @@ method first(&filter)       { self.grep(&filter).head }
 #multi treat-map($seq, $filter, Red::Column    $_, &filter, Bool :$flat                 ) {
 #}
 
+sub what-does-it-do(&func, \type) {
+    my $try-again;
+    my $pair;
+    my $ret;
+    my $counter;
+    repeat {
+        $try-again = False;
+        {
+            $ret = func type;
+            say "when {$pair.key.gist} == {$pair.value} => $ret.gist()";
+            CATCH {
+                when CX::Red::Bool {
+                    $try-again = [True, False].[$counter++];
+                    $pair = Pair.new: .ast, .value;
+                    .resume
+                }
+            }
+            CONTROL {
+                when CX::Next {
+                    say "when {$pair.key.gist} == {$pair.value} => next";
+                }
+            }
+        }
+    } while $try-again;
+    $ret;
+}
+
 multi method create-map($_, &filter)        { self.do-it.map: &filter }
 multi method create-map(Red::Model  $_, &?) { .^where: $.filter }
 multi method create-map(Red::AST    $_, &?) {
@@ -104,7 +131,7 @@ multi method create-map(Red::Column $_, &?) {
 }
 
 method map(&filter) {
-    self.create-map: filter(self.of), &filter
+    self.create-map: what-does-it-do(&filter, self.of), &filter
 }
 #method flatmap(&filter) {
 #    treat-map :flat, $.filter, filter(self.of), &filter
