@@ -62,29 +62,38 @@ method first(&filter)       { self.grep(&filter).head }
 #}
 
 sub what-does-it-do(&func, \type) {
-    my $try-again;
+    my Bool $try-again;
     my $pair;
     my $ret;
-    my $counter;
+    my @*POSS;
+    my %poss := :{};
+    my %*VALS := :{};
     repeat {
         $try-again = False;
         {
             $ret = func type;
-            say "when {$pair.key.gist} == {$pair.value} => $ret.gist()";
+            %poss{ %*VALS.clone } = $ret;
+            say %poss;
+
             CATCH {
-                when CX::Red::Bool {
-                    $try-again = [True, False].[$counter++];
-                    $pair = Pair.new: .ast, .value;
+                when CX::Red::Bool { # needed until we can create real custom CX
+                    $try-again = so @*POSS;
                     .resume
                 }
             }
             CONTROL {
+                when CX::Red::Bool { # Will work when we can create real custom CX
+                    $try-again = so @*POSS;
+                    .resume
+                }
                 when CX::Next {
-                    say "when {$pair.key.gist} == {$pair.value} => next";
+                    %poss{ %*VALS.clone } = "next";
+                    say %poss;
                 }
             }
         }
     } while $try-again;
+    say %poss;
     $ret;
 }
 

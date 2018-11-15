@@ -13,10 +13,17 @@ unit role Red::AST;
 #method args { ... }
 method returns { ... }
 
-method Bool {
-    my Bool $value = [ True, False ].[$++ % 2];
-    CX::Red::Bool.new(:ast(self), :$value).throw;
-    $value
+method Bool(--> Bool()) {
+    die "This shouldnt be called outside a Red loop" unless %*VALS.defined;
+    if not %*VALS{self}:exists {
+        %*VALS{self} = False;
+        @*POSS.push: self
+    } elsif @*POSS.tail === self {
+        %*VALS{self} = True;
+        @*POSS.shift
+    }
+    CX::Red::Bool.new(:ast(self), :value(%*VALS{self})).throw;
+    %*VALS{self}
 }
 
 method transpose(::?CLASS:D: &func) {
