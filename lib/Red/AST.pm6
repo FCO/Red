@@ -14,13 +14,13 @@ unit role Red::AST;
 method returns { ... }
 
 method Bool(--> Bool()) {
-    die "This shouldnt be called outside a Red loop" unless %*VALS.defined;
+    return True unless %*VALS.defined;
     if not %*VALS{self}:exists {
-        %*VALS{self} = False;
+        %*VALS{self} = True;
         @*POSS.push: self
     } elsif @*POSS.tail === self {
-        %*VALS{self} = True;
-        @*POSS.shift
+        %*VALS{self} = False;
+        @*POSS.pop
     }
     CX::Red::Bool.new(:ast(self), :value(%*VALS{self})).throw;
     %*VALS{self}

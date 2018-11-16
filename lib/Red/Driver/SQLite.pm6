@@ -40,7 +40,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
     .value ?? 1 !! 0
 }
 
-multi method translate(Red::AST::Not $_, $context?) {
+multi method translate(Red::AST::Not $_ where .value ~~ Red::Column, $context?) {
 	my $val = self.translate: .value, $context;
     "($val == 0 OR $val IS NULL)"
 }

@@ -1,5 +1,6 @@
 use Red::AST;
 use Red::Column;
+use Red::AST::Next;
 use Red::AST::Value;
 use Red::AST::Delete;
 use Red::Attr::Column;
@@ -61,6 +62,19 @@ method first(&filter)       { self.grep(&filter).head }
 #multi treat-map($seq, $filter, Red::Column    $_, &filter, Bool :$flat                 ) {
 #}
 
+sub hash-to-cond(%val) {
+    my Red::AST $ast;
+    for %val.kv -> $cond is copy, Bool $so {
+        $cond = $so ?? $cond !! Red::AST::Not.new: $cond;
+        with $ast {
+            $ast = Red::AST::AND.new: $ast, $cond
+        } else {
+            $ast = $cond
+        }
+    }
+    $ast
+}
+
 sub what-does-it-do(&func, \type) {
     my Bool $try-again;
     my $pair;
@@ -72,8 +86,7 @@ sub what-does-it-do(&func, \type) {
         $try-again = False;
         {
             $ret = func type;
-            %poss{ %*VALS.clone } = $ret;
-            say %poss;
+            %poss{ hash-to-cond %*VALS } = $ret;
 
             CATCH {
                 when CX::Red::Bool { # needed until we can create real custom CX
@@ -87,14 +100,12 @@ sub what-does-it-do(&func, \type) {
                     .resume
                 }
                 when CX::Next {
-                    %poss{ %*VALS.clone } = "next";
-                    say %poss;
+                    %poss{ hash-to-cond %*VALS } = Red::AST::Next.new;
                 }
             }
         }
     } while $try-again;
-    say %poss;
-    $ret;
+    $ret, %poss;
 }
 
 multi method create-map($_, &filter)        { self.do-it.map: &filter }
@@ -140,7 +151,13 @@ multi method create-map(Red::Column $_, &?) {
 }
 
 method map(&filter) {
-    self.create-map: what-does-it-do(&filter, self.of), &filter
+    my ($ret, %pos) := what-does-it-do(&filter, self.of);
+    my @next = %pos.kv.map(-> $k, $v { next unless $v ~~ Red::AST::Next; $k });
+    do if @next {
+        self.where(Red::AST::Not.new: @next.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n })).map: { $ret }
+    } else {
+        self.create-map: $ret, &filter
+    }
 }
 #method flatmap(&filter) {
 #    treat-map :flat, $.filter, filter(self.of), &filter
