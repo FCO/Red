@@ -7,18 +7,28 @@ use Red::Driver::CommonSQL;
 unit class Red::Driver::Mock does Red::Driver;
 
 multi prepare-sql(Str:U $_) { Str }
-multi prepare-sql(Str:D $_) { .lc.subst(/<[\w.]>+/, { " $_ " }, :g).subst(/\s+/, " ", :g).trim }
+multi prepare-sql(Str:D $_) {
+    .lc
+    .subst(/<[\w."']>+/, { " $_ " }, :g)
+    .subst(/\s+/, " ", :g)
+    .subst(
+        /["(" \s*] ~ [\s* ")"] (<-[)]>+?)/,
+        -> $/ {
+            "( { $0.Str.split(/\s* "," \s*/).sort.join(", ") } )"
+        },
+        :g
+    )
+    .trim
+}
 
 has Hash        %.when-str{Str};
 has Hash        %.when-re{Regex};
 has Bool        $!die-on-unexpected = False;
 has Red::Driver $.driver-obj = Red::Driver::SQLite.new;
 
-multi method prepare(|c)                                { $!driver-obj.prepare(|c)              }
 multi method default-type-for(Red::Column $a --> Str:D) { $!driver-obj.default-type-for($a)     }
 multi method is-valid-table-name(|c)                    { $!driver-obj.is-valid-table-name(|c)  }
 multi method type-by-name(|c)                           { $!driver-obj.type-by-name(|c)         }
-multi method prepare(|c)                                { $!driver-obj.prepare(|c)              }
 multi method inflate(|c)                                { $!driver-obj.inflate(|c)              }
 method translate(|c)                                    { $!driver-obj.translate(|c)            }
 
@@ -84,7 +94,7 @@ multi method prepare(Str $query) {
     given $query.&prepare-sql {
         with %!when-str{$_} -> % (:$times!, :$counter! is rw, :&run!) {
             $counter++;
-            die "The query '$t-query' should never be ran" unless $times;
+            die "The query '$t-query' should never be called" unless $times;
             die "The query '$t-query' should run $times time(s) but was ran $counter times" if $counter > $times;
             return Statement.new: :driver(self), :iterator(run.iterator)
         }
@@ -98,7 +108,7 @@ multi method prepare(Str $query) {
         }
         if %data {
             %data<counter>++;
-            die "The query '$t-query' should never be ran" unless %data<times> > 0;
+            die "The query '$t-query' should never be called" unless %data<times> > 0;
             die "The query '$t-query' should run %data<times> time(s) but was ran %data<counter> times" if %data<counter> > %data<times>;
             return Statement.new: :driver(self), :iterator(%data<run>.().iterator)
         }

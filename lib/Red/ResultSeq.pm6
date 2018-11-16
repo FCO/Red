@@ -1,6 +1,7 @@
 use Red::AST;
 use Red::Column;
 use Red::AST::Next;
+use Red::AST::Empty;
 use Red::AST::Value;
 use Red::AST::Delete;
 use Red::Attr::Column;
@@ -86,7 +87,14 @@ sub what-does-it-do(&func, \type) {
         $try-again = False;
         {
             $ret = func type;
-            %poss{ hash-to-cond %*VALS } = $ret;
+            %poss{ hash-to-cond %*VALS } = do given $ret {
+                when Empty {
+                    Red::AST::Empty.new
+                }
+                default {
+                    $_
+                }
+            }
 
             CATCH {
                 when CX::Red::Bool { # needed until we can create real custom CX
@@ -105,7 +113,7 @@ sub what-does-it-do(&func, \type) {
             }
         }
     } while $try-again;
-    $ret, %poss;
+    %poss.values.grep(none(Red::AST::Next, Red::AST::Empty)).head, %poss;
 }
 
 multi method create-map($_, &filter)        { self.do-it.map: &filter }
@@ -151,8 +159,10 @@ multi method create-map(Red::Column $_, &?) {
 }
 
 method map(&filter) {
-    my ($ret, %pos) := what-does-it-do(&filter, self.of);
-    my @next = %pos.kv.map(-> $k, $v { next unless $v ~~ Red::AST::Next; $k });
+    my @ret := what-does-it-do(&filter, self.of);
+    my %pos := @ret.tail;
+    my $ret = @ret.head;
+    my @next  = %pos.kv.map(-> $k, $v { next unless $v ~~ Red::AST::Next | Red::AST::Empty;  $k });
     do if @next {
         self.where(Red::AST::Not.new: @next.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n })).map: { $ret }
     } else {
