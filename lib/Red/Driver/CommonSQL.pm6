@@ -1,6 +1,7 @@
 use Red::AST;
 use Red::Model;
 use Red::Column;
+use Red::AST::Case;
 use Red::AST::Infix;
 use Red::AST::Select;
 use Red::AST::Unary;
@@ -138,9 +139,20 @@ multi method translate(Red::AST::IsDefined $_, $context?) {
     "{ self.translate: .col, "is defined" } IS NOT NULL"
 }
 
-#multi method translate(Red::AST::Divisable $_, $context?) {
-#    Red::AST::Eq.new: Red::AST::Mod.new(.left, .right), 0
-#}
+multi method translate(Red::AST::Case $_, $context?) {
+    qq:to/END-SQL/;
+    CASE {self.translate: $_, "case" with .case}
+    {
+        (
+            "WHEN { self.translate: .key,   "when" } THEN {  self.translate: .value, "then" }" for .when
+        ).join("\n").indent: 3
+    }
+    {
+        "ELSE { self.translate: $_, "then" }" with .else
+    }
+    END
+    END-SQL
+}
 
 multi method translate(Red::AST::Infix $_, $context?) {
     "{ self.translate: .left, $context } { .op } { self.translate: .right, $context }"
@@ -148,6 +160,10 @@ multi method translate(Red::AST::Infix $_, $context?) {
 
 multi method translate(Red::AST::Not $_, $context?) {
     "not { self.translate: .value, $context }"
+}
+
+multi method translate(Red::AST::So $_, $context?) {
+    "{ self.translate: .value, $context }"
 }
 
 multi method translate(Red::Column $col, "select") {

@@ -1,6 +1,7 @@
 use Red::AST;
 use Red::Column;
 use Red::AST::Next;
+use Red::AST::Case;
 use Red::AST::Empty;
 use Red::AST::Value;
 use Red::AST::Delete;
@@ -66,7 +67,7 @@ method first(&filter)       { self.grep(&filter).head }
 sub hash-to-cond(%val) {
     my Red::AST $ast;
     for %val.kv -> $cond is copy, Bool $so {
-        $cond = $so ?? $cond !! Red::AST::Not.new: $cond;
+        $cond = $so ?? Red::AST::So.new($cond) !! Red::AST::Not.new($cond);
         with $ast {
             $ast = Red::AST::AND.new: $ast, $cond
         } else {
@@ -159,12 +160,14 @@ multi method create-map(Red::Column $_, &?) {
 }
 
 method map(&filter) {
-    my @ret := what-does-it-do(&filter, self.of);
-    my %pos := @ret.tail;
-    my $ret = @ret.head;
-    my @next  = %pos.kv.map(-> $k, $v { next unless $v ~~ Red::AST::Next | Red::AST::Empty;  $k });
+    my @ret  := what-does-it-do(&filter, self.of);
+    my %when := @ret.tail;
+    my $ret   = @ret.head;
+    my @next  = %when.kv.map(-> $k, $v { next unless $v ~~ Red::AST::Next | Red::AST::Empty;  $k });
     do if @next {
         self.where(Red::AST::Not.new: @next.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n })).map: { $ret }
+    } elsif %when {
+        self.create-map: Red::AST::Case.new(:%when), &filter
     } else {
         self.create-map: $ret, &filter
     }

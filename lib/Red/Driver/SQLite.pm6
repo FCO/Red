@@ -45,6 +45,11 @@ multi method translate(Red::AST::Not $_ where .value ~~ Red::Column, $context?) 
     "($val == 0 OR $val IS NULL)"
 }
 
+multi method translate(Red::AST::So $_ where .value ~~ Red::Column, $context?) {
+	my $val = self.translate: .value, $context;
+    "($val <> 0 AND $val IS NOT NULL)"
+}
+
 multi method translate(Red::AST::LastInsertedRow $_, $context?) {
     my $of     = .of;
     my $filter = Red::AST::Eq.new: $of.^id.head.column, Red::AST::Function.new: :func<last_insert_rowid>;

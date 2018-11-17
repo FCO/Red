@@ -9,4 +9,8 @@ has Red::AST            @.group;
 has                     @.table-list;
 has Red::AST::Chained   $.next;
 
+method args {
+    $!filter, |@!order, |@!group, |$!next.args
+}
+
 method returns {}

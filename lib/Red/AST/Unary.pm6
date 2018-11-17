@@ -44,3 +44,20 @@ class Red::AST::Not does Red::AST::Operator {
 
     method args { $!value }
 }
+
+class Red::AST::So does Red::AST::Operator {
+    has Str     $.type;
+    has         $.value;
+    has Bool    $.returns;
+    method op { "" };
+
+    method should-set(|) { }
+
+    method should-validate {}
+
+    method new($value) {
+        ::?CLASS.bless: :$value
+    }
+
+    method args { $!value }
+}

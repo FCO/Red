@@ -10,7 +10,7 @@ unit role Red::AST;
 #method should-set($class       --> Hash()) { ... }
 #method should-validate(%values --> Bool()) { ... }
 
-#method args { ... }
+method args { ... }
 method returns { ... }
 
 method Bool(--> Bool()) {
@@ -42,4 +42,8 @@ method tables(::?CLASS:D:) {
         }
     }
     |@tables.grep(-> \v { v !=:= Nil }).unique
+}
+
+method WHICH {
+    "{ self.^name }({ $.args>>.WHICH.join: ", " })"
 }

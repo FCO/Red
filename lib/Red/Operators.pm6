@@ -275,6 +275,10 @@ multi prefix:<not>(Red::AST $a) is export {
     Red::AST::Not.new: $a
 }
 
+multi prefix:<so>(Red::AST $a) is export {
+    Red::AST::So.new: $a
+}
+
 multi infix:<AND>(Red::AST $a, Red::AST $b) is export is tighter(&infix:<==>) {
     Red::AST::AND.new: $a, $b
 }
