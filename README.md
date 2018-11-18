@@ -123,7 +123,7 @@ my $p = $author.posts.create:         # INSERT INTO post(author_id, title, body,
     :body<body>
 ;
 
-                                      
+
 ```
 
 DESCRIPTION
@@ -143,6 +143,7 @@ Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is o
 * `is rs-class()`
 * `is rs-class<>`
 * `is table<>`
+* `is nullable`
 
 ## features:
 
@@ -150,6 +151,17 @@ Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is o
 
 ```perl6
 model MyModel is table<custom_table_name> {}
+```
+
+### not nullable columns by default
+
+Red, by default, has not nullable columns, to change it:
+
+```perl6
+model MyModel is nullable {                 # is nullable makes this model's columns nullable by default
+    has Int $.col1 is column;               # this column now is nullable
+    has Int $.col2 is column{ :!nullable }; # this column is not nullable
+}
 ```
 
 ### custom result seq class

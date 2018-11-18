@@ -12,6 +12,10 @@ multi trait_mod:<is>(Mu:U $model, Mu:U :$rs-class!) {
     $model.HOW does role :: { method rs-class(|) { $rs-class<> } }
 }
 
+multi trait_mod:<is>(Mu:U $model, Bool :$nullable!) {
+    $model.HOW does role :: { method default-nullable(|) { $nullable } }
+}
+
 multi trait_mod:<is>(Attribute $attr, Bool :$column!) is export {
     trait_mod:<is>($attr, :column{}) if $column
 }

@@ -48,6 +48,8 @@ method id-values(Red::Model:D $model) {
 	self.id($model).map({ .get_value: $model }).list
 }
 
+multi method default-nullable(|) { False }
+
 multi method id-filter(Red::Model:D $model) {
     $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(self.get-attr: $model, $_), :type(.type) })
         .reduce: { Red::AST::AND.new: $^a, $^b }
