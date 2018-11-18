@@ -19,7 +19,7 @@ model Post is rw {
         :type<string>,
         :deflate{ .keys.join: "," },
         :inflate{ set(.split: ",") }
-    };
+    } = set();
     method delete { $!deleted = True; self.^save }
 }
 

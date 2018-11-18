@@ -11,7 +11,7 @@ has Bool        $.id               = False;
 has Bool        $.auto-increment   = False;
 has             &.references;
 has             $!ref;
-has Bool        $.nullable         = quietly (self.attr.type.^name ~~ /<!after ":"> ":" ["_" | "U" | "D"]/).Str !eq ":D";
+has Bool        $.nullable         = $!attr.package.^default-nullable;
 has Str         $.name             = kebab-to-snake-case self.attr.name.substr: 2;
 has Mu          $.class is required;
 has Str         $.name-alias       = $!name;
