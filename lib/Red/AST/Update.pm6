@@ -23,3 +23,4 @@ multi method new(Red::Model $model) {
                 :value($column.get_value: $model),
         }).Hash)
 }
+method find-column-name {}

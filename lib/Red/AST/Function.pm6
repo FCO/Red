@@ -7,3 +7,4 @@ has Mu:U    $.returns;
 
 method args { |@!args }
 
+method find-column-name { flat @!args>>.find-column-name }

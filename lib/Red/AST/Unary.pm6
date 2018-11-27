@@ -1,5 +1,22 @@
 use Red::AST::Operator;
-class Red::AST::Cast does Red::AST::Operator {
+
+class Red::AST::Not { ... }
+
+role Red::AST::Unary does Red::AST::Operator {
+    method value { ... }
+
+    method find-column-name {
+        $.value.?find-column-name // Empty
+    }
+
+    method find-value {
+        $.value.?find-value // Empty
+    }
+
+    method args { $.value }
+}
+
+class Red::AST::Cast does Red::AST::Unary {
     has Str     $.type;
     has         $.value;
 
@@ -17,18 +34,11 @@ class Red::AST::Cast does Red::AST::Operator {
         ::?CLASS.bless: :$value, :$type
     }
 
-    method find-column-name {
-        $!value.?find-column-name // Empty
-    }
 
-    method find-value {
-        $!value.?find-value // Empty
-    }
-
-    method args { $!value }
+    method not { Red::AST::Not.new: self }
 }
 
-class Red::AST::Not does Red::AST::Operator {
+class Red::AST::Not does Red::AST::Unary {
     has Str     $.type;
     has         $.value;
     has Bool    $.returns;
@@ -42,10 +52,10 @@ class Red::AST::Not does Red::AST::Operator {
         ::?CLASS.bless: :$value
     }
 
-    method args { $!value }
+    method not { Red::AST::So.new: $!value }
 }
 
-class Red::AST::So does Red::AST::Operator {
+class Red::AST::So does Red::AST::Unary {
     has Str     $.type;
     has         $.value;
     has Bool    $.returns;
@@ -59,5 +69,5 @@ class Red::AST::So does Red::AST::Operator {
         ::?CLASS.bless: :$value
     }
 
-    method args { $!value }
+    method not { Red::AST::Not.new: $!value }
 }

@@ -16,3 +16,4 @@ method args { $!of, $!filter, |@!order }
 method tables(::?CLASS:D:) {
     |($!of, |@!table-list, callsame).grep(-> \v { v !=:= Nil }).unique
 }
+method find-column-name {}

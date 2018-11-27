@@ -12,6 +12,8 @@ class Red::AST::Value does Red::AST is Any {
 
     method find-value { $!value }
 
+    method find-column-name {}
+
     method get-value() {
         do if $!column.DEFINITE {
             $!column.deflate.($!value)

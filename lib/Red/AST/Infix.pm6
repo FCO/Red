@@ -1,4 +1,5 @@
 use Red::AST::Operator;
+use Red::AST::Unary;
 unit role Red::AST::Infix does Red::AST::Operator;
 
 has Red::AST $.left  is required;
@@ -23,3 +24,5 @@ multi method new($left, $right, Bool :$bind-left = False, Bool :$bind-right = Fa
 }
 
 method args { $!left, $!right }
+method not { Red::AST::Not.new: self }
+method find-column-name { ($_ with $.left.find-column-name), ($_ with $.right.find-column-name) }

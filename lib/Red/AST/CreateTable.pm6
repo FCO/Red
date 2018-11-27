@@ -7,3 +7,4 @@ has Red::Column @.columns;
 
 method returns { Nil }
 method args { |@!columns }
+method find-column-name {}

@@ -16,3 +16,4 @@ multi method new(Red::Model $model) {
         $column.column.name => Red::AST::Value.new: :column($column.column), :value($column.get_value: $model)
     }).Hash)
 }
+method find-column-name {}

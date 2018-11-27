@@ -57,3 +57,5 @@ method defined {
 }
 
 method args {}
+
+method not { Red::AST::Not.new: self }

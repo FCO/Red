@@ -22,3 +22,5 @@ multi method new(Red::Model:U $model, Red::AST $filter?) {
         :from($model.^table),
         :$filter,
 }
+
+method find-column-name {}

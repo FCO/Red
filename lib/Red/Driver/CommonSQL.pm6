@@ -9,6 +9,7 @@ use Red::AST::Value;
 use Red::AST::Insert;
 use Red::AST::Update;
 use Red::AST::Delete;
+use Red::AST::Infixes;
 use Red::AST::Function;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
@@ -158,8 +159,20 @@ multi method translate(Red::AST::Infix $_, $context?) {
     "{ self.translate: .left, $context } { .op } { self.translate: .right, $context }"
 }
 
+multi method translate(Red::AST::OR $_, $context?) {
+    my $l = self.translate: .left, $context;
+    my $r = self.translate: .right, $context;
+    "{ .left ~~ Red::AST::AND|Red::AST::OR??"($l)"!!$l } OR { .right ~~ Red::AST::AND|Red::AST::OR??"($r)"!!$r }"
+}
+
+multi method translate(Red::AST::AND $_, $context?) {
+    my $l = self.translate: .left, $context;
+    my $r = self.translate: .right, $context;
+    "{ .left ~~ Red::AST::AND|Red::AST::OR??"($l)"!!$l } AND { .right ~~ Red::AST::AND|Red::AST::OR??"($r)"!!$r }"
+}
+
 multi method translate(Red::AST::Not $_, $context?) {
-    "not { self.translate: .value, $context }"
+    "NOT ({ self.translate: .value, $context })"
 }
 
 multi method translate(Red::AST::So $_, $context?) {

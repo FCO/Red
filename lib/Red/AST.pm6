@@ -5,23 +5,20 @@ unit role Red::AST;
 #multi method add(Red::AST:D: Red::AST:D $next) { if $!next { $!next.add: $next } else { $!next = $next } }
 #multi method add(Red::AST:U: Red::AST:D $next) { $next }
 
-#method gist { ... }
+method gist { ... }
+method find-column-name { ... }
 
 #method should-set($class       --> Hash()) { ... }
 #method should-validate(%values --> Bool()) { ... }
+
+method not { die "not on { self.^name } must be implemented" }
 
 method args { ... }
 method returns { ... }
 
 method Bool(--> Bool()) {
     return True unless %*VALS.defined;
-    if not %*VALS{self}:exists {
-        %*VALS{self} = True;
-        @*POSS.push: self
-    } elsif @*POSS.tail === self {
-        %*VALS{self} = False;
-        @*POSS.pop
-    }
+    %*VALS{self} = False without %*VALS{self};
     CX::Red::Bool.new(:ast(self), :value(%*VALS{self})).throw;
     %*VALS{self}
 }

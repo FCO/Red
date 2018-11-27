@@ -8,3 +8,4 @@ method returns { Red::Model }
 method args { $!of }
 
 method new($of) { ::?CLASS.bless: :$of }
+method find-column-name {}

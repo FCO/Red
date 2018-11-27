@@ -66,55 +66,91 @@ method first(&filter)       { self.grep(&filter).head }
 
 sub hash-to-cond(%val) {
     my Red::AST $ast;
-    for %val.kv -> $cond is copy, Bool $so {
-        $cond = $so ?? Red::AST::So.new($cond) !! Red::AST::Not.new($cond);
+    for %val.kv -> Red::AST $cond, Bool $so {
+        my Red::AST $filter = $so ?? Red::AST::So.new($cond) !! $cond.not;
         with $ast {
-            $ast = Red::AST::AND.new: $ast, $cond
+            $ast = Red::AST::AND.new: $ast, $filter
         } else {
-            $ast = $cond
+            $ast = $filter
         }
     }
     $ast
 }
 
-sub what-does-it-do(&func, \type) {
-    my Bool $try-again;
-    my $pair;
-    my $ret;
-    my @*POSS;
-    my %poss := :{};
-    my %*VALS := :{};
-    repeat {
-        $try-again = False;
-        {
-            $ret = func type;
-            %poss{ hash-to-cond %*VALS } = do given $ret {
-                when Empty {
-                    Red::AST::Empty.new
-                }
-                default {
-                    $_
-                }
-            }
+sub found-bool(@values, $try-again is rw, %bools, CX::Red::Bool $ex) {
 
-            CATCH {
-                when CX::Red::Bool { # needed until we can create real custom CX
-                    $try-again = so @*POSS;
-                    .resume
-                }
+    if %bools{$ex.ast}:!exists {
+        $try-again = True;
+        %bools{ $ex.ast }++;
+        if not @values {
+            @values.push: [ :{ $ex.ast => $ex.value }, Red::AST ];
+        } else {
+            my @new-keys = @values.map: -> $item { my %key{Red::AST} = $item.[0].clone; %key{$ex.ast} = $ex.value.succ; %key };
+            for @values {
+                .[0].{$ex.ast} = $ex.value
             }
-            CONTROL {
-                when CX::Red::Bool { # Will work when we can create real custom CX
-                    $try-again = so @*POSS;
-                    .resume
-                }
-                when CX::Next {
-                    %poss{ hash-to-cond %*VALS } = Red::AST::Next.new;
-                }
+            @values.push: |@new-keys.map: -> %key { [ %key, Red::AST ] };
+        }
+    }
+    $ex.resume
+}
+
+sub prepare-response($resp) {
+    do given $resp {
+        when Empty {
+            Red::AST::Empty.new
+        }
+        when Red::AST {
+            $_
+        }
+        default {
+            ast-value $_
+        }
+    }
+}
+
+sub what-does-it-do(&func, \type) {
+    my Bool $try-again = False;
+    my %bools is SetHash;
+    my @values;
+    my %*VALS;
+
+    my $ret = func type;
+    return Red::AST => prepare-response $ret unless $try-again;
+    @values.head.[1] = $ret;
+    my %first-key := :{ @values.head.[0].keys.head.clone => @values.head.[0].values.head.clone };
+    %first-key{ %first-key.keys.head } = True;
+    @values.push: [%first-key, Red::AST];
+
+    for @values -> @data (%values, $response is rw) {
+        $try-again = False;
+        %*VALS := %values;
+        $response = func type;
+        CONTROL {
+            when CX::Next {
+                $response = Red::AST::Next.new;
             }
         }
-    } while $try-again;
-    %poss.values.grep(none(Red::AST::Next, Red::AST::Empty)).head, %poss;
+    }
+    CATCH {
+        when CX::Red::Bool {                # needed until we can create real custom CX
+            found-bool @values, $try-again, %bools, $_
+        }
+    }
+    CONTROL {
+        when CX::Red::Bool {                # Will work when we can create real custom CX
+            found-bool @values, $try-again, %bools, $_
+        }
+        when CX::Next {
+            die
+        }
+    }
+
+    my Red::AST %values{Red::AST};
+    for @values {
+        %values{hash-to-cond(.[0])} = prepare-response .[1]
+    }
+    %values
 }
 
 multi method create-map($_, &filter)        { self.do-it.map: &filter }
@@ -160,17 +196,16 @@ multi method create-map(Red::Column $_, &?) {
 }
 
 method map(&filter) {
-    my @ret  := what-does-it-do(&filter, self.of);
-    my %when := @ret.tail;
-    my $ret   = @ret.head;
-    my @next  = %when.kv.map(-> $k, $v { next unless $v ~~ Red::AST::Next | Red::AST::Empty;  $k });
-    do if @next {
-        self.where(Red::AST::Not.new: @next.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n })).map: { $ret }
-    } elsif %when {
-        self.create-map: Red::AST::Case.new(:%when), &filter
-    } else {
-        self.create-map: $ret, &filter
+    my Red::AST %next{Red::AST};
+    my Red::AST %when{Red::AST};
+    for what-does-it-do(&filter, self.of) {
+        (.value ~~ Red::AST::Next | Red::AST::Empty ?? %next !! %when){.key} = .value
     }
+    my $seq = self;
+    if %next {
+        $seq = self.where(%next.keys.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n }))
+    }
+    $seq.create-map: Red::AST::Case.new(:%when), &filter
 }
 #method flatmap(&filter) {
 #    treat-map :flat, $.filter, filter(self.of), &filter
