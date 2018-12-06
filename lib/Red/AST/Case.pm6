@@ -9,6 +9,8 @@ has Red::AST $.else;
 method new(Red::AST :$case, Red::AST :%when, Red::AST :$else) {
     do if %when.first: { .key ~~ Red::AST::Value and  .key.value === True } -> $_ {
         .value.self
+    } elsif not $case.defined and %when == 1 and not %when.keys.head.defined {
+        %when.values.head
     } else {
         my Red::AST %filteredWhen{Red::AST} = %when.grep: { .key !~~ Red::AST::Value or .key.value !=== False };
         die "No conditions passed to CASE/WHEN" unless %filteredWhen;
