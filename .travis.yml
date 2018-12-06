@@ -6,7 +6,6 @@ perl6:
   - latest
 install:
   - rakudobrew build moar 2018.10
-  - rakudobrew switch moar-2018.10
   - rakudobrew build zef
   - zef install Test::META
   - zef install --deps-only --/test .
