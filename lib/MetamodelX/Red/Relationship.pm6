@@ -59,7 +59,8 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
             }
         } else {
             $self.^add_multi_method: $name, my method (Mu:D:) is rw {
-                 $attr.get_value: self
+                use nqp;
+                nqp::getattr(self, self.WHAT, $attr.name)
             }
         }
     }

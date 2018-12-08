@@ -32,7 +32,7 @@ model Ticket is rw {
     has Str             $.title     is column;
     has Str             $.body      is column;
     has UInt            $.status-id is referencing{  TicketStatus.id };
-    has TicketStatus    $.status    is relationship{ .status-id } = new;
+    has TicketStatus    $.status    is relationship{ .status-id } is rw = new;
     has UInt            $.author-id is referencing{  Person.id }
     has Person          $.author    is relationship{ .author-id }
 }
