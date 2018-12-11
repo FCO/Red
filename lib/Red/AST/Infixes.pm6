@@ -156,6 +156,10 @@ class Red::AST::AND does Red::AST::Infix {
                 my $rv = $right.args.first(*.^can: "get-value").get-value;
                 return ast-value False if $lv.defined and $rv.defined and $lv < $rv
             }
+            if ($left ~~ Red::Column and $right ~~ Red::AST::Not) or ($left ~~ Red::AST::Not and $right ~~ Red::Column) {
+                return ast-value True
+                    if ($left.?value // $left) eqv ($right.?value // $right)
+            }
         }
 
         ::?CLASS.bless: :$left, :$right
