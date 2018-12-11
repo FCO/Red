@@ -24,7 +24,7 @@ class Red::AST::Eq does Red::AST::Infix {
 
     method find-column-name {
         gather for self.args {
-            .take for .?find-column-name
+            .take if .defined for .?find-column-name
         }
     }
 

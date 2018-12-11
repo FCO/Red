@@ -1,3 +1,4 @@
+use v6.c;
 use Red::Model;
 use Red::Attr::Column;
 use Red::Column;
@@ -37,22 +38,22 @@ method as(Mu \type) { self.table: type }
 method orig(Mu \type) { type.WHAT }
 method rs-class-name(Mu \type) { "{type.^name}::ResultSeq" }
 method columns(|) is rw {
-	%!columns
+    %!columns
 }
 
 method id(Mu \type) {
-	%!columns.keys.grep(*.column.id).list
+    %!columns.keys.grep(*.column.id).list
 }
 
 method id-values(Red::Model:D $model) {
-	self.id($model).map({ .get_value: $model }).list
+    self.id($model).map({ .get_value: $model }).list
 }
 
 multi method default-nullable(|) { False }
 
 multi method id-filter(Red::Model:D $model) {
     $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(self.get-attr: $model, $_), :type(.type) })
-        .reduce: { Red::AST::AND.new: $^a, $^b }
+    .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
 multi method id-filter(Red::Model:U $model, $id) {
@@ -62,92 +63,93 @@ multi method id-filter(Red::Model:U $model, $id) {
 
 multi method id-filter(Red::Model:U $model, *%data) {
     $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(%data{.column.attr-name}), :type(.type) })
-        .reduce: { Red::AST::AND.new: $^a, $^b }
+    .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
 method attr-to-column(|) is rw {
-	%!attr-to-column
+    %!attr-to-column
 }
 
 method compose(Mu \type) {
-	self.set-helper-attrs: type;
+    self.set-helper-attrs: type;
 
     type.^prepare-relationships;
 
-	if $.rs-class === Any {
-		my $rs-class-name = $.rs-class-name(type);
-		if try ::($rs-class-name) !~~ Nil {
-			$!rs-class = ::($rs-class-name)
-		} else {
-			$!rs-class := create-resultseq($rs-class-name, type);
-			type.WHO<ResultSeq> := $!rs-class
-		}
-	}
-	die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
-	self.add_role: type, Red::Model;
-	type.^compose-columns;
-	self.add_role: type, role :: {
-		method TWEAK(|) {
-			self.^set-dirty: self.^columns
-		}
-	}
-	self.Metamodel::ClassHOW::compose(type);
-	for type.^attributes -> $attr {
-		%!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;
-	}
+    if $.rs-class === Any {
+        my $rs-class-name = $.rs-class-name(type);
+        if try ::($rs-class-name) !~~ Nil {
+            $!rs-class = ::($rs-class-name)
+        } else {
+            $!rs-class := create-resultseq($rs-class-name, type);
+            type.WHO<ResultSeq> := $!rs-class
+        }
+    }
+    die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
+    self.add_role: type, Red::Model;
+    type.^compose-columns;
+    self.add_role: type, role :: {
+        method TWEAK(|) {
+            self.^set-dirty: self.^columns
+        }
+    }
+    self.Metamodel::ClassHOW::compose(type);
+    for type.^attributes -> $attr {
+        %!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;
+    }
 
     my @columns = %!columns.keys;
 
-	self.compose-dirtable: type;
+    self.compose-dirtable: type;
 }
 
 method add-reference($name, Red::Column $col) {
-	%!references{$name} = $col
+    %!references{$name} = $col
 }
 
 method add-unique-constraint(Mu:U \type, &columns) {
-        @!constraints.push: "unique" => columns(type)
+    @!constraints.push: "unique" => columns(type)
 }
 
 my UInt $alias_num = 1;
 method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
-	my \alias = ::?CLASS.new_type(:$name);
-	alias.HOW does role :: {
+    my \alias = ::?CLASS.new_type(:$name);
+    alias.HOW does role :: {
         method table(|) { type.^table }
         method as(|)    { camel-to-snake-case $name }
         method orig(|)  { type }
     }
-	for %!columns.keys -> $col {
-		alias.^add-comparate-methods: $col
-	}
-	alias.^compose;
-	alias
+    for %!columns.keys -> $col {
+        alias.^add-comparate-methods: $col
+    }
+    alias.^compose;
+    alias
 }
 
 method add-column(Red::Model:U \type, Red::Attr::Column $attr) {
-	%!columns ∪= $attr;
-	my $name = $attr.column.attr-name;
-	with $attr.column.references {
-		self.add-reference: $name, $attr.column
-	}
-	type.^add-comparate-methods($attr);
+    %!columns ∪= $attr;
+    my $name = $attr.column.attr-name;
+    with $attr.column.references {
+        self.add-reference: $name, $attr.column
+    }
+    type.^add-comparate-methods($attr);
     if $attr.has_accessor {
-		if $attr.rw {
-			type.^add_multi_method: $name, method (Red::Model:D:) is rw {
-				$attr.get_value: self
-			}
-		} else {
-			type.^add_multi_method: $name, method (Red::Model:D:) {
-				$attr.get_value: self
-			}
-		}
-	}
+        if $attr.rw {
+            type.^add_multi_method: $name, method (Red::Model:D:) is rw {
+                use nqp;
+                nqp::getattr(self, self.WHAT, $attr.name)
+            }
+        } else {
+            type.^add_multi_method: $name, method (Red::Model:D:) {
+                $attr.get_value: self
+            }
+        }
+    }
 }
 
 method compose-columns(Red::Model:U \type) {
-	for type.^attributes.grep: Red::Attr::Column -> Red::Attr::Column $attr {
-		type.^add-column: $attr
-	}
+    for type.^attributes.grep: Red::Attr::Column -> Red::Attr::Column $attr {
+        type.^add-column: $attr
+    }
 }
 
 method rs($)                        { $.rs-class.new }
@@ -155,7 +157,7 @@ method all($obj)                    { $obj.^rs }
 
 method create-table(\model) {
     die X::Red::InvalidTableName.new: :table(model.^table), :driver($*RED-DB.^name)
-        unless $*RED-DB.is-valid-table-name: model.^table;
+    unless $*RED-DB.is-valid-table-name: model.^table;
     $*RED-DB.execute: Red::AST::CreateTable.new: :name(model.^table), :columns[|model.^columns.keys.map(*.column)]
 }
 
@@ -202,10 +204,10 @@ multi method search(Red::Model:U \model, Red::AST $filter) {
 
 multi method search(Red::Model:U \model, *%filter) {
     samewith
-        model,
-        %filter.kv
-            .map(-> $k, $value { Red::AST::Eq.new: model."$k"(), Red::AST::Value.new: :$value })
-            .reduce: { Red::AST::AND.new: $^a, $^b }
+    model,
+    %filter.kv
+    .map(-> $k, $value { Red::AST::Eq.new: model."$k"(), Red::AST::Value.new: :$value })
+    .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
 method find(|c) { self.search(|c).head }
