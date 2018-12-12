@@ -1,5 +1,6 @@
 use Red::AST::Infix;
 use Red::AST::Value;
+use Red::AST::Optimizer;
 class Red::AST::Eq      { ... }
 class Red::AST::Ne      { ... }
 class Red::AST::Lt      { ... }
@@ -97,22 +98,15 @@ class Red::AST::Ge does Red::AST::Infix {
 }
 
 class Red::AST::AND does Red::AST::Infix {
+	also does SameIfPresent[False];
+	also does SameIfTheOtherIsTrue;
     has $.op = "AND";
     has Bool $.returns;
 
+	multi method optimize($left, $right) { Nil }
+
     multi method new(Red::AST $left is copy, Red::AST $right is copy) {
-        my $args = $left | $right;
-        if $args.isa(Red::AST::Value) and $args.value === False {
-            return ast-value False
-        }
-
-        if $left ~~ Red::AST::Value and $left.value === True {
-            return $right
-        }
-
-        if $right ~~ Red::AST::Value and $right.value === True {
-            return $left
-        }
+		.return with self.optimize: $left, $right;
 
         my $lcols = set $left.find-column-name;
         my $rcols = set $right.find-column-name;
