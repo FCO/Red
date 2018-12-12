@@ -68,6 +68,7 @@
     "Red::Utils"                    : "lib/Red/Utils.pm6",
     "SameIfPresent"                 : "lib/Red/AST/Optimizer.pm6",
     "SameIfTheOtherIsTrue"          : "lib/Red/AST/Optimizer.pm6",
+    "Red::AST::Optimizer"           : "lib/Red/AST/Optimizer.pm6",
     "X::Red::InvalidTableName"      : "lib/X/Red/InvalidTableName.pm6"
   },
   "resources" : [ ],

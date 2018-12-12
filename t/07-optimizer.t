@@ -44,3 +44,4 @@ is-deeply ((C.a > 10)  AND (C.a <= 1)), ast-value False;
 is-deeply ((C.a >= 10) AND (C.a < 1) ), ast-value False;
 is-deeply ((C.a >= 10) AND (C.a <= 1)), ast-value False;
 
+done-testing
