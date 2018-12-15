@@ -12,6 +12,7 @@ class Red::AST::OR      { ... }
 class Red::AST::Mul     { ... }
 class Red::AST::Div     { ... }
 class Red::AST::Mod     { ... }
+class Red::AST::Concat  { ... }
 
 class Red::AST::Eq does Red::AST::Infix {
     has $.op = "=";
@@ -250,4 +251,17 @@ class Red::AST::Mod does Red::AST::Infix {
             .return with .?find-value
         }
     }
+}
+
+class Red::AST::Concat does Red::AST::Infix {
+    has $.op = "~";
+    has Bool $.returns;
+
+    method should-set(--> Hash()) {
+    }
+
+    method should-validate {}
+
+    multi method new(Red::AST $left, Red::AST::Value $ where .value eq "",  *%) { $left }
+    multi method new(Red::AST::Value $ where .value eq "", Red::AST $right, *%) { $right }
 }

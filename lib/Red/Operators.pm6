@@ -271,6 +271,23 @@ multi infix:<%%>(Int() $a is readonly, Red::AST $b) is export {
     Red::AST::Divisable.new: ast-value($a), $b, :cast<int>
 }
 
+# ~
+multi infix:<~>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Concat.new: $a, $b, :cast<str>
+}
+multi infix:<~>(Red::AST $a, Str() $b is rw) is export {
+    Red::AST::Concat.new: $a, ast-value($b), :cast<str>, :bind-right
+}
+multi infix:<~>(Red::AST $a, Str() $b is readonly) is export {
+    Red::AST::Concat.new: $a, ast-value($b), :cast<str>
+}
+multi infix:<~>(Str() $a is rw, Red::AST $b) is export {
+    Red::AST::Concat.new: ast-value($a), $b, :cast<str>, :bind-left
+}
+multi infix:<~>(Str() $a is readonly, Red::AST $b) is export {
+    Red::AST::Concat.new: ast-value($a), $b, :cast<str>
+}
+
 multi prefix:<not>(Red::AST $a) is export {
     Red::AST::Not.new: $a
 }

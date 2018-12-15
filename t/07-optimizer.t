@@ -2,7 +2,11 @@ use Test;
 use Red;
 use Red::AST::Value;
 
-model C { has Int $.a is column; has Int $.b is column}
+model C {
+    has Int $.a is column;
+    has Int $.b is column;
+    has Str $.c is column;
+}
 
 my \f = ast-value False;
 my \t = ast-value True;
@@ -43,5 +47,6 @@ is-deeply ((C.a > 10)  AND (C.a < 1) ), ast-value False;
 is-deeply ((C.a > 10)  AND (C.a <= 1)), ast-value False;
 is-deeply ((C.a >= 10) AND (C.a < 1) ), ast-value False;
 is-deeply ((C.a >= 10) AND (C.a <= 1)), ast-value False;
+
 
 done-testing

@@ -23,6 +23,7 @@
     "Red::AST::Chained"             : "lib/Red/AST/Chained.pm6",
     "Red::AST::CreateTable"         : "lib/Red/AST/CreateTable.pm6",
     "Red::AST::Delete"              : "lib/Red/AST/Delete.pm6",
+    "Red::AST::Concat"              : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Divisable"           : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Eq"                  : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Empty"               : "lib/Red/AST/Empty.pm6",
