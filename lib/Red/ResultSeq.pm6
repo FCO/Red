@@ -113,7 +113,7 @@ sub what-does-it-do(&func, \type) {
     my Bool $try-again = False;
     my %bools is SetHash;
     my @values;
-    my %*VALS;
+    my %*VALS := :{};
 
     my $ret = func type;
     return Red::AST => prepare-response $ret unless $try-again;

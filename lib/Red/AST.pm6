@@ -18,10 +18,12 @@ method returns { ... }
 
 method Bool(--> Bool()) {
     return True unless %*VALS.defined;
-    %*VALS{self} = False without %*VALS{self};
+    %*VALS{self} = False if %*VALS{self}:!exists;
     CX::Red::Bool.new(:ast(self), :value(%*VALS{self})).throw;
     %*VALS{self}
 }
+
+method Str { self }
 
 method transpose(::?CLASS:D: &func) {
     die self unless self.^can: "args";

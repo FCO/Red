@@ -255,7 +255,7 @@ class Red::AST::Mod does Red::AST::Infix {
 
 class Red::AST::Concat does Red::AST::Infix {
     has $.op = "~";
-    has Bool $.returns;
+    has Str $.returns;
 
     method should-set(--> Hash()) {
     }
