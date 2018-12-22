@@ -5,6 +5,16 @@ use Red::AST::Value;
 no precompilation;
 unit module Red::Operators;
 
+# -X
+multi prefix:<->(Red::AST $a) is export {
+    Red::AST::Mul.new: ast-value(-1), $a
+}
+
+# +X
+multi prefix:<+>(Red::AST $a) is export {
+    Red::AST::Mul.new: ast-value(1), $a
+}
+
 # ==
 multi infix:<==>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Eq.new: $a, $b, :cast<num>

@@ -195,6 +195,10 @@ multi method translate(Red::Column $col, "select") {
     } {qq<as "{$col.attr-name}"> if $col.computation || $col.name ne $col.attr-name}]
 }
 
+multi method translate(Red::AST::Mul $_ where .left.?value == -1, "order") {
+    "{ .right.name } DESC"
+}
+
 multi method translate(Red::Column $_, $context?) {
     .name
 }
