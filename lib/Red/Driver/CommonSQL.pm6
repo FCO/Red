@@ -234,14 +234,16 @@ multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
 }
 
 multi method translate(Red::Column $_, "create-table") {
-    <
-        column-name
-        column-type
-        nullable-column
-        column-pk
-        column-auto-increment
-        column-references
-    >
+    (
+        "column-name",
+        "column-type",
+        "nullable-column",
+        (|(
+            "column-pk",
+            "column-auto-increment",
+        ) if .class.^id <= 1),
+        "column-references",
+    )
         .map(-> $context {
             self.translate: $_, $context
         })
@@ -269,8 +271,19 @@ multi method translate(Red::AST::CreateTable $_, $context?) {
     "CREATE TABLE {
         .name
     }(\n{
-        .columns.map({ self.translate: $_, "create-table" }).join(",\n").indent: 3
+        (
+            |.columns.map({ self.translate: $_, "create-table" }),
+            |.constraints.map({ self.translate: $_, "create-table" })
+        ).join(",\n").indent: 3
     }\n)", []
+}
+
+multi method translate(Red::AST::Pk $_, $context?) {
+    "PRIMARY KEY ({ .columns.map({ self.translate: $_, "pk" }).join: ", " })"
+}
+
+multi method translate(Red::AST::Unique $_, $context?) {
+    "UNIQUE ({ .columns.map({ self.translate: $_, "unique" }).join: ", " })"
 }
 
 multi method translate(Red::AST::Insert $_, $context?) {

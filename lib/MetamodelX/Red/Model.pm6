@@ -13,6 +13,7 @@ use Red::AST::Delete;
 use Red::AST::Update;
 use Red::AST::Infixes;
 use Red::AST::CreateTable;
+use Red::AST::Constraints;
 use Red::AST::LastInsertedRow;
 use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
@@ -30,8 +31,9 @@ has %!attr-to-column;
 has $.rs-class;
 has @!constraints;
 
-method references(|) { %!references }
 method constraints(|) { @!constraints.classify: *.key, :as{ .value } }
+
+method references(|) { %!references }
 
 method table(Mu \type) { camel-to-snake-case type.^name }
 method as(Mu \type) { self.table: type }
@@ -97,9 +99,11 @@ method compose(Mu \type) {
         %!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;
     }
 
-    my @columns = %!columns.keys;
-
     self.compose-dirtable: type;
+
+    if type.^constraints<pk>:!exists {
+        type.^add-pk-constraint: type.^id>>.column if type.^id > 1
+    }
 }
 
 method add-reference($name, Red::Column $col) {
@@ -108,6 +112,14 @@ method add-reference($name, Red::Column $col) {
 
 method add-unique-constraint(Mu:U \type, &columns) {
     @!constraints.push: "unique" => columns(type)
+}
+
+multi method add-pk-constraint(Mu:U \type, &columns) {
+    nextwith type, columns(type)
+}
+
+multi method add-pk-constraint(Mu:U \type, @columns) {
+    @!constraints.push: "pk" => @columns
 }
 
 my UInt $alias_num = 1;
@@ -158,7 +170,18 @@ method all($obj)                    { $obj.^rs }
 method create-table(\model) {
     die X::Red::InvalidTableName.new: :table(model.^table), :driver($*RED-DB.^name)
     unless $*RED-DB.is-valid-table-name: model.^table;
-    $*RED-DB.execute: Red::AST::CreateTable.new: :name(model.^table), :columns[|model.^columns.keys.map(*.column)]
+    $*RED-DB.execute:
+        Red::AST::CreateTable.new:
+            :name(model.^table),
+            :columns[|model.^columns.keys.map(*.column)],
+            :constraints[
+                |@!constraints.grep(*.key eq "unique").map({
+                    Red::AST::Unique.new: :columns[|.value]
+                }),
+                |@!constraints.grep(*.key eq "pk").map: {
+                    Red::AST::Pk.new: :columns[|.value]
+                },
+            ]
 }
 
 multi method save($obj, Bool :$insert! where * == True) {
