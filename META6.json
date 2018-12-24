@@ -38,6 +38,7 @@
     "Red::AST::Mod"                 : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Ne"                  : "lib/Red/AST/Infixes.pm6",
     "Red::AST::LastInsertedRow"     : "lib/Red/AST/LastInsertedRow.pm6",
+    "Red::AST::RowId"               : "lib/Red/AST/LastInsertedRow.pm6",
     "Red::AST::Lt"                  : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Gt"                  : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Le"                  : "lib/Red/AST/Infixes.pm6",

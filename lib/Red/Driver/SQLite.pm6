@@ -60,9 +60,11 @@ multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.
     "($val <> '' AND $val IS NOT NULL)"
 }
 
+multi method translate(Red::AST::RowId $_, $context?) { "_rowid_" }
+
 multi method translate(Red::AST::LastInsertedRow $_, $context?) {
     my $of     = .of;
-    my $filter = Red::AST::Eq.new: $of.^id.head.column, Red::AST::Function.new: :func<last_insert_rowid>;
+    my $filter = Red::AST::Eq.new: Red::AST::RowId, Red::AST::Function.new: :func<last_insert_rowid>;
     self.translate(Red::AST::Select.new: :$of, :$filter, :1limit)
 }
 

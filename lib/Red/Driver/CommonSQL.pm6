@@ -321,6 +321,7 @@ multi method translate(Red::AST::LastInsertedRow $_, $context?) { "", [] }
 
 multi method translate(Red::AST:U $_, $context?) { Empty, [] }
 
+multi method default-type-for(Red::Column $ where .attr.type ~~ Rat         --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --> Str:D) {"varchar(32)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Mu          --> Str:D) {"varchar(255)"}

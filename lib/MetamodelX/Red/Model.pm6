@@ -227,10 +227,10 @@ multi method search(Red::Model:U \model, Red::AST $filter) {
 
 multi method search(Red::Model:U \model, *%filter) {
     samewith
-    model,
-    %filter.kv
-    .map(-> $k, $value { Red::AST::Eq.new: model."$k"(), Red::AST::Value.new: :$value })
-    .reduce: { Red::AST::AND.new: $^a, $^b }
+        model,
+        %filter.kv
+            .map(-> $k, $value { Red::AST::Eq.new: model."$k"(), Red::AST::Value.new: :$value })
+            .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
 method find(|c) { self.search(|c).head }

@@ -1,11 +1,18 @@
 use Red::AST;
 use Red::Model;
-unit class Red::AST::LastInsertedRow does Red::AST;
+class Red::AST::LastInsertedRow does Red::AST {
 
-has Mu:U $.of;
+    has Mu:U $.of;
 
-method returns { Red::Model }
-method args { $!of }
+    method returns { Red::Model }
+    method args { $!of }
 
-method new($of) { ::?CLASS.bless: :$of }
-method find-column-name {}
+    method new($of) { ::?CLASS.bless: :$of }
+    method find-column-name {}
+}
+
+class Red::AST::RowId does Red::AST {
+    method returns { Int }
+    method args {}
+    method find-column-name {}
+}
