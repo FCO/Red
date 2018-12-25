@@ -338,4 +338,24 @@ given my model {
     is $a.bool-d, False;
 }
 
+model Post3_1 {
+    has Int      $.id        is id;
+    has Int      $.author-id is referencing({ .id }, :model<Person3>);
+    has          $.author    is relationship({ .author-id }, :model<Person3>)
+}
+
+model Post3_2 {
+    has Int      $.id        is id;
+    has Int      $.author-id is referencing{:model<Person3>, :column<id>};
+    has          $.author    is relationship{:column<author-id>, :model<Person3>}
+}
+
+model Person3 {
+    has Int     $.id    is id;
+}
+
+is-deeply Post3_1.author-id.ref, Person3.id;
+is-deeply Post3_2.author-id.ref, Person3.id;
+is-deeply Post3_2.author-id.ref, Post3_1.author-id.ref;
+
 done-testing

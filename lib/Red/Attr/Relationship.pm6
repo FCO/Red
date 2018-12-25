@@ -20,15 +20,15 @@ method build-relationship(\instance) {
                 my $rel = rel1 type.of;
                 my $val = $rel.ref.attr.get_value: instance;
                 my \value = ast-value $val;
-                type.of.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
+                $rel.class.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
             } else {
                 my $rel = rel1 instance.WHAT;
                 my $val = $rel.attr.get_value: instance;
                 do with $val {
                     my \value = ast-value $val;
-                    type.^rs.where(Red::AST::Eq.new: $rel.ref, value, :bind-right).head
+                    $rel.ref.class.^rs.where(Red::AST::Eq.new: $rel.ref, value, :bind-right).head
                 } else {
-                    type
+                    $rel.ref.class
                 }
             }
         },
