@@ -29,13 +29,13 @@ method prepare-relationships(::Type Mu \type) {
     }
 }
 
-multi method add-relationship(Mu:U $self, Attribute $attr, &reference) {
-    $attr does Red::Attr::Relationship[&reference];
+multi method add-relationship(Mu:U $self, Attribute $attr, &reference, Str :$model) {
+    $attr does Red::Attr::Relationship[&reference, :$model];
     self.add-relationship: $self, $attr
 }
 
-multi method add-relationship(Mu:U $self, Attribute $attr, &ref1, &ref2) {
-    $attr does Red::Attr::Relationship[&ref1, &ref2];
+multi method add-relationship(Mu:U $self, Attribute $attr, &ref1, &ref2, Str :$model ) {
+    $attr does Red::Attr::Relationship[&ref1, &ref2, :$model];
     self.add-relationship: $self, $attr
 }
 

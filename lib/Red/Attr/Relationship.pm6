@@ -1,7 +1,23 @@
 use Red::AST::Infixes;
 use Red::AST::Value;
-unit role Red::Attr::Relationship[&rel1, &rel2?];
+unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model];
 has Mu:U $!type;
+
+has Mu:U $!relationship-model;
+
+has Bool $!loaded-model = False;
+
+method relationship-model(--> Mu:U) {
+    if !$!loaded-model {
+        my $t = ::($model);
+        if !$t && $t ~~ Failure {
+            $t = (require ::($model))
+        }
+        $!relationship-model = $t;
+        $!loaded-model = True;
+    }
+    $!relationship-model;
+}
 
 method set-data(\instance, Mu $value) {
     my $attr = rel1(self.package).attr;
@@ -13,14 +29,15 @@ method set-data(\instance, Mu $value) {
 method build-relationship(\instance) {
     my \type = self.type;
     my \attr = self;
+    my \rel-model = $model ?? self.relationship-model !! type ~~ Positional ?? type.of !! type;
     use nqp;
     nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:
         FETCH => method () {
             do if type ~~ Positional {
-                my $rel = rel1 type.of;
+                my $rel = rel1 rel-model;
                 my $val = $rel.ref.attr.get_value: instance;
                 my \value = ast-value $val;
-                $rel.class.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
+                rel-model.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
             } else {
                 my $rel = rel1 instance.WHAT;
                 my $val = $rel.attr.get_value: instance;
@@ -45,7 +62,7 @@ method build-relationship(\instance) {
 }
 
 method relationship-ast {
-    my \type = self.type ~~ Positional ?? self.type.of !! self.type;
+    my \type = self.type ~~ Positional ?? $model ?? self.relationship-model !! self.type.of !! self.type;
     my $col1 = rel1 type;
     my $col2 = $col1.ref;
     Red::AST::Eq.new: $col1, $col2

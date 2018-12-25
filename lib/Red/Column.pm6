@@ -19,9 +19,45 @@ has Str         $.type;
 has             &.inflate          = *.self;
 has             &.deflate          = *.self;
 has             $.computation;
+has Str         $.references-model;
+has Str         $.references-key;
+
+class ReferencesProxy does Callable {
+    has Str     $.references-model is required;
+    has Str     $.references-key   is required;
+    has         $.model;
+    has Bool    $!tried-model  = False;
+
+    method model( --> Mu:U ) {
+        if !$!tried-model {
+            my $model = ::($!references-model);
+            if !$model && $model ~~ Failure {
+                $model = (require ::($!references-model))
+            }
+            $!model = $model;
+            $!tried-model = True;
+        }
+        $!model;
+    }
+
+    method CALL-ME {
+        self.model."{ $!references-key }"()
+    }
+}
+
+method references(--> Callable) is rw {
+    &!references //= do {
+        if $!references-model && $!references-key {
+            ReferencesProxy.new(:$!references-model, :$!references-key);
+        }
+        else {
+            Callable
+        }
+    }
+}
 
 method ref {
-    $!ref //= .() with &!references
+    $!ref //= .() with self.references
 }
 
 method returns { $!class }
