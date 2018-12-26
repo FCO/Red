@@ -41,7 +41,15 @@ lives-ok {
 }, "create a related post";
 isa-ok $post, Post;
 is $post.author-id, $p.id, "and the author-id of the post is the one we expected";
+is $post.author.name, $p.name, "author name is correct";
 is $post.title, "Red's commit", "post title is correct";
 is $post.body, "Merge branch 'master' of https://github.com/FCO/Red", "post body is correct";
+
+my $post2;
+lives-ok { $post2 = $p.posts.grep( *.id == $post.id).head }, "retrieve post by query";
+
+is $post2.id, $post.id, "got the right post back";
+is $post2.author.name, $p.name, "retrieve author";
+
 
 done-testing

@@ -43,9 +43,9 @@ method build-relationship(\instance) {
                 my $val = $rel.attr.get_value: instance;
                 do with $val {
                     my \value = ast-value $val;
-                    $rel.ref.class.^rs.where(Red::AST::Eq.new: $rel.ref, value, :bind-right).head
+                    rel-model.^rs.where(Red::AST::Eq.new: $rel.ref, value, :bind-right).head
                 } else {
-                    $rel.ref.class
+                    rel-model
                 }
             }
         },
