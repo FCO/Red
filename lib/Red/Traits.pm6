@@ -42,8 +42,8 @@ multi trait_mod:<is>(Attribute $attr, :&referencing!) is export {
     trait_mod:<is>($attr, :column{ :nullable, :references(&referencing) })
 }
 
-multi trait_mod:<is>(Attribute $attr, :$referencing! (:$model!, :$key! )) is export {
-    trait_mod:<is>($attr, :column{ :nullable, references-model => $model, references-key => $key })
+multi trait_mod:<is>(Attribute $attr, :$referencing! (:$model!, :$column! )) is export {
+    trait_mod:<is>($attr, :column{ :nullable, model-name => $model, column-name => $column })
 }
 
 multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {

@@ -19,20 +19,20 @@ has Str         $.type;
 has             &.inflate          = *.self;
 has             &.deflate          = *.self;
 has             $.computation;
-has Str         $.references-model;
-has Str         $.references-key;
+has Str         $.model-name;
+has Str         $.column-name;
 
 class ReferencesProxy does Callable {
-    has Str     $.references-model is required;
-    has Str     $.references-key   is required;
+    has Str     $.model-name is required;
+    has Str     $.column-name   is required;
     has         $.model;
     has Bool    $!tried-model  = False;
 
     method model( --> Mu:U ) {
         if !$!tried-model {
-            my $model = ::($!references-model);
+            my $model = ::($!model-name);
             if !$model && $model ~~ Failure {
-                $model = (require ::($!references-model))
+                $model = (require ::($!model-name))
             }
             $!model = $model;
             $!tried-model = True;
@@ -41,14 +41,14 @@ class ReferencesProxy does Callable {
     }
 
     method CALL-ME {
-        self.model."{ $!references-key }"()
+        self.model."{ $!column-name }"()
     }
 }
 
 method references(--> Callable) is rw {
     &!references //= do {
-        if $!references-model && $!references-key {
-            ReferencesProxy.new(:$!references-model, :$!references-key);
+        if $!model-name && $!column-name {
+            ReferencesProxy.new(:$!model-name, :$!column-name);
         }
         else {
             Callable
