@@ -52,25 +52,6 @@ multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
     }
 }
 
-multi trait_mod:<is>(Attribute $attr, :%relationship! (Str :$column!, Str :$model!, Str :$require = $model)) is export {
-    my &rel := { ."$column"() }
-    trait_mod:<is>($attr, :relationship(&rel, :$model, :$require))
-}
-
-multi trait_mod:<is>(Attribute $attr, :@relationship! (&rel, Str :$model!, Str :$require = $model)) is export {
-    my &relationship := {
-        try require ::($require);
-        my Any:U $type = do if $attr.type ~~ Positional {
-            ::($model)
-        } else {
-            $attr.package
-        }
-
-        rel $type
-    }
-    trait_mod:<is>($attr, :&relationship)
-}
-
 multi trait_mod:<is>(Attribute $attr, :&relationship!) is export {
     $attr.package.^add-relationship: $attr, &relationship
 }
