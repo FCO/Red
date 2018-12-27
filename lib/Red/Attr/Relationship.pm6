@@ -3,6 +3,8 @@ use Red::AST::Value;
 unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model, Str :$require = $model];
 has Mu:U $!type;
 
+has Bool $.has-lazy-relationship = ?$model;
+
 has Mu:U $!relationship-model;
 
 has Bool $!loaded-model = False;
@@ -63,7 +65,8 @@ method build-relationship(\instance) {
 }
 
 method relationship-ast {
-    my \type = self.type ~~ Positional ?? $model ?? self.relationship-model !! self.type.of !! self.type;
+    die "Should be Positional" unless self.type ~~ Positional; # TODO: create a exception for this
+    my \type = $model ?? self.relationship-model !! self.type.of;
     my $col1 = rel1 type;
     my $col2 = $col1.ref;
     Red::AST::Eq.new: $col1, $col2

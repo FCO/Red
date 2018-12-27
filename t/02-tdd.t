@@ -219,6 +219,7 @@ model Post {
 
 model Person {
     has Int  $.id    is column{ :id };
+    has Str  $.name  is column;
     has Post @.posts is relationship{ .author-id };
 }
 
@@ -227,6 +228,13 @@ is Post.new(:42id).^id-values, < 42 >;
 
 isa-ok Person.new(:42id).posts, Post::ResultSeq;
 isa-ok Post.new(:123author-id).author, Person;
+
+is-deeply Post.author-id.ref, Person.id;
+
+lives-ok { Post.^all.grep: *.author.name eq "Bla" }
+
+is-deeply Post.author, Person;
+
 
 model Person2 { ... }
 
@@ -238,8 +246,15 @@ model Post2 {
 
 model Person2 {
     has Int     $.id    is column{ :id };
+    has Str     $.name  is column;
     has Post2   @.posts is relationship{ .author-id };
 }
+
+is-deeply Post2.author-id.ref, Person2.id;
+
+lives-ok { Post2.^all.grep: *.author.name eq "Bla" }
+
+is-deeply Post2.author, Person2;
 
 my $alias1 = Post2.^alias;
 is $alias1.^name,                   "Post2_1";
@@ -352,10 +367,18 @@ model Post3_2 {
 
 model Person3 {
     has Int     $.id    is id;
+    has Str     $.name  is column;
+    has         @.posts is relationship{:column<author-id>, :model<Post3_2>}
 }
 
 is-deeply Post3_1.author-id.ref, Person3.id;
 is-deeply Post3_2.author-id.ref, Person3.id;
 is-deeply Post3_2.author-id.ref, Post3_1.author-id.ref;
+
+lives-ok { Post3_2.^all.grep: *.author.name eq "Bla" }
+
+is-deeply Post3_1.author, Person3;
+is-deeply Post3_2.author, Person3;
+is-deeply Post3_1.author, Post3_2.author;
 
 done-testing

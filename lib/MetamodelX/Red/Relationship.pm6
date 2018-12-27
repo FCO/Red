@@ -68,8 +68,13 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
             }
         }
     }
-    $self.^add_multi_method: $name, my method (Mu:U:) {
-        my $ast = $attr.relationship-ast;
-        $attr.package.^rs.new: :filter($ast)
-    }
+    $self.^add_multi_method: $name, $attr.type ~~ Positional
+        ?? my method (Mu:U:) {
+            my $ast = $attr.relationship-ast;
+            $attr.package.^rs.new: :filter($ast)
+        }
+        !! my method (Mu:U:) {
+            $attr.has-lazy-relationship ?? $attr.relationship-model !! $attr.type;
+        }
+    ;
 }
