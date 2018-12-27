@@ -38,21 +38,16 @@ multi trait_mod:<is>(Attribute $attr, :%column!) is export {
     $attr does Red::Attr::Column($obj);
 }
 
-multi trait_mod:<is>(Attribute $attr, :&referencing!) is export {
+multi trait_mod:<is>(Attribute $attr, :&referencing! ) is export {
     trait_mod:<is>($attr, :column{ :nullable, :references(&referencing) })
 }
 
-multi trait_mod:<is>(Attribute $attr, :%referencing! (Str :$column!, Str :$model!, Str :$require = $model)) is export {
-    my &ref := { ."$column"() }
-    trait_mod:<is>($attr, :referencing(&ref, :$model, :$require))
+multi trait_mod:<is>(Attribute $attr, :$referencing! (&referencing!, Str :$model!, Str :$require = $model )) is export {
+    trait_mod:<is>($attr, :column{ :nullable, :references(&referencing), model-name  => $model, :$require })
 }
 
-multi trait_mod:<is>(Attribute $attr, :$referencing! (&ref, Str :$model!, Str :$require = $model)) is export {
-    my &references := {
-        try require ::($require);
-        ref ::($model)
-    }
-    trait_mod:<is>($attr, :column{ :nullable, :&references })
+multi trait_mod:<is>(Attribute $attr, :$referencing! (Str :$model!, Str :$column!, Str :$require = $model )) is export {
+    trait_mod:<is>($attr, :column{ :nullable, model-name => $model, column-name => $column, :$require })
 }
 
 multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
@@ -61,29 +56,22 @@ multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
     }
 }
 
-multi trait_mod:<is>(Attribute $attr, :%relationship! (Str :$column!, Str :$model!, Str :$require = $model)) is export {
-    my &rel := { ."$column"() }
-    trait_mod:<is>($attr, :relationship(&rel, :$model, :$require))
-}
-
-multi trait_mod:<is>(Attribute $attr, :@relationship! (&rel, Str :$model!, Str :$require = $model)) is export {
-    my &relationship := {
-        try require ::($require);
-        my Any:U $type = do if $attr.type ~~ Positional {
-            ::($model)
-        } else {
-            $attr.package
-        }
-
-        rel $type
-    }
-    trait_mod:<is>($attr, :&relationship)
-}
-
 multi trait_mod:<is>(Attribute $attr, :&relationship!) is export {
     $attr.package.^add-relationship: $attr, &relationship
 }
 
-multi trait_mod:<is>(Attribute $attr, Callable :@relationship! where *.elems == 2) {
+multi trait_mod:<is>(Attribute $attr, Callable :@relationship! where *.elems == 2) is export {
     $attr.package.^add-relationship: $attr, |@relationship
+}
+
+multi trait_mod:<is>(Attribute $attr, :$relationship! (&relationship, Str :$model!, Str :$require = $model)) is export {
+    $attr.package.^add-relationship: $attr, &relationship, :$model, :$require
+}
+
+multi trait_mod:<is>(Attribute $attr, :$relationship! (Str :$column!, Str :$model!, Str :$require = $model)) is export {
+    $attr.package.^add-relationship: $attr, :$column, :$model, :$require
+}
+
+multi trait_mod:<is>(Attribute $attr, Callable :$relationship! ( @relationship! where *.elems == 2, Str :$model!, Str :$require = $model)) {
+    $attr.package.^add-relationship: $attr, |@relationship, :$model, :$require
 }
