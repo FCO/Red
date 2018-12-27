@@ -1,6 +1,6 @@
 use Red::AST::Infixes;
 use Red::AST::Value;
-unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model];
+unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model, Str :$require = $model];
 has Mu:U $!type;
 
 has Mu:U $!relationship-model;
@@ -11,7 +11,8 @@ method relationship-model(--> Mu:U) {
     if !$!loaded-model {
         my $t = ::($model);
         if !$t && $t ~~ Failure {
-            $t = (require ::($model))
+            require ::($require);
+            $t = ::($model);
         }
         $!relationship-model = $t;
         $!loaded-model = True;

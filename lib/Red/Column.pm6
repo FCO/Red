@@ -21,18 +21,21 @@ has             &.deflate          = *.self;
 has             $.computation;
 has Str         $.model-name;
 has Str         $.column-name;
+has Str         $.require          = $!model-name;
 
 class ReferencesProxy does Callable {
-    has Str     $.model-name is required;
+    has Str     $.model-name    is required;
     has Str     $.column-name   is required;
+    has Str     $.require       = $!model-name;
     has         $.model;
-    has Bool    $!tried-model  = False;
+    has Bool    $!tried-model   = False;
 
     method model( --> Mu:U ) {
         if !$!tried-model {
             my $model = ::($!model-name);
             if !$model && $model ~~ Failure {
-                $model = (require ::($!model-name))
+                require ::($!require);
+                $model = ::($!model-name);
             }
             $!model = $model;
             $!tried-model = True;
@@ -48,7 +51,7 @@ class ReferencesProxy does Callable {
 method references(--> Callable) is rw {
     &!references //= do {
         if $!model-name && $!column-name {
-            ReferencesProxy.new(:$!model-name, :$!column-name);
+            ReferencesProxy.new(:$!model-name, :$!column-name, :$!require);
         }
         else {
             Callable
