@@ -29,6 +29,10 @@ method prepare-relationships(::Type Mu \type) {
     }
 }
 
+multi method add-relationship(Mu:U $self, Attribute $attr, Str :$column!, Str :$model!, Str :$require = $model ) {
+    self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require
+}
+
 multi method add-relationship(Mu:U $self, Attribute $attr, &reference, Str :$model, Str :$require = $model) {
     $attr does Red::Attr::Relationship[&reference, :$model, :$require];
     self.add-relationship: $self, $attr

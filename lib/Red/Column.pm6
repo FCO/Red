@@ -10,6 +10,7 @@ has Str         $.attr-name        = $!attr.name.substr: 2;
 has Bool        $.id               = False;
 has Bool        $.auto-increment   = False;
 has             &.references;
+has             &!actual-references;
 has             $!ref;
 has Bool        $.nullable         = $!attr.package.^default-nullable;
 has Str         $.name             = kebab-to-snake-case self.attr.name.substr: 2;
@@ -25,9 +26,10 @@ has Str         $.require          = $!model-name;
 
 class ReferencesProxy does Callable {
     has Str     $.model-name    is required;
-    has Str     $.column-name   is required;
+    has Str     $.column-name;
     has Str     $.require       = $!model-name;
     has         $.model;
+    has         &.references;
     has Bool    $!tried-model   = False;
 
     method model( --> Mu:U ) {
@@ -44,13 +46,26 @@ class ReferencesProxy does Callable {
     }
 
     method CALL-ME {
-        self.model."{ $!column-name }"()
+        if &!references {
+            &!references.(self.model)
+        }
+        else {
+            self.model."{ $!column-name }"()
+        }
     }
 }
 
 method references(--> Callable) is rw {
-    &!references //= do {
-        if $!model-name && $!column-name {
+    &!actual-references //= do {
+        if &!references {
+            if $!model-name {
+                ReferencesProxy.new(:&!references, :$!model-name, :$!require);
+            }
+            else {
+                &!references;
+            }
+        }
+        elsif $!model-name && $!column-name {
             ReferencesProxy.new(:$!model-name, :$!column-name, :$!require);
         }
         else {
