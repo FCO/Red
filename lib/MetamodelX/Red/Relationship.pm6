@@ -75,8 +75,9 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
             $attr.package.^rs.new: :filter($ast)
         }
         !! my method (Mu:U:) {
-            if ($*RED-GREP-FILTER ~~ Red::AST).Bool {
-                $*RED-GREP-FILTER = $attr.relationship-ast
+            (my $grep-filter := $*RED-GREP-FILTER).Bool;
+            if $grep-filter ~~ Red::AST {
+                $grep-filter = $attr.relationship-ast
             }
             $attr.has-lazy-relationship ?? $attr.relationship-model !! $attr.type;
         }
