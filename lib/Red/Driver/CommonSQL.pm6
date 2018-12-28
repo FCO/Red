@@ -185,6 +185,12 @@ multi method translate(Red::AST::Concat $_, $context?) {
     "{ $l } || { $r }"
 }
 
+multi method translate(Red::AST::Like $_, $context?) {
+    my $l = self.translate: .left, $context;
+    my $r = self.translate: .right, $context;
+    "{ $l } like { $r }"
+}
+
 multi method translate(Red::Column $col, "select") {
     qq[{
         with $col.computation {

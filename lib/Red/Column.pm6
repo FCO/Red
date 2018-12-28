@@ -1,8 +1,8 @@
 use Red::Utils;
 use Red::Model;
 use Red::AST;
-use Red::AST::IsDefined;
 use Red::AST::Unary;
+use Red::AST::IsDefined;
 unit class Red::Column does Red::AST;
 
 has Attribute   $.attr is required;

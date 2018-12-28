@@ -13,6 +13,7 @@ class Red::AST::Mul     { ... }
 class Red::AST::Div     { ... }
 class Red::AST::Mod     { ... }
 class Red::AST::Concat  { ... }
+class Red::AST::Like    { ... }
 
 class Red::AST::Eq does Red::AST::Infix {
     has $.op = "=";
@@ -264,4 +265,16 @@ class Red::AST::Concat does Red::AST::Infix {
 
     multi method new(Red::AST $left, Red::AST::Value $ where .value eq "",  *%) { $left }
     multi method new(Red::AST::Value $ where .value eq "", Red::AST $right, *%) { $right }
+}
+
+class Red::AST::Like does Red::AST::Infix {
+    has $.op = "like";
+    has Str $.returns;
+
+    method should-set(--> Hash()) {
+    }
+
+    method should-validate {}
+
+    multi method new(Red::AST $left, Red::AST::Value $ where .value eq "",  *%) { $left }
 }
