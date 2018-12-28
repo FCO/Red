@@ -55,7 +55,14 @@ method transform-item(*%data) {
     self.of.bless: |%data
 }
 
-method grep(&filter)        { self.where: filter self.of }
+method grep(&filter)        {
+    my Red::AST $*RED-GREP-FILTER;
+    my $filter = filter self.of;
+    with $*RED-GREP-FILTER {
+        $filter = Red::AST::AND.new: $_, $filter
+    }
+    self.where: $filter;
+}
 method first(&filter)       { self.grep(&filter).head }
 
 #multi treat-map($seq, $filter, Red::Model     $_, &filter, Bool :$flat                 ) { .^where: $filter }

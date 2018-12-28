@@ -14,6 +14,6 @@ method returns { Red::Model }
 method args { $!of, $!filter, |@!order }
 
 method tables(::?CLASS:D:) {
-    |($!of, |@!table-list, callsame).grep(-> \v { v !=:= Nil }).unique
+    |($!of, |@!table-list, |(.tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique
 }
 method find-column-name {}

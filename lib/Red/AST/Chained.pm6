@@ -10,7 +10,7 @@ has                     @.table-list;
 has Red::AST::Chained   $.next;
 
 method args {
-    $!filter, |@!order, |@!group, |$!next.args
+    $!filter, |@!order, |@!group, |(.args with $!next)
 }
 
 method returns {}

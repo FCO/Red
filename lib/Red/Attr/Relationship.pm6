@@ -65,8 +65,11 @@ method build-relationship(\instance) {
 }
 
 method relationship-ast {
-    die "Should be Positional" unless self.type ~~ Positional; # TODO: create a exception for this
-    my \type = $model ?? self.relationship-model !! self.type.of;
+    my \type = do if self.type ~~ Positional {
+        $model ?? self.relationship-model !! self.type.of
+    } else {
+        self.package
+    }
     my $col1 = rel1 type;
     my $col2 = $col1.ref;
     Red::AST::Eq.new: $col1, $col2

@@ -1,4 +1,5 @@
 use Red::Attr::Relationship;
+use Red::AST;
 
 unit role MetamodelX::Red::Relationship;
 has %!relationships{Attribute};
@@ -74,6 +75,9 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
             $attr.package.^rs.new: :filter($ast)
         }
         !! my method (Mu:U:) {
+            if $*RED-GREP-FILTER ~~ Red::AST {
+                $*RED-GREP-FILTER = $attr.relationship-ast
+            }
             $attr.has-lazy-relationship ?? $attr.relationship-model !! $attr.type;
         }
     ;

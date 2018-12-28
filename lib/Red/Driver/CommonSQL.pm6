@@ -104,7 +104,7 @@ multi method translate(Red::AST::Select $ast, $context?) {
                 " as { .^as }" if .^table ne .^as
             }"
         }).join: ",\n"                                                          if $ast.^can: "tables";
-    my $where   = self.translate: $ast.filter                                   if $ast.?filter;
+    my $where   = self.translate: $ast.filter, "where"                          if $ast.?filter;
     my $order   = $ast.order.map({ self.translate: $_, "order" }).join: ",\n"   if $ast.?order;
     my $limit   = $ast.limit;
     my $group;
@@ -199,6 +199,10 @@ multi method translate(Red::AST::Mul $_ where .left.?value == -1, "order") {
     "{ .right.name } DESC"
 }
 
+multi method translate(Red::Column $_, "where") {
+    "{ { .class.^as } }.{ .name }"
+}
+
 multi method translate(Red::Column $_, $context?) {
     .name
 }
@@ -288,6 +292,7 @@ multi method translate(Red::AST::Unique $_, $context?) {
 
 multi method translate(Red::AST::Insert $_, $context?) {
     my @values = .values.grep({ .value.value.defined });
+    return "INSERT INTO { .into.^table } DEFAULT VALUES", [] unless @values;
     "INSERT INTO {
         .into.^table
     }(\n{

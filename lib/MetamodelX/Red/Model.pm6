@@ -133,6 +133,9 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
     for %!columns.keys -> $col {
         alias.^add-comparate-methods: $col
     }
+    for self.relationships.keys -> $rel {
+        alias.^add-relationship: $rel
+    }
     alias.^compose;
     alias
 }

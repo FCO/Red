@@ -43,6 +43,10 @@ method tables(::?CLASS:D:) {
     |@tables.grep(-> \v { v !=:= Nil }).unique
 }
 
-method WHICH {
-    "{ self.^name }({ $.args>>.WHICH.join: ", " })"
+multi method WHICH(::?CLASS:D:) {
+    ValueObjAt.new: "{ self.^name }|{ $.args>>.WHICH.join: "|" }"
+}
+
+multi method WHICH(::?CLASS:U:) {
+    ValueObjAt.new: "{ self.^name }"
 }
