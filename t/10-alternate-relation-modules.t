@@ -23,7 +23,9 @@ lives-ok { Person.^create-table }, "create table for Person";
 lives-ok { Post.^create-table }, "create table for Post";
 
 my $p;
-lives-ok { $p = Person.^create: :name<Fernando> }, "Create a Person";
+#lives-ok {
+    $p = Person.^create: :name<Fernando>;
+#}, "Create a Person";
 isa-ok $p, Person;
 is $p.name, "Fernando", "and it is the person we expected";
 ok $p.id.defined, "primary key is defined";;

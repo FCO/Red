@@ -5,60 +5,80 @@ unit role MetamodelX::Red::Dirtable;
 
 has %.dirty-cols{Mu} is rw;
 has $!col-data-attr;
+
+method col-data-attr(|) {
+    $!col-data-attr;
+}
+
 has $!dirty-cols-attr;
+
+method dirty-cols-attr(|) {
+    $!dirty-cols-attr;
+}
+
+sub col-data-attr-build(|){
+    {}
+}
+
+sub dirty-cols-attr-build(|) {
+    SetHash.new
+}
 
 method set-helper-attrs(Mu \type) {
     $!col-data-attr = Attribute.new: :name<%!___COLUMNS_DATA___>, :package(type), :type(Any), :!has_accessor;
-    $!col-data-attr.set_build(-> | {{}});
+    $!col-data-attr.set_build: &col-data-attr-build;
     type.^add_attribute: $!col-data-attr;
     $!dirty-cols-attr = Attribute.new: :name<%!___DIRTY_COLS_DATA___>, :package(type), :type(Any), :!has_accessor;
-    $!dirty-cols-attr.set_build(-> | {SetHash.new});
+    $!dirty-cols-attr.set_build: &dirty-cols-attr-build;
     type.^add_attribute: $!dirty-cols-attr;
 }
 
-method compose-dirtable(Mu \type) {
-    my $col-data-attr := $!col-data-attr;
-    my \meta = self;
-    my &build := my submethod TWEAK(\instance: *%data) {
-        my @columns = instance.^columns.keys;
+submethod TWEAK_pr(\instance: *%data) {
+    my @columns = instance.^columns.keys;
 
-        my %new = |@columns.map: {
-            my Mu $built := .build;
-            $built := $built.(type, Mu) if $built ~~ Method;
-            next if $built =:= Mu;
-            .column.attr-name => $built
-        };
+    my %new = |@columns.map: {
+        my Mu $built := .build;
+        $built := $built.(self.WHAT, Mu) if $built ~~ Method;
+        next if $built =:= Mu;
+        .column.attr-name => $built
+    };
 
-        for %data.kv -> $k, $v { %new{$k} = $v }
+    for %data.kv -> $k, $v { %new{$k} = $v }
 
-        $col-data-attr.set_value: instance, %new;
-        for @columns -> \col {
-            my \proxy = Proxy.new:
-                FETCH => method {
-                    $col-data-attr.get_value(instance).{ col.column.attr-name }
-                },
-                STORE => method (\value) {
-                    die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
-                    meta.set-dirty: instance, col;
-                    $col-data-attr.get_value(instance).{ col.column.attr-name } = value
-                }
-            use nqp;
-            nqp::bindattr(nqp::decont(instance), type, col.name, proxy);
-        }
-        for meta.attributes: instance -> $attr {
-            with %data{ $attr.name.substr: 2 } {
-                unless $attr ~~ Red::Attr::Column {
-                    $attr.set_value: self, $_
-                }
+
+    my $col-data-attr := self.^col-data-attr;
+    $col-data-attr.set_value: instance, %new;
+    for @columns -> \col {
+        my \proxy = Proxy.new:
+            FETCH => method {
+                $col-data-attr.get_value(instance).{ col.column.attr-name }
+            },
+            STORE => method (\value) {
+                die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
+                instance.^set-dirty: col;
+                $col-data-attr.get_value(instance).{ col.column.attr-name } = value
             }
-            if $attr ~~ Red::Attr::Relationship {
-                my Mu $built := $attr.build;
-                $built := $built.(type, Mu) if $built ~~ Method;
-                $attr.set-data: instance, $_ with $built
-            }
-        }
-        nextsame
+        use nqp;
+        nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
     }
+    for self.^attributes -> $attr {
+        with %data{ $attr.name.substr: 2 } {
+            unless $attr ~~ Red::Attr::Column {
+                $attr.set_value: self, $_
+            }
+        }
+        if $attr ~~ Red::Attr::Relationship {
+            my Mu $built := $attr.build;
+            $built := $built.(self.WHAT, Mu) if $built ~~ Method;
+            $attr.set-data: instance, $_ with $built
+        }
+    }
+    nextsame
+}
+
+method compose-dirtable(Mu \type) {
+    my \meta = self;
+    my &build := self.^find_method("TWEAK_pr");
 
     if self.declares_method(type, "TWEAK") {
         self.find_method(type, "TWEAK", :no_fallback(1)).wrap: &build;

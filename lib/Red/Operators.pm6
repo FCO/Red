@@ -2,7 +2,6 @@ use Red::AST;
 use Red::AST;
 use Red::AST::Infixes;
 use Red::AST::Value;
-no precompilation;
 unit module Red::Operators;
 
 # -X

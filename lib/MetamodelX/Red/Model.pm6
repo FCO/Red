@@ -51,7 +51,7 @@ method id-values(Red::Model:D $model) {
     self.id($model).map({ .get_value: $model }).list
 }
 
-multi method default-nullable(|) { False }
+method default-nullable(|) is rw { $ //= False }
 
 multi method id-filter(Red::Model:D $model) {
     $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(self.get-attr: $model, $_), :type(.type) })
@@ -79,12 +79,13 @@ method compose(Mu \type) {
 
     if $.rs-class === Any {
         my $rs-class-name = $.rs-class-name(type);
-        if try ::($rs-class-name) !~~ Nil {
-            $!rs-class = ::($rs-class-name)
-        } else {
+        #my $rs-class = ::($rs-class-name);
+        #if !$rs-class && $rs-class !~~ Failure  {
+        #    $!rs-class = $rs-class;
+        #} else {
             $!rs-class := create-resultseq($rs-class-name, type);
             type.WHO<ResultSeq> := $!rs-class
-        }
+        #}
     }
     die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
     self.add_role: type, Red::Model;

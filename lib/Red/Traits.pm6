@@ -13,7 +13,8 @@ multi trait_mod:<is>(Mu:U $model, Mu:U :$rs-class!) {
 }
 
 multi trait_mod:<is>(Mu:U $model, Bool :$nullable!) {
-    $model.HOW does role :: { method default-nullable(|) { $nullable } }
+    say $model.HOW;
+    $model.^default-nullable = True
 }
 
 multi trait_mod:<is>(Attribute $attr, Bool :$column!) is export {
