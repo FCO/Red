@@ -8,7 +8,12 @@ method stt-exec($, *@) { ... }
 
 method predefined-bind { $!predefined-bind = True }
 
-method execute(*@binds) {
+method execute(*@binds) is hidden-from-backtrace {
+    CATCH {
+        default {
+            $!driver.map-exception($_).throw
+        }
+    }
     $!statement = do if $!predefined-bind {
         self.stt-exec: $!statement, |@binds
     } else {

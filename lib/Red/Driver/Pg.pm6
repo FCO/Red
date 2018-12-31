@@ -3,6 +3,7 @@ use Red::Driver;
 use Red::Driver::CommonSQL;
 use Red::Statement;
 use Red::AST::Infixes;
+use X::Red::Exceptions;
 unit class Red::Driver::Pg does Red::Driver::CommonSQL;
 
 has Str $!user;
@@ -62,3 +63,11 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ Bool            
 multi method default-type-for(Red::Column $                                                 --> Str:D) {"varchar(255)"}
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
+
+multi method map-exception(DB::Pg::Error::FatalError $x where /"duplicate key value violates unique constraint"/) {
+    $x.message ~~ /"DETAIL:  Key (" \s* (\w+)+ % [\s* "," \s*] \s* ")=(" .*? ") already exists."/;
+    X::Red::Driver::Mapped::Unique.new:
+        :driver<Pg>,
+        :orig-exception($x),
+        :fields($0>>.Str)
+}

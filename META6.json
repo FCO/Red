@@ -77,7 +77,8 @@
     "SameIfPresent"                 : "lib/Red/AST/Optimizer.pm6",
     "SameIfTheOtherIsTrue"          : "lib/Red/AST/Optimizer.pm6",
     "Red::AST::Optimizer"           : "lib/Red/AST/Optimizer.pm6",
-    "X::Red::InvalidTableName"      : "lib/X/Red/InvalidTableName.pm6"
+    "X::Red::Exceptions"            : "lib/X/Red/Exceptions.pm6",
+    "X::Red::InvalidTableName"      : "lib/X/Red/Exceptions.pm6"
   },
   "resources" : [ ],
   "source-url" : "",
