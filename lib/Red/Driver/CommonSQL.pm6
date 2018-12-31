@@ -335,6 +335,7 @@ multi method translate(Red::AST:U $_, $context?) { Empty, [] }
 multi method default-type-for(Red::Column $ where .attr.type ~~ Rat         --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --> Str:D) {"varchar(32)"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Duration    --> Str:D) {"interval"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Mu          --> Str:D) {"varchar(255)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Str         --> Str:D) {"varchar(255)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --> Str:D) {"integer"}
@@ -344,6 +345,8 @@ multi method default-type-for(Red::Column                                   --> 
 
 multi method inflate(Num $value, Instant  :$to!) { Instant.from-posix: $value }
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
+multi method inflate(Num $value, Duration :$to!) { Duration.new: $value }
+multi method inflate(Int $value, Duration :$to!) { Duration.new: $value }
 
 multi method type-by-name("string" --> "varchar(255)") {}
 
