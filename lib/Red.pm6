@@ -1,4 +1,4 @@
-use v6.d.PREVIEW;
+use v6;
 use Red::Model;
 use Red::Attr::Column;
 use Red::Column;
