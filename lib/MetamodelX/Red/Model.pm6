@@ -30,12 +30,13 @@ has Red::Column %!references;
 has %!attr-to-column;
 has $.rs-class;
 has @!constraints;
+has $!table;
 
 method constraints(|) { @!constraints.classify: *.key, :as{ .value } }
 
 method references(|) { %!references }
 
-method table(Mu \type) { camel-to-snake-case type.^name }
+method table(Mu \type) { $!table //= camel-to-snake-case type.^name }
 method as(Mu \type) { self.table: type }
 method orig(Mu \type) { type.WHAT }
 method rs-class-name(Mu \type) { "{type.^name}::ResultSeq" }

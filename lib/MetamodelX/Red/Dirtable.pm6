@@ -33,7 +33,7 @@ method set-helper-attrs(Mu \type) {
     type.^add_attribute: $!dirty-cols-attr;
 }
 
-submethod TWEAK_pr(\instance: *%data) {
+submethod !TWEAK_pr(\instance: *%data) {
     my @columns = instance.^columns.keys;
 
     my %new = |@columns.map: {
@@ -78,7 +78,7 @@ submethod TWEAK_pr(\instance: *%data) {
 
 method compose-dirtable(Mu \type) {
     my \meta = self;
-    my &build := self.^find_method("TWEAK_pr");
+    state &build //= self.^find_private_method("TWEAK_pr");
 
     if self.declares_method(type, "TWEAK") {
         self.find_method(type, "TWEAK", :no_fallback(1)).wrap: &build;

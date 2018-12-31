@@ -8,7 +8,7 @@ method relationships(|) {
     %!relationships
 }
 
-submethod BUILD_pr(*%data) {
+submethod !BUILD_pr(*%data) {
     my \instance = self;
     for self.^relationships.keys -> $rel {
         $rel.build-relationship: instance
@@ -21,9 +21,13 @@ submethod BUILD_pr(*%data) {
     nextsame
 }
 
+method !get-build {
+    & //= self.^find_private_method('BUILD_pr')
+}
+
 method prepare-relationships(::Type Mu \type) {
     my %rels := %!relationships;
-    my &meth = self.^find_method('BUILD_pr');
+    my &meth := self!get-build;
 
     if type.^declares_method("BUILD") {
         type.^find_method("BUILD", :no_fallback(1)).wrap: &meth;
