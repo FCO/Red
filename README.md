@@ -14,7 +14,7 @@ Red - A **WiP** ORM for raku
 INSTALL
 =======
 
-Install with (you need rakudo 2018.12-94-g495ac7c00 or newer):
+Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):
 
 ```
 zef install Red
