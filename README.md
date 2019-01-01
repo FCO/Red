@@ -14,45 +14,16 @@ Red - A **WiP** ORM for raku
 INSTALL
 =======
 
-It's not published yet, so you'll have to clone the repo:
+Install with (you need rakudo 2018.12-94-g495ac7c00 or newer):
 
 ```
-git clone https://github.com/FCO/Red.git
+zef install Red
 ```
-
-install it's dependencies
-
-```
-zef install . --deps-only
-```
-
-once cloned, you can run it with `-Ilib` on the repo's root:
-
-
-```
-perl6 -Ilib examples/blog/index.p6
-```
-
 
 ```
 perl6 -Ilib -MRed -e 'your code here'
 ```
 
-```
-perl6 -Ilib t/02-tdd.t # this runs 1 test file
-```
-
-or you can run the tests with
-
-```
-zef test .
-```
-
-or install it with
-
-```
-zef install .
-```
 
 SYNOPSIS
 ========
@@ -141,8 +112,8 @@ Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is o
 * `is serial`
 * `is referencing{}`
 * `is relationship{}`
-* `is rs-class()`
-* `is rs-class<>`
+* ~~`is rs-class()`~~ TODO
+* ~~`is rs-class<>`~~ TODO
 * `is table<>`
 * `is nullable`
 
@@ -165,7 +136,7 @@ model MyModel is nullable {                 # is nullable makes this model's col
 }
 ```
 
-### custom result seq class
+### ~~custom result seq class~~ TODO
 
 ```perl6
 class CustomResultSeq does Red::ResultSeq {}
