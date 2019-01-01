@@ -3,10 +3,10 @@ use Red;
 
 model Event { ... }
 
-model Ticket is rw {
+model Ticket {
     has Str $.id            is id;
     has Str $.title         is column;
-    has Str $.status        is column;
+    has Str $.status        is column is rw;
 
     multi method apply-event(@events) {
         my $ticket = self;
@@ -24,7 +24,7 @@ model Ticket is rw {
     }
 }
 
-model Event {
+model Event is nullable {
     has UInt        $.id            is serial;
     has DateTime    $.created       is column{:!nullable} .= now;
     has Str         $.ticket-id     is column;
