@@ -8,6 +8,7 @@ use Red::AST::Infixes;
 use Red::AST::Function;
 use Red::Driver::CommonSQL;
 use Red::AST::LastInsertedRow;
+use X::Red::Exceptions;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
 has $.database = q<:memory:>;
@@ -72,3 +73,11 @@ multi method translate(Red::Column $_, "column-auto-increment") { "AUTOINCREMENT
 
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> Str:D) {"integer"}
+
+multi method map-exception(Exception $x where { .code == 19 and .native-message.starts-with: "UNIQUE constraint failed:" }) {
+    X::Red::Driver::Mapped::Unique.new:
+        :driver<SQLite>,
+        :orig-exception($x),
+        :fields($x.native-message.substr(26).split: /\s* "," \s*/)
+}
+

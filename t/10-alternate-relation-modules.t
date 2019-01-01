@@ -32,7 +32,7 @@ ok $p.id.defined, "primary key is defined";;
 is $p.id, 1, "and it is the value we expected";
 
 my $post;
-lives-ok { 
+lives-ok {
     $post = $p.posts.create: :title("Red's commit"), :body("Merge branch 'master' of https://github.com/FCO/Red") ;
 }, "create a related post";
 isa-ok $post, Post;

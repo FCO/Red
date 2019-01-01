@@ -26,7 +26,7 @@ model BestTree::Store is table<tree> {
 
     method suggest-tree(Rat() $longitude, Rat() $latitude, Rat() $height, Str $description) {
         CATCH {
-            when /"UNIQUE constraint failed"/ {
+            when X::Red::Driver::Mapped::Unique {
                 die X::Tree::ExistsInTheSameArea.new: :$longitude, :$latitude
             }
         }

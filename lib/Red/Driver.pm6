@@ -1,5 +1,6 @@
 use Red::AST;
 use Red::Column;
+use X::Red::Exceptions;
 unit role Red::Driver;
 
 method translate(Red::AST, $?)                          { ... }
@@ -11,6 +12,10 @@ multi method is-valid-table-name(Str --> Bool)          { True }
 
 multi method type-by-name("string" --> "text")          {}
 multi method type-by-name("int"    --> "integer")       {}
+
+multi method map-exception($orig-exception) {
+    X::Red::Driver::Mapped::UnknownError.new: :$orig-exception
+}
 
 multi method prepare("") {class :: { method execute(|) {} }}
 
