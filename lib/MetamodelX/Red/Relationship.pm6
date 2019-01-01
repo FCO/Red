@@ -8,20 +8,26 @@ method relationships(|) {
     %!relationships
 }
 
+submethod !BUILD_pr(*%data) {
+    my \instance = self;
+    for self.^relationships.keys -> $rel {
+        $rel.build-relationship: instance
+    }
+    for self.^attributes -> $attr {
+        with %data{ $attr.name.substr: 2 } {
+            $attr.set_value: self, $_
+        }
+    }
+    nextsame
+}
+
+method !get-build {
+    & //= self.^find_private_method('BUILD_pr')
+}
+
 method prepare-relationships(::Type Mu \type) {
     my %rels := %!relationships;
-    my &meth = my submethod BUILD(*%data) {
-        my \instance = self;
-        for %rels.keys -> $rel {
-            $rel.build-relationship: instance
-        }
-        for self.^attributes -> $attr {
-            with %data{ $attr.name.substr: 2 } {
-                $attr.set_value: self, $_
-            }
-        }
-        nextsame
-    }
+    my &meth := self!get-build;
 
     if type.^declares_method("BUILD") {
         type.^find_method("BUILD", :no_fallback(1)).wrap: &meth;

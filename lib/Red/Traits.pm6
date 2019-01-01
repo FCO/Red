@@ -13,7 +13,7 @@ multi trait_mod:<is>(Mu:U $model, Mu:U :$rs-class!) {
 }
 
 multi trait_mod:<is>(Mu:U $model, Bool :$nullable!) {
-    $model.HOW does role :: { method default-nullable(|) { $nullable } }
+    $model.^default-nullable = True
 }
 
 multi trait_mod:<is>(Attribute $attr, Bool :$column!) is export {
@@ -51,9 +51,7 @@ multi trait_mod:<is>(Attribute $attr, :$referencing! (Str :$model!, Str :$column
 }
 
 multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
-    $model.HOW does role :: {
-        method table(|) { $table<> }
-    }
+    $model.HOW.^attributes.first({ .name eq '$!table' }).set_value($model.HOW, $table)
 }
 
 multi trait_mod:<is>(Attribute $attr, :&relationship!) is export {
