@@ -10,7 +10,7 @@
   "description" : "A perl6 ORM",
   "license" : "Artistic-2.0",
   "name" : "Red",
-  "perl" : "6.c",
+  "perl" : "6.d",
   "provides" : {
     "CX::Red::Bool"                 : "lib/CX/Red/Bool.pm6",
     "MetamodelX::Red::Comparate"    : "lib/MetamodelX/Red/Comparate.pm6",
