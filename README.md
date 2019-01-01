@@ -20,11 +20,6 @@ Install with (you need rakudo 2018.12-94-g495ac7c00 or newer):
 zef install Red
 ```
 
-```
-perl6 -Ilib -MRed -e 'your code here'
-```
-
-
 SYNOPSIS
 ========
 
