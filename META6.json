@@ -81,7 +81,7 @@
     "X::Red::InvalidTableName"      : "lib/X/Red/Exceptions.pm6"
   },
   "resources" : [ ],
-  "source-url" : "",
+  "source-url" : "https://github.com/FCO/Red.git",
   "tags" : [ "ORM", "database", "map", "relational" ],
   "test-depends" : [
       "Test::META"
