@@ -12,9 +12,8 @@ has Bool        $.auto-increment   = False;
 has             &.references;
 has             &!actual-references;
 has             $!ref;
-has Bool        $.nullable         = $!attr.package.^default-nullable;
+has Bool        $.nullable         = $!attr.package.HOW.?default-nullable($!attr.package) // False;
 has Str         $.name             = kebab-to-snake-case self.attr.name.substr: 2;
-has Mu          $.class is required;
 has Str         $.name-alias       = $!name;
 has Str         $.type;
 has             &.inflate          = *.self;
@@ -55,6 +54,8 @@ class ReferencesProxy does Callable {
     }
 }
 
+method class { self.attr.package }
+
 method references(--> Callable) is rw {
     &!actual-references //= do {
         if &!references {
@@ -78,11 +79,11 @@ method ref {
     $!ref //= .() with self.references
 }
 
-method returns { $!class }
+method returns { $!attr.package }
 
 method transpose(&func) { func self }
 
-method gist { "{$!class.^as}.{$!name-alias}" }
+method gist { "{$!attr.package.^as}.{$!name-alias}" }
 
 method cast(Str $type) {
     Red::AST::Cast.new: self, $type
@@ -97,7 +98,7 @@ method alias(Str $name) {
 }
 
 method as(Str $name, :$nullable = True) {
-    self.clone: attr-name => $name, :$name, id => False, :$nullable, attr => Attribute, class => Mu
+    self.clone: attr-name => $name, :$name, id => False, :$nullable, attr => Attribute
 }
 
 method TWEAK(:$unique) {
