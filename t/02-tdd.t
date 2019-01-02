@@ -262,6 +262,7 @@ is-deeply Post2.author, Person2;
 my $alias1 = Post2.^alias;
 is $alias1.^name,                   "Post2_1";
 is $alias1,                         $alias1.id.class;
+isnt $alias1,                       Post2;
 is Post2,                           Post2.id.class;
 
 is $alias1.id.attr,                 Post2.id.attr;

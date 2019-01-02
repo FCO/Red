@@ -167,18 +167,28 @@ multi method create-map(Red::AST    $_, &?) {
     my \Meta  = ::("MetamodelX::Red::Model").WHAT;
     my \model = Meta.new.new_type;
     my $attr  = Attribute.new: :name<$!data>, :package(model), :type(.returns), :has_accessor, :build(.returns);
-    my $col   = Red::Column.new: :name-alias<data>, :attr-name<data>, :type(.returns.^name), :$attr, :class(model), :computation($_);
-    $attr does Red::Attr::Column($col);
+    $attr does Red::Attr::Column(%(
+        :name-alias<data>,
+        :attr-name<data>,
+        :type(.returns.^name),
+        :$attr,
+        :class(model),
+        :computation($_)
+    ));
+    $attr.create-column;
+    my $col = $_;
+    $attr.column does role :: { method class { $col.class } }
     model.^add_attribute: $attr;
     model.^add_method: "no-table", my method no-table { True }
     model.^compose;
     model.^add-column: $attr;
     self.clone(
-        :chain($!chain.clone:
-            :post({ .data }),
-            :$.filter,
-            :table-list[(|@.table-list, self.of).unique],
-            |%_
+        :chain(
+            $!chain.clone:
+                :post({ .data }),
+                :filter($.filter),
+                :table-list[(|@.table-list, self.of).unique],
+                |%_
         )
     ) but role :: { method of { model } }
 }
@@ -186,8 +196,10 @@ multi method create-map(Red::Column $_, &?) {
     my \Meta  = .class.HOW.WHAT;
     my \model = Meta.new.new_type;
     my $attr  = Attribute.new: :name<$!data>, :package(model), :type(.attr.type), :has_accessor, :build(.attr.type);
-    my $col   = .attr.column.clone: :name-alias<data>, :attr-name<data>;
-    $attr does Red::Attr::Column($col);
+    $attr does Red::Attr::Column(%(|.Hash, :name-alias<data>, :attr-name<data>));
+    $attr.create-column;
+    my $col = $_;
+    $attr.column does role :: { method class { $col.class } }
     model.^add_attribute: $attr;
     model.^add_method: "no-table", my method no-table { True }
     model.^compose;

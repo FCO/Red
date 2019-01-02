@@ -32,7 +32,7 @@ has $.rs-class;
 has @!constraints;
 has $!table;
 
-method constraints(|) { @!constraints.classify: *.key, :as{ .value } }
+method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 
 method references(|) { %!references }
 
@@ -140,7 +140,16 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
         method orig(|)  { type }
     }
     for %!columns.keys -> $col {
-        alias.^add-comparate-methods: $col
+        my $new-col = Attribute.new:
+            :name($col.name),
+            :package(alias),
+            :type($col.type),
+            :has_acessor($col.has_accessor),
+            :build($col.build)
+        ;
+        $new-col does Red::Attr::Column($col.column.Hash);
+        $new-col.create-column;
+        alias.^add-comparate-methods: $new-col
     }
     for self.relationships.keys -> $rel {
         alias.^add-relationship: $rel

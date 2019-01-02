@@ -10,14 +10,14 @@ multi prepare-sql(Str:U $_) { Str }
 multi prepare-sql(Str:D $_) {
     .lc
     .subst(/<[\w."']>+/, { " $_ " }, :g)
-    .subst(/\s+/, " ", :g)
     .subst(
-        /["(" \s*] ~ [\s* ")"] (<-[)]>+)/,
+        /[\s* "(" \s*] ~ [\s* ")" \s*] ([<-[()]>+|"(" ~ ")" [\s*.*?\s*]])+?/,
         -> $/ {
-            "( { $0.Str.split(/\s* "," \s*/).sort.join(", ") } )"
+            "( { $0.Str.split(/\s* "," \s*/).sort.join(" , ") } )"
         },
         :g
     )
+    .subst(/\s+/, " ", :g)
     .trim
 }
 
