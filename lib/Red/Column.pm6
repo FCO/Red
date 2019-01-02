@@ -83,7 +83,7 @@ method returns { $!attr.package }
 
 method transpose(&func) { func self }
 
-method gist { "{$!attr.package.^as}.{$!name-alias}" }
+method gist { "{$!attr.package.HOW.^can("as") ?? $!attr.package.^as !! "({ $!attr.package.^name })"}.{$!name-alias}" }
 
 method cast(Str $type) {
     Red::AST::Cast.new: self, $type

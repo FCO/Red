@@ -95,8 +95,15 @@ method compose(Mu \type) {
             self.^set-dirty: self.^columns
         }
     }
+    my @roles-cols = self.roles_to_compose(type).flatmap(*.^attributes).grep: Red::Attr::Column;
+    for @roles-cols -> Red::Attr::Column $attr {
+        self.add-comparate-methods: type, $attr
+    }
+
+    type.^compose-columns;
     self.Metamodel::ClassHOW::compose(type);
     type.^compose-columns;
+
     for type.^attributes -> $attr {
         %!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;
     }
@@ -142,29 +149,31 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
     alias
 }
 
-method add-column(Red::Model:U \type, Red::Attr::Column $attr) {
-    %!columns ∪= $attr;
-    my $name = $attr.column.attr-name;
-    with $attr.column.references {
-        self.add-reference: $name, $attr.column
-    }
-    type.^add-comparate-methods($attr);
-    if $attr.has_accessor {
-        if $attr.rw {
-            type.^add_multi_method: $name, method (Red::Model:D:) is rw {
-                use nqp;
-                nqp::getattr(self, self.WHAT, $attr.name)
-            }
-        } else {
-            type.^add_multi_method: $name, method (Red::Model:D:) {
-                $attr.get_value: self
+method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
+    if %!columns ∌ $attr {
+        %!columns ∪= $attr;
+        my $name = $attr.column.attr-name;
+        with $attr.column.references {
+            self.add-reference: $name, $attr.column
+        }
+        self.add-comparate-methods(T, $attr);
+        if $attr.has_accessor {
+            if $attr.rw {
+                T.^add_multi_method: $name, method (Red::Model:D:) is rw {
+                    use nqp;
+                    nqp::getattr(self, self.WHAT, $attr.name)
+                }
+            } else {
+                T.^add_multi_method: $name, method (Red::Model:D:) {
+                    $attr.get_value: self
+                }
             }
         }
     }
 }
 
 method compose-columns(Red::Model:U \type) {
-    for type.^attributes.grep: Red::Attr::Column -> Red::Attr::Column $attr {
+    for self.attributes(type).grep: Red::Attr::Column -> Red::Attr::Column $attr {
         $attr.create-column;
         type.^add-column: $attr
     }
