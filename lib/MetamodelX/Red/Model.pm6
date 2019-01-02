@@ -90,13 +90,13 @@ method compose(Mu \type) {
     }
     die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
     self.add_role: type, Red::Model;
-    type.^compose-columns;
     self.add_role: type, role :: {
         method TWEAK(|) {
             self.^set-dirty: self.^columns
         }
     }
     self.Metamodel::ClassHOW::compose(type);
+    type.^compose-columns;
     for type.^attributes -> $attr {
         %!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;
     }
@@ -165,6 +165,7 @@ method add-column(Red::Model:U \type, Red::Attr::Column $attr) {
 
 method compose-columns(Red::Model:U \type) {
     for type.^attributes.grep: Red::Attr::Column -> Red::Attr::Column $attr {
+        $attr.create-column;
         type.^add-column: $attr
     }
 }
