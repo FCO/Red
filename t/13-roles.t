@@ -3,6 +3,8 @@ use Red;
 use Red::Column;
 
 my $*RED-DB = database "Mock";
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 $*RED-DB.die-on-unexpected;
 
 role Bla { has Str $.a is column }
@@ -63,7 +65,7 @@ Blo.^create-table;
 Blu.^create-table;
 
 $*RED-DB.when: :once, :return[{:1id}], "insert into blu default values";
-$*RED-DB.when: :once, :return[{:1id, :1blu-id}], "insert into blo( blu_id )values( 1 )";
+$*RED-DB.when: :once, :return[{:1id, :1blu-id},], "insert into blo( blu_id )values( 1 )";
 
 my $blu = Blu.^create;
 my $blo = $blu.blo.create;
