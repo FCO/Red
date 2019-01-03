@@ -23,7 +23,11 @@ class Red::AST::Value does Red::AST is Any {
     }
 }
 
-sub ast-value($value) is export {
+multi ast-value(Red::AST $value) is export {
+    $value
+}
+
+multi ast-value($value) is export {
     Red::AST::Value.new: :$value
 }
 

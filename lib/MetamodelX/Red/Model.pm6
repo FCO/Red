@@ -30,7 +30,7 @@ has Red::Column %!references;
 has %!attr-to-column;
 has $.rs-class;
 has @!constraints;
-has $!table;
+has $.table;
 
 method constraints(|) { @!constraints.classify: *.key, :as{ .value } }
 

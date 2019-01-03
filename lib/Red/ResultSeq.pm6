@@ -4,6 +4,7 @@ use Red::AST::Next;
 use Red::AST::Case;
 use Red::AST::Empty;
 use Red::AST::Value;
+use Red::AST::Update;
 use Red::AST::Delete;
 use Red::Attr::Column;
 use Red::AST::Infixes;
@@ -30,6 +31,7 @@ method cache {
 }
 
 has Red::AST::Chained $.chain handles <filter limit post order group table-list> .= new;
+has Red::AST          %.update;
 
 method iterator {
     Red::ResultSeq::Iterator.new: :of($.of), :$.filter, :$.limit, :&.post, :@.order, :@.table-list, :@.group
@@ -165,7 +167,7 @@ multi method create-map(Red::Model  $_, &?) { .^where: $.filter }
 multi method create-map(Red::AST    $_, &?) {
     require ::("MetamodelX::Red::Model");
     my \Meta  = ::("MetamodelX::Red::Model").WHAT;
-    my \model = Meta.new.new_type;
+    my \model = Meta.new(:table(self.of.^table)).new_type: :name(self.of.^name);
     my $attr  = Attribute.new: :name<$!data>, :package(model), :type(.returns), :has_accessor, :build(.returns);
     my $col   = Red::Column.new: :name-alias<data>, :attr-name<data>, :type(.returns.^name), :$attr, :class(model), :computation($_);
     $attr does Red::Attr::Column($col);
@@ -184,7 +186,7 @@ multi method create-map(Red::AST    $_, &?) {
 }
 multi method create-map(Red::Column $_, &?) {
     my \Meta  = .class.HOW.WHAT;
-    my \model = Meta.new.new_type;
+    my \model = Meta.new(:table(self.of.^table)).new_type: :name(self.of.^name);
     my $attr  = Attribute.new: :name<$!data>, :package(model), :type(.attr.type), :has_accessor, :build(.attr.type);
     my $col   = .attr.column.clone: :name-alias<data>, :attr-name<data>;
     $attr does Red::Attr::Column($col);
@@ -205,6 +207,7 @@ multi method create-map(Red::Column $_, &?) {
 method map(&filter) {
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};
+    my %*UPDATE := %!update;
     for what-does-it-do(&filter, self.of) {
         (.value ~~ Red::AST::Next | Red::AST::Empty ?? %next !! %when){.key} = .value
     }
@@ -261,4 +264,8 @@ method create(::?CLASS:D: *%pars) {
 
 method delete(::?CLASS:D:) {
     $*RED-DB.execute: Red::AST::Delete.new: $.of, $.filter
+}
+
+method save(::?CLASS:D:) {
+    $*RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(%!update), :filter($.filter)
 }
