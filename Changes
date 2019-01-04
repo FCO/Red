@@ -2,5 +2,8 @@ Revision history for Red
 
 {{$NEXT}}
 
+0.0.2  2019-01-04T00:35:02-02:00
+    - Fix pod
+
 0.0.1  2019-01-03T22:37:53-02:00
     - Initial version
