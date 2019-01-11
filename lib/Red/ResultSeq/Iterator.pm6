@@ -3,17 +3,14 @@ use Red::Driver;
 use Red::AST::Select;
 unit class Red::ResultSeq::Iterator does Iterator;
 has Mu:U        $.of            is required;
-has Red::AST    $.filter        is required;
-has Int         $.limit;
-has Red::AST    @.order;
-has Red::AST    @.group;
+has Red::AST    $.ast           is required;
 has             &.post;
-has             @.table-list;
 has             $!st-handler;
 has Red::Driver $!driver = $*RED-DB // die Q[$*RED-DB wasn't defined];
 
 submethod TWEAK(|) {
-    my ($sql, @bind) := $!driver.translate: $!driver.optimize: Red::AST::Select.new: :$!of, :$!filter, :$!limit, :@!order, :@!table-list, :@!group;
+    my $ast = $!driver.optimize: $!ast;
+    my ($sql, @bind) := $!driver.translate: $ast;
 
     unless $*RED-DRY-RUN {
         $!st-handler = $!driver.prepare: $sql;

@@ -10,6 +10,7 @@ use Red::Attr::Column;
 use Red::AST::Infixes;
 use Red::AST::Chained;
 use Red::AST::Function;
+use Red::AST::MultiSelect;
 use Red::ResultAssociative;
 use Red::ResultSeq::Iterator;
 unit role Red::ResultSeq[Mu $of = Any] does Sequence;
@@ -34,7 +35,7 @@ has Red::AST::Chained $.chain handles <filter limit post order group table-list>
 has Red::AST          %.update;
 
 method iterator {
-    Red::ResultSeq::Iterator.new: :of($.of), :$.filter, :$.limit, :&.post, :@.order, :@.table-list, :@.group
+    Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post
 }
 
 method Seq {
@@ -66,12 +67,6 @@ method grep(&filter)        {
     self.where: $filter;
 }
 method first(&filter)       { self.grep(&filter).head }
-
-#multi treat-map($seq, $filter, Red::Model     $_, &filter, Bool :$flat                 ) { .^where: $filter }
-#multi treat-map($seq, $filter,                $_, &filter, Bool :$flat                 ) { $seq.do-it.map: &filter }
-#multi treat-map($seq, $filter, Red::ResultSeq $_, &filter, Bool :$flat! where * == True) { $_ }
-#multi treat-map($seq, $filter, Red::Column    $_, &filter, Bool :$flat                 ) {
-#}
 
 sub hash-to-cond(%val) {
     my Red::AST $ast;
@@ -268,4 +263,27 @@ method delete(::?CLASS:D:) {
 
 method save(::?CLASS:D:) {
     $*RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(%!update), :filter($.filter)
+}
+
+method union(::?CLASS:D: $other) {
+    my Red::AST $filter = self.ast.union: $other.ast;
+    self.clone: :chain(Red::AST::Chained.new: :$filter)
+}
+
+method intersect(::?CLASS:D: $other) {
+    my Red::AST $filter = self.ast.intersect: $other.ast;
+    self.clone: :chain(Red::AST::Chained.new: :$filter)
+}
+
+method minus(::?CLASS:D: $other) {
+    my Red::AST $filter = self.ast.minus: $other.ast;
+    self.clone: :chain(Red::AST::Chained.new: :$filter)
+}
+
+method ast {
+    if $.filter ~~ Red::AST::MultiSelect {
+        $.filter
+    } else {
+        Red::AST::Select.new: :$.of, :$.filter, :$.limit, :@.order, :@.table-list, :@.group;
+    }
 }

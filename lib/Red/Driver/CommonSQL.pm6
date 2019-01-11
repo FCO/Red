@@ -87,6 +87,18 @@ method reserved-words {<
 
 proto method translate(Red::AST, $?) {*}
 
+multi method translate(Red::AST::Union $ast, $context?) {
+    $ast.selects.map({ self.translate: $_, "multi-select" }).join("\nUNION\n"), []
+}
+
+multi method translate(Red::AST::Intersect $ast, $context?) {
+    $ast.selects.map({ self.translate: $_, "multi-select" }).join("\nINTERSECT\n"), []
+}
+
+multi method translate(Red::AST::Minus $ast, $context?) {
+    $ast.selects.map({ self.translate: $_, "multi-select" }).join("\nMINUS\n"), []
+}
+
 multi method translate(Red::AST::Select $ast, $context?) {
     my $sel    = do given $ast.of {
         when Red::Model {

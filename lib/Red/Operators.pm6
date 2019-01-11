@@ -2,6 +2,7 @@ use Red::AST;
 use Red::AST;
 use Red::AST::Infixes;
 use Red::AST::Value;
+use Red::ResultSeq;
 unit module Red::Operators;
 
 # -X
@@ -312,3 +313,24 @@ multi infix:<AND>(Red::AST $a, Red::AST $b) is export is tighter(&infix:<==>) {
 #multi infix:<OR>(Red::AST $a, Red::AST $b) is export {
 #    Red::AST::OR.new: $a, $b
 #}
+
+multi infix:<∪>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
+    $a (|) $b
+}
+multi infix:<(|)>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
+    $a.union: $b
+}
+
+multi infix:<∩>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
+    $a (&) $b
+}
+multi infix:<(&)>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
+    $a.intersect: $b
+}
+
+multi infix:<⊖>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
+    $a (-) $b
+}
+multi infix:<(-)>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
+    $a.minus: $b
+}
