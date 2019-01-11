@@ -33,9 +33,7 @@ multi trait_mod:<is>(Attribute $attr, Bool :$serial! where $_ == True) is export
 }
 
 multi trait_mod:<is>(Attribute $attr, :%column!) is export {
-    my $class = $attr.package;
-    my $obj = Red::Column.new: |%column, :$attr, :$class;
-    $attr does Red::Attr::Column($obj);
+    $attr does Red::Attr::Column(%column);
 }
 
 multi trait_mod:<is>(Attribute $attr, :&referencing! ) is export {
