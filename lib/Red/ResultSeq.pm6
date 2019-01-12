@@ -267,17 +267,17 @@ method save(::?CLASS:D:) {
 
 method union(::?CLASS:D: $other) {
     my Red::AST $filter = self.ast.union: $other.ast;
-    self.clone: :chain(Red::AST::Chained.new: :$filter)
+    self.clone: :chain($!chain.clone: :$filter)
 }
 
 method intersect(::?CLASS:D: $other) {
     my Red::AST $filter = self.ast.intersect: $other.ast;
-    self.clone: :chain(Red::AST::Chained.new: :$filter)
+    self.clone: :chain($!chain.clone: :$filter)
 }
 
 method minus(::?CLASS:D: $other) {
     my Red::AST $filter = self.ast.minus: $other.ast;
-    self.clone: :chain(Red::AST::Chained.new: :$filter)
+    self.clone: :chain($!chain.clone: :$filter)
 }
 
 method ast {
