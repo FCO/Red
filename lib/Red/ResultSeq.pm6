@@ -157,42 +157,43 @@ sub what-does-it-do(&func, \type) {
     %values
 }
 
-multi method create-map($_, &filter)        { self.do-it.map: &filter }
-multi method create-map(Red::Model  $_, &?) { .^where: $.filter }
-multi method create-map(Red::AST    $_, &?) {
-    require ::("MetamodelX::Red::Model");
-    my \Meta  = ::("MetamodelX::Red::Model").WHAT;
+#multi method create-map($, :&filter)     { self.do-it.map: &filter }
+multi method create-map(Red::Model  $_, :filter(&)) { .^where: $.filter }
+multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) {
+    my \Meta  = self.of.HOW.WHAT;
     my \model = Meta.new(:table(self.of.^table)).new_type: :name(self.of.^name);
-    my $attr  = Attribute.new: :name<$!data>, :package(model), :type(.returns), :has_accessor, :build(.returns);
-    my $col   = Red::Column.new: :name-alias<data>, :attr-name<data>, :type(.returns.^name), :$attr, :class(model), :computation($_);
-    $attr does Red::Attr::Column($col);
-    model.^add_attribute: $attr;
-    model.^add_method: "no-table", my method no-table { True }
+    my @attrs = do for @ret {
+        my $attr  = Attribute.new:
+            :name($_ ~~ Red::Column ?? .attr.name !! '$!data'),
+            :package(model),
+            :type(.returns),
+            :has_accessor,
+            :build(.returns),
+        ;
+        my $col;
+        if $_ !~~ Red::Column {
+            $col = Red::Column.new:
+                :name-alias<data>,
+                :attr-name<data>,
+                :type(.returns.^name),
+                :$attr,
+                :class(model),
+                :computation($_),
+            ;
+        } else {
+            $col = .clone
+        }
+        $attr does Red::Attr::Column($col);
+        model.^add_attribute: $attr;
+        model.^add_method: "no-table", my method no-table { True }
+        $attr
+    }
     model.^compose;
-    model.^add-column: $attr;
+    model.^add-column: $_ for @attrs;
     self.clone(
         :chain($!chain.clone:
-            :post({ .data }),
             :$.filter,
-            :table-list[(|@.table-list, self.of).unique],
-            |%_
-        )
-    ) but role :: { method of { model } }
-}
-multi method create-map(Red::Column $_, &?) {
-    my \Meta  = .class.HOW.WHAT;
-    my \model = Meta.new(:table(self.of.^table)).new_type: :name(self.of.^name);
-    my $attr  = Attribute.new: :name<$!data>, :package(model), :type(.attr.type), :has_accessor, :build(.attr.type);
-    my $col   = .attr.column.clone: :name-alias<data>, :attr-name<data>;
-    $attr does Red::Attr::Column($col);
-    model.^add_attribute: $attr;
-    model.^add_method: "no-table", my method no-table { True }
-    model.^compose;
-    model.^add-column: $attr;
-    self.clone(
-        :chain($!chain.clone:
-            :post({ .data }),
-            :$.filter,
+            :post{ my @data = do for @attrs -> $attr { ."{$attr.name.substr: 2}"() }; @data == 1 ?? @data.head !! |@data },
             :table-list[(|@.table-list, self.of).unique],
             |%_
         )
@@ -210,7 +211,7 @@ method map(&filter) {
     if %next {
         $seq = self.where(%next.keys.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n }))
     }
-    $seq.create-map: Red::AST::Case.new(:%when), &filter
+    $seq.create-map: Red::AST::Case.new(:%when), :filter(&filter)
 }
 #method flatmap(&filter) {
 #    treat-map :flat, $.filter, filter(self.of), &filter

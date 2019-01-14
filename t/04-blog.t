@@ -65,6 +65,6 @@ is $p.active-posts.map(*.id), (2);
 
 isa-ok $p.posts.head.created, DateTime;
 
-cmp-ok $p.posts.map(*.tags).head, &[~~], set <bla ble>;
+is-deeply $p.posts.map(*.tags).head, set <bla ble>;
 
 done-testing

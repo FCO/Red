@@ -80,6 +80,7 @@ method compose(Mu \type) {
 
     if $.rs-class === Any {
         my $rs-class-name = $.rs-class-name(type);
+        # TODO
         #my $rs-class = ::($rs-class-name);
         #if !$rs-class && $rs-class !~~ Failure  {
         #    $!rs-class = $rs-class;

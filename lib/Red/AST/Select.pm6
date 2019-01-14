@@ -6,6 +6,7 @@ use Red::AST::Minus;
 unit class Red::AST::Select does Red::AST;
 
 has Mu:U        $.of;
+has Red::AST    @.fields;
 has Red::AST    $.filter;
 has Red::AST    @.order;
 has Int         $.limit;

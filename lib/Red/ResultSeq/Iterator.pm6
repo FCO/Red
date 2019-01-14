@@ -33,7 +33,7 @@ method pull-one {
                         %cols{$k}.inflate.($v),
                         :to($!of."$k"().attr.type)
                     )
-                } // (%cols{$k} ?? %cols{$k}.inflate.($v) !! $v)
+                } // (%cols{$k} ?? %cols{$k}.inflate.($v) !! die "Inflator not found for column '$k'")
             } else { Empty }
         }).Hash)
     ;
