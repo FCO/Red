@@ -1,5 +1,6 @@
 use Red::Column;
 use Red::Attr::Column;
+use Red::Attr::Relationship;
 use Red::ResultSeq;
 unit module Red::Traits;
 
@@ -53,21 +54,22 @@ multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
 }
 
 multi trait_mod:<is>(Attribute $attr, :&relationship!) is export {
-    $attr.package.^add-relationship: $attr, &relationship
+    $attr does Red::Attr::Relationship[&relationship]
 }
 
 multi trait_mod:<is>(Attribute $attr, Callable :@relationship! where *.elems == 2) is export {
-    $attr.package.^add-relationship: $attr, |@relationship
+    $attr does Red::Attr::Relationship[|@relationship]
 }
 
 multi trait_mod:<is>(Attribute $attr, :$relationship! (&relationship, Str :$model!, Str :$require = $model)) is export {
-    $attr.package.^add-relationship: $attr, &relationship, :$model, :$require
+    $attr does Red::Attr::Relationship[&relationship, :$model, :$require]
 }
 
 multi trait_mod:<is>(Attribute $attr, :$relationship! (Str :$column!, Str :$model!, Str :$require = $model)) is export {
-    $attr.package.^add-relationship: $attr, :$column, :$model, :$require
+    my &relationship := { ."$column"() };
+    $attr does Red::Attr::Relationship[&relationship, :$model, :$require]
 }
 
 multi trait_mod:<is>(Attribute $attr, Callable :$relationship! ( @relationship! where *.elems == 2, Str :$model!, Str :$require = $model)) {
-    $attr.package.^add-relationship: $attr, |@relationship, :$model, :$require
+    $attr does Red::Attr::Relationship[|@relationship, :$model, :$require]
 }

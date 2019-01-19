@@ -83,4 +83,24 @@ isa-ok Ble.a, Red::Column;
 isa-ok Bli.a, Red::Column;
 isa-ok Bli.b, Red::Column;
 
+{
+    model State { ... }
+    model Workflow is table('tinky_workflow') is rw {
+        has Int     $.id                is serial;
+        has Str     $.name              is column{:unique};
+        has State   @.states            is relationship{ .workflow-id };
+    }
+
+    role WithWorkflow {
+        # TODO: rakudo bug doesnt let create the clousure inside the role
+        has Int         $.workflow-id   is referencing{  Workflow.id };
+        has Workflow    $.workflow      is relationship{ .workflow-id };
+    }
+
+    model State is table('tinky_state') does WithWorkflow is rw {
+        has Int $.id            is serial;
+        has Str $.name          is column;
+    }
+}
+
 done-testing

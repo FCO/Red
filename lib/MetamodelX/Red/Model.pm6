@@ -1,6 +1,7 @@
 use v6;
 use Red::Model;
 use Red::Attr::Column;
+use Red::Attr::Relationship;
 use Red::Column;
 use Red::Utils;
 use Red::ResultSeq;
@@ -80,6 +81,7 @@ method compose(Mu \type) {
 
     if $.rs-class === Any {
         my $rs-class-name = $.rs-class-name(type);
+        # TODO
         #my $rs-class = ::($rs-class-name);
         #if !$rs-class && $rs-class !~~ Failure  {
         #    $!rs-class = $rs-class;
@@ -100,9 +102,11 @@ method compose(Mu \type) {
         self.add-comparate-methods: type, $attr
     }
 
-    type.^compose-columns;
     self.Metamodel::ClassHOW::compose(type);
     type.^compose-columns;
+    for type.^attributes.grep: Red::Attr::Relationship -> $attr {
+        type.^add-relationship: $attr
+    }
 
     for type.^attributes -> $attr {
         %!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;
