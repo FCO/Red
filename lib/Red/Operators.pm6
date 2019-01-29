@@ -1,5 +1,4 @@
 use Red::AST;
-use Red::AST;
 use Red::AST::Infixes;
 use Red::AST::Value;
 use Red::ResultSeq;

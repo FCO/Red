@@ -32,7 +32,7 @@ has $.rs-class;
 has @!constraints;
 has $.table;
 
-method constraints(|) { @!constraints.classify: *.key, :as{ .value } }
+method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 
 method references(|) { %!references }
 
@@ -91,13 +91,20 @@ method compose(Mu \type) {
     }
     die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
     self.add_role: type, Red::Model;
-    type.^compose-columns;
     self.add_role: type, role :: {
         method TWEAK(|) {
             self.^set-dirty: self.^columns
         }
     }
+    my @roles-cols = self.roles_to_compose(type).flatmap(*.^attributes).grep: Red::Attr::Column;
+    for @roles-cols -> Red::Attr::Column $attr {
+        self.add-comparate-methods: type, $attr
+    }
+
+    type.^compose-columns;
     self.Metamodel::ClassHOW::compose(type);
+    type.^compose-columns;
+
     for type.^attributes -> $attr {
         %!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;
     }
@@ -134,7 +141,16 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
         method orig(|)  { type }
     }
     for %!columns.keys -> $col {
-        alias.^add-comparate-methods: $col
+        my $new-col = Attribute.new:
+            :name($col.name),
+            :package(alias),
+            :type($col.type),
+            :has_acessor($col.has_accessor),
+            :build($col.build)
+        ;
+        $new-col does Red::Attr::Column($col.column.Hash);
+        $new-col.create-column;
+        alias.^add-comparate-methods: $new-col
     }
     for self.relationships.keys -> $rel {
         alias.^add-relationship: $rel
@@ -143,29 +159,32 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
     alias
 }
 
-method add-column(Red::Model:U \type, Red::Attr::Column $attr) {
-    %!columns ∪= $attr;
-    my $name = $attr.column.attr-name;
-    with $attr.column.references {
-        self.add-reference: $name, $attr.column
-    }
-    type.^add-comparate-methods($attr);
-    if $attr.has_accessor {
-        if $attr.rw {
-            type.^add_multi_method: $name, method (Red::Model:D:) is rw {
-                use nqp;
-                nqp::getattr(self, self.WHAT, $attr.name)
-            }
-        } else {
-            type.^add_multi_method: $name, method (Red::Model:D:) {
-                $attr.get_value: self
+method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
+    if %!columns ∌ $attr {
+        %!columns ∪= $attr;
+        my $name = $attr.column.attr-name;
+        with $attr.column.references {
+            self.add-reference: $name, $attr.column
+        }
+        self.add-comparate-methods(T, $attr);
+        if $attr.has_accessor {
+            if $attr.rw {
+                T.^add_multi_method: $name, method (Red::Model:D:) is rw {
+                    use nqp;
+                    nqp::getattr(self, self.WHAT, $attr.name)
+                }
+            } else {
+                T.^add_multi_method: $name, method (Red::Model:D:) {
+                    $attr.get_value: self
+                }
             }
         }
     }
 }
 
 method compose-columns(Red::Model:U \type) {
-    for type.^attributes.grep: Red::Attr::Column -> Red::Attr::Column $attr {
+    for self.attributes(type).grep: Red::Attr::Column -> Red::Attr::Column $attr {
+        $attr.create-column;
         type.^add-column: $attr
     }
 }

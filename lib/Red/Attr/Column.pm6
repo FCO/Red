@@ -1,6 +1,13 @@
 use Red::Column;
 
 unit role Red::Attr::Column;
-has Red::Column $.column;
+has             %.args;
+has Red::Column $!column;
 
 method perl { $!column.gist }
+
+method column { $!column }
+
+method create-column {
+    $!column .= new: |%!args, :attr(self)
+}
