@@ -118,14 +118,14 @@ sub prepare-response($resp) {
     }
 }
 
-sub what-does-it-do(&func, \type) {
+sub what-does-it-do(&func, \type --> Hash) {
     my Bool $try-again = False;
     my %bools is SetHash;
     my @values;
     my %*VALS := :{};
 
     my $ret = func type;
-    return Red::AST => prepare-response $ret unless $try-again;
+    return :{ Red::AST => prepare-response $ret } unless $try-again;
     @values.head.[1] = $ret;
     my %first-key := :{ @values.head.[0].keys.head.clone => @values.head.[0].values.head.clone };
     %first-key{ %first-key.keys.head } = True;
@@ -139,11 +139,9 @@ sub what-does-it-do(&func, \type) {
             when CX::Next {
                 $response = Red::AST::Next.new;
             }
-        }
-    }
-    CATCH {
-        when CX::Red::Bool {                # needed until we can create real custom CX
-            found-bool @values, $try-again, %bools, $_
+            when CX::Red::Bool {                # Will work when we can create real custom CX
+                found-bool @values, $try-again, %bools, $_
+            }
         }
     }
     CONTROL {
@@ -220,8 +218,8 @@ method map(&filter) {
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};
     my %*UPDATE := %!update;
-    for what-does-it-do(&filter, self.of) {
-        (.value ~~ Red::AST::Next | Red::AST::Empty ?? %next !! %when){.key} = .value
+    for what-does-it-do(&filter, self.of) -> Pair $_ {
+        (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
     }
     my $seq = self;
     if %next {
