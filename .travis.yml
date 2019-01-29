@@ -7,4 +7,4 @@ install:
   - zef install --deps-only --/test .
 sudo: false
 script:
-  - zef install .
+  - zef install .  --debug
