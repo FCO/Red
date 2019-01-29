@@ -2,6 +2,7 @@ language: perl6
 perl6:
   - latest
 install:
+  - rakudobrew build moar
   - rakudobrew build-zef
   - zef install Test::META
   - zef install --deps-only --/test .
