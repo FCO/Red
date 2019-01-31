@@ -8,10 +8,18 @@ unit class Red::Driver::Pg does Red::Driver::CommonSQL;
 
 has Str $!user;
 has Str $!password;
-has Str $!host = "127.0.0.1";
-has Int $!port = 5432;
+has Str $!host;
+has Int $!port;
 has Str $!dbname;
-has $!dbh = DB::Pg.new: conninfo => "{ "user=$_" with $!user } { "password=$_" with $!password } { "host=$_" with $!host } { "port=$_" with $!port } { "dbname=$_" with $!dbname }";
+has DB::Pg $!dbh;
+
+
+submethod BUILD(DB::Pg :$!dbh, Str :$!user, Str :$!password, Str :$!host = "127.0.0.1", Int :$!port = 5432, Str :$!dbname) {
+}
+
+submethod TWEAK() {
+    $!dbh //= DB::Pg.new: conninfo => "{ "user=$_" with $!user } { "password=$_" with $!password } { "host=$_" with $!host } { "port=$_" with $!port } { "dbname=$_" with $!dbname }";
+}
 
 multi method translate(Red::Column $_, "column-auto-increment") { Empty }
 
