@@ -31,6 +31,7 @@ method pull-one {
                 CATCH {
                     dd $data;
                     dd %cols;
+                    dd %cols{$k.gist};
                     dd $!driver.^lookup("inflate").candidates>>.signature;
                     .rethrow
                 }
