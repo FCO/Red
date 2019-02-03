@@ -75,6 +75,8 @@ multi method translate(Red::Column $_, "column-auto-increment") { "AUTOINCREMENT
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> Str:D) {"integer"}
 
+multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" }
+
 multi method map-exception(Exception $x where { .code == 19 and .native-message.starts-with: "UNIQUE constraint failed:" }) {
     X::Red::Driver::Mapped::Unique.new:
         :driver<SQLite>,
