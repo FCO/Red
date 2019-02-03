@@ -28,12 +28,20 @@ method pull-one {
     my $obj = $!of.new: |(%($data).kv
         .map(-> $k, $v {
             do with $v {
-                $k => try {
-                    $!driver.inflate(
-                        %cols{$k}.inflate.($v),
-                        :to($!of."$k"().attr.type)
-                    )
-                } // (%cols{$k} ?? %cols{$k}.inflate.($v) !! die "Inflator not found for column '$k'")
+                CATCH {
+                    dd $data;
+                    dd %cols;
+                    dd $!driver.^lookup("inflate").candidates>>.signature;
+                    .rethrow
+                }
+                die "Column '$k' not found" unless %cols{$k}:exists;
+                die "Inflator not defined for column '$k'" without %cols{$k}.inflate;
+                my $inflated = %cols{$k}.inflate.($v);
+                $inflated = $!driver.inflate(
+                    %cols{$k}.inflate.($v),
+                    :to($!of."$k"().attr.type)
+                ) if \($!driver, $inflated, :to($!of."$k"().attr.type)) ~~ $!driver.^lookup("inflate").candidates.any.signature;
+                $k => $inflated
             } else { Empty }
         }).Hash)
     ;
