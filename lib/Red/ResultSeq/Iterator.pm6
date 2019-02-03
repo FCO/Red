@@ -34,7 +34,7 @@ method pull-one {
                     dd $!driver.^lookup("inflate").candidates>>.signature;
                     .rethrow
                 }
-                die "Column '$k' not found" unless %cols{$k}:exists;
+                die "Column '$k' not found" without %cols{$k.gist};
                 die "Inflator not defined for column '$k'" without %cols{$k}.inflate;
                 my $inflated = %cols{$k}.inflate.($v);
                 $inflated = $!driver.inflate(
