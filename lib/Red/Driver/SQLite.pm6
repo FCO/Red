@@ -1,4 +1,5 @@
 use DBIish;
+need DBDish::SQLite::Connection;
 use Red::AST;
 use Red::Driver;
 use Red::Statement;
@@ -12,7 +13,15 @@ use X::Red::Exceptions;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
 has $.database = q<:memory:>;
-has $!dbh = DBIish.connect: "SQLite", :$!database;
+has DBDish::SQLite::Connection $!dbh;
+
+
+submethod BUILD(DBDish::SQLite::Connection :$!dbh, Str :$!database = q<:memory:> ) {
+}
+
+submethod TWEAK() {
+    $!dbh //= DBIish.connect: "SQLite", :$!database;
+}
 
 class Statement does Red::Statement {
     method stt-exec($stt, *@bind) {
@@ -42,22 +51,22 @@ multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
 }
 
 multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {
-	my $val = self.translate: .value, $context;
+    my $val = self.translate: .value, $context;
     "($val == 0 OR $val IS NULL)"
 }
 
 multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {
-	my $val = self.translate: .value, $context;
+    my $val = self.translate: .value, $context;
     "($val <> 0 AND $val IS NOT NULL)"
 }
 
 multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type ~~ Str }, $context?) {
-	my $val = self.translate: .value, $context;
+    my $val = self.translate: .value, $context;
     "($val == '' OR $val IS NULL)"
 }
 
 multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.attr.type ~~ Str }, $context?) {
-	my $val = self.translate: .value, $context;
+    my $val = self.translate: .value, $context;
     "($val <> '' AND $val IS NOT NULL)"
 }
 
