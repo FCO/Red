@@ -242,8 +242,8 @@ multi method head(UInt:D $num) {
     self.do-it(:limit(min $num, $.limit)).head: $num
 }
 
-method elems {
-    self.create-map: Red::AST::Function.new: :func<count>, :args[ast-value *]
+method elems( --> Int) {
+    (self.create-map: Red::AST::Function.new: :func<count>, :args[ast-value *]).Str.Int;
 }
 
 method new-object(::?CLASS:D: *%pars) {
