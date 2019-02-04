@@ -9,6 +9,10 @@ has Mu:U $!relationship-model;
 
 has Bool $!loaded-model = False;
 
+method rel {
+    rel1 self.package
+}
+
 method relationship-model(--> Mu:U) {
     if !$!loaded-model {
         my $t = ::($model);
@@ -23,10 +27,12 @@ method relationship-model(--> Mu:U) {
 }
 
 method set-data(\instance, Mu $value) {
-    my $attr = rel1(self.package).attr;
-    my $ref = rel1(self.package).ref;
-    $attr.set_value: instance, $ref.attr.get_value: $value;
-    instance.^set-dirty: $attr;
+    do given $.rel {
+        my $attr = .attr;
+        my $ref  = .ref;
+        $attr.set_value: instance, $ref.attr.get_value: $value;
+        instance.^set-dirty: $attr;
+    }
 }
 
 method build-relationship(\instance) {

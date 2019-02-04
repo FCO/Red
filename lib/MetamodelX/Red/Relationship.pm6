@@ -14,8 +14,9 @@ submethod !BUILD_pr(*%data) {
         $rel.build-relationship: instance
     }
     for self.^attributes -> $attr {
-        with %data{ $attr.name.substr: 2 } {
-            $attr.set_value: self, $_
+        my $name = $attr.name.substr: 2;
+        with %data{ $name } {
+            $attr.set_value: instance, $_
         }
     }
     nextsame
@@ -26,13 +27,13 @@ method !get-build {
 }
 
 method prepare-relationships(::Type Mu \type) {
-    my %rels := %!relationships;
-    my &meth := self!get-build;
+    my %rels  := %!relationships;
+    my &build := self!get-build;
 
     if type.^declares_method("BUILD") {
-        type.^find_method("BUILD", :no_fallback(1)).wrap: &meth;
+        type.^find_method("BUILD", :no_fallback(1)).wrap: &build;
     } else {
-        type.^add_method: "BUILD", &meth
+        type.^add_method: "BUILD", &build
     }
 }
 

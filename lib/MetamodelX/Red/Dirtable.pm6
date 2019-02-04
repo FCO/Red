@@ -45,7 +45,6 @@ submethod !TWEAK_pr(\instance: *%data) {
 
     for %data.kv -> $k, $v { %new{$k} = $v }
 
-
     my $col-data-attr := self.^col-data-attr;
     $col-data-attr.set_value: instance, %new;
     for @columns -> \col {
@@ -67,12 +66,18 @@ submethod !TWEAK_pr(\instance: *%data) {
                 $attr.set_value: self, $_
             }
         }
+        # TODO: this should be on M::R::Relationship
         if $attr ~~ Red::Attr::Relationship {
-            my Mu $built := $attr.build;
-            $built := $built.(self.WHAT, Mu) if $built ~~ Method;
-            $attr.set-data: instance, $_ with $built
+            with %data{ $attr.name.substr: 2 } {
+                $attr.set-data: instance, $_
+            } else {
+                my Mu $built := $attr.build;
+                $built := $built.(self.WHAT, Mu) if $built ~~ Method;
+                $attr.set-data: instance, $_ with $built
+            }
         }
     }
+
     nextsame
 }
 
