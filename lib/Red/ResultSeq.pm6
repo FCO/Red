@@ -242,8 +242,12 @@ multi method head(UInt:D $num) {
     self.do-it(:limit(min $num, $.limit)).head: $num
 }
 
-method elems( --> Int) {
-    (self.create-map: Red::AST::Function.new: :func<count>, :args[ast-value *]).Str.Int;
+method elems( --> Int()) {
+    self.create-map(Red::AST::Function.new: :func<count>, :args[ast-value *]).head
+}
+
+method Bool( --> Bool()) {
+    self.create-map(Red::AST::Gt.new: Red::AST::Function.new(:func<count>, :args[ast-value *]), ast-value 0).head
 }
 
 method new-object(::?CLASS:D: *%pars) {
