@@ -301,7 +301,15 @@ multi prefix:<not>(Red::AST $a) is export {
     Red::AST::Not.new: $a
 }
 
+multi prefix:<!>(Red::AST $a) is export {
+    Red::AST::Not.new: $a
+}
+
 multi prefix:<so>(Red::AST $a) is export {
+    Red::AST::So.new: $a
+}
+
+multi prefix:<?>(Red::AST $a) is export {
     Red::AST::So.new: $a
 }
 
