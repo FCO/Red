@@ -48,7 +48,7 @@ class Red::AST::Not does Red::AST::Unary {
 
     method should-validate {}
 
-    method new($value) {
+    multi method new(Red::AST $value) {
         ::?CLASS.bless: :$value
     }
 

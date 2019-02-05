@@ -187,6 +187,10 @@ multi method translate(Red::AST::AND $_, $context?) {
     "{ .left ~~ Red::AST::AND|Red::AST::OR??"($l)"!!$l } AND { .right ~~ Red::AST::AND|Red::AST::OR??"($r)"!!$r }"
 }
 
+multi method translate(Red::AST::Not $_ where .value ~~ Red::AST::IsDefined, $context?) {
+    "{ self.translate: .value.col, "is defined" } IS NULL"
+}
+
 multi method translate(Red::AST::Not $_, $context?) {
     "NOT ({ self.translate: .value, $context })"
 }
