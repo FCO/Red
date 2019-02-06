@@ -4,6 +4,8 @@ use Red::Driver::CommonSQL;
 use Red::Statement;
 use Red::AST::Infixes;
 use X::Red::Exceptions;
+need UUID;
+
 unit class Red::Driver::Pg does Red::Driver::CommonSQL;
 
 has Str $!user;
@@ -34,6 +36,10 @@ multi method translate(Red::AST::Mod $_, $context?) {
 
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
     .value ?? "'t'" !! "'f'"
+}
+
+multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {
+    "'{ .value.Str }'"
 }
 
 class Statement does Red::Statement {
