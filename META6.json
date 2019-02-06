@@ -6,7 +6,8 @@
   "build-depends" : [ ],
   "depends" : [
     "DBIish",
-    "DB::Pg"
+    "DB::Pg",
+    "UUID"
   ],
   "description" : "A perl6 ORM",
   "license" : "Artistic-2.0",
