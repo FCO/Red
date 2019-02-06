@@ -15,6 +15,8 @@ use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::LastInsertedRow;
 use Red::Driver;
+
+use UUID;
 unit role Red::Driver::CommonSQL does Red::Driver;
 
 method reserved-words {<
@@ -360,6 +362,7 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ Mu          --> 
 multi method default-type-for(Red::Column $ where .attr.type ~~ Str         --> Str:D) {"varchar(255)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> Str:D) {"boolean"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> Str:D) {"varchar(36)"}
 multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
 
 

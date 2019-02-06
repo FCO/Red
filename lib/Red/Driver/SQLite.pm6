@@ -10,6 +10,7 @@ use Red::AST::Function;
 use Red::Driver::CommonSQL;
 use Red::AST::LastInsertedRow;
 use X::Red::Exceptions;
+use UUID;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
 has $.database = q<:memory:>;
@@ -83,6 +84,7 @@ multi method translate(Red::Column $_, "column-auto-increment") { "AUTOINCREMENT
 #multi method default-type-for(Red::Column $ where .attr.type ~~ Mu             --> Str:D) {"varchar(255)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> Str:D) {"integer"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> Str:D) {"varchar(36)"}
 
 multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" }
 
