@@ -89,7 +89,7 @@ my $p = $author.posts.create:         # INSERT INTO post(author_id, title, body,
 DESCRIPTION
 -----------
 
-Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is only ask for help validating the APIs.
+Red is a *WiP* ORM for perl6. My objective publishing is only ask for help validating the APIs.
 
 ### traits
 
