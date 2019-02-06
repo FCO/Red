@@ -9,7 +9,9 @@ has Red::AST %.when{Red::AST};
 has Red::AST $.else;
 
 method new(Red::AST :$case, Red::AST :%when, Red::AST :$else is copy) {
-    do if %when.first: { .key ~~ Red::AST::Value and .key.value === True } -> $_ {
+    do if not $case.defined and %when == 1 and %when.values.head.?type ~~ Positional {
+        %when.values.head.get-value<>
+    } elsif %when.first: { .key ~~ Red::AST::Value and .key.value === True } -> $_ {
         .value.self
     } elsif not $case.defined and %when == 1 and not %when.keys.head.defined {
         %when.values.head

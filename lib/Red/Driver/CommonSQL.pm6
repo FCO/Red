@@ -218,7 +218,7 @@ multi method translate(Red::Column $col, "select") {
         } else {
             "{ $col.class.^as }.{ $col.name }"
         }
-    } {qq<as "{$col.attr-name}"> if $col.computation || $col.name ne $col.attr-name}]
+    } {qq<as "{$col.attr-name}"> if $col.computation or $col.name ne $col.attr-name}]
 }
 
 multi method translate(Red::AST::Mul $_ where .left.?value == -1, "order") {
@@ -260,7 +260,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ Instant, $context?) {
 
 multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
     return self.translate: ast-value(.get-value), $context if .column.DEFINITE;
-    quietly qq|{ .get-value }|
+    ~.get-value
 }
 
 multi method translate(Red::Column $_, "create-table") {

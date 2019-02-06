@@ -1,15 +1,16 @@
 use v6;
 
-# This is the same as the t/09-alternate-relation.t 
-# except rge model classes are in separate modules
-# this is is to discover precomp issues.
+# This is the same as the t/09-alternate-relation.t
+# except the model classes are in separate modules
+# this is to discover precomp issues.
 
 use Test;
 
-use Red;
+# TODO: Fix it! why it breaks when using Red?
+#use Red;
+use Red::Database;
 
 use lib <t/lib>;
-
 
 use Person;
 use Post;
@@ -23,9 +24,7 @@ lives-ok { Person.^create-table }, "create table for Person";
 lives-ok { Post.^create-table }, "create table for Post";
 
 my $p;
-#lives-ok {
-    $p = Person.^create: :name<Fernando>;
-#}, "Create a Person";
+$p = Person.^create: :name<Fernando>;
 isa-ok $p, Person;
 is $p.name, "Fernando", "and it is the person we expected";
 ok $p.id.defined, "primary key is defined";;

@@ -1,6 +1,5 @@
 use Red::AST;
 use Red::Driver;
-use Red::AST::Select;
 unit class Red::ResultSeq::Iterator does Iterator;
 has Mu:U        $.of            is required;
 has Red::AST    $.ast           is required;
