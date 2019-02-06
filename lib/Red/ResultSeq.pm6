@@ -10,6 +10,7 @@ use Red::Attr::Column;
 use Red::AST::Infixes;
 use Red::AST::Chained;
 use Red::AST::Function;
+use Red::AST::Select;
 use Red::AST::MultiSelect;
 use Red::ResultAssociative;
 use Red::ResultSeq::Iterator;
@@ -163,7 +164,8 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) {
 	model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, self.of.^table;
 	my $attr-name = 'data_0';
     my @attrs = do for @ret {
-		my $name = $_ ~~ Red::Column ?? .attr.name.substr(2) !! ++$attr-name;
+		my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;
+		my $col-name = $_ ~~ Red::Column ?? .attr.name.substr(2) !! $name;
         my $attr  = Attribute.new:
             :name("\$!$name"),
             :package(model),
@@ -171,8 +173,9 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) {
             :has_accessor,
             :build(.returns),
         ;
-	    $attr does Red::Attr::Column(%(
-	        :name-alias($name),
+	    my %data = %(
+	        :name-alias($col-name),
+	        :name($col-name),
 	        :attr-name($name),
 	        :type(.returns.^name),
 	        :$attr,
@@ -183,7 +186,8 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) {
 			} else {
 	        	:computation($_)
 			})
-	    ));
+	    );
+	    $attr does Red::Attr::Column(%data);
         model.^add_attribute: $attr;
 		model.^add_multi_method: $name, my method (Mu:D:) { self.get_value: "\$!$name" }
         $attr
