@@ -67,7 +67,7 @@ say Person.new(:1id).posts;           # Prints a Seq (Post::ResultSeq) with
 say Person.new(:2id)
     .active-posts
     .grep: { .created > Date.today }  # SELECT * FROM post me WHERE
-;                                     # me.author_id = ? AND me.deleted = 't'
+;                                     # me.author_id = ? AND me.deleted = 'f'
                                       # AND me.created > '2018-08-14'::datetime
                                       # with [2] as bind.
 
