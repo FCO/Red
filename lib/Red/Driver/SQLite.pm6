@@ -26,6 +26,7 @@ submethod TWEAK() {
 
 class Statement does Red::Statement {
     method stt-exec($stt, *@bind) {
+        $.driver.debug: @bind;
         $stt.execute: |@bind;
         $stt
     }
@@ -52,23 +53,23 @@ multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
 }
 
 multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {
-    my $val = self.translate: .value, $context;
-    "($val == 0 OR $val IS NULL)", []
+    my ($val, @bind) := self.translate: .value, $context;
+    "($val == 0 OR $val IS NULL)", @bind
 }
 
 multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {
-    my $val = self.translate: .value, $context;
-    "($val <> 0 AND $val IS NOT NULL)", []
+    my ($val, @bind) := self.translate: .value, $context;
+    "($val <> 0 AND $val IS NOT NULL)", @bind
 }
 
 multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type ~~ Str }, $context?) {
-    my $val = self.translate: .value, $context;
-    "($val == '' OR $val IS NULL)", []
+    my ($val, @bind) := self.translate: .value, $context;
+    "($val == '' OR $val IS NULL)", @bind
 }
 
 multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.attr.type ~~ Str }, $context?) {
-    my $val = self.translate: .value, $context;
-    "($val <> '' AND $val IS NOT NULL)", []
+    my ($val, @bind) := self.translate: .value, $context;
+    "($val <> '' AND $val IS NOT NULL)", @bind
 }
 
 multi method translate(Red::AST::RowId $_, $context?) { "_rowid_", [] }
@@ -88,7 +89,7 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> 
 
 multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT", [] }
 
-multi method map-exception(Exception $x where { .code == 19 and .native-message.starts-with: "UNIQUE constraint failed:" }) {
+multi method map-exception(Exception $x where { .?code == 19 and .native-message.starts-with: "UNIQUE constraint failed:" }) {
     X::Red::Driver::Mapped::Unique.new:
         :driver<SQLite>,
         :orig-exception($x),

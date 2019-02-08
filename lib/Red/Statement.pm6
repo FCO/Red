@@ -14,11 +14,11 @@ method execute(*@binds) is hidden-from-backtrace {
             $!driver.map-exception($_).throw
         }
     }
-    $!statement = do if $!predefined-bind {
-        self.stt-exec: $!statement, |@binds
-    } else {
-        self.stt-exec: $!statement, |@!binds
-    }
+    #$!statement = do if $!predefined-bind {
+        self.stt-exec: $!statement, |@binds;
+    #} else {
+    #    self.stt-exec: $!statement, |@!binds
+    #}
     self
 }
 

@@ -29,6 +29,12 @@ method execute($query, *@bind) {
 
 method optimize(Red::AST $in --> Red::AST) { $in }
 
+multi method debug(@bind) {
+    if $*RED-DEBUG {
+        note "BIND: @bind.perl()";
+    }
+}
+
 multi method debug($sql) {
     if $*RED-DEBUG {
         note "SQL : $sql";

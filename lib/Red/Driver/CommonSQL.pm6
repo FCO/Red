@@ -128,8 +128,9 @@ multi method translate(Red::AST::Select $ast, $context?) {
             }{
                 " as { .^as }" if .^table ne .^as
             }"
-        }).join: ",\n"                                                          if $ast.^can: "tables";
-    my ($where, @wb) := self.translate: $ast.filter, "where"                          if $ast.?filter;
+        }).join: ",\n" if $ast.^can: "tables";
+    my ($where, @wb) := self.translate: $ast.filter, "where" if $ast.?filter;
+    @bind.push: |@wb;
     my $order = $ast.order.map({
         my ($s, @b) := self.translate: $_, "order";
         @bind.push: |@b;
@@ -218,6 +219,20 @@ multi method translate(Red::AST::Infix $_, $context?) {
     my ($rstr, @rbind) := self.translate: .right, $context;
 
     "$lstr { .op } $rstr", [|@lbind, |@rbind]
+}
+
+multi method wildcard { "?" }
+
+multi method translate(Red::AST::Infix $_ where .bind-left, $context?) {
+    my ($rstr, @rbind) := self.translate: .right, $context;
+
+    "{self.wildcard} { .op } $rstr", [.left.get-value, |@rbind]
+}
+
+multi method translate(Red::AST::Infix $_ where .bind-right, $context?) {
+    my ($lstr, @lbind) := self.translate: .left, $context;
+
+    "$lstr { .op } {self.wildcard}", [|@lbind, .right.get-value]
 }
 
 multi method translate(Red::AST::OR $_, $context?) {
