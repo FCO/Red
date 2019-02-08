@@ -48,30 +48,30 @@ multi method prepare(Str $query) {
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
-    .value ?? 1 !! 0
+    (.value ?? 1 !! 0), []
 }
 
 multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {
     my $val = self.translate: .value, $context;
-    "($val == 0 OR $val IS NULL)"
+    "($val == 0 OR $val IS NULL)", []
 }
 
 multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {
     my $val = self.translate: .value, $context;
-    "($val <> 0 AND $val IS NOT NULL)"
+    "($val <> 0 AND $val IS NOT NULL)", []
 }
 
 multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type ~~ Str }, $context?) {
     my $val = self.translate: .value, $context;
-    "($val == '' OR $val IS NULL)"
+    "($val == '' OR $val IS NULL)", []
 }
 
 multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.attr.type ~~ Str }, $context?) {
     my $val = self.translate: .value, $context;
-    "($val <> '' AND $val IS NOT NULL)"
+    "($val <> '' AND $val IS NOT NULL)", []
 }
 
-multi method translate(Red::AST::RowId $_, $context?) { "_rowid_" }
+multi method translate(Red::AST::RowId $_, $context?) { "_rowid_", [] }
 
 multi method translate(Red::AST::LastInsertedRow $_, $context?) {
     my $of     = .of;
@@ -79,14 +79,14 @@ multi method translate(Red::AST::LastInsertedRow $_, $context?) {
     self.translate(Red::AST::Select.new: :$of, :$filter, :1limit)
 }
 
-multi method translate(Red::Column $_, "column-auto-increment") { "AUTOINCREMENT" if .auto-increment }
+multi method translate(Red::Column $_, "column-auto-increment") { (.auto-increment ?? "AUTOINCREMENT" !! ""), [] }
 
 #multi method default-type-for(Red::Column $ where .attr.type ~~ Mu             --> Str:D) {"varchar(255)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> Str:D) {"varchar(36)"}
 
-multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" }
+multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT", [] }
 
 multi method map-exception(Exception $x where { .code == 19 and .native-message.starts-with: "UNIQUE constraint failed:" }) {
     X::Red::Driver::Mapped::Unique.new:

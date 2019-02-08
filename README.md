@@ -67,7 +67,7 @@ say Person.new(:1id).posts;           # Prints a Seq (Post::ResultSeq) with
 say Person.new(:2id)
     .active-posts
     .grep: { .created > Date.today }  # SELECT * FROM post me WHERE
-;                                     # me.author_id = ? AND me.deleted = 'f'
+;                                     # me.author_id = ? AND me.deleted = 't'
                                       # AND me.created > '2018-08-14'::datetime
                                       # with [2] as bind.
 
@@ -89,7 +89,7 @@ my $p = $author.posts.create:         # INSERT INTO post(author_id, title, body,
 DESCRIPTION
 -----------
 
-Red is a *WiP* ORM for perl6. My objective publishing is only ask for help validating the APIs.
+Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is only ask for help validating the APIs.
 
 ### traits
 
