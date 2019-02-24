@@ -26,8 +26,8 @@ submethod TWEAK() {
 
 class Statement does Red::Statement {
     method stt-exec($stt, *@bind) {
-        $.driver.debug: @bind;
-        $stt.execute: |@bind;
+        $.driver.debug: (@bind or @!binds);
+        $stt.execute: |(@bind or @!binds);
         $stt
     }
     method stt-row($stt) { $stt.row: :hash }
@@ -38,7 +38,7 @@ multi method prepare(Red::AST $query) {
     do unless $*RED-DRY-RUN {
         my $stt = self.prepare: $sql;
         $stt.predefined-bind;
-        $stt.binds = @bind;
+        $stt.binds = @bind.map: { self.deflate: $_ };
         $stt
     }
 }

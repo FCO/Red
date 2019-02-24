@@ -307,7 +307,7 @@ multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW,
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Str, $context?) {
-    quietly qq|'{ .get-value.subst: "'", q"''", :g }'|, []
+    quietly qq|'{ .get-value.subst: "'", q"''", :g }'|, [] #'
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ DateTime, $context?) {
@@ -384,13 +384,14 @@ multi method translate(Red::AST::Unique $_, $context?) {
 multi method translate(Red::AST::Insert $_, $context?) {
     my @values = .values.grep({ .value.value.defined });
     return "INSERT INTO { .into.^table } DEFAULT VALUES", [] unless @values;
+    my @bind = @values.map: *.value.get-value;
     "INSERT INTO {
         .into.^table
     }(\n{
         @values>>.key.join(",\n").indent: 3
     }\n)\nVALUES(\n{
-        @values>>.value.map(-> $val { self.translate: $val, "insert" }).join(",\n").indent: 3
-    }\n)", []
+        (self.wildcard xx @values).join(",\n").indent: 3
+    }\n)", @bind
 }
 
 multi method translate(Red::AST::Delete $_, $context?) {
@@ -430,10 +431,17 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> 
 multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
 
 
-multi method inflate(Num $value, Instant  :$to!) { Instant.from-posix: $value }
-multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
-multi method inflate(Num $value, Duration :$to!) { Duration.new: $value }
-multi method inflate(Int $value, Duration :$to!) { Duration.new: $value }
+multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
+multi method inflate(Str $value, DateTime :$to!) { $to.new: $value }
+multi method inflate(Num $value, Duration :$to!) { $to.new: $value }
+multi method inflate(Int $value, Duration :$to!) { $to.new: $value }
+
+multi method deflate(Instant  $value) { +$value }
+multi method deflate(DateTime $value) { ~$value }
+multi method deflate(Duration $value) { +$value }
+multi method deflate(Duration $value) { +$value }
+
+multi method deflate($value) { $value }
 
 multi method type-by-name("string" --> "varchar(255)") {}
 

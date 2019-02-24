@@ -25,19 +25,28 @@ submethod TWEAK() {
 
 multi method translate(Red::Column $_, "column-auto-increment") { Empty, [] }
 
+method wildcard { "\${ ++$*bind-counter }" }
+
+multi method translate(Red::AST::Select $_, $context?) {
+    my Int $*bind-counter;
+    nextsame
+}
+
+multi method translate(Red::AST::Delete $_, $context?) {
+    my Int $*bind-counter;
+    nextsame
+}
+
 multi method translate(Red::AST::Insert $_, $context?) {
-    my @bind;
+    my Int $*bind-counter;
     my @values = .values.grep({ .value.value.defined });
+    my @bind = @values.map: *.value.get-value;
     "INSERT INTO {
         .into.^table
     }(\n{
         @values>>.key.join(",\n").indent: 3
     }\n)\nVALUES(\n{
-        @values>>.value.map(-> $val {
-            my ($s, @b) := self.translate: $val, "insert";
-            @bind.push: |@b;
-            $s
-        }).join(",\n").indent: 3
+        (self.wildcard xx @values).join(",\n").indent: 3
     }\n) RETURNING *", @bind
 }
 
@@ -58,7 +67,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {
 class Statement does Red::Statement {
     has Str $.query;
     method stt-exec($stt, *@bind) {
-        my $s = $stt.query($!query, |@bind);
+        my $s = $stt.query($!query, |(@bind or @!binds));
         do if $s ~~ DB::Pg::Results {
             $s.hashes
         } else {
@@ -73,7 +82,7 @@ multi method prepare(Red::AST $query) {
     do unless $*RED-DRY-RUN {
         my $stt = self.prepare: $sql;
         $stt.predefined-bind;
-        $stt.binds = @bind;
+        $stt.binds = @bind.map: { self.deflate: $_ };
         $stt
     }
 }

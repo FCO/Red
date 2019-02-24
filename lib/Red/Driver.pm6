@@ -23,7 +23,7 @@ multi method inflate(Any $value, Any :$to) { $value }
 
 method execute($query, *@bind) {
     my $stt = self.prepare($query);
-    $stt.execute: |@bind;
+    $stt.execute: |@bind.map: { self.deflate: $_ };
     $stt
 }
 
