@@ -14,6 +14,7 @@ use Red::AST::Function;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::LastInsertedRow;
+use Red::FromRelationship;
 use Red::Driver;
 
 use UUID;
@@ -128,8 +129,8 @@ multi method translate(Red::AST::Select $ast, $context?) {
             }{
                 " as { .^as }" if .^table ne .^as
             }"
-        }).join: ",\n" if $ast.^can: "tables";
-    my ($where, @wb) := self.translate: $ast.filter, "where" if $ast.?filter;
+        }).join: ",\n"                                                          if $ast.^can: "tables";
+    my ($where, @wb) := self.translate: $ast.filter, "where"                          if $ast.?filter;
     @bind.push: |@wb;
     my $order = $ast.order.map({
         my ($s, @b) := self.translate: $_, "order";
@@ -220,8 +221,6 @@ multi method translate(Red::AST::Infix $_, $context?) {
 
     "$lstr { .op } $rstr", [|@lbind, |@rbind]
 }
-
-multi method wildcard { "?" }
 
 multi method translate(Red::AST::Infix $_ where .bind-left, $context?) {
     my ($rstr, @rbind) := self.translate: .right, $context;
@@ -317,6 +316,10 @@ multi method translate(Red::AST::Value $_ where .type ~~ DateTime, $context?) {
 
 multi method translate(Red::AST::Value $_ where .type ~~ Instant, $context?) {
     self.translate: ast-value(.get-value.?to-posix.head), $context
+}
+
+multi method translate(Red::AST::Value $_ where .type ~~ Red::FromRelationship, $context?) {
+    die "NYI: map returning a relationship";
 }
 
 multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
@@ -438,3 +441,4 @@ multi method is-valid-table-name(Str $ where .fc ~~ self.reserved-words.any.fc) 
 multi method is-valid-table-name(Str $str) is default {
     so $str ~~ /^ <[\w_]>+ $/
 }
+method wildcard { "?" }

@@ -1,4 +1,5 @@
 use Red::Attr::Relationship;
+use Red::FromRelationship;
 use Red::AST;
 
 unit role MetamodelX::Red::Relationship;
@@ -86,7 +87,11 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
             if $grep-filter ~~ Red::AST {
                 $grep-filter = $attr.relationship-ast
             }
-            $attr.has-lazy-relationship ?? $attr.relationship-model !! $attr.type;
+            #Red::FromRelationship.new:
+            #    :from-relationship($name),
+            #    :model($attr.has-lazy-relationship ?? $attr.relationship-model !! $attr.type)
+            #;
+            $attr.has-lazy-relationship ?? $attr.relationship-model !! $attr.type
         }
     ;
 }

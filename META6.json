@@ -57,6 +57,7 @@
     "Red::Driver::Mock" : "lib/Red/Driver/Mock.pm6",
     "Red::Driver::Pg" : "lib/Red/Driver/Pg.pm6",
     "Red::Driver::SQLite" : "lib/Red/Driver/SQLite.pm6",
+    "Red::FromRelationship" : "lib/Red/FromRelationship.pm6",
     "Red::Model" : "lib/Red/Model.pm6",
     "Red::Operators" : "lib/Red/Operators.pm6",
     "Red::Query" : "lib/Red/Query.pm6",
