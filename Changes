@@ -2,6 +2,17 @@ Revision history for Red
 
 {{$NEXT}}
 
+0.0.3  2019-02-27T23:21:09Z
+    - add union (∪), intersect(∩) and minus(⊖)
+    - make .elems return a Int
+    - accept a instance of the db lib on database function
+    - create with relationship objects
+    - is null
+    - return more than 1 column on map
+    - UUID
+    - bind on infixes
+    - bind on insert
+
 0.0.2  2019-01-04T00:35:02-02:00
     - Fix pod
 

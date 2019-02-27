@@ -13,7 +13,7 @@ use Red::Traits;
 use Red::Operators;
 use Red::Database;
 
-class Red:ver<0.0.2>:api<0> {}
+class Red:ver<0.0.3>:api<0> {}
 
 BEGIN {
     Red::Column.^add_role: Red::ColumnMethods;
