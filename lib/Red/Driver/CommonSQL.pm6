@@ -106,6 +106,12 @@ multi method translate(Red::AST::Union $ast, "multi-select-op") { "UNION", [] }
 multi method translate(Red::AST::Intersect $ast, "multi-select-op") { "INTERSECT", [] }
 multi method translate(Red::AST::Minus $ast, "multi-select-op") { "MINUS", [] }
 
+multi method translate(Red::AST::Comment $_, $context?) {
+    .msg.split(/\s*\n\s*/).grep(*.chars > 0).map({ "{ self.comment-starter } $_\n" }).join, [] if $*RED-COMMENT-SQL
+}
+
+method comment-starter { "--" }
+
 multi method translate(Red::AST::Select $ast, $context?) {
     my @bind;
     my $sel    = do given $ast.of {
@@ -130,7 +136,7 @@ multi method translate(Red::AST::Select $ast, $context?) {
                 " as { .^as }" if .^table ne .^as
             }"
         }).join: ",\n"                                                          if $ast.^can: "tables";
-    my ($where, @wb) := self.translate: $ast.filter, "where"                          if $ast.?filter;
+    my ($where, @wb) := self.translate: $ast.filter, "where"                    if $ast.?filter;
     @bind.push: |@wb;
     my $order = $ast.order.map({
         my ($s, @b) := self.translate: $_, "order";
@@ -151,7 +157,9 @@ multi method translate(Red::AST::Select $ast, $context?) {
             }).join: ", ";
         }
     }
-    "SELECT\n{
+    "{
+       $ast.comments.map({ self.translate($_, "comment" ).head }).join("\n") ~ "\n" if $ast.comments and $*RED-COMMENT-SQL
+    }SELECT\n{
         $sel ?? $sel.indent: 3 !! "*"
     }{
         "\nFROM\n{ .indent: 3 }" with $tables

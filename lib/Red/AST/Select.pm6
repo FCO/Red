@@ -3,15 +3,17 @@ use Red::Model;
 use Red::AST::Union;
 use Red::AST::Intersect;
 use Red::AST::Minus;
+use Red::AST::Comment;
 unit class Red::AST::Select does Red::AST;
 
-has Mu:U        $.of;
-has Red::AST    @.fields;
-has Red::AST    $.filter;
-has Red::AST    @.order;
-has Int         $.limit;
-has Red::AST    @.group;
-has             @.table-list;
+has Mu:U                $.of;
+has Red::AST            @.fields;
+has Red::AST            $.filter;
+has Red::AST            @.order;
+has Int                 $.limit;
+has Red::AST            @.group;
+has                     @.table-list;
+has Red::AST::Comment   @.comments;
 
 method returns { Red::Model }
 
