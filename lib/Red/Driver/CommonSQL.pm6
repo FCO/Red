@@ -107,7 +107,8 @@ multi method translate(Red::AST::Intersect $ast, "multi-select-op") { "INTERSECT
 multi method translate(Red::AST::Minus $ast, "multi-select-op") { "MINUS", [] }
 
 multi method translate(Red::AST::Comment $_, $context?) {
-    .msg.split(/\s*\n\s*/).grep(*.chars > 0).map({ "{ self.comment-starter } $_\n" }).join, [] if $*RED-COMMENT-SQL
+    .msg.split(/\s*\n\s*/).grep(*.chars > 0).map({ "{ self.comment-starter } $_\n" }).join, []
+        if $*RED-COMMENT-SQL or &*RED-COMMENT-SQL
 }
 
 method comment-starter { "--" }
@@ -158,7 +159,8 @@ multi method translate(Red::AST::Select $ast, $context?) {
         }
     }
     "{
-       $ast.comments.map({ self.translate($_, "comment" ).head }).join("\n") ~ "\n" if $ast.comments and $*RED-COMMENT-SQL
+       $ast.comments.map({ self.translate($_, "comment" ).head }).join("\n") ~ "\n"
+        if $ast.comments and ($*RED-COMMENT-SQL or &*RED-COMMENT-SQL)
     }SELECT\n{
         $sel ?? $sel.indent: 3 !! "*"
     }{
