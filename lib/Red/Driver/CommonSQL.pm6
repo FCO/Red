@@ -387,7 +387,7 @@ multi method translate(Red::AST::CreateTable $_, $context?) {
             |.constraints.map({ self.translate: $_, "create-table" })
         ).join(",\n").indent: 3
     }\n){
-        self.translate(.comment, $context).head
+        self.translate(.comment, $context).head // ""
     }", []
 }
 

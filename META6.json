@@ -42,6 +42,7 @@
     "Red::AST::Operator" : "lib/Red/AST/Operator.pm6",
     "Red::AST::Optimizer" : "lib/Red/AST/Optimizer.pm6",
     "Red::AST::Select" : "lib/Red/AST/Select.pm6",
+    "Red::AST::TableComment" : "lib/Red/AST/TableComment.pm6",
     "Red::AST::Unary" : "lib/Red/AST/Unary.pm6",
     "Red::AST::Union" : "lib/Red/AST/Union.pm6",
     "Red::AST::Update" : "lib/Red/AST/Update.pm6",
