@@ -82,6 +82,14 @@ multi method translate(Red::AST::LastInsertedRow $_, $context?) {
 
 multi method translate(Red::Column $_, "column-auto-increment") { (.auto-increment ?? "AUTOINCREMENT" !! ""), [] }
 
+multi method translate(Red::Column $_, "column-comment") {
+    (" { self.comment-starter } $_\n" with .comment), []
+}
+
+multi method translate(Red::AST::TableComment $_, $context?) {
+        (" { self.comment-starter } { .msg }", []) with $_
+}
+
 #multi method default-type-for(Red::Column $ where .attr.type ~~ Mu             --> Str:D) {"varchar(255)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> Str:D) {"integer"}

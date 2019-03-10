@@ -78,6 +78,8 @@ class ReferencesProxy does Callable {
 
 method class { self.attr.package }
 
+method comment { .Str with self.attr.WHY }
+
 method references(--> Callable) is rw {
     &!actual-references //= do {
         if &!references {

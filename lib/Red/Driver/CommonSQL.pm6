@@ -347,12 +347,14 @@ multi method translate(Red::Column $_, "create-table") {
             "column-auto-increment",
         ) if .class.^id <= 1),
         "column-references",
+        "column-comment",
     )
         .map(-> $context {
             self.translate: $_, $context
         })
         .grep( *.defined )
-        .join(" "),
+        .join(" ")
+        .subst(/\s ** 2..*/, " ", :g),
         []
 }
 
@@ -372,6 +374,10 @@ multi method translate(Red::Column $_, "column-references")     {
     ("references { .class.^table }({ .name })" with .ref), []
 }
 
+multi method translate(Red::Column $_, "column-comment")     {
+    (" COMMENT '$_'" with .comment), []
+}
+
 multi method translate(Red::AST::CreateTable $_, $context?) {
     "CREATE TABLE {
         .name
@@ -380,7 +386,13 @@ multi method translate(Red::AST::CreateTable $_, $context?) {
             |.columns.map({ self.translate: $_, "create-table" }),
             |.constraints.map({ self.translate: $_, "create-table" })
         ).join(",\n").indent: 3
-    }\n)", []
+    }\n){
+        self.translate(.comment, $context).head
+    }", []
+}
+
+multi method translate(Red::AST::TableComment $_, $context?) {
+        (" COMMENT '{ .msg }'", []) with $_
 }
 
 multi method translate(Red::AST::Pk $_, $context?) {

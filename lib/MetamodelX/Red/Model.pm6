@@ -14,6 +14,7 @@ use Red::AST::Update;
 use Red::AST::Infixes;
 use Red::AST::CreateTable;
 use Red::AST::Constraints;
+use Red::AST::TableComment;
 use Red::AST::LastInsertedRow;
 use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
@@ -206,7 +207,8 @@ method create-table(\model) {
                 |@!constraints.grep(*.key eq "pk").map: {
                     Red::AST::Pk.new: :columns[|.value]
                 },
-            ]
+            ],
+            |(:comment(Red::AST::TableComment.new: :msg(.Str)) with model.WHY)
 }
 
 multi method save($obj, Bool :$insert! where * == True) {

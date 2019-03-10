@@ -64,6 +64,14 @@ multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {
     "'{ .value.Str }'", []
 }
 
+multi method translate(Red::Column $_, "column-comment") {
+    "", []
+}
+
+multi method translate(Red::AST::TableComment $_, $context?) {
+    "", []
+}
+
 class Statement does Red::Statement {
     has Str $.query;
     method stt-exec($stt, *@bind) {
