@@ -9,7 +9,7 @@ has Red::Driver $!driver = $*RED-DB // die Q[$*RED-DB wasn't defined];
 
 submethod TWEAK(|) {
     my $ast = $!driver.optimize: $!ast;
-    my ($sql, @bind) := $!driver.translate: $ast;
+    my ($sql, @bind) := do given $!driver.translate: $ast { .key, .value }
 
     unless $*RED-DRY-RUN {
         $!st-handler = $!driver.prepare: $sql;
