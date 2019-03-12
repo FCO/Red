@@ -88,7 +88,7 @@ method reserved-words {<
     ZEROFILL ZONE
 >}
 
-proto method translate(Red::AST, $?) {*}
+proto method translate(Red::AST, $? --> Pair) {*}
 
 multi method translate(Red::AST::Union $ast, $context?) {
     $ast.selects.map({
@@ -342,6 +342,8 @@ multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
     ~.get-value => []
 }
 
+method comment-on-same-statement { True }
+
 multi method translate(Red::Column $_, "create-table") {
     (
         "column-name",
@@ -352,7 +354,7 @@ multi method translate(Red::Column $_, "create-table") {
             "column-auto-increment",
         ) if .class.^id <= 1),
         "column-references",
-        "column-comment",
+        |("column-comment" if self.comment-on-same-statement),
     )
         .map(-> $context {
             self.translate($_, $context).key
@@ -378,8 +380,12 @@ multi method translate(Red::Column $_, "column-references")     {
     ("references { .class.^table }({ .name })" with .ref) => []
 }
 
+multi method translate(Red::Column $_, "table-dot-column")     {
+    "{ .class.^table }.{ .name }" => []
+}
+
 multi method translate(Red::Column $_, "column-comment")     {
-    (" COMMENT '$_'" with .comment) => []
+    (" COMMENT '$_'") => [] with .comment
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
@@ -390,9 +396,11 @@ multi method translate(Red::AST::CreateTable $_, $context?) {
             |.columns.map({ self.translate($_, "create-table").key }),
             |.constraints.map({ self.translate($_, "create-table").key })
         ).join(",\n").indent: 3
-    }\n){
-        self.translate(.comment, $context).?key // ""
-    }" => []
+    }\n)" => [],
+    |do if not self.comment-on-same-statement and .comment {
+        self.translate(.comment).key => []
+    },
+    |(.columns.map({ self.translate: $_, "column-comment" }) if not self.comment-on-same-statement)
 }
 
 multi method translate(Red::AST::TableComment $_, $context?) {
@@ -441,9 +449,9 @@ multi method translate(Red::AST::Update $_, $context?) {
     END
 }
 
-multi method translate(Red::AST::LastInsertedRow $_, $context?) { "", [] }
+multi method translate(Red::AST::LastInsertedRow $_, $context?) { "" => [] }
 
-multi method translate(Red::AST:U $_, $context?) { Empty, [] }
+multi method translate(Red::AST:U $_, $context?) { "" => [] }
 
 multi method default-type-for(Red::Column $ where .attr.type ~~ Rat         --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> Str:D) {"real"}

@@ -34,12 +34,14 @@ class Statement does Red::Statement {
 }
 
 multi method prepare(Red::AST $query) {
-    my ($sql, @bind) := do given self.translate: self.optimize: $query { .key, .value }
-    do unless $*RED-DRY-RUN {
-        my $stt = self.prepare: $sql;
-        $stt.predefined-bind;
-        $stt.binds = @bind.map: { self.deflate: $_ };
-        $stt
+    do for |self.translate: self.optimize: $query -> Pair \data {
+        my ($sql, @bind) := do given data { .key, .value }
+        do unless $*RED-DRY-RUN {
+            my $stt = self.prepare: $sql;
+            $stt.predefined-bind;
+            $stt.binds = @bind.map: { self.deflate: $_ };
+            $stt
+        }
     }
 }
 

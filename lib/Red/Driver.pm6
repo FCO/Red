@@ -22,9 +22,8 @@ multi method prepare("") {class :: { method execute(|) {} }}
 multi method inflate(Any $value, Any :$to) { $value }
 
 method execute($query, *@bind) {
-    my $stt = self.prepare($query);
-    $stt.execute: |@bind.map: { self.deflate: $_ };
-    $stt
+    my @stt = self.prepare($query);
+    (.execute: |@bind.map: { self.deflate: $_ } for @stt).tail
 }
 
 method optimize(Red::AST $in --> Red::AST) { $in }

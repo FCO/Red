@@ -23,7 +23,7 @@ submethod TWEAK() {
     $!dbh //= DB::Pg.new: conninfo => "{ "user=$_" with $!user } { "password=$_" with $!password } { "host=$_" with $!host } { "port=$_" with $!port } { "dbname=$_" with $!dbname }";
 }
 
-multi method translate(Red::Column $_, "column-auto-increment") { Empty, [] }
+multi method translate(Red::Column $_, "column-auto-increment") { "" => [] }
 
 method wildcard { "\${ ++$*bind-counter }" }
 
@@ -65,11 +65,11 @@ multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {
 }
 
 multi method translate(Red::Column $_, "column-comment") {
-    "" => []
+    "COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'" => []
 }
 
 multi method translate(Red::AST::TableComment $_, $context?) {
-    "" => []
+    "COMMENT ON TABLE { .table } IS '{ .msg }'" => []
 }
 
 class Statement does Red::Statement {
@@ -86,14 +86,19 @@ class Statement does Red::Statement {
 }
 
 multi method prepare(Red::AST $query) {
-    my ($sql, @bind) := do given self.translate: self.optimize: $query { .key, .value }
-    do unless $*RED-DRY-RUN {
-        my $stt = self.prepare: $sql;
-        $stt.predefined-bind;
-        $stt.binds = @bind.map: { self.deflate: $_ };
-        $stt
+    do for |self.translate: self.optimize: $query -> Pair \data {
+        my ($sql, @bind) := do given data { .key, .value }
+        next unless $sql;
+        do unless $*RED-DRY-RUN {
+            my $stt = self.prepare: $sql;
+            $stt.predefined-bind;
+            $stt.binds = @bind.map: { self.deflate: $_ };
+            $stt
+        }
     }
 }
+
+method comment-on-same-statement { False }
 
 multi method prepare(Str $query) {
     self.debug: $query;

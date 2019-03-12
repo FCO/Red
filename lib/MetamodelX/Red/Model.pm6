@@ -208,7 +208,7 @@ method create-table(\model) {
                     Red::AST::Pk.new: :columns[|.value]
                 },
             ],
-            |(:comment(Red::AST::TableComment.new: :msg(.Str)) with model.WHY)
+            |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
 }
 
 multi method save($obj, Bool :$insert! where * == True) {
