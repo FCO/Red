@@ -217,10 +217,18 @@ multi method save($obj, Bool :$insert! where * == True) {
     $ret
 }
 
-multi method save($obj, Bool :$update where * == True = True) {
+multi method save($obj, Bool :$update! where * == True) {
     my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
     $obj.^clean-up;
     $ret
+}
+
+multi method save($obj) {
+    do if $obj.^id and $obj.^id-values.all.defined {
+        self.save: $obj, :update
+    } else {
+        self.save: $obj, :insert
+    }
 }
 
 method create(\model, |pars) {
