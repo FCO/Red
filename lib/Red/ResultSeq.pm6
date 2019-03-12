@@ -15,13 +15,8 @@ use Red::AST::Select;
 use Red::AST::MultiSelect;
 use Red::ResultAssociative;
 use Red::ResultSeq::Iterator;
+use Red::HiddenFromSQLCommenting;
 unit role Red::ResultSeq[Mu $of = Any] does Sequence;
-
-multi trait_mod:<is>(Method $r, Bool :$hidden-from-sql-commenting!) {
-    $r does role {
-        method is-hidden-from-sql-commenting { True }
-    }
-}
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
     use Red::DefaultResultSeq;
@@ -36,7 +31,9 @@ sub create-resultseq($rs-class-name, Mu \type) is export is raw {
 method create-comment-to-caller is hidden-from-sql-commenting {
     my %data;
     %data<meth-name> = callframe(1).code.name;
-    given Backtrace.new.tail(*-3).first: !*.code.?is-hidden-from-sql-commenting  {
+    given Backtrace.new.tail(*-3).first: {
+        .subname and .subname ne "<anon>" and !.code.?is-hidden-from-sql-commenting
+    } {
         %data<file>  = .file;
         %data<block> = .code.name;
         %data<line>  = .line;
