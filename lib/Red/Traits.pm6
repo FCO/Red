@@ -3,6 +3,10 @@ use Red::Attr::Column;
 use Red::ResultSeq;
 unit module Red::Traits;
 
+multi trait_mod:<is>(Mu:U $model, Bool :$temp!) {
+    $model.^temp = True;
+}
+
 multi trait_mod:<is>(Mu:U $model, Str:D :$rs-class!) {
     trait_mod:<is>($model, :rs-class(::($rs-class)))
 }

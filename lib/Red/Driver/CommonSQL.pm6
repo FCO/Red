@@ -389,7 +389,7 @@ multi method translate(Red::Column $_, "column-comment")     {
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
-    "CREATE TABLE {
+    "CREATE{ " TEMPORARY" if .temp } TABLE {
         .name
     }(\n{
         (

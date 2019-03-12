@@ -32,6 +32,7 @@ has %!attr-to-column;
 has $.rs-class;
 has @!constraints;
 has $.table;
+has Bool $!temporary;
 
 method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 
@@ -193,12 +194,15 @@ method compose-columns(Red::Model:U \type) {
 method rs($)                        { $.rs-class.new }
 method all($obj)                    { $obj.^rs }
 
+method temp(|) is rw { $!temporary }
+
 method create-table(\model) {
     die X::Red::InvalidTableName.new: :table(model.^table)
     unless $*RED-DB.is-valid-table-name: model.^table;
     $*RED-DB.execute:
         Red::AST::CreateTable.new:
             :name(model.^table),
+            :temp(model.^temp),
             :columns[|model.^columns.keys.map(*.column)],
             :constraints[
                 |@!constraints.grep(*.key eq "unique").map({
