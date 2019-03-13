@@ -61,6 +61,7 @@
     "Red::Driver::Pg" : "lib/Red/Driver/Pg.pm6",
     "Red::Driver::SQLite" : "lib/Red/Driver/SQLite.pm6",
     "Red::FromRelationship" : "lib/Red/FromRelationship.pm6",
+    "Red::HiddenFromSQLCommenting" : "lib/Red/HiddenFromSQLCommenting.pm6",
     "Red::Model" : "lib/Red/Model.pm6",
     "Red::Operators" : "lib/Red/Operators.pm6",
     "Red::Query" : "lib/Red/Query.pm6",
@@ -70,7 +71,6 @@
     "Red::Statement" : "lib/Red/Statement.pm6",
     "Red::Traits" : "lib/Red/Traits.pm6",
     "Red::Utils" : "lib/Red/Utils.pm6",
-    "Red::HiddenFromSQLCommenting" : "lib/Red/HiddenFromSQLCommenting.pm6",
     "X::Red::Exceptions" : "lib/X/Red/Exceptions.pm6"
   },
   "resources" : [ ],
