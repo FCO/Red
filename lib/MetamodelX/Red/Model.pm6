@@ -97,7 +97,7 @@ method compose(Mu \type) {
         method TWEAK(|) {
             self.^set-dirty: self.^columns
         }
-        method perl {
+        multi method perl(Red::Model:D:) {
             my @attrs = self.^attributes.grep({ $_ !~~ Red::Attr::Relationship and .has_accessor}).map: {
                 "{ .name.substr(2) } => { .get_value(self).perl }"
             }
