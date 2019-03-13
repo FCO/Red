@@ -342,7 +342,7 @@ multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
     ~.get-value => []
 }
 
-method comment-on-same-statement { True }
+method comment-on-same-statement { False }
 
 multi method translate(Red::Column $_, "create-table") {
     (

@@ -92,6 +92,8 @@ multi method translate(Red::AST::TableComment $_, $context?) {
         (" { self.comment-starter } { .msg }" => []) with $_
 }
 
+method comment-on-same-statement { True }
+
 #multi method default-type-for(Red::Column $ where .attr.type ~~ Mu             --> Str:D) {"varchar(255)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> Str:D) {"integer"}
