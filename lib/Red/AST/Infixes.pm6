@@ -102,6 +102,8 @@ class Red::AST::Ge does Red::AST::Infix {
 class Red::AST::AND does Red::AST::Infix {
 	also does SameIfPresent[False];
 	also does SameIfTheOtherIsTrue;
+    #also does Red::AST::Optimizer::And;
+
     has $.op = "AND";
     has Bool $.returns;
 
@@ -109,54 +111,10 @@ class Red::AST::AND does Red::AST::Infix {
 
     multi method new(Red::AST $left is copy, Red::AST $right is copy) {
 		.return with self.optimize: $left, $right;
-
-        my $lcols = set $left.find-column-name;
-        my $rcols = set $right.find-column-name;
+        .return with self.optimize-and: $left, $right;
 
         $left  .= value if $left ~~ Red::AST::So;
         $right .= value if $right ~~ Red::AST::So;
-
-        my %cols := $lcols ∩ $rcols;
-        if %cols == 1 {
-            if ($left ~~ Red::AST::Ge or $left ~~ Red::AST::Gt)
-                and ($right ~~ Red::AST::Ge or $right ~~ Red::AST::Gt) {
-                my $lv = $left.args.first(*.^can: "get-value").get-value;
-                my $rv = $right.args.first(*.^can: "get-value").get-value;
-                if $lv.defined and $rv.defined {
-                    if $rv > $lv {
-                        return $right
-                    } elsif $rv < $lv {
-                        return $left
-                    }
-                }
-            }
-            if ($left ~~ Red::AST::Le or $left ~~ Red::AST::Lt)
-                and ($right ~~ Red::AST::Le or $right ~~ Red::AST::Lt) {
-                my $lv = $left.args.first(*.^can: "get-value").get-value;
-                my $rv = $right.args.first(*.^can: "get-value").get-value;
-                if $lv.defined and $rv.defined {
-                    if $rv < $lv {
-                        return $right
-                    } elsif $rv > $lv {
-                        return $left
-                    }
-                }
-            }
-            if $left ~~ Red::AST::Ge|Red::AST::Gt and $right ~~ Red::AST::Le|Red::AST::Lt {
-                my $lv = $left.args.first(*.^can: "get-value").get-value;
-                my $rv = $right.args.first(*.^can: "get-value").get-value;
-                return ast-value False if $lv.defined and $rv.defined and $lv > $rv
-            }
-            if $left ~~ Red::AST::Le|Red::AST::Lt and $right ~~ Red::AST::Ge|Red::AST::Gt {
-                my $lv = $left.args.first(*.^can: "get-value").get-value;
-                my $rv = $right.args.first(*.^can: "get-value").get-value;
-                return ast-value False if $lv.defined and $rv.defined and $lv < $rv
-            }
-            if ($left ~~ Red::Column and $right ~~ Red::AST::Not) or ($left ~~ Red::AST::Not and $right ~~ Red::Column) {
-                return ast-value True
-                    if ($left.?value // $left) eqv ($right.?value // $right)
-            }
-        }
 
         ::?CLASS.bless: :$left, :$right
     }
