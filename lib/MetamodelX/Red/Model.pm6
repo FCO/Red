@@ -34,6 +34,8 @@ has @!constraints;
 has $.table;
 has Bool $!temporary;
 
+method column-names(|) { %!columns.keys>>.column>>.name }
+
 method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 
 method references(|) { %!references }
