@@ -205,7 +205,7 @@ method create-table(\model) {
             :temp(model.^temp),
             :columns[|model.^columns.keys.map(*.column)],
             :constraints[
-                |@!constraints.grep(*.key eq "unique").map({
+                |@!constraints.unique.grep(*.key eq "unique").map({
                     Red::AST::Unique.new: :columns[|.value]
                 }),
                 |@!constraints.grep(*.key eq "pk").map: {
