@@ -4,6 +4,7 @@ use Red::Driver::CommonSQL;
 use Red::Statement;
 use Red::AST::Infixes;
 use X::Red::Exceptions;
+use Red::AST::TableComment;
 need UUID;
 
 unit class Red::Driver::Pg does Red::Driver::CommonSQL;

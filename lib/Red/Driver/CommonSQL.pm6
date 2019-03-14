@@ -14,6 +14,7 @@ use Red::AST::Function;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::LastInsertedRow;
+use Red::AST::TableComment;
 use Red::FromRelationship;
 use Red::Driver;
 
