@@ -97,12 +97,6 @@ method compose(Mu \type) {
         method TWEAK(|) {
             self.^set-dirty: self.^columns
         }
-        multi method perl(Red::Model:D:) {
-            my @attrs = self.^attributes.grep({ $_ !~~ Red::Attr::Relationship and .has_accessor}).map: {
-                "{ .name.substr(2) } => { .get_value(self).perl }"
-            }
-            "{ self.^name }.new({ @attrs.join: ", " })"
-        }
     }
     my @roles-cols = self.roles_to_compose(type).flatmap(*.^attributes).grep: Red::Attr::Column;
     for @roles-cols -> Red::Attr::Column $attr {
