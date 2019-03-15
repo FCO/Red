@@ -27,6 +27,7 @@
         "Red::ColumnMethods": "lib/Red/ColumnMethods.pm6",
         "Red::AST::Comment": "lib/Red/AST/Comment.pm6",
         "Red::Traits": "lib/Red/Traits.pm6",
+        "Red::AST::Optimizer::AND": "lib/Red/AST/Optimizer/AND.pm6",
         "Red::AST::Divisable": "lib/Red/AST/Divisable.pm6",
         "Red::AST::Empty": "lib/Red/AST/Empty.pm6",
         "Red::AST::Unary": "lib/Red/AST/Unary.pm6",
