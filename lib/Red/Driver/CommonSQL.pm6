@@ -404,6 +404,12 @@ multi method translate(Red::AST::CreateTable $_, $context?) {
     |(.columns.map({ self.translate: $_, "column-comment" }) if not self.comment-on-same-statement)
 }
 
+multi method translate(Red::AST::DropTable $_, $context?) {
+  "DROP{ " TEMPORARY" if .temp } TABLE {
+      .name
+  }";
+}
+
 multi method translate(Red::AST::TableComment $_, $context?) {
         (" COMMENT '{ .msg }'" => []) with $_
 }

@@ -28,6 +28,12 @@ multi method translate(Red::Column $_, "column-auto-increment") { "" => [] }
 
 method wildcard { "\${ ++$*bind-counter }" }
 
+multi method translate(Red::AST::DropTable $_, $context?) {
+  "DROP{ " TEMPORARY" if .temp } TABLE IF EXISTS {
+      .name
+  }";
+}
+
 multi method translate(Red::AST::Select $_, $context?) {
     my Int $*bind-counter;
     nextsame

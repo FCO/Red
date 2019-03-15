@@ -217,6 +217,13 @@ method create-table(\model) {
             |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
 }
 
+method remove-table(\model) {
+    # Check for foreign referencing this table. Throw error if any exist.
+    $*RED-DB.execute:
+      Red::AST::DropTable.new:
+        :name(model.^table);
+}
+       
 multi method save($obj, Bool :$insert! where * == True) {
     my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
     $obj.^clean-up;

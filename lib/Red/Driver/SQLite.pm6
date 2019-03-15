@@ -51,6 +51,10 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh.prepare: $query)
 }
 
+multi method translate(Red::AST::DropTable $_, $context?) {
+  "DROP TABLE IF EXISTS { "temp." if .temp }{ .name }";
+}
+
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
     (.value ?? 1 !! 0) => []
 }
@@ -108,4 +112,3 @@ multi method map-exception(Exception $x where { .?code == 19 and .native-message
         :orig-exception($x),
         :fields($x.native-message.substr(26).split: /\s* "," \s*/)
 }
-
