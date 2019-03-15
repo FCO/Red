@@ -34,6 +34,8 @@ has @!constraints;
 has $.table;
 has Bool $!temporary;
 
+method column-names(|) { %!columns.keys>>.column>>.name }
+
 method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 
 method references(|) { %!references }
@@ -96,12 +98,6 @@ method compose(Mu \type) {
     self.add_role: type, role :: {
         method TWEAK(|) {
             self.^set-dirty: self.^columns
-        }
-        multi method perl(Red::Model:D:) {
-            my @attrs = self.^attributes.grep({ $_ !~~ Red::Attr::Relationship and .has_accessor}).map: {
-                "{ .name.substr(2) } => { .get_value(self).perl }"
-            }
-            "{ self.^name }.new({ @attrs.join: ", " })"
         }
     }
     my @roles-cols = self.roles_to_compose(type).flatmap(*.^attributes).grep: Red::Attr::Column;
@@ -211,7 +207,7 @@ method create-table(\model) {
             :temp(model.^temp),
             :columns[|model.^columns.keys.map(*.column)],
             :constraints[
-                |@!constraints.grep(*.key eq "unique").map({
+                |@!constraints.unique.grep(*.key eq "unique").map({
                     Red::AST::Unique.new: :columns[|.value]
                 }),
                 |@!constraints.grep(*.key eq "pk").map: {

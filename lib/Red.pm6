@@ -12,12 +12,18 @@ use MetamodelX::Red::Model;
 use Red::Traits;
 use Red::Operators;
 use Red::Database;
+use Red::AST::Infixes;
+use Red::AST::Optimizer::AND;
 
 class Red:ver<0.0.3>:api<0> {}
 
 BEGIN {
     Red::Column.^add_role: Red::ColumnMethods;
     Red::Column.^compose;
+    for <AND> -> $infix {
+        ::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
+        ::("Red::AST::$infix").^compose;
+    }
 }
 
 my package EXPORTHOW {

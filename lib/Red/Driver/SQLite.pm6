@@ -9,6 +9,7 @@ use Red::AST::Infixes;
 use Red::AST::Function;
 use Red::Driver::CommonSQL;
 use Red::AST::LastInsertedRow;
+use Red::AST::TableComment;
 use X::Red::Exceptions;
 use UUID;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
