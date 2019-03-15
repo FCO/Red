@@ -71,6 +71,8 @@ multi method optimization-col1(
     self.optimization-col1: $right, $left
 }
 
+multi method optimization-col1($, $) {}
+
 method optimize-and($left is copy, $right is copy) {
     my $lcols = set $left.find-column-name;
     my $rcols = set $right.find-column-name;

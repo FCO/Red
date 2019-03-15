@@ -1,5 +1,6 @@
 use Red::AST;
 use Red::AST::Infixes;
+use Red::AST::Divisable;
 use Red::AST::Value;
 use Red::ResultSeq;
 unit module Red::Operators;
