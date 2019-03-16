@@ -2,7 +2,6 @@
 
 use Red;
 
-
 use lib <./lib>;
 use OurFuncs;
 
@@ -146,8 +145,8 @@ for $f.IO.lines -> $line {
         %keys{$key}++;
     }
 
-    # we have the data, insert into the four tables if not there already
-    # TODO fix or add easy row checks with primary keys
+    # we have the data, insert into the four tables if not there
+    # already
     my $x = Person.^all.grep({.key eq $key});
     if !$x {
         ++$dbf-updated;
