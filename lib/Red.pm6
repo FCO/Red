@@ -14,13 +14,15 @@ use Red::Operators;
 use Red::Database;
 use Red::AST::Infixes;
 use Red::AST::Optimizer::AND;
+use Red::AST::Optimizer::OR;
 
 class Red:ver<0.0.3>:api<0> {}
 
 BEGIN {
     Red::Column.^add_role: Red::ColumnMethods;
     Red::Column.^compose;
-    for <AND> -> $infix {
+
+    for <AND OR> -> $infix {
         ::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
         ::("Red::AST::$infix").^compose;
     }

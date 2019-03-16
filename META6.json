@@ -41,7 +41,6 @@
     "Red::AST::MultiSelect" : "lib/Red/AST/MultiSelect.pm6",
     "Red::AST::Next" : "lib/Red/AST/Next.pm6",
     "Red::AST::Operator" : "lib/Red/AST/Operator.pm6",
-    "Red::AST::Optimizer" : "lib/Red/AST/Optimizer.pm6",
     "Red::AST::Optimizer::AND" : "lib/Red/AST/Optimizer/AND.pm6",
     "Red::AST::Select" : "lib/Red/AST/Select.pm6",
     "Red::AST::TableComment" : "lib/Red/AST/TableComment.pm6",

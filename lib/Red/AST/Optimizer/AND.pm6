@@ -1,6 +1,7 @@
 use Red::AST;
 use Red::AST::Infixes;
 use Red::AST::Value;
+
 unit role Red::AST::Optimizer::AND;
 
 #| x > 1 AND x > 10 ==> x > 10
@@ -55,7 +56,7 @@ multi method optimization-col1(
     return ast-value False if $lv.defined and $rv.defined and $lv < $rv
 }
 
-#| x < 1 AND NOT(x >= 1) ==> True
+#| a.b AND NOT(a.b) ==> True
 multi method optimization-col1(
     $left  where Red::Column,
     $right where Red::AST::Not
@@ -63,7 +64,7 @@ multi method optimization-col1(
     return ast-value True if $left eqv $right.value
 }
 
-#| NOT(x < 1) AND x >= 1 ==> True
+#| NOT(a.b) AND a.b ==> True
 multi method optimization-col1(
     $left  where Red::AST::Not,
     $right where Red::Column
@@ -73,7 +74,13 @@ multi method optimization-col1(
 
 multi method optimization-col1($, $) {}
 
-method optimize-and($left is copy, $right is copy) {
+multi method optimize(Red::AST::Value $ where .value === False, Red::AST $)  { ast-value False }
+multi method optimize(Red::AST $, Red::AST::Value $ where .value === False)  { ast-value False }
+
+multi method optimize(Red::AST::Value $ where .value === True, Red::AST $right) { $right }
+multi method optimize(Red::AST $left, Red::AST::Value $ where .value === True)  { $left  }
+
+multi method optimize(Red::AST $left is copy, Red::AST $right is copy) {
     my $lcols = set $left.find-column-name;
     my $rcols = set $right.find-column-name;
 
