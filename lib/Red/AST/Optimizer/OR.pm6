@@ -73,6 +73,6 @@ multi method optimize(Red::AST $left is copy, Red::AST $right is copy) {
     $right .= value if $right ~~ Red::AST::So;
 
     my $cols := ($lcols ∩ $rcols).elems;
-    
+
     .return with self.optimize: $left, $right, $cols
 }
