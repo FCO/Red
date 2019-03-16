@@ -148,9 +148,16 @@ for $f.IO.lines -> $line {
     # we have the data, insert into the four tables if not there already
     if !(Person.^load(:key($key))) {
         my $p = Person.^create(:key($key), :last($last), :first($first));
-        $p.attends.create(:person_id($key), :year($_)) for %a.keys;
-        $p.emails.create(:person_id($key), :year($_)) for %p.keys;
-        $p.presents.create(:person_id($key), :email($_)) for %e.keys;
+        # check each child table's entry
+        for %a.keys {
+            $p.attends.create(:person_id($key), :year($_)) if !$p.attends.year($_);
+        }
+        for %e.keys {
+            $p.emails.create(:person_id($key), :email($_)) if $p.emails.email($_);
+        }
+        for %p.keys {
+            $p.presents.create(:person_id($key), :year($_)) if $p.presents.year($_);
+        }
     }
 
 
