@@ -105,6 +105,7 @@ try { Person.^create-table; }
 handle-error $!;
 
 my %keys = SetHash.new ; # check for dups
+my $dbf-updated = 0;
 for $f.IO.lines -> $line {
     my @w = split $COMMA, $line;
     my $last  = tclc @w.shift;
@@ -151,6 +152,7 @@ for $f.IO.lines -> $line {
     # TODO fix or add easy row checks with primary keys
     my $x = Person.^all.grep({.key eq $key});
     if !$x {
+        ++$dbf-updated;
         my $p = Person.^create(:key($key), :last($last), :first($first));
         # check each child table's entry
         for %a.keys -> $year {
@@ -166,4 +168,11 @@ for $f.IO.lines -> $line {
 }
 
 say "Normal end.";
-say "Data are in database file '$dbf'." if $dbf.IO.f;
+if $dbf.IO.f {
+    if $dbf-updated {
+        say "Updated data are in database file '$dbf'.";
+    }
+    else {
+        say "No data were updated in database file '$dbf'.";
+    }
+}
