@@ -128,7 +128,7 @@ for $f.IO.lines -> $line {
         }
         elsif $w ~~ /'@'/ {
             $w .= lc;
-            %p{$w}++;
+            %e{$w}++;
         }
         else {
             note "FATAL: Unexpected data word '$w'";
@@ -153,17 +153,14 @@ for $f.IO.lines -> $line {
     if !$x {
         my $p = Person.^create(:key($key), :last($last), :first($first));
         # check each child table's entry
-        for %a.keys {
-            $x = Attend.^all.grep({.year eq $_});
-            $p.attends.create(:year($_)) if !$x;
+        for %a.keys -> $year {
+            $p.attends.create: :$year unless $p.attends.grep: *.year == $year;
         }
-        for %e.keys {
-            $x = Email.^all.grep({.email eq $_});
-            $p.emails.create(:email($_)) if !$x;
+        for %e.keys -> $email {
+            $p.emails.create: :$email unless $p.emails.grep: *.email eq $email;
         }
-        for %p.keys {
-            $x = Present.^all.grep({.year eq $_});
-            $p.presents.create(:year($_)) if !$x;
+        for %p.keys -> $year {
+            $p.presents.create: :$year unless $p.presents.grep: *.year == $year;
         }
     }
 }
