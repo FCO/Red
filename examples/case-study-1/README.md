@@ -63,17 +63,16 @@ create table email (
 );
 ```
 
-Queries using the tables will be to determine or provide:
+Some queries using the tables will be to determine or provide:
 
-- alphabetical list all contacts by last name, first name,
-  and include all known emails in alpha order
-- number of attendees per year
-- number of presenters per year
-- for a person, what years was the person an attendee or
-  a presenter
-- a list of all known valid emails for upload to a mail server
-- a list of persons who unsubscribed to our mailing list
-- various email status reports
+1. alphabetical list of all contacts by last name, first name, and
+   include all known emails in alpha order
+2. number of attendees per year
+3. number of presenters per year
+4. for a person, what years was the person an attendee or a presenter
+5. a list of all known valid emails for upload to a mail server
+6. a list of persons who unsubscribed to our mailing list
+7. various email status reports
 
 The goal is to create those tables and query them with **Red**.
 
