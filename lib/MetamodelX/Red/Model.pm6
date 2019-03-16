@@ -58,6 +58,14 @@ method id-values(Red::Model:D $model) {
 
 method default-nullable(|) is rw { $ //= False }
 
+method unique-counstraints(\model) {
+    @!constraints.unique.grep(*.key eq "unique").map: *.value.attr
+}
+
+method general-ids(\model) {
+    (|model.^id, |model.^unique-counstraints)
+}
+
 multi method id-filter(Red::Model:D $model) {
     $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(self.get-attr: $model, $_), :type(.type) })
     .reduce: { Red::AST::AND.new: $^a, $^b }
@@ -68,9 +76,22 @@ multi method id-filter(Red::Model:U $model, $id) {
     self.id-filter: $model, |{$model.^id.head.column.attr-name => $id}
 }
 
+multi method id-filter(Red::Model:U $model, *%data where { .keys.all ~~ $model.^general-ids>>.name>>.substr(2).any }) {
+    $model.^general-ids
+        .map({
+            next without %data{.column.attr-name};
+            Red::AST::Eq.new:
+                .column,
+                ast-value %data{.column.attr-name}
+        })
+        .reduce: {
+            Red::AST::AND.new: $^a, $^b
+        }
+    ;
+}
+
 multi method id-filter(Red::Model:U $model, *%data) {
-    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(%data{.column.attr-name}), :type(.type) })
-    .reduce: { Red::AST::AND.new: $^a, $^b }
+    die "one of the following keys aren't ids: { %data.keys.join: ", " }"
 }
 
 method attr-to-column(|) is rw {
