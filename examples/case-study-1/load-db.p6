@@ -54,6 +54,7 @@ model Attend is rw {
 
 model Person is rw {
     has Str $.key          is column{:unique};
+
     # data:
     has Str $.last         is column;
     has Str $.first        is column;
@@ -73,10 +74,10 @@ my $dbf = './data/ctech.sqlite';
 # use the following in-memory version and Red debug until
 # getting desired results
 my $*RED-DEBUG = 1;
-my $*RED-DB = database "SQLite";
 =begin comment
-my $*RED-DB = database "SQLite", :database($dbf);
+my $*RED-DB = database "SQLite";
 =end comment
+my $*RED-DB = database "SQLite", :database($dbf);
 
 if !@*ARGS {
     say qq:to/HERE/;
@@ -102,30 +103,30 @@ handle-error $!;
 try { Person.^create-table; }
 handle-error $!;
 
-my %keys; # check for dups
+my %keys = SetHash.new ; # check for dups
 for $f.IO.lines -> $line {
     my @w = split $COMMA, $line;
     my $last  = tclc @w.shift;
     my $first = tclc @w.shift;
     # rest of data may vary
-    my %e;
-    my %a;
-    my %p;
+    my %a = SetHash.new;
+    my %e = SetHash.new;
+    my %p = SetHash.new;
 
     for @w -> $w is copy {
         $w .= trim;
         if $w ~~ /(\d**4) (:i p)?/ {
             my $year = ~$0;
             if  $1 {
-                %p{$year} = 1;
+                %p{$year}++;
             }
             else {
-                %a{$year} = 1;
+                %a{$year}++;
             }
         }
         elsif $w ~~ /'@'/ {
             $w .= lc;
-            %p{$w} = 1;
+            %p{$w}++;
         }
         else {
             note "FATAL: Unexpected data word '$w'";
@@ -141,14 +142,17 @@ for $f.IO.lines -> $line {
         die "FATAL: key '$key' is NOT unique.";
     }
     else {
-        %keys{$key} = 1;
+        %keys{$key}++;
     }
 
     # we have the data, insert into the four tables if not there already
-    my $p = Person.^create(:key($key), :last($last), :first($first));
-    $p.attends.create(:person_id($key), :year($_)) for %a.keys;
-    $p.attends.create(:person_id($key), :year($_)) for %p.keys;
-    $p.attends.create(:person_id($key), :email($_)) for %e.keys;
+    if !(Person.^load(:key($key))) {
+        my $p = Person.^create(:key($key), :last($last), :first($first));
+        $p.attends.create(:person_id($key), :year($_)) for %a.keys;
+        $p.emails.create(:person_id($key), :year($_)) for %p.keys;
+        $p.presents.create(:person_id($key), :email($_)) for %e.keys;
+    }
+
 
 }
 
