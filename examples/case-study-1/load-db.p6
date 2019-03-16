@@ -54,7 +54,7 @@ model Attend is rw {
 
 model Person is rw {
     # note the following is for user-defined keys
-    has Str $.key          is id; 
+    has Str $.key          is id;
 
     # data:
     has Str $.last         is column;
@@ -155,15 +155,15 @@ for $f.IO.lines -> $line {
         # check each child table's entry
         for %a.keys {
             $x = Attend.^all.grep({.year eq $_});
-            $p.attends.create(:person_id($key), :year($_)) if !$x;
+            $p.attends.create(:year($_)) if !$x;
         }
         for %e.keys {
             $x = Email.^all.grep({.email eq $_});
-            $p.emails.create(:person_id($key), :email($_)) if !$x;
+            $p.emails.create(:email($_)) if !$x;
         }
         for %p.keys {
             $x = Present.^all.grep({.year eq $_});
-            $p.presents.create(:person_id($key), :year($_)) if !$x;
+            $p.presents.create(:year($_)) if !$x;
         }
     }
 }
