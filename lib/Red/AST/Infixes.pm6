@@ -119,7 +119,7 @@ class Red::AST::AND does Red::AST::Infix {
     method should-validate {}
 
     method not {
-        Red::AST::AND.new: $.left.not, $.right.not, :bind-left($.bind-left), :bind-right($.bind-right)
+        Red::AST::OR.new: $.left.not, $.right.not, :bind-left($.bind-left), :bind-right($.bind-right)
     }
 }
 
@@ -143,7 +143,7 @@ class Red::AST::OR does Red::AST::Infix {
     method should-validate {}
 
     method not {
-        Red::AST::OR.new: $.left.not, $.right.not, :bind-left($.bind-left), :bind-right($.bind-right)
+        Red::AST::AND.new: $.left.not, $.right.not, :bind-left($.bind-left), :bind-right($.bind-right)
     }
 }
 

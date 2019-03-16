@@ -20,6 +20,7 @@ is-deeply (f AND C.a), f;
 is-deeply (C.a AND f), f;
 is-deeply (t AND C.a), C.a;
 is-deeply (C.a AND t), C.a;
+
 is-deeply ((C.a) AND not (C.a)), t;
 
 is-deeply ((C.a > 1)  AND (C.a > 10) ), (C.a > 10);
