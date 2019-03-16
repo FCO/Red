@@ -5,70 +5,10 @@ use Red;
 use lib <./lib>;
 use OurFuncs;
 
-=begin comment
-# do not know how to 'use' these yet:
-#model Person {...}
 use Present;
 use Attend;
 use Email;
 use Person;
-=end comment
-
-#=====================================================================
-# TODO Successfully split the following models into a lib directory as
-#      individual packages and 'use' them in this script and the
-#      'query-db.p6' and 'update-db.p6' scripts.
-#=====================================================================
-
-model Person {...}
-
-model Email is rw {
-    # relationship
-    has UInt $!person-id is referencing{:column<key>, :model<Person>};
-    has Person $.person  is relationship{:column<key>, :model<Person>};
-
-    # data:
-    has Str  $.email     is column;
-    has Str  $.notes     is column{:nullable};
-    has UInt $.status    is column{:nullable};
-}
-
-model Present is rw {
-    # relationship
-    has UInt $!person-id is referencing{:column<key>, :model<Person>};
-    has Person $.person  is relationship{:column<key>, :model<Person>};
-
-    # data:
-    has UInt $.year      is column;
-    has Str  $.notes     is column{:nullable};
-}
-
-model Attend is rw {
-    # relationship
-    has UInt $!person-id is referencing{:column<key>, :model<Person>};
-    has Person $.person  is relationship{:column<key>, :model<Person>};
-
-    # data:
-    has UInt $.year      is column;
-    has Str  $.notes     is column{:nullable};
-}
-
-model Person is rw {
-    # note the following is for user-defined keys
-    has Str $.key          is id;
-
-    # data:
-    has Str $.last         is column;
-    has Str $.first        is column;
-    has Str $.notes        is column{:nullable};
-
-    # relations
-    has Attend @.attends   is relationship({.person-id }, :model<Attend>);
-    has Email @.emails     is relationship({.person-id }, :model<Email>);
-    has Present @.presents is relationship({.person-id }, :model<Present>);
-}
-#==========================================================
-
 
 my $f   = './data/attendees.csv';
 my $dbf = './data/ctech.sqlite';
@@ -95,11 +35,10 @@ if !@*ARGS {
 my $dbf-updated = 0;
 
 for Person, Attend, Email, Present -> $model {
-    # check for existence
-
-    # try blocks are needed until I know a Red method for existence test
-    try { $model.^create-table; };
-    $dbf-updated = handle-error $!;
+    CATCH {
+        when .message ~~ /table \s+ \S+ \s+ already \s+ exists/ {}
+    }
+    $model.^create-table;
 }
 
 my %keys = SetHash.new ; # check for dups
