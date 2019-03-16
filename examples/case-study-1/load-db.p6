@@ -53,7 +53,8 @@ model Attend is rw {
 }
 
 model Person is rw {
-    has Str $.key          is column{:unique};
+    # note the following is for user-defined keys
+    has Str $.key          is id; 
 
     # data:
     has Str $.last         is column;
@@ -113,6 +114,7 @@ for $f.IO.lines -> $line {
     my %e = SetHash.new;
     my %p = SetHash.new;
 
+    # TODO use a grammar to extract data from the input line
     for @w -> $w is copy {
         $w .= trim;
         if $w ~~ /(\d**4) (:i p)?/ {
@@ -146,21 +148,24 @@ for $f.IO.lines -> $line {
     }
 
     # we have the data, insert into the four tables if not there already
-    if !(Person.^load(:key($key))) {
+    # TODO fix or add easy row checks with primary keys
+    my $x = Person.^all.grep({.key eq $key});
+    if !$x {
         my $p = Person.^create(:key($key), :last($last), :first($first));
         # check each child table's entry
         for %a.keys {
-            $p.attends.create(:person_id($key), :year($_)) if !$p.attends.year($_);
+            $x = Attend.^all.grep({.year eq $_});
+            $p.attends.create(:person_id($key), :year($_)) if !$x;
         }
         for %e.keys {
-            $p.emails.create(:person_id($key), :email($_)) if $p.emails.email($_);
+            $x = Email.^all.grep({.email eq $_});
+            $p.emails.create(:person_id($key), :email($_)) if !$x;
         }
         for %p.keys {
-            $p.presents.create(:person_id($key), :year($_)) if $p.presents.year($_);
+            $x = Present.^all.grep({.year eq $_});
+            $p.presents.create(:person_id($key), :year($_)) if !$x;
         }
     }
-
-
 }
 
 say "Normal end.";
