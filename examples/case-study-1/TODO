@@ -1,7 +1,5 @@
 Items or features to be done:
 
-+ split models in 'load-db.p6' into packages in the 'lib' subdirectory
-
 + use a grammar for extracting CSV input data
 
 + create tests from the scripts

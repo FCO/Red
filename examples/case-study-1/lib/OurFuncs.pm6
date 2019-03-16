@@ -1,14 +1,17 @@
 unit module OurFuncs;
 
-constant $TEST  is export = 1;
-constant $SEMI  is export = ';';
-constant $AMP   is export = '&';
-constant $COMMA is export = ',';
+constant $TEST   is export = 1;
+constant $SEMI   is export = ';';
+constant $AMP    is export = '&';
+constant $COMMA  is export = ',';
+constant $UPDATE is export = 1;
+constant $NOCHG  is export = 0;
 
 sub handle-error($err) is export {
-    return if !$err;
+
+    return $UPDATE if !$err;
     if $err ~~ /table \s+ \S+ \s+ already \s+ exists / {
-        ; # okay
+        return $NOCHG; # okay, no update made
     }
     else {
         say "Caught error '$err'";
