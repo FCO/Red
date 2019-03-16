@@ -36,11 +36,10 @@ if !@*ARGS {
 my $dbf-updated = 0;
 
 for Person, Attend, Email, Present -> $model {
-    # check for existence
-
-    # try blocks are needed until I know a Red method for existence test
-    try { $model.^create-table; };
-    $dbf-updated = handle-error $!;
+    CATCH {
+        when .message ~~ /table \s+ \S+ \s+ already \s+ exists/ {}
+    }
+    $model.^create-table;
 }
 
 my %keys = SetHash.new ; # check for dups
