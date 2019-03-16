@@ -15,10 +15,12 @@ use Email;
 use Person;
 =end comment
 
-#==========================================================
-# TODO Successfully split the following models into a lib
-#      directory as individual packages and 'use' them
-#      in this script and the 'query-db.p6' script.
+#=====================================================================
+# TODO Successfully split the following models into a lib directory as
+#      individual packages and 'use' them in this script and the
+#      'query-db.p6' and 'update-db.p6' scripts.
+#=====================================================================
+
 model Person {...}
 
 model Email is rw {
@@ -91,21 +93,17 @@ if !@*ARGS {
     exit;
 }
 
-# try blocks are needed until Red gets some updates
-try { Attend.^create-table; }
-handle-error $!;
+my $dbf-updated = 0;
 
-try { Present.^create-table; }
-handle-error $!;
+for Person, Attend, Email, Present -> $model {
+    # check for existence
 
-try { Email.^create-table; }
-handle-error $!;
-
-try { Person.^create-table; }
-handle-error $!;
+    # try blocks are needed until I know a Red method for existence test
+    try { $model.^create-table; };
+    $dbf-updated = handle-error $!;
+}
 
 my %keys = SetHash.new ; # check for dups
-my $dbf-updated = 0;
 for $f.IO.lines -> $line {
     my @w = split $COMMA, $line;
     my $last  = tclc @w.shift;
