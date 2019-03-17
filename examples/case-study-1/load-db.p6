@@ -10,7 +10,8 @@ use Attend;
 use Email;
 use Person;
 
-my $dbf = $*PROGRAM.parent.add('data/ctech.sqlite').absolute;
+my $dbf-local = 'data/ctech.sqlite';
+my $dbf = $*PROGRAM.parent.add($dbf-local).absolute;
 
 my $f   = './data/attendees.csv';
 
@@ -107,9 +108,9 @@ for $f.IO.lines -> $line {
 say "Normal end.";
 if $dbf.IO.f {
     if $dbf-updated {
-        say "Updated data are in database file '$dbf'.";
+        say "Updated data are in database file '$dbf-local'.";
     }
     else {
-        say "No data were updated in database file '$dbf'.";
+        say "No data were updated in database file '$dbf-local'.";
     }
 }
