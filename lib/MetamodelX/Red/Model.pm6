@@ -259,7 +259,11 @@ multi method save($obj) {
 }
 
 method create(\model, |pars) {
-    my $obj = model.new: |pars;
+    my %relationships := set %.relationships.keys>>.name>>.substr: 2;
+    my %pars = |pars.kv.map: -> $name, $val {
+        $name => %relationships{ $name } && $val !~~ model."$name"() ?? model."$name"().^create: |$val !! $val
+    }
+    my $obj = model.new: |%pars;
     my $data := $obj.^save(:insert).row;
     if model.^id.elems and $data.defined and not $data.elems {
         $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
