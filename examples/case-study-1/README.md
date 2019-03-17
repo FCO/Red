@@ -27,6 +27,7 @@ data file example is somewhat simplified to ease parsing for this
 study. The actual data file allows spaces in names and handles casing
 adjustments as needed.)
 
+
 ### SQL tables
 
 Using a conventional RDBMS we would use use the following tables for

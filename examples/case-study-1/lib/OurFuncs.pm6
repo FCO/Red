@@ -20,7 +20,7 @@ sub handle-error($err) is export {
 
 sub create-csv-key(:$last   is copy = '',
                    :$first  is copy = '',
-                   :$e-mail is copy = '',
+                   :%e-mail,
                    :$debug) is export {
     # ensure no ampersand in the first name
     if $first && $first ~~ /'&'/ {
@@ -30,7 +30,12 @@ sub create-csv-key(:$last   is copy = '',
     # make empty last name sort to the top
     $last = 0 if !$last;
 
-    my $key = "|$last|$first|$e-mail|";
+    my $key = "|$last|$first|";
+    # add any emails
+    for %e-mail.keys.sort -> $e {
+        $key ~= "$e|";
+    }
+
     # make all fields lower-case
     $key .= lc;
     # trim all whitespace

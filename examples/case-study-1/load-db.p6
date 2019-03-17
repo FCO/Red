@@ -2,17 +2,17 @@
 
 use Red;
 
-use lib <./lib>;
+use lib $*PROGRAM.parent.add('lib');
 use OurFuncs;
-
 # the Red models
 use Present;
 use Attend;
 use Email;
 use Person;
 
+my $dbf = $*PROGRAM.parent.add('data/ctech.sqlite').absolute;
+
 my $f   = './data/attendees.csv';
-my $dbf = './data/ctech.sqlite';
 
 # use the following in-memory version and Red debug until
 # getting desired results
@@ -76,7 +76,7 @@ for $f.IO.lines -> $line {
 
     # put in db
     # get a key for Person
-    my $key = create-csv-key :$last, :$first;
+    my $key = create-csv-key :$last, :$first, :e-mail(%e);
     # unique?
     if %keys{$key}:exists {
         die "FATAL: key '$key' is NOT unique.";
