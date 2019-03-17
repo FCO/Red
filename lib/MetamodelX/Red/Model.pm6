@@ -220,7 +220,9 @@ method all($obj)                    { $obj.^rs }
 method temp(|) is rw { $!temporary }
 
 multi method create-table(\model, Bool :$if-not-exists where * === True) {
-    CATCH { when X::Red::Driver::Mapped::TableExists {}}
+    CATCH { when X::Red::Driver::Mapped::TableExists {
+        return False
+    }}
     callwith model
 }
 
@@ -240,7 +242,8 @@ multi method create-table(\model) {
                     Red::AST::Pk.new: :columns[|.value]
                 },
             ],
-            |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
+            |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY);
+    True
 }
 
 multi method save($obj, Bool :$insert! where * == True) {
