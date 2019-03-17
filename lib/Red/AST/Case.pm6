@@ -3,6 +3,7 @@ use Red::AST::Unary;
 use Red::AST::Infixes;
 use Red::AST::Value;
 unit class Red::AST::Case does Red::AST;
+#also does Red::AST::Optimizer::Case;
 
 has Red::AST $.case;
 has Red::AST %.when{Red::AST};

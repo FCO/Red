@@ -102,6 +102,11 @@ multi method prepare(Red::AST $query) {
 method comment-on-same-statement { False }
 
 multi method prepare(Str $query) {
+    CATCH {
+        default {
+            self.map-exception($_).throw
+        }
+    }
     self.debug: $query;
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
@@ -121,4 +126,11 @@ multi method map-exception(DB::Pg::Error::FatalError $x where /"duplicate key va
         :driver<Pg>,
         :orig-exception($x),
         :fields($0>>.Str)
+}
+
+multi method map-exception(DB::Pg::Error::FatalError $x where /"ERROR:"\s+ relation \s+ \"$<table>=(\w+)\" \s+ already \s+ exists\n/) {
+    X::Red::Driver::Mapped::TableExists.new:
+            :driver<Pg>,
+            :orig-exception($x),
+            :table($<table>.Str)
 }

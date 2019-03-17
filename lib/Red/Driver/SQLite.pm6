@@ -47,6 +47,11 @@ multi method prepare(Red::AST $query) {
 }
 
 multi method prepare(Str $query) {
+    CATCH {
+        default {
+            self.map-exception($_).throw
+        }
+    }
     self.debug: $query;
     Statement.new: :driver(self), :statement($!dbh.prepare: $query)
 }
@@ -109,3 +114,9 @@ multi method map-exception(Exception $x where { .?code == 19 and .native-message
         :fields($x.native-message.substr(26).split: /\s* "," \s*/)
 }
 
+multi method map-exception(Exception $x where { .?code == 1 and .native-message ~~ /^table \s+ $<table>=(\w+) \s+ already \s+ exists/ }) {
+    X::Red::Driver::Mapped::TableExists.new:
+            :driver<SQLite>,
+            :orig-exception($x),
+            :table($<table>.Str)
+}

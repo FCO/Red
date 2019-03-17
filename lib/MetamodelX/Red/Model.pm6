@@ -219,7 +219,12 @@ method all($obj)                    { $obj.^rs }
 
 method temp(|) is rw { $!temporary }
 
-method create-table(\model) {
+multi method create-table(\model, Bool :$if-exists where * === True) {
+    CATCH { when X::Red::Driver::Mapped::TableExists {}}
+    callwith model
+}
+
+multi method create-table(\model) {
     die X::Red::InvalidTableName.new: :table(model.^table)
     unless $*RED-DB.is-valid-table-name: model.^table;
     $*RED-DB.execute:
