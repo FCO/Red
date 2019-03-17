@@ -8,21 +8,10 @@ has Red::AST $.case;
 has Red::AST %.when{Red::AST};
 has Red::AST $.else;
 
-method new(Red::AST :$case, Red::AST :%when, Red::AST :$else is copy) {
-    do if not $case.defined and %when == 1 and %when.values.head.?type ~~ Positional {
-        %when.values.head.get-value<>
-    } elsif %when.first: { .key ~~ Red::AST::Value and .key.value === True } -> $_ {
-        .value.self
-    } elsif not $case.defined and %when == 1 and not %when.keys.head.defined {
-        %when.values.head
-    } elsif not $case.defined and %when == 2 and Red::AST::AND.new(|%when.keys) ~~ { $_ ~~ Red::AST::Value and .value === True } {
-        my $to-remove = %when.keys.first(Red::AST::So) // %when.keys.head;
-        nextwith :else(%when{$to-remove}:delete), :%when
-    } else {
-        my Red::AST %filteredWhen{Red::AST} = %when.grep: { .key !~~ Red::AST::Value or .key.value !=== False };
-        die "No conditions passed to CASE/WHEN" unless %filteredWhen;
-        nextwith :$case, :when(%filteredWhen), :$else
-    }
+multi method new(Red::AST :$case, Red::AST :%when, Red::AST :$else is copy) {
+    .return with self.optimize: :$case, :%when, :$else;
+
+    ::?CLASS.bless: :$case, :%when, :$else
 }
 
 method args {
