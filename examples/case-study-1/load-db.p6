@@ -76,7 +76,7 @@ for $f.IO.lines -> $line {
     # get a key for Person
     my $key = create-csv-key :$last, :$first, :e-mail(%e);
     # unique?
-    if %keys{$key}:exists {
+    if %keys{$key} {
         die "FATAL: key '$key' is NOT unique.";
     }
     else {
