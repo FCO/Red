@@ -42,3 +42,8 @@ class X::Red::Driver::Mapped::Unique is X::Red::Driver::Mapped {
     has Str @.fields;
     method msg { "Unique constraint ({@!fields.join: ", "}) violated" }
 }
+
+class X::Red::Driver::Mapped::TableExists is X::Red::Driver::Mapped {
+    has Str $.table is required;
+    method msg { "Table $!table already exists" }
+}

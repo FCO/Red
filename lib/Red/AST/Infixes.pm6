@@ -1,6 +1,5 @@
 use Red::AST::Infix;
 use Red::AST::Value;
-use Red::AST::Optimizer;
 class Red::AST::Eq      { ... }
 class Red::AST::Ne      { ... }
 class Red::AST::Lt      { ... }
@@ -100,18 +99,37 @@ class Red::AST::Ge does Red::AST::Infix {
 }
 
 class Red::AST::AND does Red::AST::Infix {
-	also does SameIfPresent[False];
-	also does SameIfTheOtherIsTrue;
     #also does Red::AST::Optimizer::And;
 
     has $.op = "AND";
     has Bool $.returns;
 
-	multi method optimize($left, $right) { Nil }
-
     multi method new(Red::AST $left is copy, Red::AST $right is copy) {
 		.return with self.optimize: $left, $right;
-        .return with self.optimize-and: $left, $right;
+
+        $left  .= value if $left ~~ Red::AST::So;
+        $right .= value if $right ~~ Red::AST::So;
+
+        ::?CLASS.bless: :$left, :$right
+    }
+
+    method should-set(--> Hash()) {
+    }
+
+    method should-validate {}
+
+    method not {
+        Red::AST::OR.new: $.left.not, $.right.not, :bind-left($.bind-left), :bind-right($.bind-right)
+    }
+}
+
+class Red::AST::OR does Red::AST::Infix {
+    #also does Red::AST::Optimizer::OR;
+    has $.op = "OR";
+    has Bool $.returns;
+
+    multi method new(Red::AST $left is copy, Red::AST $right is copy) {
+        .return with self.optimize: $left, $right;
 
         $left  .= value if $left ~~ Red::AST::So;
         $right .= value if $right ~~ Red::AST::So;
@@ -126,20 +144,6 @@ class Red::AST::AND does Red::AST::Infix {
 
     method not {
         Red::AST::AND.new: $.left.not, $.right.not, :bind-left($.bind-left), :bind-right($.bind-right)
-    }
-}
-
-class Red::AST::OR does Red::AST::Infix {
-    has $.op = "OR";
-    has Bool $.returns;
-
-    method should-set(--> Hash()) {
-    }
-
-    method should-validate {}
-
-    method not {
-        Red::AST::OR.new: $.left.not, $.right.not, :bind-left($.bind-left), :bind-right($.bind-right)
     }
 }
 

@@ -399,8 +399,8 @@ multi method translate(Red::AST::CreateTable $_, $context?) {
             |.constraints.map({ self.translate($_, "create-table").key })
         ).join(",\n").indent: 3
     }\n)" => [],
-    |do if not self.comment-on-same-statement and .comment {
-        self.translate(.comment).key => []
+    |do if not self.comment-on-same-statement {
+        self.translate($_).key => [] with .comment
     },
     |(.columns.map({ self.translate: $_, "column-comment" }) if not self.comment-on-same-statement)
 }

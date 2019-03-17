@@ -318,9 +318,9 @@ multi infix:<AND>(Red::AST $a, Red::AST $b) is export is tighter(&infix:<==>) {
     Red::AST::AND.new: $a, $b
 }
 
-#multi infix:<OR>(Red::AST $a, Red::AST $b) is export {
-#    Red::AST::OR.new: $a, $b
-#}
+multi infix:<OR>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::OR.new: $a, $b
+}
 
 multi infix:<∪>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
     $a (|) $b

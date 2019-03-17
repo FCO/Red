@@ -58,6 +58,14 @@ method id-values(Red::Model:D $model) {
 
 method default-nullable(|) is rw { $ //= False }
 
+method unique-counstraints(\model) {
+    @!constraints.unique.grep(*.key eq "unique").map: *.value.attr
+}
+
+method general-ids(\model) {
+    (|model.^id, |model.^unique-counstraints)
+}
+
 multi method id-filter(Red::Model:D $model) {
     $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(self.get-attr: $model, $_), :type(.type) })
     .reduce: { Red::AST::AND.new: $^a, $^b }
@@ -68,9 +76,22 @@ multi method id-filter(Red::Model:U $model, $id) {
     self.id-filter: $model, |{$model.^id.head.column.attr-name => $id}
 }
 
+multi method id-filter(Red::Model:U $model, *%data where { .keys.all ~~ $model.^general-ids>>.name>>.substr(2).any }) {
+    $model.^general-ids
+        .map({
+            next without %data{.column.attr-name};
+            Red::AST::Eq.new:
+                .column,
+                ast-value %data{.column.attr-name}
+        })
+        .reduce: {
+            Red::AST::AND.new: $^a, $^b
+        }
+    ;
+}
+
 multi method id-filter(Red::Model:U $model, *%data) {
-    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(%data{.column.attr-name}), :type(.type) })
-    .reduce: { Red::AST::AND.new: $^a, $^b }
+    die "one of the following keys aren't ids: { %data.keys.join: ", " }"
 }
 
 method attr-to-column(|) is rw {
@@ -198,7 +219,12 @@ method all($obj)                    { $obj.^rs }
 
 method temp(|) is rw { $!temporary }
 
-method create-table(\model) {
+multi method create-table(\model, Bool :$if-not-exists where * === True) {
+    CATCH { when X::Red::Driver::Mapped::TableExists {}}
+    callwith model
+}
+
+multi method create-table(\model) {
     die X::Red::InvalidTableName.new: :table(model.^table)
     unless $*RED-DB.is-valid-table-name: model.^table;
     $*RED-DB.execute:
@@ -238,7 +264,11 @@ multi method save($obj) {
 }
 
 method create(\model, |pars) {
-    my $obj = model.new: |pars;
+    my %relationships := set %.relationships.keys>>.name>>.substr: 2;
+    my %pars = |pars.kv.map: -> $name, $val {
+        $name => %relationships{ $name } && $val !~~ model."$name"() ?? model."$name"().^create: |$val !! $val
+    }
+    my $obj = model.new: |%pars;
     my $data := $obj.^save(:insert).row;
     if model.^id.elems and $data.defined and not $data.elems {
         $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
