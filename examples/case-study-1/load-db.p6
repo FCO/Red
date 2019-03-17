@@ -10,8 +10,7 @@ use Attend;
 use Email;
 use Person;
 
-my $dbf-local = 'data/ctech.sqlite';
-my $dbf = $*PROGRAM.parent.add($dbf-local).absolute;
+my $dbf = $*PROGRAM.parent.add($DBF).absolute;
 
 my $f   = './data/attendees.csv';
 
@@ -29,7 +28,7 @@ if !@*ARGS {
 
     Reads data from CSV file '$f' and
     loads them into an SQLite database
-    (file '$dbf-local').
+    (file '$DBF').
     HERE
     exit;
 }
@@ -105,9 +104,9 @@ for $f.IO.lines -> $line {
 say "Normal end.";
 if $dbf.IO.f {
     if $dbf-updated {
-        say "Updated data are in database file '$dbf-local'.";
+        say "Updated data are in database file '$DBF'.";
     }
     else {
-        say "No data were updated in database file '$dbf-local'.";
+        say "No data were updated in database file '$DBF'.";
     }
 }

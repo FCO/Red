@@ -6,18 +6,7 @@ constant $AMP    is export = '&';
 constant $COMMA  is export = ',';
 constant $UPDATE is export = 1;
 constant $NOCHG  is export = 0;
-
-=begin comment
-sub handle-error($err) is export {
-    return $UPDATE if !$err;
-    if $err ~~ /table \s+ \S+ \s+ already \s+ exists / {
-        return $NOCHG; # okay, no update made
-    }
-    else {
-        say "Caught error '$err'";
-    }
-}
-=end comment
+constant $DBF    is export = 'data/ctech.sqlite';
 
 sub create-csv-key(:$last   is copy = '',
                    :$first  is copy = '',
