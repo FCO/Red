@@ -7,8 +7,8 @@ constant $COMMA  is export = ',';
 constant $UPDATE is export = 1;
 constant $NOCHG  is export = 0;
 
+=begin comment
 sub handle-error($err) is export {
-
     return $UPDATE if !$err;
     if $err ~~ /table \s+ \S+ \s+ already \s+ exists / {
         return $NOCHG; # okay, no update made
@@ -17,6 +17,7 @@ sub handle-error($err) is export {
         say "Caught error '$err'";
     }
 }
+=end comment
 
 sub create-csv-key(:$last   is copy = '',
                    :$first  is copy = '',

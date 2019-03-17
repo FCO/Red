@@ -19,6 +19,9 @@ multi MAIN(Int $number, Bool :$*debug!) {
 #| 1. Alphabetical list of all contacts by last name, first name, and
 #| include all known emails in alpha order
 multi MAIN(1) {
+    my $q = Person.^all.grep(i  
+
+
 }
 
 #| 2. Number of attendees per year

@@ -29,7 +29,7 @@ if !@*ARGS {
 
     Reads data from CSV file '$f' and
     loads them into an SQLite database
-    (file '$dbf').
+    (file '$dbf-local').
     HERE
     exit;
 }
@@ -37,10 +37,7 @@ if !@*ARGS {
 my $dbf-updated = 0;
 
 for Person, Attend, Email, Present -> $model {
-    CATCH {
-        when .message ~~ /table \s+ \S+ \s+ already \s+ exists/ {}
-    }
-    $model.^create-table;
+    $model.^create-table(:if-not-exists);
 }
 
 my %keys = SetHash.new ; # check for dups
