@@ -20,6 +20,7 @@ use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Relationship;
 use X::Red::Exceptions;
+use Red::Phaser;
 
 unit class MetamodelX::Red::Model is Metamodel::ClassHOW;
 also does MetamodelX::Red::Dirtable;
@@ -246,6 +247,11 @@ multi method create-table(\model) {
     True
 }
 
+method apply-row-phasers($obj, Mu:U $phase ) {
+    for $obj.^methods.grep($phase) -> $meth {
+        $obj.$meth();
+    }
+}
 multi method save($obj, Bool :$insert! where * == True) {
     my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
     $obj.^clean-up;
@@ -253,8 +259,10 @@ multi method save($obj, Bool :$insert! where * == True) {
 }
 
 multi method save($obj, Bool :$update! where * == True) {
+    self.apply-row-phasers($obj, BeforeUpdate);
     my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
     $obj.^clean-up;
+    self.apply-row-phasers($obj, AfterUpdate);
     $ret
 }
 
@@ -272,6 +280,7 @@ method create(\model, |pars) {
         $name => %relationships{ $name } && $val !~~ model."$name"() ?? model."$name"().^create: |$val !! $val
     }
     my $obj = model.new: |%pars;
+    self.apply-row-phasers($obj, BeforeCreate);
     my $data := $obj.^save(:insert).row;
     if model.^id.elems and $data.defined and not $data.elems {
         $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
@@ -279,11 +288,14 @@ method create(\model, |pars) {
         $obj = model.new: |$data
     }
     $obj.^clean-up;
+    self.apply-row-phasers($obj, AfterCreate);
     $obj
 }
 
 method delete(\model) {
-    $*RED-DB. execute: Red::AST::Delete.new: model
+    self.apply-row-phasers(model, BeforeDelete);
+    $*RED-DB. execute: Red::AST::Delete.new: model ;
+    self.apply-row-phasers(model, AfterDelete);
 }
 
 method load(Red::Model:U \model, |ids) {
