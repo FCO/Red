@@ -3,7 +3,7 @@ use Red;
 unit model Person is rw;
 # this id is used to create unique registration numbers
 # for various lists for easy use by humans
-has UInt $!id       is id;
+has Int  $.id        is serial;
 
 # note the following is for user-defined keys to maintain unique
 # person status by personal attributes
