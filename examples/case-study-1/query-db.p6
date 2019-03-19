@@ -17,14 +17,10 @@ my $*RED-DB = database "SQLite", :database($dbf);
 
 #my $date = DateTime.new(now);
 my $date = Date.new(now);
-our @*ofils;
+my @ofils;
 
 multi MAIN(Int $number, Bool :$*debug!) {
-    my @ofils;
     MAIN $number;
-
-    write-closer(@*ofils);
-
 }
 
 
@@ -97,37 +93,64 @@ multi MAIN(6) {
     spurt $of, $p.gist;
     =end comment
 
+    =begin comment
     #my $rs   = Person.^all;
     my $rs   = Person.^rs;
     my @cols = $rs.of.^attributes
                      .grep(Red::Attr::Column)
-                     .map( -> $c { $c.name.substr(2) })
-               ;
-
-    my $str  = @cols.join("\t\t|");
+                     .map( -> $c { $c.name.substr(2) }) ;
+    my $str  = @cols.join("\t\t| ");
     $str    ~= "\n" ~ ( '-' x 50 ) ~ "\n";
-
-    for $rs -> $row {
-        #$str ~= @cols.map( -> $n { $row."$n"() // ''})
-        $str ~= @cols.map( -> $n { $row."$n"() // ''})
-                     .join("\t\t|") ~ "\n";
-    }
+    =end comment
 
     =begin comment
     for $rs -> $row {
-        for $row -> $c {
-            if $c !~~ Nil { # .defined {
-                $str ~= "|{$c}";
-            }
-            else {
-                $str ~= "| ";
-            }
-        }
-
-        $str ~= "|\n";
+        #$str ~= @cols.map( -> $n { $row."$n"() // ''})
+        $str ~= @cols.map( -> $n { $row."$n"() // ''})
+                     .join("\t\t| ") ~ "\n";
     }
     =end comment
 
+    =begin comment
+    for $rs -> $row {
+        say "DEBUG: \$row type: {$row.^name}";
+        my $rs2 = $row.Seq; # columns;
+        my $i = 0;
+        for $rs2 -> $col {
+            say "       $i \$col type: {$col.^name}";
+            ++$i;
+        }
 
+        $str ~= $row.grep(*.defined || '')
+                     .join("\t\t| ") ~ "\n";
+    }
+    =end comment
+
+    #my $rs = Person.^all.cache;
+    #my $rs = Person.^all;
+    my $rs = Person.^rs;
+    say "DEBUG: \$rs type: {$rs.^name}";
+    say "DEBUG: \$rs elems: {$rs.elems}";
+    my @cols = $rs.of.^attributes
+                     .grep(Red::Attr::Column)
+                     .map( -> $c { $c.name.substr(2) }) ;
+    my $str  = @cols.join("\t\t| ");
+    my $i = 0;
+    #for Person.^all {
+    for $rs -> $row {
+        say "DEBUG: row $i: \$row type: {$row.^name}";
+        ++$i; 
+        for $row { 
+            #$str ~= .grep({.defined // ''}).map({.defined // ''}).join("\t\t| ") ~ "\n";
+            #$str ~= .grep({.defined // ''}).join("\t\t| ") ~ "\n";
+            #$str ~= .map({.defined ?? $_ !! ''}).join("\t\t| ") ~ "\n";
+            $str ~= @cols.map(-> $n {"{$row}.{$n}" // ''}).join("\t\t| ") ~ "\n";
+        }
+    }
+
+    #=begin comment
     spurt $of, $str;
+    @ofils.append: $of;
+    write-closer @ofils;
+    #=end comment
 }

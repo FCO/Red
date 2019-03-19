@@ -8,16 +8,16 @@ constant $UPDATE is export = 1;
 constant $NOCHG  is export = 0;
 constant $DBF    is export = 'data/ctech.sqlite';
 
-sub write-closer(@*ofils) is export {
+sub write-closer(@ofils) is export {
     say "Normal end.";
-    if @*ofils {
-        my $n = +@*ofils;
+    if @ofils {
+        my $n = +@ofils;
         my $s = $n > 1 ?? 's' !! '';
-        say "See output file$s:";
-        say "  $_" for @*ofils;
+        $*OUT.say: "See output file$s:";
+        $*OUT.say: "  $_" for @ofils;
     }
     else {
-        say "No files were generated.";
+        $*OUT.say: "No files were generated.";
     }
 }
 
