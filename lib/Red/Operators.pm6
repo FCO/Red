@@ -306,6 +306,14 @@ multi prefix:<!>(Red::AST $a) is export {
     Red::AST::Not.new: $a
 }
 
+multi prefix:<not>(Red::AST::In $a) is export {
+    $a.not;
+}
+
+multi prefix:<!>(Red::AST::In $a) is export {
+    $a.not;
+}
+
 multi prefix:<so>(Red::AST $a) is export {
     Red::AST::So.new: $a
 }
@@ -342,3 +350,59 @@ multi infix:<⊖>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
 multi infix:<(-)>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
     $a.minus: $b
 }
+
+
+multi infix:<in>(Red::AST $a, @b where  { $_ !~~ Red::ResultSeq } ) is export {
+    Red::AST::In.new: $a, ast-value(@b);
+}
+
+multi infix:<⊂>(Red::AST $a, @b where  { $_ !~~ Red::ResultSeq } ) is export {
+    Red::AST::In.new: $a, ast-value(@b);
+}
+multi infix:«(<)»(Red::AST $a, @b where  { $_ !~~ Red::ResultSeq } ) is export {
+    Red::AST::In.new: $a, ast-value(@b);
+}
+
+multi infix:<⊃>(Red::AST $a, @b where  { $_ !~~ Red::ResultSeq } ) is export {
+    Red::AST::NotIn.new: $a, ast-value(@b);
+}
+multi infix:«(>)»(Red::AST $a, @b where  { $_ !~~ Red::ResultSeq } ) is export {
+    Red::AST::NotIn.new: $a, ast-value(@b);
+}
+
+multi infix:<in>(Red::AST $a, Red::ResultSeq $b ) is export {
+    Red::AST::In.new: $a, ast-value($b.ast);
+}
+
+multi infix:<⊂>(Red::AST $a, Red::ResultSeq $b ) is export {
+    Red::AST::In.new: $a, ast-value($b.ast);
+}
+multi infix:«(<)»(Red::AST $a, Red::ResultSeq $b ) is export {
+    Red::AST::In.new: $a, ast-value($b.ast);
+}
+
+multi infix:<⊃>(Red::AST $a, Red::ResultSeq $b ) is export {
+    Red::AST::NotIn.new: $a, ast-value($b.ast);
+}
+multi infix:«(>)»(Red::AST $a, Red::ResultSeq $b ) is export {
+    Red::AST::NotIn.new: $a, ast-value($b.ast);
+}
+
+multi infix:<in>(Red::AST $a, Red::AST::Select $b ) is export {
+    Red::AST::In.new: $a, ast-value($b);
+}
+
+multi infix:<⊂>(Red::AST $a, Red::AST::Select $b ) is export {
+    Red::AST::In.new: $a, ast-value($b);
+}
+multi infix:«(<)»(Red::AST $a, Red::AST::Select $b ) is export {
+    Red::AST::In.new: $a, ast-value($b);
+}
+
+multi infix:<⊃>(Red::AST $a, Red::AST::Select $b ) is export {
+    Red::AST::NotIn.new: $a, ast-value($b);
+}
+multi infix:«(>)»(Red::AST $a, Red::AST::Select $b ) is export {
+    Red::AST::NotIn.new: $a, ast-value($b);
+}
+
