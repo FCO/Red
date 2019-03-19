@@ -73,6 +73,14 @@ $test-row.^delete;
 is $before-delete, 2, "before-delete got called the right number of times";
 is $after-delete, 2, "after-delete got called the right number of times";
 
+$before-create  = 0;
+$after-create   = 0;
+
+$test-row = TestPhasers.new(name => "test two");
+$test-row.^save(:insert);
+is $before-create, 2, "before-create got called the right number of times when using ^save(:insert)";
+is $after-create, 2, "after-create got called the right number of times when using ^save(:insert)";
+
 done-testing;
 
 # vim: ft=perl6

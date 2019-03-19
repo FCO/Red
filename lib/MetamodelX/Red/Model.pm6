@@ -252,9 +252,11 @@ method apply-row-phasers($obj, Mu:U $phase ) {
         $obj.$meth();
     }
 }
-multi method save($obj, Bool :$insert! where * == True) {
+multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
+    self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
     my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
     $obj.^clean-up;
+    self.apply-row-phasers($obj, AfterCreate) unless $from-create;
     $ret
 }
 
@@ -281,7 +283,7 @@ method create(\model, |pars) {
     }
     my $obj = model.new: |%pars;
     self.apply-row-phasers($obj, BeforeCreate);
-    my $data := $obj.^save(:insert).row;
+    my $data := $obj.^save(:insert, :from-create).row;
     if model.^id.elems and $data.defined and not $data.elems {
         $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
     } else {
