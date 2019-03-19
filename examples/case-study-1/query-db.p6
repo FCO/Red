@@ -107,14 +107,13 @@ multi MAIN(6) {
     my $str  = @cols.join("\t\t|");
     $str    ~= "\n" ~ ( '-' x 50 ) ~ "\n";
 
-    =begin comment
     for $rs -> $row {
         #$str ~= @cols.map( -> $n { $row."$n"() // ''})
         $str ~= @cols.map( -> $n { $row."$n"() // ''})
                      .join("\t\t|") ~ "\n";
     }
-    =end comment
 
+    =begin comment
     for $rs -> $row {
         for $row -> $c {
             if $c !~~ Nil { # .defined {
@@ -127,6 +126,7 @@ multi MAIN(6) {
 
         $str ~= "|\n";
     }
+    =end comment
 
 
     spurt $of, $str;
