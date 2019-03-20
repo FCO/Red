@@ -236,12 +236,14 @@ multi method create-table(\model) {
             :temp(model.^temp),
             :columns[|model.^columns.keys.map(*.column)],
             :constraints[
-                |@!constraints.unique.grep(*.key eq "unique").map({
-                    Red::AST::Unique.new: :columns[|.value]
-                }),
-                |@!constraints.grep(*.key eq "pk").map: {
-                    Red::AST::Pk.new: :columns[|.value]
-                },
+                |@!constraints.unique.map: {
+                    when .key ~~ "unique" {
+                        Red::AST::Unique.new: :columns[|.value]
+                    }
+                    when .key ~~ "pk" {
+                        Red::AST::Pk.new: :columns[|.value]
+                    }
+                }
             ],
             |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY);
     True
