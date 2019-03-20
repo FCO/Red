@@ -27,6 +27,16 @@ data file example is somewhat simplified to ease parsing for this
 study. The actual data file allows spaces in names and handles casing
 adjustments as needed.)
 
+### The problem with emails
+
+In most using applications I'm familiar with, an email uniquely
+defines a person since it cannot be used by another person.
+That makes sense for most businesses. However, many of our attendees
+are couples who share emails, thus we need to accomodate that in
+our registration lists so as not to confuse our volunteer
+helpers. Also, some attendees have used mutiple emails
+over the years so we have to accommodate that, too.
+Hence the separate email table.
 
 ### SQL tables
 
