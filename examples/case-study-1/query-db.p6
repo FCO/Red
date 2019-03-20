@@ -70,6 +70,9 @@ multi MAIN(5) {
     my $title = "TBD";
     my $of = "{$date}-{$title}-query-{$qnum}.csv";
     say "Query $qnum is NYI";
+
+    .say for Person.^all;
+
 }
 
 #| 6. List contacts with their ids
@@ -77,6 +80,9 @@ multi MAIN(6) {
     my $qnum = 6; # MUST match constant sub arg
     my $title = "TBD";
     my $of = "{$date}-{$title}-query-{$qnum}.csv";
+
+
+    .say for Person.^all;
 
     =begin comment
     my $p = Person.^all.grep(.last, .first, .id).map(last => ;
@@ -128,7 +134,11 @@ multi MAIN(6) {
 
     #my $rs = Person.^all.cache;
     #my $rs = Person.^all;
+
+    #my $rs := Person.^rs;
+    #my $rs := Person.^rs.Seq;
     my $rs = Person.^rs;
+    my @rs := Person.^rs.Seq;
     say "DEBUG: \$rs type: {$rs.^name}";
     say "DEBUG: \$rs elems: {$rs.elems}";
     my @cols = $rs.of.^attributes
@@ -137,14 +147,21 @@ multi MAIN(6) {
     my $str  = @cols.join("\t\t| ");
     my $i = 0;
     #for Person.^all {
-    for $rs -> $row {
+    #for $rs -> $row {
+    for @rs -> $row {
         say "DEBUG: row $i: \$row type: {$row.^name}";
-        ++$i; 
-        for $row { 
+        ++$i;
+        my $j = 0;
+        #my $rs2 = flat $row.^all;
+        my $rs2 = |$row;
+        #for $row.^all {
+        for $rs2 {
+            say "    DEBUG: col $j: \$col type: {$_.^name}";
+            ++$j;
             #$str ~= .grep({.defined // ''}).map({.defined // ''}).join("\t\t| ") ~ "\n";
             #$str ~= .grep({.defined // ''}).join("\t\t| ") ~ "\n";
             #$str ~= .map({.defined ?? $_ !! ''}).join("\t\t| ") ~ "\n";
-            $str ~= @cols.map(-> $n {"{$row}.{$n}" // ''}).join("\t\t| ") ~ "\n";
+            #$str ~= @cols.map(-> $n {"{$row}.{$n}" // ''}).join("\t\t| ") ~ "\n";
         }
     }
 
