@@ -105,7 +105,7 @@ class Red::AST::AND does Red::AST::Infix {
     has Bool $.returns;
 
     multi method new(Red::AST $left is copy, Red::AST $right is copy) {
-		.return with self.optimize: $left, $right;
+        .return with self.optimize: $left, $right;
 
         $left  .= value if $left ~~ Red::AST::So;
         $right .= value if $right ~~ Red::AST::So;
@@ -239,4 +239,32 @@ class Red::AST::Like does Red::AST::Infix {
     method should-validate {}
 
     multi method new(Red::AST $left, Red::AST::Value $ where .value eq "",  *%) { $left }
+}
+
+class Red::AST::NotIn does Red::AST::Infix {
+    has $.op = "NOT IN";
+    has Str $.returns;
+
+    method should-set(--> Hash()) {
+    }
+
+    method should-validate {}
+
+    method not {
+        Red::AST::In.new: $!left, $!right;
+    }
+}
+
+class Red::AST::In does Red::AST::Infix {
+    has $.op = "IN";
+    has Str $.returns;
+
+    method should-set(--> Hash()) {
+    }
+
+    method should-validate {}
+
+    method not {
+        Red::AST::NotIn.new: $!left, $!right;
+    }
 }
