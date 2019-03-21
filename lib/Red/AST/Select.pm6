@@ -14,10 +14,11 @@ has Int                 $.limit;
 has Red::AST            @.group;
 has                     @.table-list;
 has Red::AST::Comment   @.comments;
+has Bool                $.sub-select is rw;
 
 method returns { Red::Model }
 
-method args { $!of, $!filter, |@!order }
+method args { $!sub-select ?? () !! ( $!of, $!filter, |@!order ) }
 
 method tables(::?CLASS:D:) {
     |($!of, |@!table-list, |(.tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique

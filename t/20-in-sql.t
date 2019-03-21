@@ -49,5 +49,36 @@ is-deeply Foo.^rs.grep( not *.id ⊂ Foo.^rs.grep( { .name ne 'b' } ).map({ .id 
 is-deeply Foo.^rs.grep( *.id (>) Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset  AST with (>) operator";
 is-deeply Foo.^rs.grep( *.id ⊃ Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset  AST with ⊃ operator";
 
+
+model MultiBar {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+
+model MultiFoo {
+    has Int $.id is serial;
+    has Str $.name is column;
+    has Int $.bar-id is referencing({ MultiBar.id } );
+    has MultiBar $.bar is relationship( { .bar-id });
+}
+
+MultiBar.^create-table;
+MultiFoo.^create-table;
+
+
+my @multibars;
+
+for <one two three four> -> $name {
+    @multibars.append: MultiBar.^create(:$name);
+}
+
+my @multifoos;
+
+for @multibars -> $bar {
+    @multifoos.append: MultiFoo.^create(:$bar, name => $bar.name ~ '-foo');
+}
+
+is-deeply MultiFoo.^rs.grep(*.bar-id in MultiBar.^rs.grep( *.name eq 'one' ).map( *.id ) ).Seq, (@multifoos[0], ), "in with different table in sub-select (no cartesian join)";
+
 done-testing;
 # vim: ft=perl6

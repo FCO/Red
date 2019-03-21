@@ -192,11 +192,11 @@ multi method create-map(Red::Model  $_, :filter(&)) is hidden-from-sql-commentin
 multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from-sql-commenting {
     my \Meta  = self.of.HOW.WHAT;
     my \model = Meta.new(:table(self.of.^table)).new_type: :name(self.of.^name);
-	model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, self.of.^table;
-	my $attr-name = 'data_0';
+    model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, self.of.^table;
+    my $attr-name = 'data_0';
     my @attrs = do for @ret {
-		my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;
-		my $col-name = $_ ~~ Red::Column ?? .attr.name.substr(2) !! $name;
+        my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;
+        my $col-name = $_ ~~ Red::Column ?? .attr.name.substr(2) !! $name;
         my $attr  = Attribute.new:
             :name("\$!$name"),
             :package(model),
@@ -204,26 +204,26 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
             :has_accessor,
             :build(.returns),
         ;
-	    my %data = %(
-	        :name-alias($col-name),
-	        :name($col-name),
-	        :attr-name($name),
-	        :type(.returns.^name),
-	        :$attr,
-	        :class(model),
-			|(do if $_ ~~ Red::Column {
-				:inflate(.inflate),
-				:deflate(.deflate),
-			} else {
-	        	:computation($_)
-			})
-	    );
-	    $attr does Red::Attr::Column(%data);
+        my %data = %(
+            :name-alias($col-name),
+            :name($col-name),
+            :attr-name($name),
+            :type(.returns.^name),
+            :$attr,
+            :class(model),
+        	|(do if $_ ~~ Red::Column {
+        		:inflate(.inflate),
+        		:deflate(.deflate),
+        	} else {
+                :computation($_)
+        	})
+        );
+        $attr does Red::Attr::Column(%data);
         model.^add_attribute: $attr;
-		model.^add_multi_method: $name, my method (Mu:D:) { self.get_value: "\$!$name" }
+        model.^add_multi_method: $name, my method (Mu:D:) { self.get_value: "\$!$name" }
         $attr
     }
-	model.^add_method: "no-table", my method no-table { True }
+    model.^add_method: "no-table", my method no-table { True }
     model.^compose;
     model.^add-column: $_ for @attrs;
     self.clone(
@@ -335,10 +335,10 @@ method minus(::?CLASS:D: $other) is hidden-from-sql-commenting {
     self.clone: :chain($!chain.clone: :$filter)
 }
 
-method ast is hidden-from-sql-commenting {
+method ast(Bool :$sub-select) is hidden-from-sql-commenting {
     if $.filter ~~ Red::AST::MultiSelect {
         $.filter
     } else {
-        Red::AST::Select.new: :$.of, :$.filter, :$.limit, :@.order, :@.table-list, :@.group, :@.comments;
+        Red::AST::Select.new: :$.of, :$.filter, :$.limit, :@.order, :@.table-list, :@.group, :@.comments, :$sub-select;
     }
 }
