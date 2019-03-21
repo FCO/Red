@@ -18,6 +18,7 @@
     "CX::Red::Bool" : "lib/CX/Red/Bool.pm6",
     "MetamodelX::Red::Comparate" : "lib/MetamodelX/Red/Comparate.pm6",
     "MetamodelX::Red::Dirtable" : "lib/MetamodelX/Red/Dirtable.pm6",
+    "MetamodelX::Red::Migration" : "lib/MetamodelX/Red/Migration.pm6",
     "MetamodelX::Red::Model" : "lib/MetamodelX/Red/Model.pm6",
     "MetamodelX::Red::Relationship" : "lib/MetamodelX/Red/Relationship.pm6",
     "Red" : "lib/Red.pm6",

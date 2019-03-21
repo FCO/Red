@@ -35,12 +35,24 @@ my package EXPORTHOW {
     }
 }
 
-sub EXPORT {
+multi EXPORT("experimental migrations") {
+    use MetamodelX::Red::Migration;
+    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
+    MetamodelX::Red::Model.^compose;
+
     return %(
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         '&database' => &database,
     );
+}
+
+multi EXPORT {
+    return %(
+            Red::Traits::EXPORT::ALL::,
+                    Red::Operators::EXPORT::ALL::,
+                    '&database' => &database,
+            );
 }
 
 =begin pod
