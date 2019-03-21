@@ -14,7 +14,7 @@ has Int                 $.limit;
 has Red::AST            @.group;
 has                     @.table-list;
 has Red::AST::Comment   @.comments;
-has Bool                $.sub-select is rw;
+has Bool                $.sub-select;
 
 method returns { Red::Model }
 
@@ -44,4 +44,9 @@ method minus($sel) {
     $union.minus: self;
     $union.minus: $sel;
     $union
+}
+
+method as-sub-select {
+    $!sub-select = True;
+    self;
 }

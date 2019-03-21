@@ -392,25 +392,20 @@ multi infix:«(>)»(Red::AST $a, PositionalNotResultSeq $b ) is export {
 
 
 multi infix:<in>(Red::AST $a, Red::AST::Select $b ) is export {
-    $b.sub-select = True;
-    Red::AST::In.new: $a, $b;
+    Red::AST::In.new: $a, $b.as-sub-select;
 }
 
 multi infix:<⊂>(Red::AST $a, Red::AST::Select $b ) is export {
-    $b.sub-select = True;
-    Red::AST::In.new: $a, $b;
+    Red::AST::In.new: $a, $b.as-sub-select;
 }
 multi infix:«(<)»(Red::AST $a, Red::AST::Select $b ) is export {
-    $b.sub-select = True;
-    Red::AST::In.new: $a, $b;
+    Red::AST::In.new: $a, $b.as-sub-select;
 }
 
 multi infix:<⊃>(Red::AST $a, Red::AST::Select $b ) is export {
-    $b.sub-select = True;
-    Red::AST::NotIn.new: $a, $b;
+    Red::AST::NotIn.new: $a, $b.as-sub-select;
 }
 multi infix:«(>)»(Red::AST $a, Red::AST::Select $b ) is export {
-    $b.sub-select = True;
-    Red::AST::NotIn.new: $a, $b;
+    Red::AST::NotIn.new: $a, $b.as-sub-select;
 }
 
