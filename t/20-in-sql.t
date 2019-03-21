@@ -27,15 +27,27 @@ is-deeply Foo.^rs.grep(*.name ⊃ <b c>).Seq, ( @foos[0], @foos[3]), "not in wit
 is-deeply Foo.^rs.grep( *.name (>) <b c>).Seq, ( @foos[0], @foos[3]), "not in with literal list with (>) operator";
 
 
-is-deeply Foo.^rs.grep( *.id in Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[0], @foos[2], @foos[3]), "in with resultset";
-is-deeply Foo.^rs.grep( *.id (<) Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[0], @foos[2], @foos[3]), "in with resultset with (<) operator ";
-is-deeply Foo.^rs.grep( *.id ⊂ Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[0], @foos[2], @foos[3]), "in with resultset with ⊂ operator";
+# Raw RS
+is-deeply Foo.^rs.grep( *.id in Foo.^rs.grep( { .name ne 'b' } ).map({ .id })  ).Seq, ( @foos[0], @foos[2], @foos[3]), "in with resultset";
+is-deeply Foo.^rs.grep( *.id (<) Foo.^rs.grep( { .name ne 'b' } ).map({ .id })  ).Seq, ( @foos[0], @foos[2], @foos[3]), "in with resultset with (<) operator ";
+is-deeply Foo.^rs.grep( *.id ⊂ Foo.^rs.grep( { .name ne 'b' } ).map({ .id })  ).Seq, ( @foos[0], @foos[2], @foos[3]), "in with resultset with ⊂ operator";
 
-is-deeply Foo.^rs.grep( not *.id in Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset";
-is-deeply Foo.^rs.grep( not *.id (<) Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset with (<) operator";
-is-deeply Foo.^rs.grep( not *.id ⊂ Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset with ⊂ operator";
-is-deeply Foo.^rs.grep( *.id (>) Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset with (>) operator";
-is-deeply Foo.^rs.grep( *.id ⊃ Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset with ⊃ operator";
+is-deeply Foo.^rs.grep( not *.id in Foo.^rs.grep( { .name ne 'b' } ).map({ .id })  ).Seq, ( @foos[1],  ), "not in with resultset";
+is-deeply Foo.^rs.grep( not *.id (<) Foo.^rs.grep( { .name ne 'b' } ).map({ .id })  ).Seq, ( @foos[1],  ), "not in with resultset with (<) operator";
+is-deeply Foo.^rs.grep( not *.id ⊂ Foo.^rs.grep( { .name ne 'b' } ).map({ .id })  ).Seq, ( @foos[1],  ), "not in with resultset with ⊂ operator";
+is-deeply Foo.^rs.grep( *.id (>) Foo.^rs.grep( { .name ne 'b' } ).map({ .id })  ).Seq, ( @foos[1],  ), "not in with resultset with (>) operator";
+is-deeply Foo.^rs.grep( *.id ⊃ Foo.^rs.grep( { .name ne 'b' } ).map({ .id })  ).Seq, ( @foos[1],  ), "not in with resultset with ⊃ operator";
+
+# AST
+is-deeply Foo.^rs.grep( *.id in Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[0], @foos[2], @foos[3]), "in with resultset AST ";
+is-deeply Foo.^rs.grep( *.id (<) Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[0], @foos[2], @foos[3]), "in with resultset  AST with (<) operator ";
+is-deeply Foo.^rs.grep( *.id ⊂ Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[0], @foos[2], @foos[3]), "in with resultset  AST with ⊂ operator";
+
+is-deeply Foo.^rs.grep( not *.id in Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset AST ";
+is-deeply Foo.^rs.grep( not *.id (<) Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset  AST with (<) operator";
+is-deeply Foo.^rs.grep( not *.id ⊂ Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset  AST with ⊂ operator";
+is-deeply Foo.^rs.grep( *.id (>) Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset  AST with (>) operator";
+is-deeply Foo.^rs.grep( *.id ⊃ Foo.^rs.grep( { .name ne 'b' } ).map({ .id }).ast  ).Seq, ( @foos[1],  ), "not in with resultset  AST with ⊃ operator";
 
 done-testing;
 # vim: ft=perl6

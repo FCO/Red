@@ -352,41 +352,44 @@ multi infix:<(-)>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
 }
 
 
-multi infix:<in>(Red::AST $a, @b where  { $_ !~~ Red::ResultSeq } ) is export {
-    Red::AST::In.new: $a, ast-value(@b);
-}
-
-multi infix:<⊂>(Red::AST $a, @b where  { $_ !~~ Red::ResultSeq } ) is export {
-    Red::AST::In.new: $a, ast-value(@b);
-}
-multi infix:«(<)»(Red::AST $a, @b where  { $_ !~~ Red::ResultSeq } ) is export {
-    Red::AST::In.new: $a, ast-value(@b);
-}
-
-multi infix:<⊃>(Red::AST $a, @b where  { $_ !~~ Red::ResultSeq } ) is export {
-    Red::AST::NotIn.new: $a, ast-value(@b);
-}
-multi infix:«(>)»(Red::AST $a, @b where  { $_ !~~ Red::ResultSeq } ) is export {
-    Red::AST::NotIn.new: $a, ast-value(@b);
-}
-
-multi infix:<in>(Red::AST $a, Red::ResultSeq $b ) is export {
+multi infix:<in>(Red::AST $a, Red::ResultSeq:D $b ) is export is default {
     Red::AST::In.new: $a, ast-value($b.ast);
 }
 
-multi infix:<⊂>(Red::AST $a, Red::ResultSeq $b ) is export {
+multi infix:<⊂>(Red::AST $a, Red::ResultSeq $b ) is export is default {
     Red::AST::In.new: $a, ast-value($b.ast);
 }
-multi infix:«(<)»(Red::AST $a, Red::ResultSeq $b ) is export {
+multi infix:«(<)»(Red::AST $a, Red::ResultSeq $b ) is export is default {
     Red::AST::In.new: $a, ast-value($b.ast);
 }
 
-multi infix:<⊃>(Red::AST $a, Red::ResultSeq $b ) is export {
+multi infix:<⊃>(Red::AST $a, Red::ResultSeq $b ) is export is default {
     Red::AST::NotIn.new: $a, ast-value($b.ast);
 }
-multi infix:«(>)»(Red::AST $a, Red::ResultSeq $b ) is export {
+multi infix:«(>)»(Red::AST $a, Red::ResultSeq $b ) is export is default {
     Red::AST::NotIn.new: $a, ast-value($b.ast);
 }
+
+subset PositionalNotResultSeq of Any  where { $_ ~~ Positional && $_ !~~ Red::ResultSeq };
+
+multi infix:<in>(Red::AST $a, PositionalNotResultSeq $b ) is export {
+    Red::AST::In.new: $a, ast-value($b);
+}
+
+multi infix:<⊂>(Red::AST $a, PositionalNotResultSeq $b ) is export {
+    Red::AST::In.new: $a, ast-value($b);
+}
+multi infix:«(<)»(Red::AST $a, PositionalNotResultSeq $b ) is export {
+    Red::AST::In.new: $a, ast-value($b);
+}
+
+multi infix:<⊃>(Red::AST $a, PositionalNotResultSeq $b ) is export {
+    Red::AST::NotIn.new: $a, ast-value($b);
+}
+multi infix:«(>)»(Red::AST $a, PositionalNotResultSeq $b ) is export {
+    Red::AST::NotIn.new: $a, ast-value($b);
+}
+
 
 multi infix:<in>(Red::AST $a, Red::AST::Select $b ) is export {
     Red::AST::In.new: $a, ast-value($b);
