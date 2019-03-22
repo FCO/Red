@@ -31,6 +31,7 @@ method pull-one {
                 CATCH {
                     dd $data;
                     dd %cols;
+                    dd $c;
                     dd %cols{$c};
                     dd $!driver.^lookup("inflate").candidates>>.signature;
                     .rethrow
@@ -40,8 +41,8 @@ method pull-one {
                 my $inflated = %cols{$c}.inflate.($v);
                 $inflated = $!driver.inflate(
                     %cols{$c}.inflate.($v),
-                    :to($!of."$c"().attr.type)
-                ) if \($!driver, $inflated, :to($!of."$c"().attr.type)) ~~ $!driver.^lookup("inflate").candidates.any.signature;
+                    :to($!of.^attributes.first(*.name.substr(2) eq $c).type)
+                ) if \($!driver, $inflated, :to($!of.^attributes.first(*.name.substr(2) eq $c).type)) ~~ $!driver.^lookup("inflate").candidates.any.signature;
                 $c => $inflated
             } else { Empty }
         }).Hash)
