@@ -17,7 +17,7 @@ use Red::AST::Optimizer::AND;
 use Red::AST::Optimizer::OR;
 use Red::AST::Optimizer::Case;
 
-class Red:ver<0.0.3>:api<0> {}
+class Red:ver<0.0.3>:api<1> {}
 
 BEGIN {
     Red::Column.^add_role: Red::ColumnMethods;
@@ -35,12 +35,24 @@ my package EXPORTHOW {
     }
 }
 
-sub EXPORT {
+multi EXPORT("experimental migrations") {
+    use MetamodelX::Red::Migration;
+    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
+    MetamodelX::Red::Model.^compose;
+
     return %(
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         '&database' => &database,
     );
+}
+
+multi EXPORT {
+    return %(
+            Red::Traits::EXPORT::ALL::,
+                    Red::Operators::EXPORT::ALL::,
+                    '&database' => &database,
+            );
 }
 
 =begin pod

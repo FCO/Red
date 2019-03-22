@@ -1,6 +1,23 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Allow creation of Red::Driver::* from an existing DB object
+    - ResultSeq.Bool should return count(*) > 0
+    - ResultSeq.elems should return something that is comparable to an Int
+    - Generate nicer SQL for "is NULL"
+    - Support UUID columns on Pg
+    - Possible Documentation Error
+    - Table and column comments
+    - Support temporary tables
+    - Add a comment to easily find the query in the code
+    - Test if exists id before .^save()ing
+    - Provide a ```.perl``` for model objects that only includes the columns, not relations and internals.
+    - Provide for no-op table creation if table exists
+    - Refactor optimisations
+    - Create relations if data provided to .^create
+    - Unique column results in duplicated UNIQUE in generated SQL
+    - Fix .^load without id
+
 
 0.0.3  2019-02-27T23:21:09Z
     - add union (∪), intersect(∩) and minus(⊖)

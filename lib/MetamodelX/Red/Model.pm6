@@ -18,6 +18,7 @@ use Red::AST::TableComment;
 use Red::AST::LastInsertedRow;
 use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
+use MetamodelX::Red::Migration;
 use MetamodelX::Red::Relationship;
 use X::Red::Exceptions;
 use Red::Phaser;
@@ -25,9 +26,10 @@ use Red::Phaser;
 unit class MetamodelX::Red::Model is Metamodel::ClassHOW;
 also does MetamodelX::Red::Dirtable;
 also does MetamodelX::Red::Comparate;
+#also does MetamodelX::Red::Migration;
 also does MetamodelX::Red::Relationship;
 
-has %!columns{Attribute};
+has Attribute @!columns;
 has Red::Column %!references;
 has %!attr-to-column;
 has $.rs-class;
@@ -35,7 +37,7 @@ has @!constraints;
 has $.table;
 has Bool $!temporary;
 
-method column-names(|) { %!columns.keys>>.column>>.name }
+method column-names(|) { @!columns>>.column>>.name }
 
 method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 
@@ -46,11 +48,11 @@ method as(Mu \type) { self.table: type }
 method orig(Mu \type) { type.WHAT }
 method rs-class-name(Mu \type) { "{type.^name}::ResultSeq" }
 method columns(|) is rw {
-    %!columns
+    @!columns
 }
 
 method id(Mu \type) {
-    %!columns.keys.grep(*.column.id).list
+    @!columns.grep(*.column.id).list
 }
 
 method id-values(Red::Model:D $model) {
@@ -166,7 +168,7 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
         method as(|)    { camel-to-snake-case $name }
         method orig(|)  { type }
     }
-    for %!columns.keys -> $col {
+    for @!columns -> $col {
         my $new-col = Attribute.new:
             :name($col.name),
             :package(alias),
@@ -186,8 +188,8 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
 }
 
 method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
-    if %!columns ∌ $attr {
-        %!columns ∪= $attr;
+    if @!columns ∌ $attr {
+        @!columns.push: $attr;
         my $name = $attr.column.attr-name;
         with $attr.column.references {
             self.add-reference: $name, $attr.column
@@ -234,14 +236,16 @@ multi method create-table(\model) {
         Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
-            :columns[|model.^columns.keys.map(*.column)],
+            :columns[|model.^columns.map(*.column)],
             :constraints[
-                |@!constraints.unique.grep(*.key eq "unique").map({
-                    Red::AST::Unique.new: :columns[|.value]
-                }),
-                |@!constraints.grep(*.key eq "pk").map: {
-                    Red::AST::Pk.new: :columns[|.value]
-                },
+                |@!constraints.unique.map: {
+                    when .key ~~ "unique" {
+                        Red::AST::Unique.new: :columns[|.value]
+                    }
+                    when .key ~~ "pk" {
+                        Red::AST::Pk.new: :columns[|.value]
+                    }
+                }
             ],
             |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY);
     True

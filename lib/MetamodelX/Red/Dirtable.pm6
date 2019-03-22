@@ -34,7 +34,7 @@ method set-helper-attrs(Mu \type) {
 }
 
 submethod !TWEAK_pr(\instance: *%data) {
-    my @columns = instance.^columns.keys;
+    my @columns = instance.^columns;
 
     my %new = |@columns.map: {
         my Mu $built := .build;

@@ -17,5 +17,5 @@ my $two = $zub.foos.create( bar => "two" );
 $zub.default-foo = $one;
 $zub.^save;
 
-say [ $one, $two ].perl;
+lives-ok { [ $one, $two ].perl }
 done-testing;

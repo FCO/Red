@@ -23,7 +23,7 @@ method pull-one {
     if $*RED-DRY-RUN { return $!of.bless }
     my $data := $!st-handler.row;
     return IterationEnd if $data =:= IterationEnd or not $data;
-    my %cols = $!of.^columns.keys.map: { .column.attr-name => .column }
+    my %cols = $!of.^columns.map: { .column.attr-name => .column }
     my $obj = $!of.new: |(%($data).kv
         .map(-> $k, $v {
             do with $v {
@@ -31,6 +31,7 @@ method pull-one {
                 CATCH {
                     dd $data;
                     dd %cols;
+                    dd $c;
                     dd %cols{$c};
                     dd $!driver.^lookup("inflate").candidates>>.signature;
                     .rethrow
@@ -40,8 +41,8 @@ method pull-one {
                 my $inflated = %cols{$c}.inflate.($v);
                 $inflated = $!driver.inflate(
                     %cols{$c}.inflate.($v),
-                    :to($!of."$c"().attr.type)
-                ) if \($!driver, $inflated, :to($!of."$c"().attr.type)) ~~ $!driver.^lookup("inflate").candidates.any.signature;
+                    :to($!of.^attributes.first(*.name.substr(2) eq $c).type)
+                ) if \($!driver, $inflated, :to($!of.^attributes.first(*.name.substr(2) eq $c).type)) ~~ $!driver.^lookup("inflate").candidates.any.signature;
                 $c => $inflated
             } else { Empty }
         }).Hash)

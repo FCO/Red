@@ -119,12 +119,17 @@ multi method translate(Red::AST::Comment $_, $context?) {
 
 method comment-starter { "--" }
 
+multi method translate(Red::AST::Select $ast, 'where') {
+    my ( :$key, :$value ) = self.translate($ast);
+    '( ' ~ $key ~ ' )' => $value // [];
+}
+
 multi method translate(Red::AST::Select $ast, $context?) {
     my @bind;
     my $sel    = do given $ast.of {
         when Red::Model {
             my $class = $_;
-            .^columns.keys.map({
+            .^columns.map({
                 my ($s, @b) := do given self.translate: (.column but role :: { method class { $class } }), "select" { .key, .value }
                 @bind.push: |@b;
                 $s
@@ -317,6 +322,15 @@ multi method translate(Red::AST::Cast $_, $context?) {
     default {
         self.translate: .value, $context
     }
+}
+
+multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $context? ) {
+    my ( :$key, :$value ) = self.translate(.value, $context );
+    '( ' ~ $key ~ ' )' => $value ;
+}
+
+multi method translate(Red::AST::Value $_ where .type ~~ Positional, $context?) {
+    '( ' ~ .get-value.map( -> $v { '?' } ).join(', ') ~ ' )' => .get-value;
 }
 
 multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW, $context?) {
