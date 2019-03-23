@@ -1,3 +1,5 @@
+use DB::SQLite;
+
 unit module OurFuncs;
 
 constant $TEST   is export = 1;

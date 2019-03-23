@@ -13,7 +13,7 @@ comma-separated-variable (CSV) data files held by several people and
 collected over the years, we have distilled our contact list into a
 single CSV data file in the following format:
 
-``` perl6
+```
 last-name,first-name.emai1,email2,...,emailN,yyy1,yyy2,yyy3p
 ```
 
@@ -30,48 +30,74 @@ adjustments as needed.)
 ### The problem with emails
 
 In most using applications I'm familiar with, an email uniquely
-defines a person since it cannot be used by another person.
-That makes sense for most businesses. However, many of our attendees
-are couples who share emails, thus we need to accomodate that in
-our registration lists so as not to confuse our volunteer
-helpers. Also, some attendees have used mutiple emails
-over the years so we have to accommodate that, too.
-Hence the separate email table.
+defines a person since it cannot be used by another person.  That
+makes sense for most businesses. However, many of our attendees are
+couples who share emails, thus we need to accomodate that in our
+registration lists so as not to confuse our volunteer helpers. Also,
+some attendees have used mutiple emails over the years so we have to
+accommodate that, too.  Hence the separate email table.
+
+### Raw data tables
+
+The data collected in raw form looks like this:
+
+```
+last first emailN attendN presentN
+```
+
+where the 'N' on a field name means multiple entries
+are possible with no change in the other fields. Proper
+database design leads us to normalized tables looking
+like this in pseudo table form:
+
+```
+person:
+id last first
+
+email:
+email person-id
+
+attend:
+year person-id
+
+present:
+year person-id
+```
+
+where the person-id acts as a foreign key in
+each table thus making each data pair unique.
 
 ### SQL tables
 
-Using a conventional RDBMS we would use use the following tables for
-our current needs:
+Using a conventional RDBMS we then translate the raw
+tables into SQL:
 
-``` perl6
-create table person (
-   id    integer serial,
+```
+create table person_tbl (
+   id    integer serial,                 -- primary key
    key   varchar(255) unique not null,
    last  varchar(255) not null,
-   first varchar(255) not null
+   first varchar(255) not null,
    notes varchar(255)
 );
 
-create table attend (
-   person_key varchar(255) not null,
+create table attend_tbl (
    year       integer not null,
    notes      varchar(255),
-   UNIQUE     (person_key, year)
+   person_id  integer references person_tbl(id)
 );
 
-create table present (
-   person_key varchar(255) not null,
+create table present_tbl (
    year       integer not null,
    notes      varchar(255),
-   UNIQUE     (person_key, year)
+   person_id  integer references person_tbl(id)
 );
 
-create table email (
-   person_key varchar(255) not null,
+create table email_tbl (
    email      varchar(255) not null,
    notes      varchar(255),
    status     integer,
-   UNIQUE     (person_key, email)
+   person_id  integer references person_tbl(id)
 );
 ```
 
@@ -87,14 +113,15 @@ Some queries using the tables will be to determine or provide:
 7. various email status reports
 
 The goal is to create those tables and query them with **Red**.
+The Red models and the load script, described next, accomplishes that goal.
 
 ### Red models
 
 Translating the SQL tables into **Red** models should represent
 a person with all the attributes in the SQL tables, including
-the implied relationships among the tables by the common
-**person_key** found in all the tables.
-The load script, described next, accomplishes that goal.
+the relationships among the tables by the common
+**person_id** found in all the tables.
+The resultant Red models are in the './lib' directory.
 
 #### Part 1 - Creating the database
 
@@ -118,15 +145,15 @@ is [query-db.p6](./query-db.p6) **[a WIP]**. It will be updated as we
 determine new reports are needed.
 
 Some example CSV files containing typical reports needed are shown:
-(1) current contact list [contacts-2019-04-01.csv](./data/contacts-2019-04-01.csv),
-and
-(2) [attendance-2020.csv](./data/update-2020.csv) and
+(1) current contact list
+[contacts-2019-04-01.csv](./data/contacts-2019-04-01.csv), and (2)
+[attendance-2020.csv](./data/update-2020.csv) and
 
 #### Part 3 - Updating the database
 
-(1) updates between events [update-2019-04-01.csv](./data/update-2019-04-01.csv),
-and
-(2) [attendance-2020.csv](./data/update-2020.csv) and
+(1) updates between events
+[update-2019-04-01.csv](./data/update-2019-04-01.csv), and (2)
+[attendance-2020.csv](./data/update-2020.csv) and
 
 We also created a script to update the database:
 [update-db.p6](./update-db.p6) **[a WIP]**.
