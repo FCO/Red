@@ -81,7 +81,7 @@ class ReferencesProxy does Callable {
             &!references.(self.model)
         }
         else {
-            self.model."{ $!column-name }"()
+            self.model.^attributes.first(*.name.substr(2) eq $!column-name).column
         }
     }
 }
