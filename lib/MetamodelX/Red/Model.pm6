@@ -51,6 +51,12 @@ method columns(|) is rw {
     @!columns
 }
 
+method migration-hash(\model --> Hash()) {
+    columns => @!columns>>.column>>.migration-hash,
+    name    => model.^table,
+    version => model.^ver // v0,
+}
+
 method id(Mu \type) {
     @!columns.grep(*.column.id).list
 }
@@ -282,8 +288,22 @@ multi method save($obj) {
 
 method create(\model, |pars) {
     my %relationships := set %.relationships.keys>>.name>>.substr: 2;
-    my %pars = |pars.kv.map: -> $name, $val {
-        $name => %relationships{ $name } && $val !~~ model."$name"() ?? model."$name"().^create: |$val !! $val
+
+    my %pars;
+    my %positionals;
+    for pars.kv -> $name, $val {
+        my \attr-type = model.^attributes.first(*.name.substr(2) eq $name).type;
+        if %relationships{ $name } {
+            if $val ~~ Positional && attr-type ~~ Positional {
+                %positionals{$name} = $val
+            } elsif $val !~~ attr-type {
+                %pars{$name} = model."$name"().^create: |$val
+            } else {
+                %pars{$name} = $val
+            }
+        } else {
+            %pars{$name} = $val
+        }
     }
     my $obj = model.new: |%pars;
     self.apply-row-phasers($obj, BeforeCreate);
@@ -294,6 +314,10 @@ method create(\model, |pars) {
         $obj = model.new: |$data
     }
     $obj.^clean-up;
+    for %positionals.kv -> $name, @val {
+        say $obj.^attributes.first(*.name.substr(2) eq "columns").get_value: $obj for @val;
+        $obj."$name"().create: |$_ for @val
+    }
     self.apply-row-phasers($obj, AfterCreate);
     $obj
 }
