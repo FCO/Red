@@ -45,6 +45,16 @@ method Hash(--> Hash()) {
     )
 }
 
+method migration-hash(--> Hash()) {
+    |(:name($_)                                 with $!name             ),
+    |(:type(.type.^name)                        with $!attr             ),
+    |(:references-table(.attr.package.^table)   with $.ref              ),
+    |(:references-column(.column-name)          with $.ref              ),
+    |(:is-id($_)                                with $!id               ),
+    |(:is-auto-increment($_)                    with $!auto-increment   ),
+    |(:is-nullable($_)                          with $!nullable         ),
+}
+
 class ReferencesProxy does Callable {
     has Str     $.model-name    is required;
     has Str     $.column-name;
