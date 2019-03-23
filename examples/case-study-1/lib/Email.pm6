@@ -17,8 +17,8 @@ has Str  $.notes     is column{:nullable};
 has UInt $.status    is column{:nullable};
 
 # relationship
-has UInt $!person-id is referencing{  :column<person-id>, :model<Person> };
-has      $.person    is relationship{ :column<id>, :model<Person> };
+has UInt $!person-id is referencing{  :column<id>, :model<Person> };
+has      $.person    is relationship{ :column<person-id>, :model<Person> };
 
 =begin comment
 # constraint

@@ -26,6 +26,6 @@ has Str  $.first    is column;
 has Str  $.notes    is column{:nullable};
 
 # relations
-has      @.attends  is relationship{ .person-id, :model<Attend>  };
-has      @.emails   is relationship{ .person-id, :model<Email>   };
-has      @.presents is relationship{ .person-id, :model<Present> };
+has      @.attends  is relationship( *.person-id, :model<Attend>  );
+has      @.emails   is relationship( *.person-id, :model<Email>   );
+has      @.presents is relationship( *.person-id, :model<Present> );
