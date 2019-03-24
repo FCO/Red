@@ -84,10 +84,10 @@ for $f.IO.lines -> $line {
 
     # we have the data, insert into the four tables if not there
     # already
-    my $x = Person.^all.grep({.key eq $key});
-    if !$x {
-        ++$dbf-updated;
+    my $exists-key = Person.^all.grep({.key eq $key});
+    if !$exists-key {
         my $p = Person.^create(:key($key), :last($last), :first($first));
+        ++$dbf-updated;
         # check each child table's entry
         for %a.keys -> $year {
             $p.attends.create: :$year unless $p.attends.grep: *.year == $year;
