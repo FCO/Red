@@ -138,7 +138,6 @@ multi MAIN(6) {
     #my $rs := Person.^rs;
     #my $rs := Person.^rs.Seq;
     my $rs = Person.^rs;
-    my @rs := Person.^rs.Seq;
     say "DEBUG: \$rs type: {$rs.^name}";
     say "DEBUG: \$rs elems: {$rs.elems}";
     my @cols = $rs.of.^attributes
@@ -148,7 +147,7 @@ multi MAIN(6) {
     my $i = 0;
     #for Person.^all {
     #for $rs -> $row {
-    for @rs -> $row {
+    for $rs -> $row {
         say "DEBUG: row $i: \$row type: {$row.^name}";
         ++$i;
         my $j = 0;
