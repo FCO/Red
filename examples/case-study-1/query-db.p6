@@ -12,7 +12,7 @@ use Person;
 
 my $dbf = $*PROGRAM.parent.add($DBF).absolute;
 
-my $*RED-DEBUG = 1;
+#my $*RED-DEBUG = 1;
 my $*RED-DB = database "SQLite", :database($dbf);
 
 #my $date = DateTime.new(now);
@@ -82,61 +82,20 @@ multi MAIN(6) {
     my $of = "{$date}-{$title}-query-{$qnum}.csv";
 
 
-    .say for Person.^all;
+    #.say for Person.^all;
 
     =begin comment
-    my $p = Person.^all.grep(.last, .first, .id).map(last => ;
-                                                     say $.p;
-
-
-    my $p = Person.^all;
-    my @rows = ($p.list ==>
-             grep {.last} ==>
-             grep {.first} ==>
-             grep {.id}
-              );
-    my $p = Person.^all.list;
-    spurt $of, $p.gist;
     =end comment
 
     =begin comment
-    #my $rs   = Person.^all;
-    my $rs   = Person.^rs;
-    my @cols = $rs.of.^attributes
-                     .grep(Red::Attr::Column)
-                     .map( -> $c { $c.name.substr(2) }) ;
-    my $str  = @cols.join("\t\t| ");
-    $str    ~= "\n" ~ ( '-' x 50 ) ~ "\n";
     =end comment
 
     =begin comment
-    for $rs -> $row {
-        #$str ~= @cols.map( -> $n { $row."$n"() // ''})
-        $str ~= @cols.map( -> $n { $row."$n"() // ''})
-                     .join("\t\t| ") ~ "\n";
-    }
     =end comment
 
     =begin comment
-    for $rs -> $row {
-        say "DEBUG: \$row type: {$row.^name}";
-        my $rs2 = $row.Seq; # columns;
-        my $i = 0;
-        for $rs2 -> $col {
-            say "       $i \$col type: {$col.^name}";
-            ++$i;
-        }
-
-        $str ~= $row.grep(*.defined || '')
-                     .join("\t\t| ") ~ "\n";
-    }
     =end comment
 
-    #my $rs = Person.^all.cache;
-    #my $rs = Person.^all;
-
-    #my $rs := Person.^rs;
-    #my $rs := Person.^rs.Seq;
     my $rs = Person.^rs;
     say "DEBUG: \$rs type: {$rs.^name}";
     say "DEBUG: \$rs elems: {$rs.elems}";
@@ -145,8 +104,6 @@ multi MAIN(6) {
                      .map( -> $c { $c.name.substr(2) }) ;
     my $str  = @cols.join("\t\t| ");
     my $i = 0;
-    #for Person.^all {
-    #for $rs -> $row {
     for $rs -> $row {
         say "DEBUG: row $i: \$row type: {$row.^name}";
         ++$i;

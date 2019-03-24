@@ -113,7 +113,7 @@ Some queries using the tables will be to determine or provide:
 7. various email status reports
 
 The goal is to create those tables and query them with **Red**.
-The Red models and the load script, described next, accomplishes that goal.
+The Red models and the load script, described next, accomplish that goal.
 
 ### Red models
 
@@ -125,7 +125,7 @@ The resultant Red models are in the './lib' directory.
 
 #### Part 1 - Creating the database
 
-We created a Perl 6 script to (1) create **Red** models of our desired
+We created a Perl 6 script to (1) create **Red** model tables of our desired
 database models (2), read the CSV data file, and (3) load an SQLite
 database file with the results.  The script is
 [load-db.p6](./load-db.p6).  Note we use a unique, generated secondary
@@ -133,11 +133,11 @@ key in addition to the primary key (id) for each entry, and that key
 has been validated with all the data prior to loading the database. In
 the rare instance of a duplicate key, we would add another field to
 the key and so document it (and migrate the database to a version with
-the new seconday key but preserving the primary key.
+the new seconday key but preserving the primary key).
 
 #### Part 2 - Querying the database
 
-After we created the dabatase, we will then start to use it with
+After we create the dabatase, we will then start to use it with
 various queries as we prepare for the next event.
 
 We created a separate script to query the SQLite database. The script
@@ -158,6 +158,6 @@ Some example CSV files containing typical reports needed are shown:
 We also created a script to update the database:
 [update-db.p6](./update-db.p6) **[a WIP]**.
 
-
 #### Part 4 - Preparation for the next event (2020)
-There are two reports needed in preparation for the next event
+There are two reports needed in preparation for the next event:
+
