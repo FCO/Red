@@ -3,10 +3,3 @@ Items or features to be done:
 + Use a grammar for extracting CSV input data
 
 + Create tests from the scripts
-
-+ Create another table that maps a unique but complex string key to a
-  simpler string to be used as the registration number (ID) for a
-  person. Such an ID would be easy to say and remember for
-  registration and other external purposes. For example, we make the
-  original, permanent key by joining '|last|first|email1|...|emalN|'
-  and map it to something like 'CTnnnn' where 'n' is a digit.
