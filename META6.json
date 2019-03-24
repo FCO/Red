@@ -66,6 +66,7 @@
     "Red::FromRelationship" : "lib/Red/FromRelationship.pm6",
     "Red::HiddenFromSQLCommenting" : "lib/Red/HiddenFromSQLCommenting.pm6",
     "Red::Migration::Column" : "lib/Red/Migration/Column.pm6",
+    "Red::Migration::Migration" : "lib/Red/Migration/Migration.pm6",
     "Red::Migration::Table" : "lib/Red/Migration/Table.pm6",
     "Red::Model" : "lib/Red/Model.pm6",
     "Red::Operators" : "lib/Red/Operators.pm6",
