@@ -74,10 +74,12 @@ multi MAIN(5) {
 
     #.say for Person.^all;
 
-    #for Person, Attend, Email, Present -> $m {
-    for Person, Attend -> $m {
+    for Person, Attend, Email, Present -> $m {
+    #for Person, Attend -> $m {
         my $rs = $m.^all;
+        say "====================================================";
         say formatter($rs);
+        say "====================================================";
     }
     #my $rs = Person.^all;
     #say formatter($rs);

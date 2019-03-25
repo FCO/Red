@@ -13,12 +13,9 @@ unit model Attend is rw;
 # data:
 has UInt $.year      is column;
 has Str  $.notes     is column{:nullable};
+
+# foreign key
 has UInt $.person    is referencing{ :column<id>, :model<Person> };
 
-# relationship
+# Red relationship
 has      $.person-id is relationship{ :column<id>, :model<Person> };
-
-=begin comment
-# constraint
-::?CLASS.^add-unique-constraint: { .person-id, .year };
-=end comment

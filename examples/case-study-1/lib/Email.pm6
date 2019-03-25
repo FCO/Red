@@ -16,11 +16,8 @@ has Str  $.email     is column;
 has Str  $.notes     is column{:nullable};
 has UInt $.status    is column{:nullable};
 
-# relationship
-has UInt $!person-id is referencing{  :column<id>, :model<Person> };
-has      $.person    is relationship{ :column<id>, :model<Person> };
+# foreign key
+has UInt $.person    is referencing{  :column<id>, :model<Person> };
 
-=begin comment
-# constraint
-::?CLASS.^add-unique-constraint: { .person-id, .email };
-=end comment
+# Red relationship
+has      $.person-id is relationship{ :column<id>, :model<Person> };
