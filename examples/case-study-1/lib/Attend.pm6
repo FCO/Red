@@ -13,10 +13,10 @@ unit model Attend is rw;
 # data:
 has UInt $.year      is column;
 has Str  $.notes     is column{:nullable};
+has UInt $.person    is referencing{ :column<id>, :model<Person> };
 
 # relationship
-has UInt $!person-id is referencing{  :column<id>, :model<Person> };
-has      $.person    is relationship{ :column<id>, :model<Person> };
+has      $.person-id is relationship{ :column<id>, :model<Person> };
 
 =begin comment
 # constraint

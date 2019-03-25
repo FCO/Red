@@ -4,6 +4,7 @@ use Red;
 
 use lib $*PROGRAM.parent.add('lib');
 use OurFuncs;
+use RedFuncs;
 # the Red models
 use Present;
 use Attend;
@@ -24,7 +25,7 @@ multi MAIN(Int $number, Bool :$*debug!) {
 }
 
 
-# IMPORTANT: Querys numbers, title, and content should be as stable as possible
+# IMPORTANT: Query numbers, title, and content should be as stable as possible
 # for ease of repeated use.
 
 # TODO - improved long-term query persistence
@@ -71,8 +72,15 @@ multi MAIN(5) {
     my $of = "{$date}-{$title}-query-{$qnum}.csv";
     say "Query $qnum is NYI";
 
-    .say for Person.^all;
+    #.say for Person.^all;
 
+    #for Person, Attend, Email, Present -> $m {
+    for Person, Attend -> $m {
+        my $rs = $m.^all;
+        say formatter($rs);
+    }
+    #my $rs = Person.^all;
+    #say formatter($rs);
 }
 
 #| 6. List contacts with their ids

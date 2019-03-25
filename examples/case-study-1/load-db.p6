@@ -35,7 +35,8 @@ if !@*ARGS {
 
 my $dbf-updated = 0;
 
-for Person, Attend, Email, Present -> $model {
+#for Person, Attend, Email, Present -> $model {
+for Person, Attend -> $model {
     $model.^create-table(:if-not-exists);
 }
 
@@ -92,12 +93,15 @@ for $f.IO.lines -> $line {
         for %a.keys -> $year {
             $p.attends.create: :$year unless $p.attends.grep: *.year == $year;
         }
+
+        =begin comment
         for %p.keys -> $year {
             $p.presents.create: :$year unless $p.presents.grep: *.year == $year;
         }
         for %e.keys -> $email {
             $p.emails.create: :$email unless $p.emails.grep: *.email eq $email;
         }
+        =end comment
     }
 }
 
