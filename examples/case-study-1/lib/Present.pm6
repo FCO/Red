@@ -18,4 +18,4 @@ has Str  $.notes     is column{:nullable};
 has UInt $.person    is referencing{  :column<id>, :model<Person> };
 
 # Red relationship
-has      $.person-id is relationship{ :column<person-id>, :model<Person> };
+has      $.person-id is relationship{ :column<id>, :model<Person> };
