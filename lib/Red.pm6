@@ -237,7 +237,7 @@ say Person.new(:2id)                                    # SQL : SELECT
                                                         #       )
                                                         #    )
                                                         #    AND post.created > 2019-04-02
-                                                        # BIND: [1]
+                                                        # BIND: [2]
 
 Person.^create:                                         # SQL : INSERT INTO person(
     :name<Fernando>,                                    #    name
