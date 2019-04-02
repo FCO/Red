@@ -105,14 +105,17 @@ model Person is rw {
 my $*RED-DB = database "SQLite";
 
 Person.^create-table;                                   # SQL : CREATE TABLE person(
-                                                        #    id integer NOT NULL primary key AUTOINCREMENT,
+                                                        #    id integer NOT NULL primary key
+                                                        #       AUTOINCREMENT,
                                                         #    name varchar(255) NOT NULL
                                                         # )
                                                         # BIND: []
 
 Post.^create-table;                                     # SQL : CREATE TABLE post(
-                                                        #    id integer NOT NULL primary key AUTOINCREMENT,
-                                                        #    author_id integer NULL references person(id),
+                                                        #    id integer NOT NULL primary key
+                                                        #       AUTOINCREMENT,
+                                                        #    author_id integer NULL
+                                                        #       references person(id),
                                                         #    title varchar(255) NOT NULL,
                                                         #    body varchar(255) NOT NULL,
                                                         #    deleted integer NOT NULL,
