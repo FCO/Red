@@ -401,7 +401,7 @@ multi method translate(Red::Column $_, "table-dot-column")     {
 }
 
 multi method translate(Red::Column $_, "column-comment")     {
-    (" COMMENT '$_'") => [] with .comment
+    (" COMMENT '$_'") => [] if .comment
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {

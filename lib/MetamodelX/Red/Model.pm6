@@ -286,18 +286,17 @@ multi method save($obj) {
     }
 }
 
-method create(\model, |pars) {
+method create(\model, *%orig-pars) {
     my %relationships := set %.relationships.keys>>.name>>.substr: 2;
-
     my %pars;
     my %positionals;
-    for pars.kv -> $name, $val {
+    for %orig-pars.kv -> $name, $val {
         my \attr-type = model.^attributes.first(*.name.substr(2) eq $name).type;
         if %relationships{ $name } {
             if $val ~~ Positional && attr-type ~~ Positional {
                 %positionals{$name} = $val
             } elsif $val !~~ attr-type {
-                %pars{$name} = model."$name"().^create: |$val
+                %pars{$name} = attr-type.^create: |$val
             } else {
                 %pars{$name} = $val
             }

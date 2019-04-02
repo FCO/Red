@@ -43,6 +43,6 @@ multi method debug($sql) {
 multi method debug($sql, @binds) {
     if $*RED-DEBUG {
         note "SQL : $sql";
-        note "BIND: @binds[]";
+        note "BIND: @binds.perl()";
     }
 }

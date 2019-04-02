@@ -48,13 +48,13 @@ multi method translate(Red::AST::Insert $_, $context?) {
         @values>>.key.join(",\n").indent: 3
     }\n)\nVALUES(\n{
         (self.wildcard xx @values).join(",\n").indent: 3
-    }\n) RETURNING *", @bind
+    }\n) RETURNING *" => @bind
 }
 
 multi method translate(Red::AST::Mod $_, $context?) {
     my ($ls, @lb) := self.translate: .left,  $context;
     my ($rs, @rb) := self.translate: .right, $context;
-    "mod($ls, $rs)", [|@lb, |@rb]
+    "mod($ls, $rs)" => [|@lb, |@rb]
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
@@ -66,7 +66,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {
 }
 
 multi method translate(Red::Column $_, "column-comment") {
-    "COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'" => []
+    (.comment ?? "COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'" !! "") => []
 }
 
 multi method translate(Red::AST::TableComment $_, $context?) {
@@ -76,6 +76,7 @@ multi method translate(Red::AST::TableComment $_, $context?) {
 class Statement does Red::Statement {
     has Str $.query;
     method stt-exec($stt, *@bind) {
+        $!driver.debug: $!query, @bind || @!binds;
         my $s = $stt.query($!query, |(@bind or @!binds));
         do if $s ~~ DB::Pg::Results {
             $s.hashes
@@ -107,7 +108,6 @@ multi method prepare(Str $query) {
             self.map-exception($_).throw
         }
     }
-    self.debug: $query;
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
 
