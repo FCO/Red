@@ -164,7 +164,7 @@ say $person.posts;                                      # SQL : SELECT
 
 say Person.new(:2id)                                    # SQL : SELECT
     .active-posts                                       #    post.id,
-    .grep: { .created > Date.today }                    #    post.author_id as "author-id",
+    .grep: { .created > now }                           #    post.author_id as "author-id",
                                                         #    post.title,
                                                         #    post.body,
                                                         #    post.deleted,
@@ -180,8 +180,36 @@ say Person.new(:2id)                                    # SQL : SELECT
                                                         #           OR post.deleted IS NULL
                                                         #       )
                                                         #    )
-                                                        #    AND post.created > 2019-04-02
+                                                        #    AND post.created > 1554246698.448671
                                                         # BIND: [2]
+
+my $now = now;
+say Person.new(:3id)                                    # SQL : SELECT
+    .active-posts                                       #    post.id,
+    .grep: { .created > $now }                          #    post.author_id as "author-id",
+                                                        #    post.title,
+                                                        #    post.body,
+                                                        #    post.deleted,
+                                                        #    post.created,
+                                                        #    post.tags
+                                                        # FROM
+                                                        #    post
+                                                        # WHERE
+                                                        #    (
+                                                        #       post.author_id = ?
+                                                        #       AND (
+                                                        #           post.deleted == 0
+                                                        #           OR post.deleted IS NULL
+                                                        #       )
+                                                        #    )
+                                                        #    AND post.created > ?
+                                                        # BIND: [
+                                                        #   3,
+                                                        #   Instant.from-posix(
+                                                        #       <399441421363/257>,
+                                                        #       Bool::False
+                                                        #   )
+                                                        # ]
 
 Person.^create:                                         # SQL : INSERT INTO person(
     :name<Fernando>,                                    #    name

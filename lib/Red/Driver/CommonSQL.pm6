@@ -483,11 +483,13 @@ multi method default-type-for(Red::Column                                   --> 
 
 multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
 multi method inflate(Str $value, DateTime :$to!) { $to.new: $value }
+multi method inflate(Str $value, Date     :$to!) { $to.new: $value }
 multi method inflate(Num $value, Duration :$to!) { $to.new: $value }
 multi method inflate(Int $value, Duration :$to!) { $to.new: $value }
-multi method inflate(Str $value, Version :$to!) { $to.new: $value }
+multi method inflate(Str $value, Version  :$to!) { $to.new: $value }
 
 multi method deflate(Instant  $value) { +$value }
+multi method deflate(Date     $value) { ~$value }
 multi method deflate(DateTime $value) { ~$value }
 multi method deflate(Duration $value) { +$value }
 multi method deflate(Duration $value) { +$value }
