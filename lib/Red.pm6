@@ -311,7 +311,15 @@ my $post = Post.^load: :title("My new post");           # SQL : SELECT
                                                         #   title   => "My new post",
                                                         #   body    => "A long post",
                                                         #   deleted => 0,
-                                                        #   created => DateTime.new(2019,4,2,23,7,46.677388,:timezone(3600)),
+                                                        #   created => DateTime.new(
+                                                        #       2019,
+                                                        #       4,
+                                                        #       2,
+                                                        #       23,
+                                                        #       7,
+                                                        #       46.677388,
+                                                        #       :timezone(3600)
+                                                        #   ),
                                                         #   tags    => Set.new("")
                                                         # )
 
