@@ -269,8 +269,7 @@ method classify(&func, :&as = { $_ }) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     my $key   = func self.of;
     my $value = as   self.of;
-    #self.clone(:group(func self.of)) but role :: { method of { Associative[$value.WHAT, Str] } }
-    Red::ResultAssociative[$value, $key].new: :$.filter, :rs(self)
+    Red::ResultAssociative[$value, $key].new: :rs(self)
 }
 
 multi method head is hidden-from-sql-commenting {

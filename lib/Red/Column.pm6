@@ -113,7 +113,7 @@ method ref {
     $!ref //= .() with self.references
 }
 
-method returns { $!attr.package }
+method returns { $!attr.type }
 
 method transpose(&func) { func self }
 
