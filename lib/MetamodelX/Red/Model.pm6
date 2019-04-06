@@ -286,7 +286,7 @@ multi method save($obj) {
     }
 }
 
-method create(\model, *%orig-pars) {
+method create(\model, *%orig-pars) is rw {
     my %relationships := set %.relationships.keys>>.name>>.substr: 2;
     my %pars;
     my %positionals;
@@ -307,17 +307,29 @@ method create(\model, *%orig-pars) {
     my $obj = model.new: |%pars;
     self.apply-row-phasers($obj, BeforeCreate);
     my $data := $obj.^save(:insert, :from-create).row;
-    if $data.defined and not $data.elems {
-        $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
-    } else {
-        $obj = model.new: |$data
-    }
-    $obj.^clean-up;
+
     for %positionals.kv -> $name, @val {
         say $obj.^attributes.first(*.name.substr(2) eq "columns").get_value: $obj for @val;
         $obj."$name"().create: |$_ for @val
     }
     self.apply-row-phasers($obj, AfterCreate);
+    return-rw Proxy.new:
+            STORE => -> | {
+                say "DEU RUIM";
+                die X::Assignment::RO.new(value => $obj)
+            },
+            FETCH => {
+                $ //= do {
+                    my $obj;
+                    if $data.defined and not $data.elems {
+                        $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
+                    } else {
+                        $obj = model.new: |$data
+                    }
+                    $obj.^clean-up;
+                    $obj
+                }
+            }
     $obj
 }
 
