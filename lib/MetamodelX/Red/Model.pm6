@@ -307,7 +307,7 @@ method create(\model, *%orig-pars) {
     my $obj = model.new: |%pars;
     self.apply-row-phasers($obj, BeforeCreate);
     my $data := $obj.^save(:insert, :from-create).row;
-    if model.^id.elems and $data.defined and not $data.elems {
+    if $data.defined and not $data.elems {
         $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
     } else {
         $obj = model.new: |$data
