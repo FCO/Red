@@ -156,7 +156,8 @@ multi method translate(Red::AST::Select $ast, $context?) {
         @bind.push: |@b;
         $s
     }).join: ",\n"   if $ast.?order;
-    my $limit = $ast.limit;
+    my $limit  = $ast.limit;
+    my $offset = $ast.offset;
     my $group;
     if $ast.?group -> $g {
         when Red::Column {
@@ -185,6 +186,8 @@ multi method translate(Red::AST::Select $ast, $context?) {
         "\nGROUP BY\n{ .indent: 3 }" with $group
     }{
         "\nLIMIT $_" with $limit
+    }{
+        "\nOFFSET $_" with $offset
     }" => @bind
 }
 

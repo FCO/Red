@@ -74,6 +74,7 @@
     "Red::ResultAssociative" : "lib/Red/ResultAssociative.pm6",
     "Red::ResultSeq" : "lib/Red/ResultSeq.pm6",
     "Red::ResultSeq::Iterator" : "lib/Red/ResultSeq/Iterator.pm6",
+    "Red::ResultSeqSeq" : "lib/Red/ResultSeqSeq.pm6",
     "Red::Statement" : "lib/Red/Statement.pm6",
     "Red::Traits" : "lib/Red/Traits.pm6",
     "Red::Utils" : "lib/Red/Utils.pm6",

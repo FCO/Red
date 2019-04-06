@@ -4,6 +4,7 @@ unit class Red::AST::Chained does Red::AST;
 
 has Red::AST            $.filter;
 has Int                 $.limit;
+has Int                 $.offset is rw;
 has                     &.post;
 has Red::AST            @.order;
 has Red::AST            @.group;

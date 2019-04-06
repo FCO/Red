@@ -11,6 +11,7 @@ has Red::AST            @.fields;
 has Red::AST            $.filter;
 has Red::AST            @.order;
 has Int                 $.limit;
+has Int                 $.offset;
 has Red::AST            @.group;
 has                     @.table-list;
 has Red::AST::Comment   @.comments;
