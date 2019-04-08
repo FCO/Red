@@ -1,6 +1,6 @@
 services:
   - docker
 before_install:
-  - docker pull fernandocorrea/red-runner
+  - docker pull fernandocorrea/red-tester
 script:
-  - docker run fernandocorrea/red-runner
+  - docker run fernandocorrea/red-tester

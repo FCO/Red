@@ -315,7 +315,6 @@ method create(\model, *%orig-pars) is rw {
     self.apply-row-phasers($obj, AfterCreate);
     return-rw Proxy.new:
             STORE => -> | {
-                say "DEU RUIM";
                 die X::Assignment::RO.new(value => $obj)
             },
             FETCH => {
