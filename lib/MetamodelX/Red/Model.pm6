@@ -237,8 +237,8 @@ multi method create-table(\model, Bool :$if-not-exists where * === True) {
 
 multi method create-table(\model) {
     die X::Red::InvalidTableName.new: :table(model.^table)
-    unless ($*RED-DB // PROCESS::<$*RED-DB>).is-valid-table-name: model.^table;
-    ($*RED-DB // PROCESS::<$*RED-DB>).execute:
+    unless $*RED-DB.is-valid-table-name: model.^table;
+    $*RED-DB.execute:
         Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
@@ -264,7 +264,7 @@ method apply-row-phasers($obj, Mu:U $phase ) {
 }
 multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
     self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
-    my $ret := ($*RED-DB // PROCESS::<$*RED-DB>).execute: Red::AST::Insert.new: $obj;
+    my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
     $obj.^clean-up;
     self.apply-row-phasers($obj, AfterCreate) unless $from-create;
     $ret
@@ -272,7 +272,7 @@ multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
 
 multi method save($obj, Bool :$update! where * == True) {
     self.apply-row-phasers($obj, BeforeUpdate);
-    my $ret := ($*RED-DB // PROCESS::<$*RED-DB>).execute: Red::AST::Update.new: $obj;
+    my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
     $obj.^clean-up;
     self.apply-row-phasers($obj, AfterUpdate);
     $ret
@@ -321,7 +321,7 @@ method create(\model, *%orig-pars) is rw {
                 $ //= do {
                     my $obj;
                     if $data.defined and not $data.elems {
-                        $obj = model.new: |($*RED-DB // PROCESS::<$*RED-DB>).execute(Red::AST::LastInsertedRow.new: model).row
+                        $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
                     } else {
                         $obj = model.new: |$data
                     }
@@ -334,7 +334,7 @@ method create(\model, *%orig-pars) is rw {
 
 method delete(\model) {
     self.apply-row-phasers(model, BeforeDelete);
-    ($*RED-DB // PROCESS::<$*RED-DB>).execute: Red::AST::Delete.new: model ;
+    $*RED-DB. execute: Red::AST::Delete.new: model ;
     self.apply-row-phasers(model, AfterDelete);
 }
 

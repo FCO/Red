@@ -3,7 +3,7 @@ use Red::Column;
 class X::Red is Exception {}
 
 class X::Red::Driver is X::Red {
-    has Str $.driver = ($*RED-DB // PROCESS::<$*RED-DB>).^name;
+    has Str $.driver = $*RED-DB.^name;
 }
 
 class X::Red::RelationshipNotColumn is X::Red {
