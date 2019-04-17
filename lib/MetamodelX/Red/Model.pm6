@@ -67,12 +67,12 @@ method id-values(Red::Model:D $model) {
 
 method default-nullable(|) is rw { $ //= False }
 
-method unique-counstraints(\model) {
+method unique-constraints(\model) {
     @!constraints.unique.grep(*.key eq "unique").map: *.value.attr
 }
 
 method general-ids(\model) {
-    (|model.^id, |model.^unique-counstraints)
+    (|model.^id, |model.^unique-constraints)
 }
 
 multi method id-filter(Red::Model:D $model) {
