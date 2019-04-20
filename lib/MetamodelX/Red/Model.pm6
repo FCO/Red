@@ -75,6 +75,10 @@ method general-ids(\model) {
     (|model.^id, |model.^unique-constraints)
 }
 
+multi method id-map(Red::Model $model, $id where { $model.^id == 1 and $id ~~ $model.^id.head.WHAT} --> Hash()) {
+    $model.^id.head => $id
+}
+
 multi method id-filter(Red::Model:D $model) {
     $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(self.get-attr: $model, $_), :type(.type) })
     .reduce: { Red::AST::AND.new: $^a, $^b }
@@ -341,6 +345,10 @@ method delete(\model) {
 method load(Red::Model:U \model, |ids) {
     my $filter = model.^id-filter: |ids;
     model.^rs.grep({ $filter }).head
+}
+
+method new-with-id(Red::Model:U \model, |ids) {
+    model.new: |model.^id-map: |ids;
 }
 
 multi method search(Red::Model:U \model, &filter) {
