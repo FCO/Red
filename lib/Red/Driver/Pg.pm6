@@ -27,14 +27,9 @@ multi method translate(Red::Column $_, "column-auto-increment") { Empty, [] }
 
 method wildcard { "\${ ++$*bind-counter }" }
 
-multi method translate(Red::AST::Select $_, $context?) {
+multi method translate(|c($_ where Red::AST::Select | Red::AST::Delete, $context?)) {
     my Int $*bind-counter;
-    nextsame
-}
-
-multi method translate(Red::AST::Delete $_, $context?) {
-    my Int $*bind-counter;
-    nextsame
+    self.Red::Driver::CommonSQL::translate(|c);
 }
 
 multi method translate(Red::AST::Insert $_, $context?) {
