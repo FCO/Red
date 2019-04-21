@@ -75,7 +75,12 @@ method general-ids(\model) {
     (|model.^id, |model.^unique-constraints)
 }
 
-multi method id-map(Red::Model $model, $id where { $model.^id == 1 and $id ~~ $model.^id.head.WHAT} --> Hash()) {
+multi method set-id(Red::Model:D $model, $id --> Hash()) {
+    self.set-attr: $model, $model.^id.head, $id;
+    $model.^set-dirty: $model.^id.head;
+}
+
+multi method id-map(Red::Model $model, $id --> Hash()) {
     $model.^id.head => $id
 }
 
