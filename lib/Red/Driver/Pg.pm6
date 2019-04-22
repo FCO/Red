@@ -24,18 +24,18 @@ submethod TWEAK() {
     $!dbh //= DB::Pg.new: conninfo => "{ "user=$_" with $!user } { "password=$_" with $!password } { "host=$_" with $!host } { "port=$_" with $!port } { "dbname=$_" with $!dbname }";
 }
 
-multi method translate(Red::Column $_, "column-auto-increment") { "" => [] }
+multi method translate(Red::Column $_, "column-auto-increment") {}
 
 method wildcard { "\${ ++$*bind-counter }" }
 
-multi method translate(|c(Red::AST::Select $_, $context?)) {
+multi method translate(Red::AST::Select $_, $context?) {
     my Int $*bind-counter;
-    self.Red::Driver::CommonSQL::translate(|c);
+    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
 }
 
-multi method translate(|c(Red::AST::Delete $_, $context?)) {
+multi method translate(Red::AST::Delete $_, $context?) {
     my Int $*bind-counter;
-    self.Red::Driver::CommonSQL::translate(|c);
+    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
 }
 
 multi method translate(Red::AST::Insert $_, $context?) {
