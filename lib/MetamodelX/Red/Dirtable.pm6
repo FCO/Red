@@ -34,7 +34,7 @@ method set-helper-attrs(Mu \type) {
 }
 
 submethod !TWEAK_pr(\instance: *%data) {
-    my @columns = instance.^columns.keys;
+    my @columns = instance.^columns;
 
     my %new = |@columns.map: {
         my Mu $built := .build;
@@ -57,8 +57,9 @@ submethod !TWEAK_pr(\instance: *%data) {
                 instance.^set-dirty: col;
                 $col-data-attr.get_value(instance).{ col.column.attr-name } = value
             }
-        use nqp;
-        nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
+        #use nqp;
+        #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
+        col.set_value: instance<>, proxy
     }
     for self.^attributes -> $attr {
         with %data{ $attr.name.substr: 2 } {

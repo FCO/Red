@@ -1,5 +1,8 @@
 use Red::AST::Infixes;
 use Red::AST::Value;
+use Red::HiddenFromSQLCommenting;
+use X::Red::Exceptions;
+
 unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model, Str :$require = $model];
 has Mu:U $!type;
 
@@ -13,7 +16,7 @@ method rel {
     rel1 self.package
 }
 
-method relationship-model(--> Mu:U) {
+method relationship-model(--> Mu:U)  is hidden-from-sql-commenting {
     if !$!loaded-model {
         my $t = ::($model);
         if !$t && $t ~~ Failure {
@@ -26,7 +29,7 @@ method relationship-model(--> Mu:U) {
     $!relationship-model;
 }
 
-method set-data(\instance, Mu $value) {
+method set-data(\instance, Mu $value) is hidden-from-sql-commenting {
     do given $.rel {
         my $attr = .attr;
         my $ref  = .ref;
@@ -35,7 +38,7 @@ method set-data(\instance, Mu $value) {
     }
 }
 
-method build-relationship(\instance) {
+method build-relationship(\instance) is hidden-from-sql-commenting {
     my \type = self.type;
     my \attr = self;
     my \rel-model = $model ?? self.relationship-model !! type ~~ Positional ?? type.of !! type;
@@ -44,7 +47,10 @@ method build-relationship(\instance) {
         FETCH => method () {
             do if type ~~ Positional {
                 my $rel = rel1 rel-model;
-                my $val = $rel.ref.attr.get_value: instance;
+                X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;
+                my $ref = $rel.ref;
+                X::Red::RelationshipNotRelated.new(:relationship(attr), :points-to($rel)).throw without $ref;
+                my $val = $ref.attr.get_value: instance;
                 my \value = ast-value $val;
                 rel-model.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
             } else {
@@ -70,7 +76,7 @@ method build-relationship(\instance) {
     return
 }
 
-method relationship-ast {
+method relationship-ast is hidden-from-sql-commenting {
     my \type = do if self.type ~~ Positional {
         $model ?? self.relationship-model !! self.type.of
     } else {

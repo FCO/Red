@@ -1,5 +1,6 @@
 use Red::AST;
 use Red::AST::Infixes;
+use Red::AST::Divisable;
 use Red::AST::Value;
 use Red::ResultSeq;
 unit module Red::Operators;
@@ -45,6 +46,40 @@ multi infix:<!=>(Numeric() $a is rw, Red::AST $b) is export {
     Red::AST::Ne.new: ast-value($a), $b, :cast<num>, :bind-left
 }
 multi infix:<!=>(Numeric() $a is readonly, Red::AST $b) is export {
+    Red::AST::Ne.new: ast-value($a), $b, :cast<num>
+}
+
+# ==
+multi infix:<==>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Eq.new: $a, $b, :cast<num>
+}
+multi infix:<==>(Red::AST $a, Date $b is rw) is export {
+    Red::AST::Eq.new: $a, ast-value($b), :cast<num>, :bind-right
+}
+multi infix:<==>(Red::AST $a, Date $b is readonly) is export {
+    Red::AST::Eq.new: $a, ast-value($b), :cast<num>
+}
+multi infix:<==>(Date $a is rw, Red::AST $b) is export {
+    Red::AST::Eq.new: ast-value($a), $b, :cast<num>, :bind-left
+}
+multi infix:<==>(Date $a is readonly, Red::AST $b) is export {
+    Red::AST::Eq.new: ast-value($a), $b, :cast<num>
+}
+
+# !=
+multi infix:<!=>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Ne.new: $a, $b, :cast<num>
+}
+multi infix:<!=>(Red::AST $a, Date $b is rw) is export {
+    Red::AST::Ne.new: $a, ast-value($b), :cast<num>, :bind-right
+}
+multi infix:<!=>(Red::AST $a, Date $b is readonly) is export {
+    Red::AST::Ne.new: $a, ast-value($b), :cast<num>
+}
+multi infix:<!=>(Date $a is rw, Red::AST $b) is export {
+    Red::AST::Ne.new: ast-value($a), $b, :cast<num>, :bind-left
+}
+multi infix:<!=>(Date $a is readonly, Red::AST $b) is export {
     Red::AST::Ne.new: ast-value($a), $b, :cast<num>
 }
 
@@ -141,6 +176,74 @@ multi infix:<< >= >>(Numeric() $a is rw, Red::AST $b) is export {
     Red::AST::Ge.new: ast-value($a), $b, :cast<num>, :bind-left
 }
 multi infix:<< >= >>(Numeric() $a is readonly, Red::AST $b) is export {
+    Red::AST::Ge.new: ast-value($a), $b, :cast<num>
+}
+
+# <
+multi infix:<< < >>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Lt.new: $a, $b, :cast<num>
+}
+multi infix:<< < >>(Red::AST $a, Date $b is rw) is export {
+    Red::AST::Lt.new: $a, ast-value($b), :cast<num>, :bind-right
+}
+multi infix:<< < >>(Red::AST $a, Date $b is readonly) is export {
+    Red::AST::Lt.new: $a, ast-value($b), :cast<num>
+}
+multi infix:<< < >>(Date $a is rw, Red::AST $b) is export {
+    Red::AST::Lt.new: ast-value($a), $b, :cast<num>, :bind-left
+}
+multi infix:<< < >>(Date $a is readonly, Red::AST $b) is export {
+    Red::AST::Lt.new: ast-value($a), $b, :cast<num>
+}
+
+# >
+multi infix:<< > >>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Gt.new: $a, $b, :cast<num>
+}
+multi infix:<< > >>(Red::AST $a, Date $b is rw) is export {
+    Red::AST::Gt.new: $a, ast-value($b), :cast<num>, :bind-right
+}
+multi infix:<< > >>(Red::AST $a, Date $b is readonly) is export {
+    Red::AST::Gt.new: $a, ast-value($b), :cast<num>
+}
+multi infix:<< > >>(Date $a is rw, Red::AST $b) is export {
+    Red::AST::Gt.new: ast-value($a), $b, :cast<num>, :bind-left
+}
+multi infix:<< > >>(Date $a is readonly, Red::AST $b) is export {
+    Red::AST::Gt.new: ast-value($a), $b, :cast<num>
+}
+
+# <=
+multi infix:<< <= >>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Le.new: $a, $b, :cast<num>
+}
+multi infix:<< <= >>(Red::AST $a, Date $b is rw) is export {
+    Red::AST::Le.new: $a, ast-value($b), :cast<num>, :bind-right
+}
+multi infix:<< <= >>(Red::AST $a, Date $b is readonly) is export {
+    Red::AST::Le.new: $a, ast-value($b), :cast<num>
+}
+multi infix:<< <= >>(Date $a is rw, Red::AST $b) is export {
+    Red::AST::Le.new: ast-value($a), $b, :cast<num>, :bind-left
+}
+multi infix:<< <= >>(Date $a is readonly, Red::AST $b) is export {
+    Red::AST::Le.new: ast-value($a), $b, :cast<num>
+}
+
+# >=
+multi infix:<< >= >>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Ge.new: $a, $b, :cast<num>
+}
+multi infix:<< >= >>(Red::AST $a, Date $b is rw) is export {
+    Red::AST::Ge.new: $a, ast-value($b), :cast<num>, :bind-right
+}
+multi infix:<< >= >>(Red::AST $a, Date $b is readonly) is export {
+    Red::AST::Ge.new: $a, ast-value($b), :cast<num>
+}
+multi infix:<< >= >>(Date $a is rw, Red::AST $b) is export {
+    Red::AST::Ge.new: ast-value($a), $b, :cast<num>, :bind-left
+}
+multi infix:<< >= >>(Date $a is readonly, Red::AST $b) is export {
     Red::AST::Ge.new: ast-value($a), $b, :cast<num>
 }
 
@@ -305,6 +408,14 @@ multi prefix:<!>(Red::AST $a) is export {
     Red::AST::Not.new: $a
 }
 
+multi prefix:<not>(Red::AST::In $a) is export {
+    $a.not;
+}
+
+multi prefix:<!>(Red::AST::In $a) is export {
+    $a.not;
+}
+
 multi prefix:<so>(Red::AST $a) is export {
     Red::AST::So.new: $a
 }
@@ -317,9 +428,9 @@ multi infix:<AND>(Red::AST $a, Red::AST $b) is export is tighter(&infix:<==>) {
     Red::AST::AND.new: $a, $b
 }
 
-#multi infix:<OR>(Red::AST $a, Red::AST $b) is export {
-#    Red::AST::OR.new: $a, $b
-#}
+multi infix:<OR>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::OR.new: $a, $b
+}
 
 multi infix:<∪>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
     $a (|) $b
@@ -341,3 +452,62 @@ multi infix:<⊖>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
 multi infix:<(-)>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
     $a.minus: $b
 }
+
+
+multi infix:<in>(Red::AST $a, Red::ResultSeq:D $b ) is export is default {
+    Red::AST::In.new: $a, $b.ast(:sub-select);
+}
+
+multi infix:<⊂>(Red::AST $a, Red::ResultSeq $b ) is export is default {
+    Red::AST::In.new: $a, $b.ast(:sub-select);
+}
+multi infix:«(<)»(Red::AST $a, Red::ResultSeq $b ) is export is default {
+    Red::AST::In.new: $a, $b.ast(:sub-select);
+}
+
+multi infix:<⊃>(Red::AST $a, Red::ResultSeq $b ) is export is default {
+    Red::AST::NotIn.new: $a, $b.ast(:sub-select);
+}
+multi infix:«(>)»(Red::AST $a, Red::ResultSeq $b ) is export is default {
+    Red::AST::NotIn.new: $a, $b.ast(:sub-select);
+}
+
+subset PositionalNotResultSeq of Any  where { $_ ~~ Positional && $_ !~~ Red::ResultSeq };
+
+multi infix:<in>(Red::AST $a, PositionalNotResultSeq $b ) is export {
+    Red::AST::In.new: $a, ast-value($b);
+}
+
+multi infix:<⊂>(Red::AST $a, PositionalNotResultSeq $b ) is export {
+    Red::AST::In.new: $a, ast-value($b);
+}
+multi infix:«(<)»(Red::AST $a, PositionalNotResultSeq $b ) is export {
+    Red::AST::In.new: $a, ast-value($b);
+}
+
+multi infix:<⊃>(Red::AST $a, PositionalNotResultSeq $b ) is export {
+    Red::AST::NotIn.new: $a, ast-value($b);
+}
+multi infix:«(>)»(Red::AST $a, PositionalNotResultSeq $b ) is export {
+    Red::AST::NotIn.new: $a, ast-value($b);
+}
+
+
+multi infix:<in>(Red::AST $a, Red::AST::Select $b ) is export {
+    Red::AST::In.new: $a, $b.as-sub-select;
+}
+
+multi infix:<⊂>(Red::AST $a, Red::AST::Select $b ) is export {
+    Red::AST::In.new: $a, $b.as-sub-select;
+}
+multi infix:«(<)»(Red::AST $a, Red::AST::Select $b ) is export {
+    Red::AST::In.new: $a, $b.as-sub-select;
+}
+
+multi infix:<⊃>(Red::AST $a, Red::AST::Select $b ) is export {
+    Red::AST::NotIn.new: $a, $b.as-sub-select;
+}
+multi infix:«(>)»(Red::AST $a, Red::AST::Select $b ) is export {
+    Red::AST::NotIn.new: $a, $b.as-sub-select;
+}
+

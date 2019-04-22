@@ -70,7 +70,7 @@ $*RED-DB.when: :once, :return[{:1id, :1blu-id},], "insert into blo( blu_id )valu
 my $blu = Blu.^create;
 my $blo = $blu.blo.create;
 
-$*RED-DB.when: :3times, :return[{:1id}], "select blu.id from blu where blu.id = ?";
+$*RED-DB.when: :3times, :return[{:1id}], "select blu.id from blu where blu.id = ? limit 1";
 
 isa-ok $blu, Blu;
 isa-ok $blo, Blo;

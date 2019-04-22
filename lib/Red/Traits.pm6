@@ -1,7 +1,12 @@
 use Red::Column;
 use Red::Attr::Column;
 use Red::ResultSeq;
+use Red::Phaser;
 unit module Red::Traits;
+
+multi trait_mod:<is>(Mu:U $model, Bool :$temp!) {
+    $model.^temp = True;
+}
 
 multi trait_mod:<is>(Mu:U $model, Str:D :$rs-class!) {
     trait_mod:<is>($model, :rs-class(::($rs-class)))
@@ -71,3 +76,30 @@ multi trait_mod:<is>(Attribute $attr, :$relationship! (Str :$column!, Str :$mode
 multi trait_mod:<is>(Attribute $attr, Callable :$relationship! ( @relationship! where *.elems == 2, Str :$model!, Str :$require = $model)) {
     $attr.package.^add-relationship: $attr, |@relationship, :$model, :$require
 }
+
+# Traits to define 'phaser' methods
+
+multi trait_mod:<is>(Method $m, :$before-create!) {
+    $m does BeforeCreate;
+}
+
+multi trait_mod:<is>(Method $m, :$after-create!) {
+    $m does AfterCreate;
+}
+
+multi trait_mod:<is>(Method $m, :$before-update!) {
+    $m does BeforeUpdate;
+}
+
+multi trait_mod:<is>(Method $m, :$after-update!) {
+    $m does AfterUpdate;
+}
+
+multi trait_mod:<is>(Method $m, :$before-delete!) {
+    $m does BeforeDelete;
+}
+
+multi trait_mod:<is>(Method $m, :$after-delete!) {
+    $m does AfterDelete;
+}
+

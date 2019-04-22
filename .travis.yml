@@ -1,11 +1,6 @@
-language: perl6
-perl6:
-  - latest
-install:
-  - rakudobrew build moar
-  - rakudobrew build-zef
-  - zef install Test::META
-  - zef install --deps-only --/test .
-sudo: false
+services:
+  - docker
+before_install:
+  - docker pull fernandocorrea/red-tester
 script:
-  - zef install .  --debug
+  - docker run -v $PWD:/code fernandocorrea/red-tester

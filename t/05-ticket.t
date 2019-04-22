@@ -12,11 +12,11 @@ model TicketStatus {
 
 TicketStatus.^create-table;
 
-my \new     = TicketStatus.^create: :name<new>;
-my \opened  = TicketStatus.^create: :name<opened>;
-my \closed  = TicketStatus.^create: :name<closed>;
-my \blocked = TicketStatus.^create: :name<blocked>;
-my \paused  = TicketStatus.^create: :name<paused>;
+my $new     = TicketStatus.^create: :name<new>;
+my $opened  = TicketStatus.^create: :name<opened>;
+my $closed  = TicketStatus.^create: :name<closed>;
+my $blocked = TicketStatus.^create: :name<blocked>;
+my $paused  = TicketStatus.^create: :name<paused>;
 
 model Ticket { ... }
 
@@ -32,7 +32,7 @@ model Ticket is rw {
     has Str             $.title     is column;
     has Str             $.body      is column;
     has UInt            $.status-id is referencing{  TicketStatus.id };
-    has TicketStatus    $.status    is relationship{ .status-id } is rw = new;
+    has TicketStatus    $.status    is relationship{ .status-id } = $new;
     has UInt            $.author-id is referencing{  Person.id }
     has Person          $.author    is relationship{ .author-id }
 }
@@ -70,8 +70,7 @@ for me.tickets -> $t {
 }
 
 given me.tickets.head {
-    say "closing ticket { .title }";
-    .status = closed;
+    .status = $closed;
     .^save;
 }
 

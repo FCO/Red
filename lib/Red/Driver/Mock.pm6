@@ -84,8 +84,10 @@ multi method when(Regex $when, :$throw!) {
 }
 
 multi method prepare(Red::AST $query) {
-    my ($sql, @bind) := self.translate: self.optimize: $query;
-    self.prepare: $sql;
+    do for |self.translate: self.optimize: $query -> Pair \data {
+        my ($sql, @bind) := do given data { .key, .value }
+        self.prepare: $sql;
+    }
 }
 
 multi method prepare(Str $query) {

@@ -1,7 +1,27 @@
+use Red::Column;
+
 class X::Red is Exception {}
 
 class X::Red::Driver is X::Red {
     has Str $.driver = $*RED-DB.^name;
+}
+
+class X::Red::RelationshipNotColumn is X::Red {
+    has Attribute   $.relationship;
+    has             $.points-to;
+
+    method message {
+        "The relationship '$!relationship.name()' points to a {$!points-to.^name} ($!points-to.Str()). Should point to a column that is refering to another column."
+    }
+}
+
+class X::Red::RelationshipNotRelated is X::Red {
+    has Attribute   $.relationship;
+    has Red::Column $.points-to;
+
+    method message {
+        "The relationship '$!relationship.name()' points to a column ('$!points-to.attr-name()') that does not refer to any where"
+    }
 }
 
 class X::Red::InvalidTableName is X::Red::Driver {
@@ -41,4 +61,9 @@ class X::Red::Driver::Mapped::UnknownError is X::Red::Driver::Mapped {
 class X::Red::Driver::Mapped::Unique is X::Red::Driver::Mapped {
     has Str @.fields;
     method msg { "Unique constraint ({@!fields.join: ", "}) violated" }
+}
+
+class X::Red::Driver::Mapped::TableExists is X::Red::Driver::Mapped {
+    has Str $.table is required;
+    method msg { "Table $!table already exists" }
 }

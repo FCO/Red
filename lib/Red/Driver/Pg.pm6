@@ -4,6 +4,7 @@ use Red::Driver::CommonSQL;
 use Red::Statement;
 use Red::AST::Infixes;
 use X::Red::Exceptions;
+use Red::AST::TableComment;
 need UUID;
 
 unit class Red::Driver::Pg does Red::Driver::CommonSQL;
@@ -23,11 +24,16 @@ submethod TWEAK() {
     $!dbh //= DB::Pg.new: conninfo => "{ "user=$_" with $!user } { "password=$_" with $!password } { "host=$_" with $!host } { "port=$_" with $!port } { "dbname=$_" with $!dbname }";
 }
 
-multi method translate(Red::Column $_, "column-auto-increment") { Empty, [] }
+multi method translate(Red::Column $_, "column-auto-increment") { "" => [] }
 
 method wildcard { "\${ ++$*bind-counter }" }
 
-multi method translate(|c($_ where Red::AST::Select | Red::AST::Delete, $context?)) {
+multi method translate(|c(Red::AST::Select $_, $context?)) {
+    my Int $*bind-counter;
+    self.Red::Driver::CommonSQL::translate(|c);
+}
+
+multi method translate(|c(Red::AST::Delete $_, $context?)) {
     my Int $*bind-counter;
     self.Red::Driver::CommonSQL::translate(|c);
 }
@@ -42,26 +48,35 @@ multi method translate(Red::AST::Insert $_, $context?) {
         @values>>.key.join(",\n").indent: 3
     }\n)\nVALUES(\n{
         (self.wildcard xx @values).join(",\n").indent: 3
-    }\n) RETURNING *", @bind
+    }\n) RETURNING *" => @bind
 }
 
 multi method translate(Red::AST::Mod $_, $context?) {
     my ($ls, @lb) := self.translate: .left,  $context;
     my ($rs, @rb) := self.translate: .right, $context;
-    "mod($ls, $rs)", [|@lb, |@rb]
+    "mod($ls, $rs)" => [|@lb, |@rb]
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
-    (.value ?? "'t'" !! "'f'"), []
+    (.value ?? "'t'" !! "'f'") => []
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {
-    "'{ .value.Str }'", []
+    "'{ .value.Str }'" => []
+}
+
+multi method translate(Red::Column $_, "column-comment") {
+    (.comment ?? "COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'" !! "") => []
+}
+
+multi method translate(Red::AST::TableComment $_, $context?) {
+    "COMMENT ON TABLE { .table } IS '{ .msg }'" => []
 }
 
 class Statement does Red::Statement {
     has Str $.query;
     method stt-exec($stt, *@bind) {
+        $!driver.debug: $!query, @bind || @!binds;
         my $s = $stt.query($!query, |(@bind or @!binds));
         do if $s ~~ DB::Pg::Results {
             $s.hashes
@@ -73,17 +88,26 @@ class Statement does Red::Statement {
 }
 
 multi method prepare(Red::AST $query) {
-    my ($sql, @bind) := self.translate: self.optimize: $query;
-    do unless $*RED-DRY-RUN {
-        my $stt = self.prepare: $sql;
-        $stt.predefined-bind;
-        $stt.binds = @bind.map: { self.deflate: $_ };
-        $stt
+    do for |self.translate: self.optimize: $query -> Pair \data {
+        my ($sql, @bind) := do given data { .key, .value }
+        next unless $sql;
+        do unless $*RED-DRY-RUN {
+            my $stt = self.prepare: $sql;
+            $stt.predefined-bind;
+            $stt.binds = @bind.map: { self.deflate: $_ };
+            $stt
+        }
     }
 }
 
+method comment-on-same-statement { False }
+
 multi method prepare(Str $query) {
-    self.debug: $query;
+    CATCH {
+        default {
+            self.map-exception($_).throw
+        }
+    }
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
 
@@ -102,4 +126,11 @@ multi method map-exception(DB::Pg::Error::FatalError $x where /"duplicate key va
         :driver<Pg>,
         :orig-exception($x),
         :fields($0>>.Str)
+}
+
+multi method map-exception(DB::Pg::Error::FatalError $x where /"ERROR:"\s+ relation \s+ \"$<table>=(\w+)\" \s+ already \s+ exists\n/) {
+    X::Red::Driver::Mapped::TableExists.new:
+            :driver<Pg>,
+            :orig-exception($x),
+            :table($<table>.Str)
 }
