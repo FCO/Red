@@ -48,6 +48,7 @@ method pull-one {
         }).Hash)
     ;
     $obj.^clean-up;
+    $obj.^saved-on-db;
     return .($obj) with &!post;
     $obj
 }

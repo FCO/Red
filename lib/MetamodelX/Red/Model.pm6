@@ -20,6 +20,7 @@ use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Migration;
 use MetamodelX::Red::Relationship;
+use MetamodelX::Red::OnDB;
 use X::Red::Exceptions;
 use Red::Phaser;
 
@@ -28,6 +29,7 @@ also does MetamodelX::Red::Dirtable;
 also does MetamodelX::Red::Comparate;
 #also does MetamodelX::Red::Migration;
 also does MetamodelX::Red::Relationship;
+also does MetamodelX::Red::OnDB;
 
 has Attribute @!columns;
 has Red::Column %!references;
@@ -114,6 +116,11 @@ multi method id-filter(Red::Model:U $model, *%data) {
 
 method attr-to-column(|) is rw {
     %!attr-to-column
+}
+
+method set-helper-attrs(Mu \type) {
+    self.MetamodelX::Red::Dirtable::set-helper-attrs(type);
+    self.MetamodelX::Red::OnDB::set-helper-attrs(type);
 }
 
 method compose(Mu \type) {
@@ -271,9 +278,11 @@ method apply-row-phasers($obj, Mu:U $phase ) {
         $obj.$meth();
     }
 }
+
 multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
     self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
     my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
+    $obj.^saved-on-db;
     $obj.^clean-up;
     self.apply-row-phasers($obj, AfterCreate) unless $from-create;
     $ret
@@ -282,13 +291,14 @@ multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
 multi method save($obj, Bool :$update! where * == True) {
     self.apply-row-phasers($obj, BeforeUpdate);
     my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
+    $obj.^saved-on-db;
     $obj.^clean-up;
     self.apply-row-phasers($obj, AfterUpdate);
     $ret
 }
 
 multi method save($obj) {
-    do if $obj.^id and $obj.^id-values.all.defined {
+    do if $obj.^is-on-db {
         self.save: $obj, :update
     } else {
         self.save: $obj, :insert
@@ -334,6 +344,7 @@ method create(\model, *%orig-pars) is rw {
                     } else {
                         $obj = model.new: |$data
                     }
+                    $obj.^saved-on-db;
                     $obj.^clean-up;
                     $obj
                 }
