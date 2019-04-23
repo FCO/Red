@@ -17,7 +17,7 @@ multi method new(Red::Model $model) {
         :into($model.^table),
         :filter($model.^id-filter),
         :values($model.^dirty-columns.keys.map(-> $column {
-            next without $column.get_value: $model;
+            #next without $column.get_value: $model;
             $column.column.name => Red::AST::Value.new:
                 :type($column.type),
                 :value($column.get_value: $model),

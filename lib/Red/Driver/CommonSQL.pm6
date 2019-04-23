@@ -327,6 +327,10 @@ multi method translate(Red::AST::Cast $_, $context?) {
     }
 }
 
+multi method translate(Red::AST::Value $_ where not .value.defined, "update" ) {
+    "NULL" => []
+}
+
 multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $context? ) {
     my ( :$key, :$value ) = self.translate(.value, $context );
     '( ' ~ $key ~ ' )' => $value ;
@@ -482,7 +486,6 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --> 
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> Str:D) {"boolean"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> Str:D) {"varchar(36)"}
 multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
-
 
 multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
 multi method inflate(Str $value, DateTime :$to!) { $to.new: $value }
