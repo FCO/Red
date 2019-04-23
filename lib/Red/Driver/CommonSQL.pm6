@@ -124,7 +124,7 @@ multi method translate(Red::AST::Select $ast, 'where') {
     '( ' ~ $key ~ ' )' => $value // [];
 }
 
-multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
+multi method translate(Red::AST::Select $ast, $context?, :$gambi!) {
     my @bind;
     my $sel    = do given $ast.of {
         when Red::Model {
