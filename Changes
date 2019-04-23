@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix id-map
     - Track if the object is on DB and use it to decide between insert and update
     - Allow creation of Red::Driver::* from an existing DB object
     - ResultSeq.Bool should return count(*) > 0

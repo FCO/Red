@@ -83,7 +83,7 @@ multi method set-id(Red::Model:D $model, $id --> Hash()) {
 }
 
 multi method id-map(Red::Model $model, $id --> Hash()) {
-    $model.^id.head => $id
+    $model.^id.head.name.substr(2) => $id
 }
 
 multi method id-filter(Red::Model:D $model) {
