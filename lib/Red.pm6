@@ -35,6 +35,17 @@ my package EXPORTHOW {
     }
 }
 
+multi EXPORT("red-do") {
+    use Red::Do;
+
+    return %(
+        Red::Do::EXPORT::ALL::,
+        Red::Traits::EXPORT::ALL::,
+        Red::Operators::EXPORT::ALL::,
+        '&database' => &database,
+    );
+}
+
 multi EXPORT("experimental migrations") {
     use MetamodelX::Red::Migration;
     MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
