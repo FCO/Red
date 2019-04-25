@@ -1,4 +1,6 @@
+use Red::DB;
 use Red::AST;
+use Red::Utils;
 use Red::Column;
 use Red::AST::Next;
 use Red::AST::Case;
@@ -17,6 +19,7 @@ use Red::AST::MultiSelect;
 use Red::ResultAssociative;
 use Red::ResultSeq::Iterator;
 use Red::HiddenFromSQLCommenting;
+use X::Red::Exceptions;
 unit role Red::ResultSeq[Mu $of = Any] does Sequence;
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
@@ -317,13 +320,21 @@ method create(::?CLASS:D: *%pars) is hidden-from-sql-commenting {
 }
 
 method delete(::?CLASS:D:) is hidden-from-sql-commenting {
-    self.create-comment-to-caller;
-    $*RED-DB.execute: Red::AST::Delete.new: $.of, $.filter
+    my $RED-DB = get-RED-DB;
+    {
+        my $*RED-DB = $RED-DB;
+        self.create-comment-to-caller;
+        $*RED-DB.execute: Red::AST::Delete.new: $.of, $.filter
+    }
 }
 
 method save(::?CLASS:D:) is hidden-from-sql-commenting {
-    self.create-comment-to-caller;
-    $*RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(%!update), :filter($.filter)
+    my $RED-DB = get-RED-DB;
+    {
+        my $*RED-DB = $RED-DB;
+        self.create-comment-to-caller;
+        $*RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(%!update), :filter($.filter)
+    }
 }
 
 method union(::?CLASS:D: $other) is hidden-from-sql-commenting {

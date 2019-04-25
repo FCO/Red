@@ -1,6 +1,24 @@
 use Red::Database;
 unit module Red::Do;
 
+#multi red-defaults-from-config() is export {
+#    with ".".IO.dir(:test(/^ ".red." \w ** 3..4 $/)).head {
+#        return .&red-defaults-from-config
+#    }
+#    die "Red configuration file not found"
+#}
+#
+#multi red-defaults-from-config($file where .IO.f) is export {
+#    require ::("Config");
+#    my $conf = ::("Config").new;
+#    my $defaults = $conf.read($file.absolute).get;
+#    my %defaults = $defaults.kv.map: -> $name, %data {
+#        $name => [%data<red-driver>, :default(so %data<default>), |%data<positional>, |%data<named>.pairs]
+#    }
+#    dd %defaults;
+#    red-defaults |%defaults
+#}
+
 multi red-defaults(Str $driver, |c) is export {
     %GLOBAL::RED-DEFULT-DRIVERS = default => database $driver, |c
 }

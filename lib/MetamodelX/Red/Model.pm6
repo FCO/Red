@@ -6,6 +6,7 @@ use Red::Utils;
 use Red::ResultSeq;
 use Red::DefaultResultSeq;
 use Red::Attr::Query;
+use Red::DB;
 use Red::AST;
 use Red::AST::Value;
 use Red::AST::Insert;
@@ -252,24 +253,29 @@ multi method create-table(\model, Bool :$if-not-exists where * === True) {
 }
 
 multi method create-table(\model) {
-    die X::Red::InvalidTableName.new: :table(model.^table)
-    unless $*RED-DB.is-valid-table-name: model.^table;
-    $*RED-DB.execute:
-        Red::AST::CreateTable.new:
-            :name(model.^table),
-            :temp(model.^temp),
-            :columns[|model.^columns.map(*.column)],
-            :constraints[
-                |@!constraints.unique.map: {
-                    when .key ~~ "unique" {
-                        Red::AST::Unique.new: :columns[|.value]
+    my $RED-DB = get-RED-DB;
+    {
+        my $*RED-DB = $RED-DB;
+        die X::Red::InvalidTableName.new: :table(model.^table)
+            unless $*RED-DB.is-valid-table-name: model.^table
+        ;
+        $*RED-DB.execute:
+            Red::AST::CreateTable.new:
+                :name(model.^table),
+                :temp(model.^temp),
+                :columns[|model.^columns.map(*.column)],
+                :constraints[
+                    |@!constraints.unique.map: {
+                        when .key ~~ "unique" {
+                            Red::AST::Unique.new: :columns[|.value]
+                        }
+                        when .key ~~ "pk" {
+                            Red::AST::Pk.new: :columns[|.value]
+                        }
                     }
-                    when .key ~~ "pk" {
-                        Red::AST::Pk.new: :columns[|.value]
-                    }
-                }
-            ],
-            |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY);
+                ],
+                |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY);
+    }
     True
 }
 
@@ -280,21 +286,29 @@ method apply-row-phasers($obj, Mu:U $phase ) {
 }
 
 multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
-    self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
-    my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
-    $obj.^saved-on-db;
-    $obj.^clean-up;
-    self.apply-row-phasers($obj, AfterCreate) unless $from-create;
-    $ret
+    my $RED-DB = get-RED-DB;
+    {
+        $*RED-DB = $RED-DB;
+        self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
+        my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
+        $obj.^saved-on-db;
+        $obj.^clean-up;
+        self.apply-row-phasers($obj, AfterCreate) unless $from-create;
+        return $ret
+    }
 }
 
 multi method save($obj, Bool :$update! where * == True) {
-    self.apply-row-phasers($obj, BeforeUpdate);
-    my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
-    $obj.^saved-on-db;
-    $obj.^clean-up;
-    self.apply-row-phasers($obj, AfterUpdate);
-    $ret
+    my $RED-DB = get-RED-DB;
+    {
+        $*RED-DB = $RED-DB;
+        self.apply-row-phasers($obj, BeforeUpdate);
+        my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
+        $obj.^saved-on-db;
+        $obj.^clean-up;
+        self.apply-row-phasers($obj, AfterUpdate);
+        return $ret
+    }
 }
 
 multi method save($obj) {
@@ -306,55 +320,63 @@ multi method save($obj) {
 }
 
 method create(\model, *%orig-pars) is rw {
-    my %relationships := set %.relationships.keys>>.name>>.substr: 2;
-    my %pars;
-    my %positionals;
-    for %orig-pars.kv -> $name, $val {
-        my \attr-type = model.^attributes.first(*.name.substr(2) eq $name).type;
-        if %relationships{ $name } {
-            if $val ~~ Positional && attr-type ~~ Positional {
-                %positionals{$name} = $val
-            } elsif $val !~~ attr-type {
-                %pars{$name} = attr-type.^create: |$val
+    my $RED-DB = get-RED-DB;
+    {
+        $*RED-DB = $RED-DB;
+        my %relationships := set %.relationships.keys>>.name>>.substr: 2;
+        my %pars;
+        my %positionals;
+        for %orig-pars.kv -> $name, $val {
+            my \attr-type = model.^attributes.first(*.name.substr(2) eq $name).type;
+            if %relationships{ $name } {
+                if $val ~~ Positional && attr-type ~~ Positional {
+                    %positionals{$name} = $val
+                } elsif $val !~~ attr-type {
+                    %pars{$name} = attr-type.^create: |$val
+                } else {
+                    %pars{$name} = $val
+                }
             } else {
                 %pars{$name} = $val
             }
-        } else {
-            %pars{$name} = $val
         }
-    }
-    my $obj = model.new: |%pars;
-    self.apply-row-phasers($obj, BeforeCreate);
-    my $data := $obj.^save(:insert, :from-create).row;
+        my $obj = model.new: |%pars;
+        self.apply-row-phasers($obj, BeforeCreate);
+        my $data := $obj.^save(:insert, :from-create).row;
 
-    for %positionals.kv -> $name, @val {
-        $obj."$name"().create: |$_ for @val
-    }
-    self.apply-row-phasers($obj, AfterCreate);
-    return-rw Proxy.new:
-            STORE => -> | {
-                die X::Assignment::RO.new(value => $obj)
-            },
-            FETCH => {
-                $ //= do {
-                    my $obj;
-                    if $data.defined and not $data.elems {
-                        $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
-                    } else {
-                        $obj = model.new: |$data
+        for %positionals.kv -> $name, @val {
+            $obj."$name"().create: |$_ for @val
+        }
+        self.apply-row-phasers($obj, AfterCreate);
+        return-rw Proxy.new:
+                STORE => -> | {
+                    die X::Assignment::RO.new(value => $obj)
+                },
+                FETCH => {
+                    $ //= do {
+                        my $obj;
+                        if $data.defined and not $data.elems {
+                            $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
+                        } else {
+                            $obj = model.new: |$data
+                        }
+                        $obj.^saved-on-db;
+                        $obj.^clean-up;
+                        $obj
                     }
-                    $obj.^saved-on-db;
-                    $obj.^clean-up;
-                    $obj
                 }
-            }
-    $obj
+        return $obj
+    }
 }
 
 method delete(\model) {
-    self.apply-row-phasers(model, BeforeDelete);
-    $*RED-DB. execute: Red::AST::Delete.new: model ;
-    self.apply-row-phasers(model, AfterDelete);
+    my $RED-DB = get-RED-DB;
+    {
+        $*RED-DB = $RED-DB;
+        self.apply-row-phasers(model, BeforeDelete);
+        $*RED-DB.execute: Red::AST::Delete.new: model ;
+        self.apply-row-phasers(model, AfterDelete);
+    }
 }
 
 method load(Red::Model:U \model, |ids) {

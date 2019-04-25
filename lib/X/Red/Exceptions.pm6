@@ -2,6 +2,10 @@ use Red::Column;
 
 class X::Red is Exception {}
 
+class X::Red::RedDbNotDefined is X::Red {
+    method message { Q[$*RED-DB wasn't defined] }
+}
+
 class X::Red::Driver is X::Red {
     has Str $.driver = $*RED-DB.^name;
 }

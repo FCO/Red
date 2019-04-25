@@ -1,11 +1,13 @@
+use Red::DB;
 use Red::AST;
 use Red::Driver;
+use Red::Utils;
 unit class Red::ResultSeq::Iterator does Iterator;
 has Mu:U        $.of            is required;
 has Red::AST    $.ast           is required;
 has             &.post;
 has             $!st-handler;
-has Red::Driver $!driver = $*RED-DB // die Q[$*RED-DB wasn't defined];
+has Red::Driver $!driver = get-RED-DB;
 
 submethod TWEAK(|) {
     my $ast = $!driver.optimize: $!ast;
