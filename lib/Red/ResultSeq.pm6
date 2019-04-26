@@ -320,21 +320,13 @@ method create(::?CLASS:D: *%pars) is hidden-from-sql-commenting {
 }
 
 method delete(::?CLASS:D:) is hidden-from-sql-commenting {
-    my $RED-DB = get-RED-DB;
-    {
-        my $*RED-DB = $RED-DB;
-        self.create-comment-to-caller;
-        $*RED-DB.execute: Red::AST::Delete.new: $.of, $.filter
-    }
+    self.create-comment-to-caller;
+    get-RED-DB.execute: Red::AST::Delete.new: $.of, $.filter
 }
 
 method save(::?CLASS:D:) is hidden-from-sql-commenting {
-    my $RED-DB = get-RED-DB;
-    {
-        my $*RED-DB = $RED-DB;
-        self.create-comment-to-caller;
-        $*RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(%!update), :filter($.filter)
-    }
+    self.create-comment-to-caller;
+    get-RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(%!update), :filter($.filter)
 }
 
 method union(::?CLASS:D: $other) is hidden-from-sql-commenting {

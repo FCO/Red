@@ -253,29 +253,26 @@ multi method create-table(\model, Bool :$if-not-exists where * === True) {
 }
 
 multi method create-table(\model) {
-    my $RED-DB = get-RED-DB;
-    {
-        my $*RED-DB = $RED-DB;
-        die X::Red::InvalidTableName.new: :table(model.^table)
-            unless $*RED-DB.is-valid-table-name: model.^table
-        ;
-        $*RED-DB.execute:
-            Red::AST::CreateTable.new:
-                :name(model.^table),
-                :temp(model.^temp),
-                :columns[|model.^columns.map(*.column)],
-                :constraints[
-                    |@!constraints.unique.map: {
-                        when .key ~~ "unique" {
-                            Red::AST::Unique.new: :columns[|.value]
-                        }
-                        when .key ~~ "pk" {
-                            Red::AST::Pk.new: :columns[|.value]
-                        }
+    die X::Red::InvalidTableName.new: :table(model.^table)
+        unless get-RED-DB.is-valid-table-name: model.^table
+    ;
+    get-RED-DB.execute:
+        Red::AST::CreateTable.new:
+            :name(model.^table),
+            :temp(model.^temp),
+            :columns[|model.^columns.map(*.column)],
+            :constraints[
+                |@!constraints.unique.map: {
+                    when .key ~~ "unique" {
+                        Red::AST::Unique.new: :columns[|.value]
                     }
-                ],
-                |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY);
-    }
+                    when .key ~~ "pk" {
+                        Red::AST::Pk.new: :columns[|.value]
+                    }
+                }
+            ],
+            |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
+    ;
     True
 }
 
@@ -286,29 +283,21 @@ method apply-row-phasers($obj, Mu:U $phase ) {
 }
 
 multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
-    my $RED-DB = get-RED-DB;
-    {
-        my $*RED-DB = $RED-DB;
-        self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
-        my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
-        $obj.^saved-on-db;
-        $obj.^clean-up;
-        self.apply-row-phasers($obj, AfterCreate) unless $from-create;
-        return $ret
-    }
+    self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
+    my $ret := get-RED-DB.execute: Red::AST::Insert.new: $obj;
+    $obj.^saved-on-db;
+    $obj.^clean-up;
+    self.apply-row-phasers($obj, AfterCreate) unless $from-create;
+    $ret
 }
 
 multi method save($obj, Bool :$update! where * == True) {
-    my $RED-DB = get-RED-DB;
-    {
-        my $*RED-DB = $RED-DB;
-        self.apply-row-phasers($obj, BeforeUpdate);
-        my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
-        $obj.^saved-on-db;
-        $obj.^clean-up;
-        self.apply-row-phasers($obj, AfterUpdate);
-        return $ret
-    }
+    self.apply-row-phasers($obj, BeforeUpdate);
+    my $ret := get-RED-DB.execute: Red::AST::Update.new: $obj;
+    $obj.^saved-on-db;
+    $obj.^clean-up;
+    self.apply-row-phasers($obj, AfterUpdate);
+    $ret
 }
 
 multi method save($obj) {
@@ -353,7 +342,6 @@ method create(\model, *%orig-pars) is rw {
                     die X::Assignment::RO.new(value => $obj)
                 },
                 FETCH => {
-                    my $RED-DB = get-RED-DB;
                     $ //= do {
                         my $*RED-DB = $RED-DB;
                         my $obj;
@@ -372,13 +360,9 @@ method create(\model, *%orig-pars) is rw {
 }
 
 method delete(\model) {
-    my $RED-DB = get-RED-DB;
-    {
-        my $*RED-DB = $RED-DB;
-        self.apply-row-phasers(model, BeforeDelete);
-        $*RED-DB.execute: Red::AST::Delete.new: model ;
-        self.apply-row-phasers(model, AfterDelete);
-    }
+    self.apply-row-phasers(model, BeforeDelete);
+    get-RED-DB.execute: Red::AST::Delete.new: model ;
+    self.apply-row-phasers(model, AfterDelete);
 }
 
 method load(Red::Model:U \model, |ids) {
