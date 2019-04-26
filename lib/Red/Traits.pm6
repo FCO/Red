@@ -61,7 +61,7 @@ multi trait_mod:<is>(Attribute $attr, :&relationship!) is export {
     $attr.package.^add-relationship: $attr, &relationship
 }
 
-multi trait_mod:<is>(Attribute $attr, Callable :@relationship! where *.elems == 2) is export {
+multi trait_mod:<is>(Attribute $attr, :@relationship! where { .all ~~ Callable and .elems == 2 }) is export {
     $attr.package.^add-relationship: $attr, |@relationship
 }
 
@@ -102,4 +102,3 @@ multi trait_mod:<is>(Method $m, :$before-delete!) {
 multi trait_mod:<is>(Method $m, :$after-delete!) {
     $m does AfterDelete;
 }
-
