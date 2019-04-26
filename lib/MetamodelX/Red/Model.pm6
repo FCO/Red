@@ -288,7 +288,7 @@ method apply-row-phasers($obj, Mu:U $phase ) {
 multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
     my $RED-DB = get-RED-DB;
     {
-        $*RED-DB = $RED-DB;
+        my $*RED-DB = $RED-DB;
         self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
         my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
         $obj.^saved-on-db;
@@ -301,7 +301,7 @@ multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
 multi method save($obj, Bool :$update! where * == True) {
     my $RED-DB = get-RED-DB;
     {
-        $*RED-DB = $RED-DB;
+        my $*RED-DB = $RED-DB;
         self.apply-row-phasers($obj, BeforeUpdate);
         my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
         $obj.^saved-on-db;
@@ -322,7 +322,7 @@ multi method save($obj) {
 method create(\model, *%orig-pars) is rw {
     my $RED-DB = get-RED-DB;
     {
-        $*RED-DB = $RED-DB;
+        my $*RED-DB = $RED-DB;
         my %relationships := set %.relationships.keys>>.name>>.substr: 2;
         my %pars;
         my %positionals;
@@ -353,7 +353,9 @@ method create(\model, *%orig-pars) is rw {
                     die X::Assignment::RO.new(value => $obj)
                 },
                 FETCH => {
+                    my $RED-DB = get-RED-DB;
                     $ //= do {
+                        my $*RED-DB = $RED-DB;
                         my $obj;
                         if $data.defined and not $data.elems {
                             $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
@@ -372,7 +374,7 @@ method create(\model, *%orig-pars) is rw {
 method delete(\model) {
     my $RED-DB = get-RED-DB;
     {
-        $*RED-DB = $RED-DB;
+        my $*RED-DB = $RED-DB;
         self.apply-row-phasers(model, BeforeDelete);
         $*RED-DB.execute: Red::AST::Delete.new: model ;
         self.apply-row-phasers(model, AfterDelete);
