@@ -1,23 +1,23 @@
 use Red::Database;
+use X::Red::Exceptions;
 unit module Red::Do;
 
-#multi red-defaults-from-config() is export {
-#    with ".".IO.dir(:test(/^ ".red." \w ** 3..4 $/)).head {
-#        return .&red-defaults-from-config
-#    }
-#    die "Red configuration file not found"
-#}
-#
-#multi red-defaults-from-config($file where .IO.f) is export {
-#    require ::("Config");
-#    my $conf = ::("Config").new;
-#    my $defaults = $conf.read($file.absolute).get;
-#    my %defaults = $defaults.kv.map: -> $name, %data {
-#        $name => [%data<red-driver>, :default(so %data<default>), |%data<positional>, |%data<named>.pairs]
-#    }
-#    dd %defaults;
-#    red-defaults |%defaults
-#}
+multi red-defaults-from-config() is export {
+    if "./.red.json".IO.f {
+        return red-defaults-from-config "./.red.json"
+    }
+    X::Red::Defaults::FromConfNotFound.new(:file<./.red.json>).throw
+}
+
+multi red-defaults-from-config($file where .IO.f) is export {
+    require ::("Config");
+    my $conf = ::("Config").new;
+    my $defaults = $conf.read($file.IO.absolute).get;
+    my %defaults = $defaults.kv.map: -> $name, %data {
+        $name => [%data<red-driver>, :default(so %data<default>), |($_ with %data<positional>), |(.pairs with %data<named>)]
+    }
+    red-defaults |%defaults
+}
 
 multi red-defaults(Str $driver, |c) is export {
     %GLOBAL::RED-DEFULT-DRIVERS = default => database $driver, |c
@@ -27,10 +27,10 @@ multi red-defaults(*%drivers) is export {
     my Bool $has-default = False;
     %GLOBAL::RED-DEFULT-DRIVERS = %drivers.kv.map(-> $name, ($driver, Bool :$default, |c) {
         if $default {
-            die "More than one default driver" if $has-default;
+            X::Red::Do::DriverDefinedMoreThanOnce.new.throw if $has-default;
             $has-default = True;
         }
-        my \db = database $driver, |c;
+        my \db = database $driver, |[|c];
         |%(
             $name     => db,
             |(default => db if $default)
@@ -39,8 +39,8 @@ multi red-defaults(*%drivers) is export {
 }
 
 multi red-do(&block, :$use = "default") is export {
+    X::Red::Do::DriverNotDefined.new(:driver($use)).throw unless %GLOBAL::RED-DEFULT-DRIVERS{$use}:exists;
     my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$use};
-    die "Driver $use not specified" unless %GLOBAL::RED-DEFULT-DRIVERS{$use}:exists;
     # TODO: test if its connected and reconnect if it's not
     block $*RED-DB
 }
