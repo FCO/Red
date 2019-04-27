@@ -84,9 +84,9 @@ multi method when(Regex $when, :$throw!) {
 }
 
 multi method prepare(Red::AST $query) {
-    for |self.translate: self.optimize: $query -> Pair \data {
+    do for |self.translate: self.optimize: $query -> Pair \data {
         my ($sql, @bind) := do given data { .key, .value }
-        LAST return self.prepare: $sql;
+        self.prepare: $sql;
     }
 }
 

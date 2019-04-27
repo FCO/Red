@@ -11,9 +11,10 @@ has Red::Driver $!driver = get-RED-DB;
 
 submethod TWEAK(|) {
     my $ast = $!driver.optimize: $!ast;
-    $!st-handler = $!driver.prepare: $ast;
+    my @st-handler = $!driver.prepare: $ast;
 
-    $!st-handler.execute unless $*RED-DRY-RUN
+    @st-handler>>.execute unless $*RED-DRY-RUN;
+	$!st-handler = @st-handler.tail
 }
 
 #method is-lazy { True }
