@@ -9,7 +9,7 @@ use Red::AST::Infixes;
 my $*RED-DB = database "Mock";
 
 my $*RED-DRY-RUN = True;
-my $*RED-DEBUG = True;
+my $*RED-DEBUG = so %*ENV<RED_DEBUG>;
 
 #isa-ok model {}.HOW, MetamodelX::Red::Model;
 

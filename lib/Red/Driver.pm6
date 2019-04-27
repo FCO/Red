@@ -5,8 +5,20 @@ unit role Red::Driver;
 
 method translate(Red::AST, $?)                          { ... }
 multi method prepare(Str)                               { ... }
-multi method prepare(Red::AST)                          { ... }
 multi method default-type-for(Red::Column $ --> Str:D)  { ... }
+
+multi method prepare(Red::AST $query) {
+    for |self.translate: self.optimize: $query -> Pair \data {
+        my ($sql, @bind) := do given data { .key, .value }
+        next unless $sql;
+        unless $*RED-DRY-RUN {
+            my $stt = self.prepare: $sql;
+            $stt.predefined-bind;
+            $stt.binds = @bind.map: { self.deflate: $_ };
+            LAST return $stt
+        }
+    }
+}
 
 multi method is-valid-table-name(Str --> Bool)          { True }
 

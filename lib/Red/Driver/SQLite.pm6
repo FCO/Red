@@ -34,18 +34,6 @@ class Statement does Red::Statement {
     method stt-row($stt) { $stt.row: :hash }
 }
 
-multi method prepare(Red::AST $query) {
-    do for |self.translate: self.optimize: $query -> Pair \data {
-        my ($sql, @bind) := do given data { .key, .value }
-        do unless $*RED-DRY-RUN {
-            my $stt = self.prepare: $sql;
-            $stt.predefined-bind;
-            $stt.binds = @bind.map: { self.deflate: $_ };
-            $stt
-        }
-    }
-}
-
 multi method prepare(Str $query) {
     CATCH {
         default {

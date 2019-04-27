@@ -11,12 +11,9 @@ has Red::Driver $!driver = get-RED-DB;
 
 submethod TWEAK(|) {
     my $ast = $!driver.optimize: $!ast;
-    my ($sql, @bind) := do given $!driver.translate: $ast { .key, .value }
+    $!st-handler = $!driver.prepare: $ast;
 
-    unless $*RED-DRY-RUN {
-        $!st-handler = $!driver.prepare: $sql;
-        $!st-handler.execute: |@bind
-    }
+    $!st-handler.execute unless $*RED-DRY-RUN
 }
 
 #method is-lazy { True }
