@@ -230,6 +230,7 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
     model.^add_method: "no-table", my method no-table { True }
     model.^compose;
     model.^add-column: $_ for @attrs;
+    my role CMModel [Mu:U \m] { method of { model } };
     self.clone(
         :chain($!chain.clone:
             :$.filter,
@@ -237,7 +238,7 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
             :table-list[(|@.table-list, self.of).unique],
             |%_
         )
-    ) but role :: { method of { model } }
+    ) but CMModel[model]
 }
 
 method map(&filter) is hidden-from-sql-commenting {
