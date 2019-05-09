@@ -186,11 +186,12 @@ multi method add-pk-constraint(Mu:U \type, @columns) {
 my UInt $alias_num = 1;
 method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
     my \alias = ::?CLASS.new_type(:$name);
-    alias.HOW does role :: {
-        method table(|) { type.^table }
-        method as(|)    { camel-to-snake-case $name }
-        method orig(|)  { type }
+    my role RAlias[Red::Model:U \rtype, Str $rname] {
+        method table(|) { rtype.^table }
+        method as(|)    { camel-to-snake-case $rname }
+        method orig(|)  { rtype }
     }
+    alias.HOW does RAlias[type, $name];
     for @!columns -> $col {
         my $new-col = Attribute.new:
             :name($col.name),
