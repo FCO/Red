@@ -129,8 +129,9 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     my $sel    = do given $ast.of {
         when Red::Model {
             my $class = $_;
+            my role ColClass [Mu:U \c] { method class { c } };
             .^columns.map({
-                my ($s, @b) := do given self.translate: (.column but role :: { method class { $class } }), "select" { .key, .value }
+                my ($s, @b) := do given self.translate: (.column but ColClass[$class]), "select" { .key, .value }
                 @bind.push: |@b;
                 $s
             }).join: ", ";
