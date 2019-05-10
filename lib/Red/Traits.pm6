@@ -14,7 +14,8 @@ multi trait_mod:<is>(Mu:U $model, Str:D :$rs-class!) {
 
 multi trait_mod:<is>(Mu:U $model, Mu:U :$rs-class!) {
     die "{$rs-class.^name} should do the Red::ResultSeq role" unless $rs-class ~~ Red::ResultSeq;
-    $model.HOW does role :: { method rs-class(|) { $rs-class<> } }
+    my role RSClass[Mu:U $rclass] { method rs-class(|) { $rclass<> } }
+    $model.HOW does RSClass[$rs-class];
 }
 
 multi trait_mod:<is>(Mu:U $model, Bool :$nullable!) {
