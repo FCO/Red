@@ -41,5 +41,4 @@ multi method set-on-cache(Str $key, @data) {
     my $time = self!time + $!ttl;
     %!expires.push: $time => $key;
     @!times.push: $time;
-    dd %!expires;
 }
