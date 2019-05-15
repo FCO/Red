@@ -102,4 +102,27 @@ if ::("Config::Parser::json") !~~ Nil {
     "./.red.json".IO.unlink;
 }
 
+use Red::Driver::Cache;
+use Red::Driver::Cache::Memory;
+
+red-defaults
+    bla   => \(database("SQLite", :database<./a.db>)),
+    ble   => \(database("SQLite", :database<./b.db>)),
+    cache => \(cache "Memory", "SQLite"),
+;
+
+red-do
+    "bla" => {
+        isa-ok $*RED-DB, Red::Driver::SQLite;
+        is $*RED-DB.database, "./a.db";
+    },
+    "ble" => {
+        isa-ok $*RED-DB, Red::Driver::SQLite;
+        is $*RED-DB.database, "./b.db";
+    },
+    "cache" => {
+        isa-ok $*RED-DB, Red::Driver::Cache::Memory;
+    },
+;
+
 done-testing

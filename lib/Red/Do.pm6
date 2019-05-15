@@ -1,4 +1,5 @@
 use Red::Database;
+use Red::Driver;
 use X::Red::Exceptions;
 unit module Red::Do;
 
@@ -30,7 +31,13 @@ multi red-defaults(*%drivers) is export {
             X::Red::Do::DriverDefinedMoreThanOnce.new.throw if $has-default;
             $has-default = True;
         }
-        my \db = database $driver, |[|c];
+
+        my \db = do if $driver ~~ Red::Driver {
+            $driver
+        } else {
+            database $driver, |[|c];
+        }
+
         |%(
             $name     => db,
             |(default => db if $default)
