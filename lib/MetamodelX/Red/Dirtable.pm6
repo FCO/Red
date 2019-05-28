@@ -40,6 +40,9 @@ submethod !TWEAK_pr(\instance: *%data) {
         my Mu $built := .build;
         $built := $built.(self.WHAT, Mu) if $built ~~ Method;
         next if $built =:= Mu;
+        if instance.^is-id: $_ {
+            instance.^set-id: .name => $built
+        }
         .column.attr-name => $built
     };
 
@@ -54,6 +57,9 @@ submethod !TWEAK_pr(\instance: *%data) {
             },
             STORE => method (\value) {
                 die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
+                if instance.^is-id: col {
+                    instance.^set-id: col.name => value
+                }
                 instance.^set-dirty: col;
                 $col-data-attr.get_value(instance).{ col.column.attr-name } = value
             }
@@ -64,6 +70,9 @@ submethod !TWEAK_pr(\instance: *%data) {
     for self.^attributes -> $attr {
         with %data{ $attr.name.substr: 2 } {
             unless $attr ~~ Red::Attr::Column {
+                if self.^is-id: $attr {
+                    self.^set-id: $attr.name => $_
+                }
                 $attr.set_value: self, $_
             }
         }

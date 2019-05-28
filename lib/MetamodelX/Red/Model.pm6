@@ -22,6 +22,7 @@ use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Migration;
 use MetamodelX::Red::Relationship;
 use MetamodelX::Red::OnDB;
+use MetamodelX::Red::Id;
 use X::Red::Exceptions;
 use Red::Phaser;
 
@@ -31,6 +32,7 @@ also does MetamodelX::Red::Comparate;
 #also does MetamodelX::Red::Migration;
 also does MetamodelX::Red::Relationship;
 also does MetamodelX::Red::OnDB;
+also does MetamodelX::Red::Id;
 
 has Attribute @!columns;
 has Red::Column %!references;
@@ -60,10 +62,6 @@ method migration-hash(\model --> Hash()) {
     version => model.^ver // v0,
 }
 
-method id(Mu \type) {
-    @!columns.grep(*.column.id).list
-}
-
 method id-values(Red::Model:D $model) {
     self.id($model).map({ .get_value: $model }).list
 }
@@ -74,47 +72,6 @@ method unique-constraints(\model) {
     @!constraints.unique.grep(*.key eq "unique").map: *.value.attr
 }
 
-method general-ids(\model) {
-    (|model.^id, |model.^unique-constraints)
-}
-
-multi method set-id(Red::Model:D $model, $id --> Hash()) {
-    self.set-attr: $model, $model.^id.head, $id;
-    $model.^set-dirty: $model.^id.head;
-}
-
-multi method id-map(Red::Model $model, $id --> Hash()) {
-    $model.^id.head.name.substr(2) => $id
-}
-
-multi method id-filter(Red::Model:D $model) {
-    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(self.get-attr: $model, $_), :type(.type) })
-    .reduce: { Red::AST::AND.new: $^a, $^b }
-}
-
-multi method id-filter(Red::Model:U $model, $id) {
-    die "Model must have only 1 id to use id-filter this way" if $model.^id.elems != 1;
-    self.id-filter: $model, |{$model.^id.head.column.attr-name => $id}
-}
-
-multi method id-filter(Red::Model:U $model, *%data where { .keys.all ~~ $model.^general-ids>>.name>>.substr(2).any }) {
-    $model.^general-ids
-        .map({
-            next without %data{.column.attr-name};
-            Red::AST::Eq.new:
-                .column,
-                ast-value %data{.column.attr-name}
-        })
-        .reduce: {
-            Red::AST::AND.new: $^a, $^b
-        }
-    ;
-}
-
-multi method id-filter(Red::Model:U $model, *%data) {
-    die "one of the following keys aren't ids: { %data.keys.join: ", " }"
-}
-
 method attr-to-column(|) is rw {
     %!attr-to-column
 }
@@ -122,6 +79,7 @@ method attr-to-column(|) is rw {
 method set-helper-attrs(Mu \type) {
     self.MetamodelX::Red::Dirtable::set-helper-attrs(type);
     self.MetamodelX::Red::OnDB::set-helper-attrs(type);
+    self.MetamodelX::Red::Id::set-helper-attrs(type);
 }
 
 method compose(Mu \type) {
@@ -288,6 +246,7 @@ multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
     my $ret := get-RED-DB.execute: Red::AST::Insert.new: $obj;
     $obj.^saved-on-db;
     $obj.^clean-up;
+    $obj.^populate-ids;
     self.apply-row-phasers($obj, AfterCreate) unless $from-create;
     $ret
 }
@@ -297,6 +256,7 @@ multi method save($obj, Bool :$update! where * == True) {
     my $ret := get-RED-DB.execute: Red::AST::Update.new: $obj;
     $obj.^saved-on-db;
     $obj.^clean-up;
+    $obj.^populate-ids;
     self.apply-row-phasers($obj, AfterUpdate);
     $ret
 }
@@ -353,6 +313,7 @@ method create(\model, *%orig-pars) is rw {
                         }
                         $obj.^saved-on-db;
                         $obj.^clean-up;
+                        $obj.^populate-ids;
                         $obj
                     }
                 }
