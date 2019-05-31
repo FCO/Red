@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/FCO/Red.svg?branch=master)](https://travis-ci.org/FCO/Red)
+[![Build Status](https://travis-ci.org/Altreus/Red.svg?branch=master)](https://travis-ci.org/Altreus/Red)
 
 Red
 ===
@@ -372,6 +372,52 @@ Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is o
   * `is nullable`
 
 ### features:
+
+#### relationships
+
+Red will infer relationship data if you use type constraints on your properties.
+
+```perl6
+# Single file e.g. Schema.pm6
+
+model Related { ... }
+
+
+# belongs to
+model MyModel {
+    has Int     $!related-id is referencing{ Related.id };
+    has Related $.related    is relationship{ .id };
+}
+
+# has one/has many
+model Related {
+    has Int $.id is serial;
+    has MyModel @.my-models is relationship{ .related-id };
+}
+```
+
+If you want to put your schema into multiple files, you can create an "indirect" relationship, and Red will look up the related models as necessary.
+
+```perl6
+# MyModel.pm6
+model MyModel {
+    has Int     $!related-id is referencing{ :model<Related>, :column<id> };
+    has         $.related    is relationship({ .id }, :model<Related>);
+}
+
+# Related.pm6
+model Related {
+    has Int $.id is serial;
+    has     @.my-models is relationship({ .related-id }, :model<MyModel>);
+}
+```
+
+If Red can't find where your `model` is defined you can override where it looks with `require`:
+
+```perl6
+    has Int     $!related-id is referencing{ :model<Related>, :column<id>,
+                                             :require<MyApp::Schema::Related> };
+```
 
 #### custom table name
 
