@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/Altreus/Red.svg?branch=master)](https://travis-ci.org/Altreus/Red)
+[![Build Status](https://travis-ci.org/FCO/Red.svg?branch=master)](https://travis-ci.org/FCO/Red)
 
 Red
 ===
