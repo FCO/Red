@@ -111,11 +111,12 @@ multi method default-type-for(Red::Column $                                     
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where /"duplicate key value violates unique constraint"/) {
-    $x.message ~~ /"DETAIL:  Key (" \s* (\w+)+ % [\s* "," \s*] \s* ")=(" .*? ") already exists."/;
+    $x.message-detail ~~ /"Key (" \s* (\w+)+ % [\s* "," \s*] \s* ")=(" .*? ") already exists."/;
+    my @fields = $0 ?? $0>>.Str !! "";
     X::Red::Driver::Mapped::Unique.new:
         :driver<Pg>,
         :orig-exception($x),
-        :fields($0>>.Str)
+        :@fields,
 }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where /"ERROR:"\s+ relation \s+ \"$<table>=(\w+)\" \s+ already \s+ exists\n/) {
