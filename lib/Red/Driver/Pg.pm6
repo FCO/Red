@@ -120,11 +120,12 @@ multi method map-exception(DB::Pg::Error::FatalError $x where .message ~~ /"dupl
 }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where /"duplicate key value violates unique constraint"/) {
-    $x.message ~~ /"DETAIL:  Key (" \s* (\w+)+ % [\s* "," \s*] \s* ")=(" .*? ") already exists."/;
+    $x.message-detail ~~ /"Key (" \s* (\w+)+ % [\s* "," \s*] \s* ")=(" .*? ") already exists."/;
+    my @fields = $0 ?? $0>>.Str !! "";
     X::Red::Driver::Mapped::Unique.new:
         :driver<Pg>,
         :orig-exception($x),
-        :fields($0>>.Str)
+        :@fields,
 }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where .message ~~ /relation \s+ \"$<table>=(\w+)\" \s+ already \s+ exists/) {
