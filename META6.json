@@ -65,6 +65,7 @@
     "Red::Driver" : "lib/Red/Driver.pm6",
     "Red::Driver::Cache" : "lib/Red/Driver/Cache.pm6",
     "Red::Driver::Cache::Memory" : "lib/Red/Driver/Cache/Memory.pm6",
+    "Red::Driver::CacheInvalidateOnWrite" : "lib/Red/Driver/CacheInvalidateOnWrite.pm6",
     "Red::Driver::CacheWithStrKey" : "lib/Red/Driver/CacheWithStrKey.pm6",
     "Red::Driver::CommonSQL" : "lib/Red/Driver/CommonSQL.pm6",
     "Red::Driver::Mock" : "lib/Red/Driver/Mock.pm6",
