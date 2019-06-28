@@ -5,6 +5,7 @@ use Red::Column;
 my $*RED-DB = database "Mock";
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my $*RED-COMMENT-SQL    = $_ with %*ENV<RED_COMMENT_SQL>;
 $*RED-DB.die-on-unexpected;
 
 role Bla { has Str $.a is column }
@@ -66,6 +67,8 @@ Blu.^create-table;
 
 $*RED-DB.when: :once, :return[{:1id}], "insert into blu default values";
 $*RED-DB.when: :once, :return[{:1id, :1blu-id},], "insert into blo( blu_id )values( ? )";
+$*RED-DB.when: :once, :return[{:1id},], "select blu.id from blu where blu.id = 1 limit 1";
+$*RED-DB.when: :once, :return[{:1blu-id},], 'select blo.blu_id as "blu-id" , blo.id from blo , blu where blu.id = 1 limit 1';
 
 my $blu = Blu.^create;
 my $blo = $blu.blo.create;

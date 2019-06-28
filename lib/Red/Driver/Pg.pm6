@@ -33,6 +33,8 @@ multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined)
     self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
 }
 
+multi method translate(Red::AST::RowId $_, $context?) { "OID" => [] }
+
 multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined) {
     my Int $*bind-counter;
     self.Red::Driver::CommonSQL::translate($_, $context, :gambi);

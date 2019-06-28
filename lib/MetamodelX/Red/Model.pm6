@@ -69,7 +69,7 @@ method id-values(Red::Model:D $model) {
 method default-nullable(|) is rw { $ //= False }
 
 method unique-constraints(\model) {
-    @!constraints.unique.grep(*.key eq "unique").map: *.value.attr
+    @!constraints.unique.grep(*.key eq "unique").map: *.value>>.attr
 }
 
 method attr-to-column(|) is rw {
@@ -293,6 +293,12 @@ method create(\model, *%orig-pars) is rw {
         my $obj = model.new: |%pars;
         self.apply-row-phasers($obj, BeforeCreate);
         my $data := $obj.^save(:insert, :from-create).row;
+        my @ids = model.^id>>.column>>.attr-name;
+        my $filter = model.^id-filter: |do if $data.defined and not $data.elems {
+            $*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row{|@ids}:kv
+        } else {
+            $data{|@ids}:kv
+        }.Hash if @ids;
 
         for %positionals.kv -> $name, @val {
             $obj."$name"().create: |$_ for @val
@@ -304,20 +310,19 @@ method create(\model, *%orig-pars) is rw {
                 },
                 FETCH => {
                     $ //= do {
-                        my $*RED-DB = $RED-DB;
                         my $obj;
-                        if $data.defined and not $data.elems {
-                            $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
+                        my $*RED-DB = $RED-DB;
+                        with $filter {
+                            $obj = model.^find: $_
                         } else {
-                            $obj = model.new: |$data
+                            $obj = model.new($data.elems ?? |$data !! %orig-pars);
+                            $obj.^saved-on-db;
+                            $obj.^clean-up;
+                            $obj.^populate-ids;
                         }
-                        $obj.^saved-on-db;
-                        $obj.^clean-up;
-                        $obj.^populate-ids;
                         $obj
                     }
                 }
-        return $obj
     }
 }
 
@@ -332,7 +337,11 @@ method load(Red::Model:U \model, |ids) {
     model.^rs.grep({ $filter }).head
 }
 
-method new-with-id(Red::Model:U \model, |ids) {
+multi method new-with-id(Red::Model:U \model, %ids) {
+    model.new: |model.^id-map: |%ids;
+}
+
+multi method new-with-id(Red::Model:U \model, |ids) {
     model.new: |model.^id-map: |ids;
 }
 

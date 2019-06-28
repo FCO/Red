@@ -9,8 +9,8 @@ use Red::AST::LastInsertedRow;
 
 unit role Red::Driver::CacheWithStrKey does Red::Driver::Cache;
 
-multi method get-from-cache(Str)  { ... }
-multi method set-on-cache(Str, @) { ... }
+method get-from-cache(Str)  { ... }
+method set-on-cache(Str, @) { ... }
 
 multi method get-from-cache(Red::AST $ast)  {
     CATCH {
@@ -19,12 +19,12 @@ multi method get-from-cache(Red::AST $ast)  {
         }
     }
     my Str $key = self.translate-key: $ast;
-    self.get-from-cache: $key
+    self.get-from-cache: $key, :$ast
 }
 
 multi method set-on-cache(Red::AST $ast, @data) {
     my Str $key = self.translate-key: $ast;
-    self.set-on-cache: $key, @data
+    self.set-on-cache: $key, @data, :$ast
 }
 
 multi method translate-key(Red::AST::Cast $_, $context?)  {

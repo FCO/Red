@@ -10,18 +10,28 @@ method col-data-attr(|) {
     $!col-data-attr;
 }
 
+sub col-data-attr-build(|){
+    {}
+}
+
 has $!dirty-cols-attr;
 
 method dirty-cols-attr(|) {
     $!dirty-cols-attr;
 }
 
-sub col-data-attr-build(|){
-    {}
-}
-
 sub dirty-cols-attr-build(|) {
     SetHash.new
+}
+
+has $!dirty-old-values-attr;
+
+method dirty-old-values-attr(|) {
+    $!dirty-old-values-attr;
+}
+
+sub dirty-old-values-attr-build(|) {
+    {}
 }
 
 method set-helper-attrs(Mu \type) {
@@ -31,6 +41,9 @@ method set-helper-attrs(Mu \type) {
     $!dirty-cols-attr = Attribute.new: :name<%!___DIRTY_COLS_DATA___>, :package(type), :type(Any), :!has_accessor;
     $!dirty-cols-attr.set_build: &dirty-cols-attr-build;
     type.^add_attribute: $!dirty-cols-attr;
+    $!dirty-old-values-attr = Attribute.new: :name<%!___DIRTY_OLD_DATA___>, :package(type), :type(Any), :!has_accessor;
+    $!dirty-old-values-attr.set_build: &dirty-old-values-attr-build;
+    type.^add_attribute: $!dirty-old-values-attr;
 }
 
 submethod !TWEAK_pr(\instance: *%data) {
@@ -48,7 +61,8 @@ submethod !TWEAK_pr(\instance: *%data) {
 
     for %data.kv -> $k, $v { %new{$k} = $v }
 
-    my $col-data-attr := self.^col-data-attr;
+    my $col-data-attr         := self.^col-data-attr;
+    my $dirty-old-values-attr := self.^dirty-old-values-attr;
     $col-data-attr.set_value: instance, %new;
     for @columns -> \col {
         my \proxy = Proxy.new:
@@ -61,6 +75,8 @@ submethod !TWEAK_pr(\instance: *%data) {
                     instance.^set-id: col.name => value
                 }
                 instance.^set-dirty: col;
+                $dirty-old-values-attr.get_value(instance).{ col.column.attr-name } =
+                    $col-data-attr.get_value(instance).{ col.column.attr-name };
                 $col-data-attr.get_value(instance).{ col.column.attr-name } = value
             }
         #use nqp;
@@ -107,8 +123,11 @@ multi method set-dirty(\obj, Set() $attr) {
 }
 
 method is-dirty(Any:D \obj)         { so $!dirty-cols-attr.get_value(obj) }
-method clean-up(Any:D \obj)         { $!dirty-cols-attr.set_value(obj, SetHash.new) }
 method dirty-columns(Any:D \obj)    { $!dirty-cols-attr.get_value(obj) }
+method clean-up(Any:D \obj) {
+    $!dirty-cols-attr.set_value: obj, SetHash.new;
+    $!dirty-old-values-attr.set_value: obj, {}
+}
 
 multi method get-attr(\instance, Str $name) {
     $!col-data-attr.get_value(instance).{ $name }
@@ -123,6 +142,22 @@ multi method get-attr(\instance, Red::Attr::Column $attr) {
 }
 
 multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
+    samewith instance, $attr.column.attr-name, value
+}
+
+multi method get-old-attr(\instance, Str $name) {
+    $!dirty-old-values-attr.get_value(instance).{ $name }
+}
+
+multi method set-old-attr(\instance, Str $name, \value) {
+    $!dirty-old-values-attr.get_value(instance).{ $name } = value
+}
+
+multi method get-old-attr(\instance, Red::Attr::Column $attr) {
+    samewith instance, $attr.column.attr-name
+}
+
+multi method set-old-attr(\instance, Red::Attr::Column $attr, \value) {
     samewith instance, $attr.column.attr-name, value
 }
 

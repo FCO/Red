@@ -14,13 +14,13 @@ method id-values-attr(|) {
     $!id-values-attr;
 }
 
-sub is-on-db-attr-build(\type, | --> Hash){
+sub id-values-attr-build(\type, | --> Hash){
     {}
 }
 
 method set-helper-attrs(Mu \type) {
     $!id-values-attr = Attribute.new: :name<%!___ID_VALUES___>, :package(type), :type(Hash), :!has_accessor;
-    $!id-values-attr.set_build: &is-on-db-attr-build;
+    $!id-values-attr.set_build: &id-values-attr-build;
     type.^add_attribute: $!id-values-attr;
 }
 
@@ -68,7 +68,13 @@ multi method id-map(Red::Model $model, $id --> Hash()) {
 }
 
 multi method id-filter(Red::Model:D $model) {
-    $model.^id.map({ Red::AST::Eq.new: .column, ast-value :type(.type), $!id-values-attr.get_value($model).{ .name } // self.get-attr: $model, $_ })
+    $model.^id.map({
+        Red::AST::Eq.new:
+            .column,
+            ast-value
+                :type(.type),
+                $!id-values-attr.get_value($model).{ .name } // self.get-old-attr($model, $_) // self.get-attr: $model, $_
+    })
         .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
@@ -77,8 +83,12 @@ multi method id-filter(Red::Model:U $model, $id) {
     self.id-filter: $model, |{$model.^id.head.column.attr-name => $id}
 }
 
-multi method id-filter(Red::Model:U $model, *%data where { .keys.all ~~ $model.^general-ids>>.name>>.substr(2).any }) {
-    $model.^general-ids
+# TODO: fix, $model.^general-ids can return an list of lists (for counstraints of more that one column)
+multi method id-filter(Red::Model:U $model, *%data) { # where { .keys.all ~~ $model.^general-ids.flat.map(*.column.attr-name).any }) {
+    my %cols := set $model.^general-ids.flat.map(*.column.attr-name);
+    my @not-ids = %data.keys.grep: { not %cols{ $_ } };
+    die "one of the following keys aren't ids: { @not-ids.join: ", " }" if @not-ids;
+    $model.^general-ids.flat
         .map({
             next without %data{.column.attr-name};
             Red::AST::Eq.new:
@@ -91,7 +101,7 @@ multi method id-filter(Red::Model:U $model, *%data where { .keys.all ~~ $model.^
     ;
 }
 
-multi method id-filter(Red::Model:U $model, *%data) {
-    die "one of the following keys aren't ids: { %data.keys.join: ", " }"
-}
+#multi method id-filter(Red::Model:U $model, *%data) {
+#    die "one of the following keys aren't ids: { %data.keys.join: ", " }"
+#}
 
