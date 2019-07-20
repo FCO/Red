@@ -2,7 +2,7 @@
 use lib "lib";
 use Red;
 
-multi MAIN("generate-code", Str :$driver, *%pars) {
+multi MAIN("generate-code", Str :$schema-class, Str :$driver, *%pars) {
 
     my $*RED-DB = database($driver, |%pars);
 
@@ -10,5 +10,15 @@ multi MAIN("generate-code", Str :$driver, *%pars) {
 
     require ::($class);
 
-    ::($class).table-definition($_).to-code.say for ::($class).tables-names
+    my Bool $no-use = False;
+    for ::($class).tables-names {
+        say "use Red;\n" unless $no-use;
+        say "#| Table: $_";
+        say ::($class)
+            .table-definition($_)
+            .to-code:
+                |(:$schema-class with $schema-class)
+        ;
+        $no-use++ with $schema-class
+    }
 }

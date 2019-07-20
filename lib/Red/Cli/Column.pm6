@@ -12,19 +12,22 @@ method new($name, $type, $nullable, $pk, $unique, $references) {
     self.bless: :$name, :$type, :nullble(?$nullable), :pk(?$pk), :unique(?$unique), :$references
 }
 
-method !modifier {
+method !modifier(Str :$schema-class) {
     do given self {
         when ?.pk         { "id" }
         when ?.references {
             qq:to/END/
-            referencing\{
-                :model<{
-                    snake-to-camel-case self.references<table>
-                }>,
-                :column<{
-                    snake-to-kebab-case self.references<column>
-                }>,
-                :require<Schema>
+            referencing\{{
+                    [
+                        "\n:model<{
+                            snake-to-camel-case self.references<table>
+                        }>",
+                        "\n:column<{
+                            snake-to-kebab-case self.references<column>
+                        }>",
+                        ("\n:require<{ $schema-class }>" with $schema-class)
+                    ].join(",").indent: 4
+                }
             }
             END
         }
@@ -32,6 +35,10 @@ method !modifier {
     }
 }
 
-method to-code {
-    "has \$.{ snake-to-kebab-case($!name) } is { self!modifier.chomp };"
+method to-code(Str :$schema-class) {
+    "has \$.{ snake-to-kebab-case($!name) } is {
+        self!modifier(
+            |(:$schema-class with $schema-class)
+        ).chomp
+    };"
 }
