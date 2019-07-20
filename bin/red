@@ -1,12 +1,14 @@
 #!env perl6
 use lib "lib";
 use Red;
-use Red::Driver::SQLite::SQLiteMaster;
 
 multi MAIN("generate-code", Str :$driver, *%pars) {
 
-    my $*RED-DB =  database($driver, |%pars);
+    my $*RED-DB = database($driver, |%pars);
 
-    my $master = Red::Driver::SQLite::SQLiteMaster;
-    $master.table-definition($_).to-code.say for $master.tables-names
+    my $class = $*RED-DB.schema-viewer-class-name;
+
+    require ::($class);
+
+    ::($class).table-definition($_).to-code.say for ::($class).tables-names
 }

@@ -17,6 +17,7 @@ unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 has $.database = q<:memory:>;
 has DBDish::SQLite::Connection $!dbh;
 
+method schema-viewer-class-name { "Red::Driver::SQLite::SQLiteMaster" }
 
 submethod BUILD(DBDish::SQLite::Connection :$!dbh, Str :$!database = q<:memory:> ) {
 }
