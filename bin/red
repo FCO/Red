@@ -62,14 +62,14 @@ multi MAIN(
 #| Generate models' code from database schema
 multi MAIN(
     "generate-code",
-    Str  :$path where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
+    Str  :$path where     { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
+    Str  :$from-sql where { not .defined or .IO.f or $_ eq "-" or fail "SQL $_ do not exist." },
     Str  :$schema-class,
     Bool :$print-stub,
     #Bool :$stub-only,
     Str  :$driver!,
     *%pars
 ) {
-
     my $*RED-DB = database($driver, |%pars);
 
     my $schema-reader = $*RED-DB.schema-reader;
@@ -79,30 +79,42 @@ multi MAIN(
     } else {
         $path.IO.add("$_.pm6").open: :!bin, :w with $schema-class
     }
+
+    my $sql = $from-sql eq "-" ?? $*IN !! .IO.open with $from-sql;
+
     my Bool $no-use = False;
     my @includes;
     my @models;
-    for $schema-reader.tables-names -> $table-name {
-        my $model-name = snake-to-camel-case $table-name;
-        @models.push: $model-name;
-        my $fh = do with $schema {
-            @includes.push: $schema-class if $schema-class;
-            $_
-        } else {
-            @includes.push: $model-name;
-            $path.IO.add("{ $model-name }.pm6").open: :!bin, :w
-        }
-        $fh.say: "use Red;\n" unless $no-use;
-        $fh.say: "#| Table: $table-name";
-        $fh.say: $schema-reader
-            .table-definition($table-name)
-            .to-code:
-                |(:$schema-class with $schema-class)
-        ;
-        with $schema {
-            $no-use++ if $schema-class
-        } else {
-            $fh.close;
+    for |(
+        $sql
+            ?? $sql.slurp
+            !! $schema-reader.tables-names
+    ) -> $name-or-sql {
+        for |(
+            $name-or-sql.contains(" ")
+                ?? $schema-reader.table-definition-from-create-table($name-or-sql)
+                !! $schema-reader.table-definition($name-or-sql)
+        ) -> $table-definition {
+            my $table-name = $table-definition.name;
+            my $model-name = $table-definition.model-name;
+            @models.push: $model-name;
+            my $fh = do with $schema {
+                @includes.push: $schema-class if $schema-class;
+                $_
+            } else {
+                @includes.push: $model-name;
+                $path.IO.add("{ $model-name }.pm6").open: :!bin, :w
+            }
+            $fh.say: "use Red;\n" unless $no-use;
+            $fh.say: "#| Table: $table-name";
+            $fh.say: $table-definition.to-code:
+                    |(:$schema-class with $schema-class)
+            ;
+            with $schema {
+                $no-use++ if $schema-class
+            } else {
+                $fh.close;
+            }
         }
     }
     $schema.close with $schema;

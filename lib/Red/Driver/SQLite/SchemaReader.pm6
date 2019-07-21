@@ -8,7 +8,8 @@ method sqlite-master { Red::Driver::SQLite::SQLiteMaster }
 
 #use Grammar::Tracer::Compact;
 grammar SQL::CreateTable {
-    rule  TOP                      { :i CREATE TABLE <table-name=.name> '(' ~ ')' <column>+ %% [ "," ] }
+    rule  TOP                      { :i <create-table>+ %% ";" }
+    rule  create-table             { :i CREATE TABLE <table-name=.name> '(' ~ ')' <column>+ %% [ "," ] }
     token name                     { :i \w+ }
     rule  column                   { :i <column-name=.name> <type=.name> <modifier>? <index-mod>? }
     proto rule modifier            {*}
@@ -27,7 +28,8 @@ grammar SQL::CreateTable {
 class SQL::CreateTable::Action {
     use Red::Cli::Table;
     use Red::Cli::Column;
-    method TOP($/)                 { make Red::Cli::Table.new: name => $<table-name>.made, columns => $<column>».made }
+    method TOP($/)                 { make $<create-table>».made }
+    method create-table($/)        { make Red::Cli::Table.new: name => $<table-name>.made, columns => $<column>».made }
     method name($/)                { make ~$/ }
     method column($/)              {
         make Red::Cli::Column.new(
@@ -51,7 +53,7 @@ method tables-names       { self.sqlite-master.tables.map: *.name }
 method indexes-of($table) { self.sqlite-master.find-table($table).indexes }
 method table-definition($table) {
    my $sql = self.sqlite-master.find-table($table).sql;
-   self.table-definition-from-create-table: $sql
+   |self.table-definition-from-create-table: $sql
 }
 method table-definition-from-create-table($sql) {
    SQL::CreateTable.parse($sql, :actions(SQL::CreateTable::Action)).made;
