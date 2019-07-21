@@ -3,11 +3,67 @@ use lib "lib";
 use Red;
 use Red::Utils;
 
+my %*SUB-MAIN-OPTS =
+  :named-anywhere,
+;
+
+#| List tables from database schema
+multi MAIN(
+    "list-tables",
+    Str  :$driver!,
+    *%pars
+) {
+    my $*RED-DB = database($driver, |%pars);
+
+    my $schema-reader = $*RED-DB.schema-reader;
+
+    .say for $schema-reader.tables-names
+}
+
+#| Generate models' code from database schema
+multi MAIN(
+    "print-stub",
+    Str  :$schema-class,
+    Str  :$driver!,
+    *%pars
+) {
+
+    my $*RED-DB = database($driver, |%pars);
+
+    my $schema-reader = $*RED-DB.schema-reader;
+
+    my @includes;
+    my @models;
+    for $schema-reader.tables-names -> $table-name {
+        my $model-name = snake-to-camel-case $table-name;
+        @models.push: $model-name;
+        with $schema-class {
+            @includes.push: $schema-class;
+        } else {
+            @includes.push: $model-name;
+        }
+    }
+
+    say 'use Red \<red-do>;';
+    for @includes.unique {
+        say "use $_;"
+    }
+    say "\nred-defaults :default[:default, database(\"{ $driver }\", { %pars.map(*.perl) })];";
+    say "";
+    for @models {
+        say ".say for { $_ }.^all;"
+    }
+}
+
+#| Generate models' code from database schema
 multi MAIN(
     "generate-code",
-    Str :$path where { not .defined or .IO.d or fail "Path $_ does not exist." },
-    Str :$schema-class,
-    Str :$driver, *%pars
+    Str  :$path where { not .defined or .IO.d or fail "Path $_ does not exist." },
+    Str  :$schema-class,
+    Bool :$print-stub,
+    #Bool :$stub-only,
+    Str  :$driver!,
+    *%pars
 ) {
 
     my $*RED-DB = database($driver, |%pars);
@@ -16,11 +72,17 @@ multi MAIN(
 
     my $schema = $path.IO.add("$_.pm6").open: :!bin, :w with $schema-class;
     my Bool $no-use = False;
+    my @includes;
+    my @models;
     for $schema-reader.tables-names -> $table-name {
+        my $model-name = snake-to-camel-case $table-name;
+        @models.push: $model-name;
         my $fh = do with $schema {
+            @includes.push: $schema-class;
             $_
         } else {
-            $path.IO.add("{ snake-to-camel-case $table-name }.pm6").open: :!bin, :w
+            @includes.push: $model-name;
+            $path.IO.add("{ $model-name }.pm6").open: :!bin, :w
         }
         $fh.say: "use Red;\n" unless $no-use;
         $fh.say: "#| Table: $table-name";
@@ -36,4 +98,15 @@ multi MAIN(
         }
     }
     $schema.close with $schema-class;
+    if $print-stub {
+        say 'use Red \<red-do>;';
+        for @includes.unique {
+            say "use $_;"
+        }
+        say "\nred-defaults :default[:default, database(\"{ $driver }\", { %pars.map(*.perl) })];";
+        say "";
+        for @models {
+            say ".say for { $_ }.^all;"
+        }
+    }
 }
