@@ -62,7 +62,7 @@ multi MAIN(
 #| Generate models' code from database schema
 multi MAIN(
     "generate-code",
-    Str  :$path where { not .defined or .IO.d or fail "Path $_ does not exist." },
+    Str  :$path where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
     Str  :$schema-class,
     Bool :$print-stub,
     #Bool :$stub-only,
@@ -74,7 +74,11 @@ multi MAIN(
 
     my $schema-reader = $*RED-DB.schema-reader;
 
-    my $schema = $path.IO.add("$_.pm6").open: :!bin, :w with $schema-class;
+    my $schema = do if $path eq "-" {
+        $*OUT
+    } else {
+        $path.IO.add("$_.pm6").open: :!bin, :w with $schema-class
+    }
     my Bool $no-use = False;
     my @includes;
     my @models;
@@ -82,7 +86,7 @@ multi MAIN(
         my $model-name = snake-to-camel-case $table-name;
         @models.push: $model-name;
         my $fh = do with $schema {
-            @includes.push: $schema-class;
+            @includes.push: $schema-class if $schema-class;
             $_
         } else {
             @includes.push: $model-name;
@@ -96,11 +100,11 @@ multi MAIN(
                 |(:$schema-class with $schema-class)
         ;
         with $schema {
-            $no-use++;
+            $no-use++ if $schema-class
         } else {
             $fh.close;
         }
     }
-    $schema.close with $schema-class;
+    $schema.close with $schema;
     gen-stub :@includes, :@models, :$driver, :%pars if $print-stub
 }

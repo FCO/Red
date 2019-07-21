@@ -30,7 +30,12 @@ class SQL::CreateTable::Action {
     method TOP($/)                 { make Red::Cli::Table.new: name => $<table-name>.made, columns => $<column>».made }
     method name($/)                { make ~$/ }
     method column($/)              {
-        make Red::Cli::Column.new( $<column-name>.made, $<type>.made, ($<modifier>.made // True), |$<index-mod>.made<pk unique references> )
+        make Red::Cli::Column.new(
+            $<column-name>.made,
+            $<type>.made,
+            ($<modifier>.made // True),
+            |$<index-mod>.made<pk unique references>
+        )
     }
     method modifier:<null>($/)     { make ( :nullable ) }
     method modifier:<not-null>($/) { make ( :!nullable ) }
@@ -46,5 +51,8 @@ method tables-names       { self.sqlite-master.tables.map: *.name }
 method indexes-of($table) { self.sqlite-master.find-table($table).indexes }
 method table-definition($table) {
    my $sql = self.sqlite-master.find-table($table).sql;
+   self.table-definition-from-create-table: $sql
+}
+method table-definition-from-create-table($sql) {
    SQL::CreateTable.parse($sql, :actions(SQL::CreateTable::Action)).made;
 }
