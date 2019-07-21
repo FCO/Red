@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Red CLI
     - Fix id edition
     - Fix id-map
     - Track if the object is on DB and use it to decide between insert and update

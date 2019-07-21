@@ -1,24 +1,39 @@
 #!env perl6
 use lib "lib";
 use Red;
+use Red::Utils;
 
-multi MAIN("generate-code", Str :$schema-class, Str :$driver, *%pars) {
+multi MAIN(
+    "generate-code",
+    Str :$path where { not .defined or .IO.d or fail "Path $_ does not exist." },
+    Str :$schema-class,
+    Str :$driver, *%pars
+) {
 
     my $*RED-DB = database($driver, |%pars);
 
-    my $class = $*RED-DB.schema-viewer-class-name;
+    my $schema-reader = $*RED-DB.schema-reader;
 
-    require ::($class);
-
+    my $schema = $path.IO.add("$_.pm6").open: :!bin, :w with $schema-class;
     my Bool $no-use = False;
-    for ::($class).tables-names {
-        say "use Red;\n" unless $no-use;
-        say "#| Table: $_";
-        say ::($class)
-            .table-definition($_)
+    for $schema-reader.tables-names -> $table-name {
+        my $fh = do with $schema {
+            $_
+        } else {
+            $path.IO.add("{ snake-to-camel-case $table-name }.pm6").open: :!bin, :w
+        }
+        $fh.say: "use Red;\n" unless $no-use;
+        $fh.say: "#| Table: $table-name";
+        $fh.say: $schema-reader
+            .table-definition($table-name)
             .to-code:
                 |(:$schema-class with $schema-class)
         ;
-        $no-use++ with $schema-class
+        with $schema {
+            $no-use++;
+        } else {
+            $fh.close;
+        }
     }
+    $schema.close with $schema-class;
 }

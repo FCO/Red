@@ -10,6 +10,8 @@ use Red::Statement;
 
 unit role Red::Driver::Cache does Red::Driver;
 
+method schema-reader {}
+
 proto cache($, $) is export { * }
 
 multi cache(Str $cache, Str $driver) {

@@ -6,6 +6,7 @@ use Red::Driver::SQLite;
 use Red::Driver::CommonSQL;
 unit class Red::Driver::Mock does Red::Driver;
 
+method schema-reader {}
 multi prepare-sql(Str:U $_) { Str }
 multi prepare-sql(Str:D $_) {
     .lc

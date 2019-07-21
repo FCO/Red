@@ -17,6 +17,7 @@ has Str $!dbname;
 has DB::Pg $!dbh;
 
 
+method schema-reader {}
 submethod BUILD(DB::Pg :$!dbh, Str :$!user, Str :$!password, Str :$!host = "127.0.0.1", Int :$!port = 5432, Str :$!dbname) {
 }
 

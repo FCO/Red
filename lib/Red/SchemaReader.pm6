@@ -1,4 +1,4 @@
-unit role Red::DriverTable;
+unit role Red::SchemaReader;
 
 method tables-names             { ... }
 method indexes-of($table)       { ... }

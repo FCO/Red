@@ -1,8 +1,10 @@
 use Red::AST;
 use Red::Column;
+use Red::SchemaReader;
 use X::Red::Exceptions;
 unit role Red::Driver;
 
+method schema-reader(--> Red::SchemaReader)             { ... }
 method translate(Red::AST, $?)                          { ... }
 multi method prepare(Str)                               { ... }
 multi method default-type-for(Red::Column $ --> Str:D)  { ... }

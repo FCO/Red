@@ -12,12 +12,14 @@ use Red::AST::LastInsertedRow;
 use Red::AST::TableComment;
 use X::Red::Exceptions;
 use UUID;
+use Red::SchemaReader;
+use Red::Driver::SQLite::SchemaReader;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
 has $.database = q<:memory:>;
 has DBDish::SQLite::Connection $!dbh;
 
-method schema-viewer-class-name { "Red::Driver::SQLite::SQLiteMaster" }
+method schema-reader { Red::Driver::SQLite::SchemaReader }
 
 submethod BUILD(DBDish::SQLite::Connection :$!dbh, Str :$!database = q<:memory:> ) {
 }
