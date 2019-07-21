@@ -20,6 +20,18 @@ multi MAIN(
     .say for $schema-reader.tables-names
 }
 
+sub gen-stub(:@includes, :@models, :$driver, :%pars) {
+    say 'use Red \<red-do>;';
+    for @includes.unique {
+        say "use $_;"
+    }
+    say "\nred-defaults :default[:default, database(\"{ $driver }\", { %pars.map(*.perl) })];";
+    say "";
+    for @models {
+        say ".say for { $_ }.^all;"
+    }
+}
+
 #| Generate models' code from database schema
 multi MAIN(
     "print-stub",
@@ -44,15 +56,7 @@ multi MAIN(
         }
     }
 
-    say 'use Red \<red-do>;';
-    for @includes.unique {
-        say "use $_;"
-    }
-    say "\nred-defaults :default[:default, database(\"{ $driver }\", { %pars.map(*.perl) })];";
-    say "";
-    for @models {
-        say ".say for { $_ }.^all;"
-    }
+    gen-stub :@includes, :@models, :$driver, :%pars
 }
 
 #| Generate models' code from database schema
@@ -98,15 +102,5 @@ multi MAIN(
         }
     }
     $schema.close with $schema-class;
-    if $print-stub {
-        say 'use Red \<red-do>;';
-        for @includes.unique {
-            say "use $_;"
-        }
-        say "\nred-defaults :default[:default, database(\"{ $driver }\", { %pars.map(*.perl) })];";
-        say "";
-        for @models {
-            say ".say for { $_ }.^all;"
-        }
-    }
+    gen-stub :@includes, :@models, :$driver, :%pars if $print-stub
 }
