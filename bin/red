@@ -115,10 +115,10 @@ multi MAIN(
             with $schema {
                 $no-use++ if $schema-class
             } else {
-                $fh.close;
+                $fh.close unless $path eq "-";
             }
         }
     }
-    $schema.close with $schema;
+    $schema.close if $schema.defined and $path ne "-";
     gen-stub :@includes, :@models, :$driver, :%pars if $print-stub
 }
