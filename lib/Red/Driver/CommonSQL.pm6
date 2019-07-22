@@ -488,6 +488,13 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> 
 multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> Str:D) {"varchar(36)"}
 multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
 
+multi method type-for-sql("real"     --> "Num"     ) {}
+multi method type-for-sql("varchar"  --> "Str"     ) {}
+multi method type-for-sql("interval" --> "Duration") {}
+multi method type-for-sql("integer"  --> "Int"     ) {}
+multi method type-for-sql("serial"   --> "UInt"    ) {}
+multi method type-for-sql("boolean"  --> "Bool"    ) {}
+
 multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
 multi method inflate(Str $value, DateTime :$to!) { $to.new: $value }
 multi method inflate(Str $value, Date     :$to!) { $to.new: $value }

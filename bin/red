@@ -62,10 +62,11 @@ multi MAIN(
 #| Generate models' code from database schema
 multi MAIN(
     "generate-code",
-    Str  :$path where     { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
+    Str  :$path     where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
     Str  :$from-sql where { not .defined or .IO.f or $_ eq "-" or fail "SQL $_ do not exist." },
     Str  :$schema-class,
-    Bool :$print-stub,
+    Bool :$print-stub       = False,
+    Bool :$no-relationships = False,
     #Bool :$stub-only,
     Str  :$driver!,
     *%pars
@@ -108,6 +109,7 @@ multi MAIN(
             $fh.say: "use Red;\n" unless $no-use;
             $fh.say: "#| Table: $table-name";
             $fh.say: $table-definition.to-code:
+                    :$no-relationships,
                     |(:$schema-class with $schema-class)
             ;
             with $schema {

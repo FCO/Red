@@ -57,6 +57,7 @@
     "Red::Attr::Query" : "lib/Red/Attr/Query.pm6",
     "Red::Attr::Relationship" : "lib/Red/Attr/Relationship.pm6",
     "Red::Cli::Column" : "lib/Red/Cli/Column.pm6",
+    "Red::Cli::Relationship" : "lib/Red/Cli/Relationship.pm6",
     "Red::Cli::Table" : "lib/Red/Cli/Table.pm6",
     "Red::Column" : "lib/Red/Column.pm6",
     "Red::ColumnMethods" : "lib/Red/ColumnMethods.pm6",
