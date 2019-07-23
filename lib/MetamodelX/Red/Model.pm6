@@ -103,8 +103,9 @@ method compose(Mu \type) {
     die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
     self.add_role: type, Red::Model;
     self.add_role: type, role :: {
-        method TWEAK(|) {
-            self.^set-dirty: self.^columns
+        method TWEAK(|c) {
+            self.^set-dirty: self.^columns;
+            self.?TWEAK-MODEL(|c)
         }
     }
     my @roles-cols = self.roles_to_compose(type).flatmap(*.^attributes).grep: Red::Attr::Column;
