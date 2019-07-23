@@ -35,3 +35,29 @@ method to-code(Str :$schema-class, Bool :$no-relationships) {
     { self.model-end: $unit }
     END
 }
+
+method diff(::?CLASS $b) {
+    my @diffs;
+    @diffs.push: (:name{"-" => $!name, "+" => $b.name}) if $!name ne $b.name;
+    @diffs.push: (:n-of-cols{"-" => @!columns.elems, "+" => $b.columns.elems}) if @!columns != $b.columns;
+    my @a = @!columns.sort:  *.name;
+    my @b = $b.columns.sort: *.name;
+
+    while @a > 0 and @b > 0 {
+        if @a.head.name eq @b.head.name {
+            @diffs.append: ( :col-attr(@a.head.name => @a.shift.diff: @b.shift) );
+            next
+        }
+        if @b.head lt @a.head {
+            @diffs.push: (:col{"+" => @b.shift});
+            next
+        }
+        if @a.head lt @b.head {
+            @diffs.push: (:col{"-" => @a.shift});
+            next
+        }
+    }
+    @diffs.push: (:col{"+" => $_}) for @b;
+    @diffs.push: (:col{"-" => $_}) for @a;
+    @diffs
+}

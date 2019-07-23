@@ -42,7 +42,7 @@ class SQL::CreateTable::Action {
     method modifier:<null>($/)     { make ( :nullable ) }
     method modifier:<not-null>($/) { make ( :!nullable ) }
     method index-mod:<pk>($/)      { make ( :pk ) }
-    method index-mod:<fk>($/)      { make ( :references{ table => $<table-name>.made, column => $<column-name>.made } ) }
+    method index-mod:<fk>($/)      { make ( :references( %( table => $<table-name>.made, column => $<column-name>.made ) ) ) }
     method index-mod:<unique>($/)  { make ( :unique ) }
     method index:<pk>($/)          { ... }
     method index:<fk>($/)          { ... }
@@ -53,7 +53,7 @@ method tables-names       { self.sqlite-master.tables.map: *.name }
 method indexes-of($table) { self.sqlite-master.find-table($table).indexes }
 method table-definition($table) {
    my $sql = self.sqlite-master.find-table($table).sql;
-   |self.table-definition-from-create-table: $sql
+   self.table-definition-from-create-table($sql).head
 }
 method table-definition-from-create-table($sql) {
    SQL::CreateTable.parse($sql, :actions(SQL::CreateTable::Action)).made;

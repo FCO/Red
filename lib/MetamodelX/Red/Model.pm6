@@ -21,6 +21,7 @@ use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Migration;
 use MetamodelX::Red::Relationship;
+use MetamodelX::Red::Describable;
 use MetamodelX::Red::OnDB;
 use MetamodelX::Red::Id;
 use X::Red::Exceptions;
@@ -31,6 +32,7 @@ also does MetamodelX::Red::Dirtable;
 also does MetamodelX::Red::Comparate;
 #also does MetamodelX::Red::Migration;
 also does MetamodelX::Red::Relationship;
+also does MetamodelX::Red::Describable;
 also does MetamodelX::Red::OnDB;
 also does MetamodelX::Red::Id;
 

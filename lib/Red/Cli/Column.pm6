@@ -10,9 +10,9 @@ has Str  $.perl-type  = get-RED-DB.type-for-sql: $!type;
 has Bool $.nullable   = True;
 has Bool $.pk         = False;
 has Bool $.unique     = False;
-has      $.references;
+has      $.references = {};
 
-method new($name, $type, $nullable, $pk, $unique, $references) {
+multi method new($name, $type, $nullable, $pk, $unique, $references) {
     self.bless: :$name, :$type, :nullble(?$nullable), :pk(?$pk), :unique(?$unique), :$references
 }
 
@@ -45,4 +45,19 @@ method to-code(Str :$schema-class) {
             |(:$schema-class with $schema-class)
         ).chomp
     };"
+}
+
+method diff(::?CLASS $b) {
+    my @diffs;
+    @diffs.push: ( :name{       "-" => self.name,       "+" => $b.name       } ) if self.name       ne $b.name      ;
+    @diffs.push: ( :type{       "-" => self.type,       "+" => $b.type       } ) if self.type       ne $b.type      ;
+    @diffs.push: ( :nullable{   "-" => self.nullable,   "+" => $b.nullable   } ) if self.nullable   != $b.nullable  ;
+    @diffs.push: ( :pk{         "-" => self.pk,         "+" => $b.pk         } ) if self.pk         != $b.pk        ;
+    @diffs.push: ( :unique{     "-" => self.unique,     "+" => $b.unique     } ) if self.unique     != $b.unique    ;
+    @diffs.push: ( :references{ "-" => self.references, "+" => $b.references } )
+        if quietly ?self.references<table> and ?$b.references<table>
+            and self.references<table>  ne $b.references<table>
+            or  self.references<column> ne $b.references<column>
+    ;
+    @diffs
 }

@@ -17,6 +17,7 @@
   "provides" : {
     "CX::Red::Bool" : "lib/CX/Red/Bool.pm6",
     "MetamodelX::Red::Comparate" : "lib/MetamodelX/Red/Comparate.pm6",
+    "MetamodelX::Red::Describable" : "lib/MetamodelX/Red/Describable.pm6",
     "MetamodelX::Red::Dirtable" : "lib/MetamodelX/Red/Dirtable.pm6",
     "MetamodelX::Red::Id" : "lib/MetamodelX/Red/Id.pm6",
     "MetamodelX::Red::Migration" : "lib/MetamodelX/Red/Migration.pm6",
