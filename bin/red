@@ -25,7 +25,7 @@ sub gen-stub(:@includes, :@models, :$driver, :%pars) {
     for @includes.unique {
         say "use $_;"
     }
-    say "\nred-defaults :default[:default, database(\"{ $driver }\", { %pars.map(*.perl) })];";
+    say "\nred-defaults \"{ $driver }\", { %pars.map(*.perl) };";
     say "";
     for @models {
         say ".say for { $_ }.^all;"
