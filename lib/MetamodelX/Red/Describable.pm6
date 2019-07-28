@@ -23,3 +23,7 @@ method describe(\model --> Red::Cli::Table) {
 method diff-from-db(\model) {
     model.^describe.diff: $*RED-DB.schema-reader.table-definition: "bla"
 }
+
+method diff(\model, \other-model) {
+    model.^describe.diff: other-model.^describe
+}

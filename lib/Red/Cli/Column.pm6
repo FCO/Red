@@ -16,6 +16,12 @@ multi method new($name, $type, $nullable, $pk, $unique, $references) {
     self.bless: :$name, :$type, :nullble(?$nullable), :pk(?$pk), :unique(?$unique), :$references
 }
 
+multi method gist(::?CLASS:D:) {
+    "Red::Cli::Column.new(:name($!name), :type($!type), :nullable($!nullable), :pk($!pk), :unique($!unique), {
+        ":references($_)" with $!references
+    } #`( table => $!table.name()))"
+}
+
 method !modifier(Str :$schema-class) {
     do given self {
         when ?.pk         { "id" }
@@ -49,15 +55,32 @@ method to-code(Str :$schema-class) {
 
 method diff(::?CLASS $b) {
     my @diffs;
-    @diffs.push: ( :name{       "-" => self.name,       "+" => $b.name       } ) if self.name       ne $b.name      ;
-    @diffs.push: ( :type{       "-" => self.type,       "+" => $b.type       } ) if self.type       ne $b.type      ;
-    @diffs.push: ( :nullable{   "-" => self.nullable,   "+" => $b.nullable   } ) if self.nullable   != $b.nullable  ;
-    @diffs.push: ( :pk{         "-" => self.pk,         "+" => $b.pk         } ) if self.pk         != $b.pk        ;
-    @diffs.push: ( :unique{     "-" => self.unique,     "+" => $b.unique     } ) if self.unique     != $b.unique    ;
-    @diffs.push: ( :references{ "-" => self.references, "+" => $b.references } )
-        if quietly ?self.references<table> and ?$b.references<table>
-            and self.references<table>  ne $b.references<table>
-            or  self.references<column> ne $b.references<column>
-    ;
+    if self.name ne $b.name {
+        @diffs.push: ( "+" => :name( $b.name   ) );
+        @diffs.push: ( "-" => :name( self.name ) );
+    }
+    if self.type ne $b.type {
+        @diffs.push: ( "+" => :type( $b.type   ) );
+        @diffs.push: ( "-" => :type( self.type ) );
+    }
+    if self.nullable != $b.nullable {
+        @diffs.push: ( "+" => :nullable( $b.nullable   ) );
+        @diffs.push: ( "-" => :nullable( self.nullable ) );
+    }
+    if self.pk != $b.pk {
+        @diffs.push: ( "+" => :pk( $b.pk   ) );
+        @diffs.push: ( "-" => :pk( self.pk ) );
+    }
+    if self.unique != $b.unique {
+        @diffs.push: ( "+" => :unique( $b.unique   ) );
+        @diffs.push: ( "-" => :unique( self.unique ) );
+    }
+    if quietly ?self.references<table> and ?$b.references<table>
+        and self.references<table>  ne $b.references<table>
+        or  self.references<column> ne $b.references<column>
+    {
+        @diffs.push: ( "+" => :references( $b.references   ) );
+        @diffs.push: ( "-" => :references( self.references ) );
+    }
     @diffs
 }
