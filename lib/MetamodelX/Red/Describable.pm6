@@ -20,8 +20,12 @@ method describe(\model --> Red::Cli::Table) {
         :columns(self.columns>>.column.map({self!create-column($_)}).cache)
 }
 
+method diff-to-db(\model) {
+    model.^describe.diff: $*RED-DB.schema-reader.table-definition: model.^table
+}
+
 method diff-from-db(\model) {
-    model.^describe.diff: $*RED-DB.schema-reader.table-definition: "bla"
+    $*RED-DB.schema-reader.table-definition(model.^table).diff: model.^describe
 }
 
 method diff(\model, \other-model) {

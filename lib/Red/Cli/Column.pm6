@@ -19,7 +19,7 @@ multi method new($name, $type, $nullable, $pk, $unique, $references) {
 multi method gist(::?CLASS:D:) {
     "Red::Cli::Column.new(:name($!name), :type($!type), :nullable($!nullable), :pk($!pk), :unique($!unique), {
         ":references($_)" with $!references
-    } #`( table => $!table.name()))"
+    } #`( table => $!table.name() ))"
 }
 
 method !modifier(Str :$schema-class) {
