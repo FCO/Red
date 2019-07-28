@@ -2,6 +2,9 @@
 use lib "lib";
 use Red;
 use Red::Utils;
+use Red::AST::CreateColumn;
+use Red::AST::ChangeColumn;
+use Red::AST::DropColumn;
 
 my %*SUB-MAIN-OPTS =
   :named-anywhere,
@@ -57,6 +60,71 @@ multi MAIN(
     }
 
     gen-stub :@includes, :@models, :$driver, :%pars
+}
+
+
+#| Generate models' code from database schema
+multi MAIN(
+    "migration-plan",
+    Str :$model,
+    Str :$require = $model,
+    Str :$I?,
+    Str :$driver!,
+    *%pars
+) {
+    my $*RED-DB = database($driver, |%pars);
+    my %steps;
+    require ::($require);
+    for ::($model).^diff-from-db -> (:$key, :$value) {
+        given $key {
+            when "+" {
+                my ($type, $data) = do given $value { .key, .value };
+                given $type {
+                    when "col" {
+                        %steps.push: 1 => Red::AST::CreateColumn.new:
+                            :table($data.table.name),
+                            :name($data.name),
+                            :type($data.type),
+                            :nullable,
+                            :!pk,
+                            :!unique,
+                            :ref-table(Str),
+                            :ref-col(Str),
+                        ;
+                        %steps.push: 8 => Red::AST::ChangeColumn.new:
+                            :table($data.table.name),
+                            :name($data.name),
+                            :type($data.type),
+                            :nullable($data.nullable),
+                            :pk($data.pk),
+                            :unique($data.unique),
+                            :ref-table($data.references.<table> // Str),
+                            :ref-col($data.references.<column> // Str),
+                        ;
+                    }
+                }
+            }
+            when "-" {
+                my ($type, $data) = do given $value { .key, .value };
+                given $type {
+                    when "col" {
+                        %steps.push: 9 => Red::AST::DropColumn.new:
+                            :table($data.table.name),
+                            :name($data.name),
+                        ;
+                    }
+                }
+            }
+            default {
+                my $column = $_;
+            }
+        }
+    }
+    for %steps.pairs.sort -> (:key($step), :value(@data)) {
+        say "Step ", ++$;
+        #say @data.join("\n").indent: 4
+        $*RED-DB.translate($_).key.indent(4).say for @data
+    }
 }
 
 #| Generate models' code from database schema

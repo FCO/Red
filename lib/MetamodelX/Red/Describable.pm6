@@ -12,7 +12,7 @@ method !create-column($_ --> Red::Cli::Column) {
         :perl-type(.type),
         :nullable(.nullable),
         :pk(.id),
-        |(:references(%(table => .ref.attr.package.^table, column => .ref.name)) with .references)
+        |(:references(%(table => .ref.attr.package.^table, column => .ref.name)) if .references)
 }
 
 method describe(\model --> Red::Cli::Table) {

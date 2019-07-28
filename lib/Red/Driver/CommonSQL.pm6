@@ -14,6 +14,9 @@ use Red::AST::Function;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::LastInsertedRow;
+use Red::AST::CreateColumn;
+use Red::AST::ChangeColumn;
+use Red::AST::DropColumn;
 use Red::AST::TableComment;
 use Red::FromRelationship;
 use Red::Driver;
@@ -90,6 +93,50 @@ method reserved-words {<
 >}
 
 proto method translate(Red::AST, $? --> Pair) {*}
+
+multi method translate(Red::AST::DropColumn $_, $context?) {
+    "ALTER TABLE {
+        .table
+    } DROP COLUMN {
+        .name
+    }" => []
+}
+
+multi method translate(Red::AST::ChangeColumn $_, $context?) {
+    "ALTER TABLE {
+        .table
+    } ALTER COLUMN {
+        .name
+    } {
+        .type
+    }{
+        " NOT NULL" unless .nullable
+    }{
+        " UNIQUE" if .unique
+    }{
+        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
+    }{
+        " PRIMARY KEY" if .pk
+    }" => []
+}
+
+multi method translate(Red::AST::CreateColumn $_, $context?) {
+    "ALTER TABLE {
+        .table
+    } ADD {
+        .name
+    } {
+        .type
+    }{
+        " NOT NULL" unless .nullable
+    }{
+        " UNIQUE" if .unique
+    }{
+        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
+    }{
+        " PRIMARY KEY" if .pk
+    }" => []
+}
 
 multi method translate(Red::AST::Union $ast, $context?) {
     $ast.selects.map({
