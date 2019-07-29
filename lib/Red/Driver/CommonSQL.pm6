@@ -92,6 +92,56 @@ method reserved-words {<
     ZEROFILL ZONE
 >}
 
+method diff-to-ast(@diff) {
+    my %steps;
+    for @diff -> (:$key, :$value) {
+        given $key {
+            when "+" {
+                my ($type, $data) = do given $value { .key, .value };
+                given $type {
+                    when "col" {
+                        %steps.push: 1 => Red::AST::CreateColumn.new:
+                            :table($data.table.name),
+                            :name($data.name),
+                            :type($data.type),
+                            :nullable,
+                            :!pk,
+                            :!unique,
+                            :ref-table(Str),
+                            :ref-col(Str),
+                        ;
+                        %steps.push: 8 => Red::AST::ChangeColumn.new:
+                            :table($data.table.name),
+                            :name($data.name),
+                            :type($data.type),
+                            :nullable($data.nullable),
+                            :pk($data.pk),
+                            :unique($data.unique),
+                            :ref-table($data.references.<table> // Str),
+                            :ref-col($data.references.<column> // Str),
+                        ;
+                    }
+                }
+            }
+            when "-" {
+                my ($type, $data) = do given $value { .key, .value };
+                given $type {
+                    when "col" {
+                        %steps.push: 9 => Red::AST::DropColumn.new:
+                            :table($data.table.name),
+                            :name($data.name),
+                        ;
+                    }
+                }
+            }
+            default {
+                my $column = $_;
+            }
+        }
+    }
+    %steps.sort.map: *.value
+}
+
 proto method translate(Red::AST, $? --> Pair) {*}
 
 multi method translate(Red::AST::DropColumn $_, $context?) {
