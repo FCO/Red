@@ -38,12 +38,12 @@ my package EXPORTHOW {
 multi EXPORT("red-do") {
     use Red::Do;
 
-    return %(
+    Map(
         Red::Do::EXPORT::ALL::,
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         '&database' => &database,
-    );
+    )
 }
 
 multi EXPORT("experimental migrations") {
@@ -51,19 +51,19 @@ multi EXPORT("experimental migrations") {
     MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
     MetamodelX::Red::Model.^compose;
 
-    return %(
+    Map(
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         '&database' => &database,
-    );
+    )
 }
 
 multi EXPORT {
-    return %(
-            Red::Traits::EXPORT::ALL::,
-                    Red::Operators::EXPORT::ALL::,
-                    '&database' => &database,
-            );
+    Map(
+        Red::Traits::EXPORT::ALL::,
+        Red::Operators::EXPORT::ALL::,
+        '&database' => &database,
+    )
 }
 
 =begin pod
