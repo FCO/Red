@@ -207,7 +207,7 @@ method all($obj)                    { $obj.^rs }
 
 method temp(|) is rw { $!temporary }
 
-multi method create-table(\model, Bool :$if-not-exists where * === True) {
+multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where ? *) {
     CATCH { when X::Red::Driver::Mapped::TableExists {
         return False
     }}
