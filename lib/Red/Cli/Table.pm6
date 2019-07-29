@@ -39,12 +39,12 @@ method to-code(Str :$schema-class, Bool :$no-relationships) {
 method diff(::?CLASS $b) {
     my @diffs;
     if $!name ne $b.name {
-        @diffs.push: ( "+" => "name" => $b.name );
-        @diffs.push: ( "-" => "name" => $!name  );
+        @diffs.push: [ "+", "name", $b.name ];
+        @diffs.push: [ "-", "name", $!name  ];
     }
     if @!columns != $b.columns {
-        @diffs.push: ( "+" => "n-of-cols" => $b.columns.elems );
-        @diffs.push: ( "-" => "n-of-cols" => @!columns.elems  );
+        @diffs.push: [ "+", "n-of-cols", $b.columns.elems ];
+        @diffs.push: [ "-", "n-of-cols", @!columns.elems  ];
     }
     my @a = @!columns.sort:  *.name;
     my @b = $b.columns.sort: *.name;
@@ -54,15 +54,15 @@ method diff(::?CLASS $b) {
             my $a = @a.shift;
             my $b = @b.shift;
             for $a.diff: $b {
-                @diffs.append: ( $a.name => $_ )
+                @diffs.append: [ $a.name, $_ ]
             }
         } elsif @b.head lt @a.head {
-            @diffs.push: ( "+" => "col" => @b.shift );
+            @diffs.push: [ "+", "col", @b.shift ];
         } elsif @a.head lt @b.head {
-            @diffs.push: ( "-" => "col" => @a.shift );
+            @diffs.push: [ "-", "col", @a.shift ];
         }
     }
-    @diffs.push: ( "+" => "col" => $_ ) for @b;
-    @diffs.push: ( "-" => "col" => $_ ) for @a;
+    @diffs.push: [ "+", "col", $_ ] for @b;
+    @diffs.push: [ "-", "col", $_ ] for @a;
     @diffs
 }

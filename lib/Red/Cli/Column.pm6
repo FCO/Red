@@ -56,31 +56,31 @@ method to-code(Str :$schema-class) {
 method diff(::?CLASS $b) {
     my @diffs;
     if self.name ne $b.name {
-        @diffs.push: ( "+" => :name( $b.name   ) );
-        @diffs.push: ( "-" => :name( self.name ) );
+        @diffs.push: [ "+", "name", $b.name   ];
+        @diffs.push: [ "-", "name", self.name ];
     }
     if self.type ne $b.type {
-        @diffs.push: ( "+" => :type( $b.type   ) );
-        @diffs.push: ( "-" => :type( self.type ) );
+        @diffs.push: [ "+", "type", $b.type   ];
+        @diffs.push: [ "-", "type", self.type ];
     }
     if self.nullable != $b.nullable {
-        @diffs.push: ( "+" => :nullable( $b.nullable   ) );
-        @diffs.push: ( "-" => :nullable( self.nullable ) );
+        @diffs.push: [ "+", "nullable", $b.nullable   ];
+        @diffs.push: [ "-", "nullable", self.nullable ];
     }
     if self.pk != $b.pk {
-        @diffs.push: ( "+" => :pk( $b.pk   ) );
-        @diffs.push: ( "-" => :pk( self.pk ) );
+        @diffs.push: [ "+", "pk", $b.pk   ];
+        @diffs.push: [ "-", "pk", self.pk ];
     }
     if self.unique != $b.unique {
-        @diffs.push: ( "+" => :unique( $b.unique   ) );
-        @diffs.push: ( "-" => :unique( self.unique ) );
+        @diffs.push: [ "+", "unique", $b.unique   ];
+        @diffs.push: [ "-", "unique", self.unique ];
     }
     if quietly ?self.references<table> and ?$b.references<table>
         and self.references<table>  ne $b.references<table>
         or  self.references<column> ne $b.references<column>
     {
-        @diffs.push: ( "+" => :references( $b.references   ) );
-        @diffs.push: ( "-" => :references( self.references ) );
+        @diffs.push: [ "+", "references", $b.references   ];
+        @diffs.push: [ "-", "references", self.references ];
     }
     @diffs
 }
