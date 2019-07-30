@@ -18,6 +18,7 @@ use Red::AST::CreateColumn;
 use Red::AST::ChangeColumn;
 use Red::AST::DropColumn;
 use Red::AST::TableComment;
+use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
 
@@ -92,54 +93,41 @@ method reserved-words {<
     ZEROFILL ZONE
 >}
 
-method diff-to-ast(@diff) {
+multi method diff-to-ast("+", "col", Red::Cli::Column $_ --> Hash()) {
+    1 => Red::AST::CreateColumn.new(
+        :table(.table.name),
+        :name(.name),
+        :type(.type),
+        :nullable,
+        :!pk,
+        :!unique,
+        :ref-table(Str),
+        :ref-col(Str),
+    ),
+    8 => Red::AST::ChangeColumn.new(
+        :table(.table.name),
+        :name(.name),
+        :type(.type),
+        :nullable(.nullable),
+        :pk(.pk),
+        :unique(.unique),
+        :ref-table(.references.<table> // Str),
+        :ref-col(.references.<column> // Str),
+    ),
+}
+multi method diff-to-ast($a) {
+}
+multi method diff-to-ast(Str $column, *@data) {
+}
+multi method diff-to-ast("-", "col", Red::Cli::Column $_ --> Hash()) {
+    9 => Red::AST::DropColumn.new:
+        :table(.table.name),
+        :name(.name),
+    ;
+}
+multi method diff-to-ast(@diff) {
     my %steps;
-    for @diff -> (:$key, :$value) {
-        given $key {
-            when "+" {
-                my ($type, $data) = do given $value { .key, .value };
-                given $type {
-                    when "col" {
-                        %steps.push: 1 => Red::AST::CreateColumn.new:
-                            :table($data.table.name),
-                            :name($data.name),
-                            :type($data.type),
-                            :nullable,
-                            :!pk,
-                            :!unique,
-                            :ref-table(Str),
-                            :ref-col(Str),
-                        ;
-                        %steps.push: 8 => Red::AST::ChangeColumn.new:
-                            :table($data.table.name),
-                            :name($data.name),
-                            :type($data.type),
-                            :nullable($data.nullable),
-                            :pk($data.pk),
-                            :unique($data.unique),
-                            :ref-table($data.references.<table> // Str),
-                            :ref-col($data.references.<column> // Str),
-                        ;
-                    }
-                }
-            }
-            when "-" {
-                my ($type, $data) = do given $value { .key, .value };
-                given $type {
-                    when "col" {
-                        %steps.push: 9 => Red::AST::DropColumn.new:
-                            :table($data.table.name),
-                            :name($data.name),
-                        ;
-                    }
-                }
-            }
-            default {
-                my $column = $_;
-            }
-        }
-    }
-    %steps.sort.map: *.value
+    @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(|*.key, :as{ |.value }).sort.map: *.value
 }
 
 proto method translate(Red::AST, $? --> Pair) {*}
