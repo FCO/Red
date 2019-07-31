@@ -68,7 +68,6 @@ multi MAIN(
     "migration-plan",
     Str :$model,
     Str :$require = $model,
-    Str :$I?,
     Str :$driver!,
     *%pars
 ) {
@@ -78,6 +77,7 @@ multi MAIN(
     for $*RED-DB.diff-to-ast: ::($model).^diff-from-db -> @data {
         say "Step ", ++$, ":";
         #say @data.join("\n").indent: 4
+#        $*RED-DB.translate($_).key.indent(4).say for Red::AST::ChangeColumn.optimize: @data
         $*RED-DB.translate($_).key.indent(4).say for @data
     }
 }

@@ -93,9 +93,9 @@ method reserved-words {<
     ZEROFILL ZONE
 >}
 
-multi method diff-to-ast("+", "col", Red::Cli::Column $_ --> Hash()) {
+multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
     1 => Red::AST::CreateColumn.new(
-        :table(.table.name),
+        :$table,
         :name(.name),
         :type(.type),
         :nullable,
@@ -105,7 +105,7 @@ multi method diff-to-ast("+", "col", Red::Cli::Column $_ --> Hash()) {
         :ref-col(Str),
     ),
     8 => Red::AST::ChangeColumn.new(
-        :table(.table.name),
+        :$table,
         :name(.name),
         :type(.type),
         :nullable(.nullable),
@@ -115,18 +115,45 @@ multi method diff-to-ast("+", "col", Red::Cli::Column $_ --> Hash()) {
         :ref-col(.references.<column> // Str),
     ),
 }
-multi method diff-to-ast($a) {
+multi method diff-to-ast(Str, Str, "-", Str, $) {}
+
+#multi method diff-to-ast(Str:D, Str:D, "-", Str:D, Bool:D) {}
+multi method diff-to-ast($table, Str $column, "+", "nullable", Bool $nullable --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$nullable,
+    ),
 }
-multi method diff-to-ast(Str $column, *@data) {
+multi method diff-to-ast($table, Str $column, "+", "type", Str $type --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$type,
+    ),
 }
-multi method diff-to-ast("-", "col", Red::Cli::Column $_ --> Hash()) {
+multi method diff-to-ast($table, Str $column, "+", "pk", Bool $pk --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$pk,
+    ),
+}
+multi method diff-to-ast($table, Str $column, "+", "unique", Bool $unique --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$unique,
+    ),
+}
+multi method diff-to-ast($table, "-", "col", Red::Cli::Column $_ --> Hash()) {
     9 => Red::AST::DropColumn.new:
         :table(.table.name),
         :name(.name),
     ;
 }
 multi method diff-to-ast(@diff) {
-    my %steps;
+#    .say for @diff;
     @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(|*.key, :as{ |.value }).sort.map: *.value
 }
 
@@ -146,7 +173,7 @@ multi method translate(Red::AST::ChangeColumn $_, $context?) {
     } ALTER COLUMN {
         .name
     } {
-        .type
+        .type // ""
     }{
         " NOT NULL" unless .nullable
     }{
