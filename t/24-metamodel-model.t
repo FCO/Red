@@ -80,11 +80,22 @@ is-deeply Ble.^attr-to-column, %('$!a' => "a", '$!b' => "b", '$!c' => "d", '$!e'
 
 is Bla.^rs, Bla.^all;
 
+model MyModel { ... }
+
+MyModel.^create-table;
 
 use Red::ResultSeq;
-class MyRS does Red::ResultSeq {}
-my $rs = model :: is rs-class<MyRS> {}.^rs;
+class MyRS does Red::ResultSeq[MyModel] {
+    method answer { 42 }
+}
+my $rs = model MyModel is rs-class<MyRS> { has Str $.a is column }.^rs;
 isa-ok $rs, MyRS;
 does-ok $rs, Red::ResultSeq;
+
+can-ok $rs, "answer";
+is $rs.answer, 42;
+
+can-ok $rs.grep({ .a }), "answer";
+is $rs.grep({ .a }).answer, 42;
 
 done-testing;
