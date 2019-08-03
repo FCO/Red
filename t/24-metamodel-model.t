@@ -131,4 +131,9 @@ is-deeply $bla.^id-map(42), { :42id, };
 # TODO
 #say IsId.^filter-id: 42;
 
+
+is Bla.^table, "bla";
+Bla.^table = "not_bla";
+is Bla.^table, "not_bla";
+
 done-testing;
