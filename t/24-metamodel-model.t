@@ -98,4 +98,37 @@ is $rs.answer, 42;
 can-ok $rs.grep({ .a }), "answer";
 is $rs.grep({ .a }).answer, 42;
 
+ok model :: is table<t1> { has Str $.bla is column }.^create-table;
+ok model :: is table<t2> { has Str $.bla is column }.^create-table: :if-not-exists;
+ok model :: is table<t3> { has Str $.bla is column }.^create-table: :unless-exists;
+
+model IsId { has $.id is id; has $.not-id is column{ :unique }; has $.col is column }
+
+dies-ok { Bla.^new-with-id(42) };
+is-deeply IsId.^new-with-id(42), IsId.new: :42id;
+
+is-deeply IsId.^id>>.name, ('$!id',);
+
+ok IsId.^is-id: IsId.^attributes.head;
+ok not IsId.^is-id: IsId.^attributes.head(2).tail;
+
+is-deeply IsId.^general-ids>>.name, ('$!id', $('$!not-id',));
+
+my $bla = IsId.new;
+$bla.^set-id: 42;
+is-deeply $bla, IsId.new: :42id;
+$bla.^set-id: { :13id };
+is-deeply $bla, IsId.new: :13id;
+$bla.^set-id: { :3id, :42not-id };
+is-deeply $bla, IsId.new: :3id, :42not-id;
+
+is-deeply $bla.^id-map(42), { :42id, };
+
+# TODO
+#my $filter = $bla.^id-filter;
+#is $filter, "";
+
+# TODO
+#say IsId.^filter-id: 42;
+
 done-testing;

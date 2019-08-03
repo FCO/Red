@@ -19,7 +19,7 @@ multi trait_mod:<is>(Mu:U $model, Mu:U :$rs-class!) {
 }
 
 multi trait_mod:<is>(Mu:U $model, Bool :$nullable!) {
-    $model.^default-nullable = True
+    $model.^default-nullable = $nullable
 }
 
 multi trait_mod:<is>(Attribute $attr, Bool :$column!) is export {

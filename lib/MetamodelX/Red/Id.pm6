@@ -64,16 +64,19 @@ multi method set-id(Red::Model:D $model, $id where !.^isa: Associative --> Hash(
 }
 
 multi method id-map(Red::Model $model, $id --> Hash()) {
+    die "$model.^name() has no id" unless $model.^id;
     $model.^id.head.name.substr(2) => $id
 }
 
 multi method id-filter(Red::Model:D $model) {
-    $model.^id.map({
+    $model.^general-ids.flat.map({
         Red::AST::Eq.new:
             .column,
             ast-value
                 :type(.type),
-                $!id-values-attr.get_value($model).{ .name } // self.get-old-attr($model, $_) // self.get-attr: $model, $_
+                $!id-values-attr.get_value($model).{ .name }
+                    // self.get-old-attr($model, $_)
+                    // self.get-attr: $model, $_
     })
         .reduce: { Red::AST::AND.new: $^a, $^b }
 }
