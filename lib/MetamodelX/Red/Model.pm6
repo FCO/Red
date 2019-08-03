@@ -50,7 +50,7 @@ method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 
 method references(|) { %!references }
 
-method table(Mu \type) { $!table //= camel-to-snake-case type.^name }
+method table(Mu \type) is rw { $!table //= camel-to-snake-case type.^name }
 method as(Mu \type) { self.table: type }
 method orig(Mu \type) { type.WHAT }
 method rs-class-name(Mu \type) { "{type.^name}::ResultSeq" }
