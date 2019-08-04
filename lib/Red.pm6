@@ -526,6 +526,63 @@ Question.^all.grep: { .answer == 42 }; # returns a result seq
 
 =end code
 
+=head4 phasers
+
+=item C<before-create>
+=item C<after-create>
+=item C<before-update>
+=item C<after-update>
+=item C<before-delete>
+=item C<after-delete>
+
+=head4 Temporary table
+
+=begin code :lang<perl6>
+
+model Bla is temp { ... }
+
+=end code
+
+=head4 Create table
+
+=begin code :lang<perl6>
+
+Question.^create-table;
+Question.^create-table: :if-not-exists;
+Question.^create-table: :unless-exists;
+
+=end code
+
+=head4 IN
+
+=begin code :lang<perl6>
+
+Question.^all.grep: *.answer ⊂ (3.14, 13, 42)
+
+=end code
+
+=head4 create
+
+=begin code :lanf<perl6>
+
+Post.^create: :body("bla ble bli blo blu"), :title("qwer");
+
+model Person {
+    has UInt   $!id        is id;
+    has Str    $.name      is column;
+    has UInt   $!father-id is referencing{ Person.id };
+    has UInt   $!mother-id is referencing{ Person.id };
+
+    has Person $.father    is relationship{ .father-id };
+    has Person $.mother    is relationship{ .mother-id };
+
+    has Person @.kids      is relationship{ .father-id || .mother-id };
+}
+
+Person.^create: :name<Bla>, :father{:name<Ble>}, :mother{:name<Bli>}, :kids[{:name<Blo>}, {:name<Blu>}];
+
+=end code
+
 =head2 AUTHOR
 
 Fernando Correa de Oliveira <fernandocorrea@gmail.com>
