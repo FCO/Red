@@ -455,6 +455,58 @@ $object.^save;
 Question.^all.grep: { .answer == 42 }; # returns a result seq
 ```
 
+#### phasers
+
+  * `before-create`
+
+  * `after-create`
+
+  * `before-update`
+
+  * `after-update`
+
+  * `before-delete`
+
+  * `after-delete`
+
+#### Temporary table
+
+```perl6
+model Bla is temp { ... }
+```
+
+#### Create table
+
+```perl6
+Question.^create-table;
+Question.^create-table: :if-not-exists;
+Question.^create-table: :unless-exists;
+```
+
+#### IN
+
+```perl6
+Question.^all.grep: *.answer ⊂ (3.14, 13, 42)
+```
+
+#### create
+
+    Post.^create: :body("bla ble bli blo blu"), :title("qwer");
+
+    model Person {
+        has UInt   $!id        is id;
+        has Str    $.name      is column;
+        has UInt   $!father-id is referencing{ Person.id };
+        has UInt   $!mother-id is referencing{ Person.id };
+
+        has Person $.father    is relationship{ .father-id };
+        has Person $.mother    is relationship{ .mother-id };
+
+        has Person @.kids      is relationship{ .father-id || .mother-id };
+    }
+
+    Person.^create: :name<Bla>, :father{:name<Ble>}, :mother{:name<Bli>}, :kids[{:name<Blo>}, {:name<Blu>}];
+
 AUTHOR
 ------
 
