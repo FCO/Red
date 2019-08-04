@@ -102,7 +102,7 @@ ok model :: is table<t1> { has Str $.bla is column }.^create-table;
 ok model :: is table<t2> { has Str $.bla is column }.^create-table: :if-not-exists;
 ok model :: is table<t3> { has Str $.bla is column }.^create-table: :unless-exists;
 
-model IsId { has $.id is id; has $.not-id is column{ :unique }; has $.col is column }
+model IsId { has UInt $.id is id; has Str $.not-id is column{ :unique }; has Str $.col is column }
 
 dies-ok { Bla.^new-with-id(42) };
 is-deeply IsId.^new-with-id(42), IsId.new: :42id;
@@ -135,5 +135,9 @@ is-deeply $bla.^id-map(42), { :42id, };
 is Bla.^table, "bla";
 Bla.^table = "not_bla";
 is Bla.^table, "not_bla";
+
+ok not $bla.^is-on-db;
+$bla.^saved-on-db;
+ok $bla.^is-on-db;
 
 done-testing;
