@@ -24,8 +24,8 @@ BEGIN {
     Red::Column.^compose;
 
     for <AND OR Case> -> $infix {
-        ::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
-        ::("Red::AST::$infix").^compose;
+        ::(“Red::AST::$infix”).^add_role: ::(“Red::AST::Optimizer::$infix”);
+        ::(“Red::AST::$infix”).^compose;
     }
 }
 
@@ -35,18 +35,18 @@ my package EXPORTHOW {
     }
 }
 
-multi EXPORT("red-do") {
+multi EXPORT(“red-do”) {
     use Red::Do;
 
     Map(
         Red::Do::EXPORT::ALL::,
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
-        '&database' => &database,
+        ‘&database’ => &database,
     )
 }
 
-multi EXPORT("experimental migrations") {
+multi EXPORT(“experimental migrations”) {
     use MetamodelX::Red::Migration;
     MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
     MetamodelX::Red::Model.^compose;
@@ -54,7 +54,7 @@ multi EXPORT("experimental migrations") {
     Map(
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
-        '&database' => &database,
+        ‘&database’ => &database,
     )
 }
 
@@ -62,7 +62,7 @@ multi EXPORT {
     Map(
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
-        '&database' => &database,
+        ‘&database’ => &database,
     )
 }
 
@@ -100,8 +100,8 @@ model Post is rw {
     has DateTime    $.created   is column .= now;
     has Set         $.tags      is column{
         :type<string>,
-        :deflate{ .keys.join: "," },
-        :inflate{ set(.split: ",") }
+        :deflate{ .keys.join: “,” },
+        :inflate{ set(.split: “,”) }
     } = set();
     method delete { $!deleted = True; self.^save }
 }
@@ -113,7 +113,7 @@ model Person is rw {
     method active-posts { @!posts.grep: not *.deleted }
 }
 
-my $*RED-DB = database "SQLite";
+my $*RED-DB = database “SQLite”;
 
 Person.^create-table;                                   # SQL : CREATE TABLE person(
                                                         #    id integer NOT NULL primary key
@@ -138,7 +138,7 @@ Post.^create-table;                                     # SQL : CREATE TABLE pos
 
 my Post $post1 = Post.^load: :42id;                     # SQL : SELECT
                                                         #    post.id,
-                                                        #    post.author_id as "author-id",
+                                                        #    post.author_id as “author-id”,
                                                         #    post.title,
                                                         #    post.body,
                                                         #    post.deleted,
@@ -152,7 +152,7 @@ my Post $post1 = Post.^load: :42id;                     # SQL : SELECT
 
 my Post $post1 = Post.^load: 42;                        # SQL : SELECT
                                                         #    post.id,
-                                                        #    post.author_id as "author-id",
+                                                        #    post.author_id as “author-id”,
                                                         #    post.title,
                                                         #    post.body,
                                                         #    post.deleted,
@@ -164,9 +164,9 @@ my Post $post1 = Post.^load: 42;                        # SQL : SELECT
                                                         #    post.id = 42
                                                         # BIND: []
 
-my Post $post1 = Post.^load: :title("my title");        # SQL : SELECT
+my Post $post1 = Post.^load: :title(“my title”);        # SQL : SELECT
                                                         #    post.id,
-                                                        #    post.author_id as "author-id",
+                                                        #    post.author_id as “author-id”,
                                                         #    post.title,
                                                         #    post.body,
                                                         #    post.deleted,
@@ -175,7 +175,7 @@ my Post $post1 = Post.^load: :title("my title");        # SQL : SELECT
                                                         # FROM
                                                         #    post
                                                         # WHERE
-                                                        #    post.title = 'my title'
+                                                        #    post.title = ‘my title’
                                                         # BIND: []
 
 my $person = Person.^create: :name<Fernando>;           # SQL : INSERT INTO person(
@@ -184,7 +184,7 @@ my $person = Person.^create: :name<Fernando>;           # SQL : INSERT INTO pers
                                                         # VALUES(
                                                         #    ?
                                                         # )
-                                                        # BIND: ["Fernando"]
+                                                        # BIND: [“Fernando”]
                                                         #
                                                         # SQLite needs an extra select:
                                                         #
@@ -199,10 +199,10 @@ my $person = Person.^create: :name<Fernando>;           # SQL : INSERT INTO pers
                                                         # BIND: []
                                                         #
                                                         # RETURNS:
-                                                        # Person.new(name => "Fernando")
+                                                        # Person.new(name => “Fernando”)
 
 {
-    my $*RED-DB = database "Pg";                        # Using Pg Driver for this block
+    my $*RED-DB = database “Pg”;                        # Using Pg Driver for this block
 
     my $person = Person.^create: :name<Fernando>;       # SQL : INSERT INTO person(
                                                         #    name
@@ -210,14 +210,14 @@ my $person = Person.^create: :name<Fernando>;           # SQL : INSERT INTO pers
                                                         # VALUES(
                                                         #    $1
                                                         # ) RETURNING *
-                                                        # BIND: ["Fernando"]
+                                                        # BIND: [“Fernando”]
                                                         #
                                                         # RETURNS:
-}                                                       # Person.new(name => "Fernando")
+}                                                       # Person.new(name => “Fernando”)
 
 say $person.posts;                                      # SQL : SELECT
                                                         #    post.id,
-                                                        #    post.author_id as "author-id",
+                                                        #    post.author_id as “author-id”,
                                                         #    post.title,
                                                         #    post.body,
                                                         #    post.deleted,
@@ -231,7 +231,7 @@ say $person.posts;                                      # SQL : SELECT
 
 say Person.new(:2id)                                    # SQL : SELECT
     .active-posts                                       #    post.id,
-    .grep: { .created > now }                           #    post.author_id as "author-id",
+    .grep: { .created > now }                           #    post.author_id as “author-id”,
                                                         #    post.title,
                                                         #    post.body,
                                                         #    post.deleted,
@@ -253,7 +253,7 @@ say Person.new(:2id)                                    # SQL : SELECT
 my $now = now;
 say Person.new(:3id)                                    # SQL : SELECT
     .active-posts                                       #    post.id,
-    .grep: { .created > $now }                          #    post.author_id as "author-id",
+    .grep: { .created > $now }                          #    post.author_id as “author-id”,
                                                         #    post.title,
                                                         #    post.body,
                                                         #    post.deleted,
@@ -282,9 +282,9 @@ Person.^create:                                         # SQL : INSERT INTO pers
     :name<Fernando>,                                    #    name
     :posts[                                             # )
         {                                               # VALUES(
-            :title("My new post"),                      #    ?
-            :body("A long post")                        # )
-        },                                              # BIND: ["Fernando"]
+            :title(“My new post”),                      #    ?
+            :body(“A long post”)                        # )
+        },                                              # BIND: [“Fernando”]
     ]                                                   # SQL : SELECT
 ;                                                       #    person.id,
                                                         #    person.name
@@ -312,16 +312,16 @@ Person.^create:                                         # SQL : INSERT INTO pers
                                                         #    ?
                                                         # )
                                                         # BIND: [
-                                                        #   "2019-04-02T22:55:13.658596+01:00",
-                                                        #   "My new post",
+                                                        #   “2019-04-02T22:55:13.658596+01:00”,
+                                                        #   “My new post”,
                                                         #   1,
-                                                        #   "",
+                                                        #   “”,
                                                         #   Bool::False,
-                                                        #   "A long post"
+                                                        #   “A long post”
                                                         # ]
                                                         # SQL : SELECT
                                                         #    post.id,
-                                                        #    post.author_id as "author-id",
+                                                        #    post.author_id as “author-id”,
                                                         #    post.title,
                                                         #    post.body,
                                                         #    post.deleted,
@@ -334,9 +334,9 @@ Person.^create:                                         # SQL : INSERT INTO pers
                                                         # LIMIT 1
                                                         # BIND: []
 
-my $post = Post.^load: :title("My new post");           # SQL : SELECT
+my $post = Post.^load: :title(“My new post”);           # SQL : SELECT
                                                         #    post.id,
-                                                        #    post.author_id as "author-id",
+                                                        #    post.author_id as “author-id”,
                                                         #    post.title,
                                                         #    post.body,
                                                         #    post.deleted,
@@ -345,13 +345,13 @@ my $post = Post.^load: :title("My new post");           # SQL : SELECT
                                                         # FROM
                                                         #    post
                                                         # WHERE
-                                                        #    post.title = 'My new post'
+                                                        #    post.title = ‘My new post’
                                                         # BIND: []
                                                         #
                                                         # RETURNS:
                                                         # Post.new(
-                                                        #   title   => "My new post",
-                                                        #   body    => "A long post",
+                                                        #   title   => “My new post”,
+                                                        #   body    => “A long post”,
                                                         #   deleted => 0,
                                                         #   created => DateTime.new(
                                                         #       2019,
@@ -362,23 +362,23 @@ my $post = Post.^load: :title("My new post");           # SQL : SELECT
                                                         #       46.677388,
                                                         #       :timezone(3600)
                                                         #   ),
-                                                        #   tags    => Set.new("")
+                                                        #   tags    => Set.new(“”)
                                                         # )
 
 say $post.body;                                         # PRINTS:
                                                         # A long post
 
 my $author = $post.author;                              # RETURNS:
-                                                        # Person.new(name => "Fernando")
-$author.name = "John Doe";
+                                                        # Person.new(name => “Fernando”)
+$author.name = “John Doe”;
 
 $author.^save;                                          # SQL : UPDATE person SET
-                                                        #    name = 'John Doe'
+                                                        #    name = ‘John Doe’
                                                         # WHERE id = 1
 
 $author.posts.create:                                   # SQL : INSERT INTO post(
-    :title("Second post"),                              #    title,
-    :body("Another long post"),                         #    body,
+    :title(“Second post”),                              #    title,
+    :body(“Another long post”),                         #    body,
 ;                                                       #    created,
                                                         #    tags,
                                                         #    deleted,
@@ -393,16 +393,16 @@ $author.posts.create:                                   # SQL : INSERT INTO post
                                                         #    ?
                                                         # )
                                                         # BIND: [
-                                                        #   "Second post",
-                                                        #   "Another long post",
-                                                        #   "2019-04-02T23:28:09.346442+01:00",
-                                                        #   "",
+                                                        #   “Second post”,
+                                                        #   “Another long post”,
+                                                        #   “2019-04-02T23:28:09.346442+01:00”,
+                                                        #   “”,
                                                         #   Bool::False,
                                                         #   1
                                                         # ]
 
 $author.posts.elems;                                    # SQL : SELECT
-                                                        #    count(*) as "data_1"
+                                                        #    count(*) as “data_1”
                                                         # FROM
                                                         #    post
                                                         # WHERE
@@ -416,7 +416,7 @@ $author.posts.elems;                                    # SQL : SELECT
 
 =head2 DESCRIPTION
 
-Red is a *WiP* ORM for perl6. It's not working yet. My objective publishing is only ask for help validating the APIs.
+Red is a *WiP* ORM for perl6. It’s not working yet. My objective publishing is only ask for help validating the APIs.
 
 =head3 traits
 
@@ -455,7 +455,7 @@ model Related {
 }
 =end code
 
-If you want to put your schema into multiple files, you can create an "indirect"
+If you want to put your schema into multiple files, you can create an “indirect”
 relationship, and Red will look up the related models as necessary.
 
 =begin code :lang<perl6>
@@ -472,7 +472,7 @@ model Related {
 }
 =end code
 
-If Red can't find where your C<model> is defined you can override where it looks
+If Red can’t find where your C<model> is defined you can override where it looks
 with C<require>:
 
 =begin code :lang<perl6>
@@ -494,7 +494,7 @@ Red, by default, has not nullable columns, to change it:
 
 =begin code :lang<perl6>
 
-model MyModel is nullable {                 # is nullable makes this model's columns nullable by default
+model MyModel is nullable {                 # is nullable makes this model’s columns nullable by default
     has Int $.col1 is column;               # this column now is nullable
     has Int $.col2 is column{ :!nullable }; # this column is not nullable
 }
@@ -565,21 +565,18 @@ Question.^all.grep: *.answer ⊂ (3.14, 13, 42)
 
 =begin code :lanf<perl6>
 
-Post.^create: :body("bla ble bli blo blu"), :title("qwer");
+Post.^create: :body(“bla ble bli blo blu”), :title(“qwer”);
 
-model Person {
+model Tree {
     has UInt   $!id        is id;
-    has Str    $.name      is column;
-    has UInt   $!father-id is referencing{ Person.id };
-    has UInt   $!mother-id is referencing{ Person.id };
+    has Str    $.value     is column;
+    has UInt   $!parent-id is referencing{ Person.id };
 
-    has Person $.father    is relationship{ .father-id };
-    has Person $.mother    is relationship{ .mother-id };
-
-    has Person @.kids      is relationship{ .father-id || .mother-id };
+    has Person $.parent    is relationship{ .parent-id };
+    has Person @.kids      is relationship{ .parent-id };
 }
 
-Person.^create: :name<Bla>, :father{:name<Ble>}, :mother{:name<Bli>}, :kids[{:name<Blo>}, {:name<Blu>}];
+Person.^create: :value<Bla>, :parent{: value<Ble>}, :kids[{:value<Bli>}, {:value<Blo>}, {:value<Blu>}];
 
 =end code
 
