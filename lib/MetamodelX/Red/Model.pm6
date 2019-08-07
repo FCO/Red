@@ -304,7 +304,8 @@ method create(\model, *%orig-pars) is rw {
         }.Hash if @ids;
 
         for %positionals.kv -> $name, @val {
-            $obj."$name"().create: |$_ for @val
+            FIRST my $no = model.^find($filter);
+            $no."$name"().create: |$_ for @val
         }
         self.apply-row-phasers($obj, AfterCreate);
         return-rw Proxy.new:

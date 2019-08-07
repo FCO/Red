@@ -140,4 +140,25 @@ ok not $bla.^is-on-db;
 $bla.^saved-on-db;
 ok $bla.^is-on-db;
 
+model Tree {
+    has UInt   $!id        is id;
+    has Str    $.value     is column;
+    has UInt   $!parent-id is referencing{ Tree.id };
+
+    has Tree   $.parent    is relationship{ .parent-id };
+    has Tree   @.kids      is relationship{ .parent-id };
+}
+
+Tree.^create-table: :if-not-exists;
+
+Tree.^create: :value<Bla>, :parent{:value<Ble>}, :kids[{:value<Bli>}, {:value<Blo>}, {:value<Blu>}];
+
+my $adam = Tree.^load(1);
+is $adam.value, "Ble";
+ok not $adam.parent.defined;
+is-deeply $adam.kids>>.value, ("Bla",);
+is-deeply $adam.kids>>.parent, ($adam,);
+is-deeply $adam.kids>>.kids>>.value, (<Bli Blo Blu>, );
+#is-deeply flat($adam.kids>>.kids>>.parent), ($adam.kids.head xx 3).head;
+
 done-testing;
