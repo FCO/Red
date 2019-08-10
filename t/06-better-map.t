@@ -14,7 +14,7 @@ M.^create-table;
 
 $*RED-DB.die-on-unexpected;
 
-$*RED-DB.when: :once, Q[select case when ( b == 0 or b is null ) then a else a end as "data_1" from mmm], :return[{:1data_1}, {:2data_1}, {:3data_1}];
+$*RED-DB.when: :once, Q[select case when ( mmm.b == 0 or mmm.b is null ) then mmm.a else mmm.a end as "data_1" from mmm], :return[{:1data_1}, {:2data_1}, {:3data_1}];
 
 M.^all.map({ .b if .b; .a }).Seq;
 

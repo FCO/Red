@@ -93,10 +93,29 @@ method transform-item(*%data) is hidden-from-sql-commenting {
 method grep(&filter) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     my Red::AST $*RED-GREP-FILTER;
-    my $filter = filter self.of;
-    with $*RED-GREP-FILTER {
-        $filter = Red::AST::AND.new: $_, $filter
+#    for what-does-it-do(&filter, self.of) -> Pair $_ {
+#        .say;
+#        (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
+#
+#    }
+    my $filter = do given what-does-it-do(&filter, self.of) {
+#        if $filter.elems > 1 or $filter.keys.head.defined {
+            .kv.map(-> $test, $ret {
+                do with $test {
+                    Red::AST::AND.new: $test, ast-value $ret
+                } else {
+                    $ret
+                }
+            }).reduce: -> $agg, $fil { Red::AST::OR.new: $agg, $fil }
+#        } else {
+#            my $filter = ast-value $_ given filter self.of;
+#            with $*RED-GREP-FILTER {
+#                $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
+#            }
+#            $filter
+#        }
     }
+    say $filter;
     self.where: $filter;
 }
 method first(&filter) is hidden-from-sql-commenting {

@@ -105,10 +105,13 @@ class Red::AST::AND does Red::AST::Infix {
     has Bool $.returns;
 
     multi method new(Red::AST $left is copy, Red::AST $right is copy) {
-        .return with self.optimize: $left, $right;
+        .return with self.?optimize: $left, $right;
 
-        $left  .= value if $left ~~ Red::AST::So;
+        $left  .= value if $left  ~~ Red::AST::So;
         $right .= value if $right ~~ Red::AST::So;
+
+        return $left if $left eqv $right;
+        return ast-value(False) if $left eqv $right.not;
 
         ::?CLASS.bless: :$left, :$right
     }
@@ -133,6 +136,9 @@ class Red::AST::OR does Red::AST::Infix {
 
         $left  .= value if $left ~~ Red::AST::So;
         $right .= value if $right ~~ Red::AST::So;
+
+        return $left if $left eqv $right;
+        return ast-value(True) if $left eqv $right.not;
 
         ::?CLASS.bless: :$left, :$right
     }
