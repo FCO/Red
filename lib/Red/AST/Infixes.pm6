@@ -13,6 +13,7 @@ class Red::AST::Div     { ... }
 class Red::AST::Mod     { ... }
 class Red::AST::Concat  { ... }
 class Red::AST::Like    { ... }
+class Red::AST::In      { ... }
 
 class Red::AST::Eq does Red::AST::Infix {
     has $.op = "=";
@@ -105,7 +106,8 @@ class Red::AST::AND does Red::AST::Infix {
     has Bool $.returns;
 
     multi method new(Red::AST $left is copy, Red::AST $right is copy) {
-        .return with self.?optimize: $left, $right;
+        my \ret = self.optimize: $left, $right;
+        return ret if ret.DEFINITE && ret !~~ Empty;
 
         $left  .= value if $left  ~~ Red::AST::So;
         $right .= value if $right ~~ Red::AST::So;
@@ -113,7 +115,7 @@ class Red::AST::AND does Red::AST::Infix {
         return $left if $left eqv $right;
         return ast-value(False) if $left eqv $right.not;
 
-        ::?CLASS.bless: :$left, :$right
+        self.WHAT.bless: :$left, :$right
     }
 
     method should-set(--> Hash()) {
@@ -132,15 +134,16 @@ class Red::AST::OR does Red::AST::Infix {
     has Bool $.returns;
 
     multi method new(Red::AST $left is copy, Red::AST $right is copy) {
-        .return with self.optimize: $left, $right;
+        my \ret = self.optimize: $left, $right;
+        return ret if ret.DEFINITE && ret !~~ Empty;
 
-        $left  .= value if $left ~~ Red::AST::So;
+        $left  .= value if $left  ~~ Red::AST::So;
         $right .= value if $right ~~ Red::AST::So;
 
         return $left if $left eqv $right;
         return ast-value(True) if $left eqv $right.not;
 
-        ::?CLASS.bless: :$left, :$right
+        self.WHAT.bless: :$left, :$right
     }
 
     method should-set(--> Hash()) {

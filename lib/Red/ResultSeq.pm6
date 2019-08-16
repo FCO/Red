@@ -83,7 +83,7 @@ multi method where(::?CLASS:U: Red::AST:U $filter) is hidden-from-sql-commenting
 multi method where(::?CLASS:D: Red::AST:U $filter) is hidden-from-sql-commenting { self.clone }
 multi method where(::?CLASS:U: Red::AST:D $filter) is hidden-from-sql-commenting { self.new: :chain($!chain.clone: :$filter) }
 multi method where(::?CLASS:D: Red::AST:D $filter) is hidden-from-sql-commenting {
-    self.clone: :chain($!chain.clone: :filter(($.filter, $filter).grep({ .defined }).reduce: { Red::AST::AND.new: $^a, $^b }))
+    self.clone: :chain($!chain.clone: :filter(($.filter, $filter).grep({ .defined }).reduce: { Red::AST::AND.new($^a, $^b) }))
 }
 
 method transform-item(*%data) is hidden-from-sql-commenting {

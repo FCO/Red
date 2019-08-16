@@ -7,6 +7,7 @@ model Foo is rw {
 }
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-AST      = $_ with %*ENV<RED_DEBUG_AST>;
 my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
 
 Foo.^create-table;

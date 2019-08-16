@@ -9,6 +9,33 @@ my subset AstTrue  of Red::AST::Value where { .value === True  };
 my subset GeGt of Red::AST::Infix where Red::AST::Ge|Red::AST::Gt;
 my subset LeLt of Red::AST::Infix where Red::AST::Le|Red::AST::Lt;
 
+multi infix:<eqv>(Red::AST::So $a, Red::AST $b) { $a.value eqv $b       }
+multi infix:<eqv>(Red::AST $a, Red::AST::So $b) { $a       eqv $b.value }
+
+multi method optimize(
+        Red::AST::AND $left,
+        Red::AST::AND $right where {$left.?left eqv $right.?left.not && $left.?right eqv $right.?right},
+        $ where * > 0,
+        ) {
+            $right.right
+}
+
+multi method optimize(
+        Red::AST::AND $left,
+        Red::AST::AND $right where {$left.?left eqv $right.?right.not && $left.?right eqv $right.?left},
+        $ where * > 0,
+        ) {
+    $right.left
+}
+
+multi method optimize(
+        Red::AST::AND $left,
+        Red::AST::AND $right where {$left.?right eqv $right.?left.not && $left.?left eqv $right.?right},
+        $ where * > 0,
+        ) {
+    $right.right
+}
+
 #| x > 1 OR x > 10 ==> x > 10
 multi method optimize(GeGt $left, GeGt $right, 1) {
     my $lv = $left.args.first(*.^can: "get-value").get-value;
