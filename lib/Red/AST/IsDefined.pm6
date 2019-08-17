@@ -23,3 +23,5 @@ method find-column-name {
 method find-value {
     $!col
 }
+
+method gist { "{$!col.gist}.defined" }

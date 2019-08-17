@@ -428,6 +428,18 @@ multi method translate(Red::Column $_, "where") {
 }
 
 multi method translate(Red::Column $_, $context?) {
+    "{.attr.package.^as}.{.name}" => []
+}
+
+multi method translate(Red::Column $_, "create-table-column-name") {
+    .name => []
+}
+
+multi method translate(Red::Column $_, "unique") {
+    .name => []
+}
+
+multi method translate(Red::Column $_, "pk") {
     .name => []
 }
 
@@ -482,7 +494,7 @@ method comment-on-same-statement { False }
 
 multi method translate(Red::Column $_, "create-table") {
     (
-        "column-name",
+        "create-table-column-name",
         "column-type",
         "nullable-column",
         (|(

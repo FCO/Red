@@ -14,6 +14,10 @@ role Red::AST::Unary does Red::AST::Operator {
     }
 
     method args { $.value }
+
+    method gist {
+        "{ $.op ~ " " if $.op.defined && $.op }{ $.value.?gist // "" }"
+    }
 }
 
 class Red::AST::Cast does Red::AST::Unary {
@@ -37,6 +41,8 @@ class Red::AST::Cast does Red::AST::Unary {
 
     method not { Red::AST::Not.new: self }
 }
+
+class Red::AST::So { ... }
 
 class Red::AST::Not does Red::AST::Unary {
     has Str     $.type;

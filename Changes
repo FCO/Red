@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - accept && and ||
+    - Fix optimizations
     - Red CLI
     - Fix id edition
     - Fix id-map

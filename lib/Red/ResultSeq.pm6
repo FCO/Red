@@ -83,7 +83,7 @@ multi method where(::?CLASS:U: Red::AST:U $filter) is hidden-from-sql-commenting
 multi method where(::?CLASS:D: Red::AST:U $filter) is hidden-from-sql-commenting { self.clone }
 multi method where(::?CLASS:U: Red::AST:D $filter) is hidden-from-sql-commenting { self.new: :chain($!chain.clone: :$filter) }
 multi method where(::?CLASS:D: Red::AST:D $filter) is hidden-from-sql-commenting {
-    self.clone: :chain($!chain.clone: :filter(($.filter, $filter).grep({ .defined }).reduce: { Red::AST::AND.new: $^a, $^b }))
+    self.clone: :chain($!chain.clone: :filter(($.filter, $filter).grep({ .defined }).reduce: { Red::AST::AND.new($^a, $^b) }))
 }
 
 method transform-item(*%data) is hidden-from-sql-commenting {
@@ -93,10 +93,31 @@ method transform-item(*%data) is hidden-from-sql-commenting {
 method grep(&filter) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     my Red::AST $*RED-GREP-FILTER;
-    my $filter = filter self.of;
-    with $*RED-GREP-FILTER {
-        $filter = Red::AST::AND.new: $_, $filter
+#    for what-does-it-do(&filter, self.of) -> Pair $_ {
+#        (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
+#
+#    }
+    my $filter = do given what-does-it-do(&filter, self.of) {
+#        say .key, " => ", .value.perl for .pairs;
+#        say .key, " => ", .value.gist for .pairs;
+        do if [eqv] .values {
+            .values.head
+        } else {
+            .kv.map(-> $test, $ret {
+                do with $test {
+                    Red::AST::AND.new: $test, ast-value $ret
+                } else {
+                    $ret
+                }
+            }).reduce: { Red::AST::OR.new: $^agg, $^fil }
+        }
     }
+#    my $filter2 = ast-value $_ given filter self.of;
+    with $*RED-GREP-FILTER {
+        $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
+    }
+#    say $filter2;
+#    say $filter;
     self.where: $filter;
 }
 method first(&filter) is hidden-from-sql-commenting {

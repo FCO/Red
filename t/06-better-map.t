@@ -14,13 +14,18 @@ M.^create-table;
 
 $*RED-DB.die-on-unexpected;
 
-$*RED-DB.when: :once, Q[select case when ( b == 0 or b is null ) then a else a end as "data_1" from mmm], :return[{:1data_1}, {:2data_1}, {:3data_1}];
+$*RED-DB.when: :twice, Q[select case when ( mmm.b == 0 or mmm.b is null ) then mmm.a else mmm.b end as "data_1" from mmm], :return[{:1data_1}, {:2data_1}, {:3data_1}];
+$*RED-DB.when: :once,  Q[select mmm.a as "data_1" from mmm], :return[{:1data_1}, {:2data_1}, {:3data_1}];
 
-M.^all.map({ .b if .b; .a }).Seq;
+M.^all.map({ .b ?? .b !! .a }).Seq.head;
+
+M.^all.map({ .b || .a }).Seq.head;
+
+M.^all.map({ .b if .b; .a }).Seq.head;
 
 $*RED-DB.when: :once, rx[select <.ws> [ "mmm."[a|b] <.ws> as <.ws> \"data_\d\" ] ** 3 % [<.ws>","<.ws>] <.ws> from <.ws> mmm], :return[{:1data_1}, {:2data_1}, {:3data_1}];
 
-M.^all.map({ .a, .b, .a }).Seq;
+M.^all.map({ .a, .b, .a }).Seq.head;
 
 #$*RED-DB.when: #`(:twice) :once, Q[SELECT mmm.a as "data" FROM mmm WHERE not (b == 0 OR b IS NULL)], :return[{:1data}, {:2data}, {:3data}];
 #

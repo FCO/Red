@@ -10,9 +10,10 @@ has Red::AST %.when{Red::AST};
 has Red::AST $.else;
 
 multi method new(Red::AST :$case, Red::AST :%when, Red::AST :$else is copy) {
-    .return with self.optimize: :$case, :%when, :$else;
+    my \case-ret = self.optimize: :$case, :%when, :$else;
+    return case-ret if case-ret.DEFINITE && case-ret !~~ Empty;
 
-    ::?CLASS.bless: :$case, :%when, :$else
+    self.WHAT.bless: :$case, :%when, :$else
 }
 
 method args {
