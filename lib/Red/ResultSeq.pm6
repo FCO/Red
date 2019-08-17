@@ -94,28 +94,30 @@ method grep(&filter) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     my Red::AST $*RED-GREP-FILTER;
 #    for what-does-it-do(&filter, self.of) -> Pair $_ {
-#        .say;
 #        (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
 #
 #    }
     my $filter = do given what-does-it-do(&filter, self.of) {
-#        if $filter.elems > 1 or $filter.keys.head.defined {
+#        say .key, " => ", .value.perl for .pairs;
+#        say .key, " => ", .value.gist for .pairs;
+        do if [eqv] .values {
+            .values.head
+        } else {
             .kv.map(-> $test, $ret {
                 do with $test {
                     Red::AST::AND.new: $test, ast-value $ret
                 } else {
                     $ret
                 }
-            }).reduce: -> $agg, $fil { Red::AST::OR.new: $agg, $fil }
-#        } else {
-#            my $filter = ast-value $_ given filter self.of;
-#            with $*RED-GREP-FILTER {
-#                $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
-#            }
-#            $filter
-#        }
+            }).reduce: { Red::AST::OR.new: $^agg, $^fil }
+        }
     }
-    say $filter;
+#    my $filter2 = ast-value $_ given filter self.of;
+    with $*RED-GREP-FILTER {
+        $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
+    }
+#    say $filter2;
+#    say $filter;
     self.where: $filter;
 }
 method first(&filter) is hidden-from-sql-commenting {

@@ -16,10 +16,8 @@ method returns {}
 
 # TODO: Fix
 method optimize(@changes) {
-    say @changes;
     my %lists = @changes.classify: { $_ ~~ ::?CLASS ?? "changes" !! "other" };
-    say %lists;
-    my %cols  = .?classify: { .say; .?name } with %lists<changes>;
+    my %cols  = .?classify: { .?name } with %lists<changes>;
 
     my @c = %cols.values.map({::?CLASS.new: |%(|.map({
         |("table"     , $_ with .table),
