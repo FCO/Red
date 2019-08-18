@@ -16,7 +16,7 @@ multi method optimize(
         Red::AST::AND $left,
         Red::AST::AND $right where {$left.?left eqv $right.?left.not && $left.?right eqv $right.?right},
         $ where * > 0,
-        ) {
+) {
             $right.right
 }
 
@@ -24,7 +24,7 @@ multi method optimize(
         Red::AST::AND $left,
         Red::AST::AND $right where {$left.?left eqv $right.?right.not && $left.?right eqv $right.?left},
         $ where * > 0,
-        ) {
+) {
     $right.left
 }
 
@@ -32,7 +32,7 @@ multi method optimize(
         Red::AST::AND $left,
         Red::AST::AND $right where {$left.?right eqv $right.?left.not && $left.?left eqv $right.?right},
         $ where * > 0,
-        ) {
+) {
     $right.right
 }
 
@@ -40,7 +40,7 @@ multi method optimize(
         Red::AST::AND $left,
         Red::AST $right where { $left.left eqv $right.not },
         $,
-        ) {
+) {
     Red::AST::OR.new: $left.right, $right
 }
 
@@ -48,7 +48,7 @@ multi method optimize(
         Red::AST::AND $left,
         Red::AST $right where { $left.right eqv $right.not },
         $,
-        ) {
+) {
     Red::AST::OR.new: $left.left, $right
 }
 
@@ -56,7 +56,7 @@ multi method optimize(
         Red::AST $left,
         Red::AST::AND $right where { $right.left eqv $left.not },
         $,
-        ) {
+) {
     Red::AST::OR.new: $left, $right.right
 }
 
@@ -64,7 +64,7 @@ multi method optimize(
         Red::AST $left,
         Red::AST::AND $right where { $right.right eqv $left.not },
         $,
-        ) {
+) {
     Red::AST::OR.new: $left, $right.left
 }
 
