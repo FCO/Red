@@ -36,6 +36,38 @@ multi method optimize(
     $right.right
 }
 
+multi method optimize(
+        Red::AST::AND $left,
+        Red::AST $right where { $left.left eqv $right.not },
+        $,
+        ) {
+    Red::AST::OR.new: $left.right, $right
+}
+
+multi method optimize(
+        Red::AST::AND $left,
+        Red::AST $right where { $left.right eqv $right.not },
+        $,
+        ) {
+    Red::AST::OR.new: $left.left, $right
+}
+
+multi method optimize(
+        Red::AST $left,
+        Red::AST::AND $right where { $right.left eqv $left.not },
+        $,
+        ) {
+    Red::AST::OR.new: $left, $right.right
+}
+
+multi method optimize(
+        Red::AST $left,
+        Red::AST::AND $right where { $right.right eqv $left.not },
+        $,
+        ) {
+    Red::AST::OR.new: $left, $right.left
+}
+
 #| x > 1 OR x > 10 ==> x > 10
 multi method optimize(GeGt $left, GeGt $right, 1) {
     my $lv = $left.args.first(*.^can: "get-value").get-value;
