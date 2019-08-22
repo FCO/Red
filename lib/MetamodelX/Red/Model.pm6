@@ -144,15 +144,20 @@ multi method add-pk-constraint(Mu:U \type, @columns) {
     @!constraints.push: "pk" => @columns
 }
 
+method tables(\model) { model }
+
 my UInt $alias_num = 1;
-method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
+method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship) {
     my \alias = ::?CLASS.new_type(:$name);
-    my role RAlias[Red::Model:U \rtype, Str $rname] {
-        method table(|) { rtype.^table }
-        method as(|)    { camel-to-snake-case $rname }
-        method orig(|)  { rtype }
+    my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base] {
+        method table(|)   { rtype.^table }
+        method as(|)      { camel-to-snake-case $rname }
+        method orig(|)    { rtype }
+        method join-on(|) { rel.relationship-ast(alias) }
+        method tables(|)  { [ |base.^tables, alias ] }
     }
-    alias.HOW does RAlias[type, $name];
+    alias.HOW does RAlias[type, $name, alias, $relationship, $base];
+#    alias.^add_role: Red::Model;
     for @!columns -> $col {
         my $new-col = Attribute.new:
             :name($col.name),
@@ -166,7 +171,7 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
         alias.^add-comparate-methods: $new-col
     }
     for self.relationships.keys -> $rel {
-        alias.^add-relationship: $rel
+        alias.^add-relationship: $rel.transfer: alias
     }
     alias.^compose;
     alias

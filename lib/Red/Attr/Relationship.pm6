@@ -12,6 +12,11 @@ has Mu:U $!relationship-model;
 
 has Bool $!loaded-model = False;
 
+method transfer(Mu:U $package) {
+    my $attr = Attribute.new: :$package, :$.name, :$.type;
+    $attr but Red::Attr::Relationship[&rel1, &rel2, :$model, :$require]
+}
+
 method rel {
     rel1 self.package
 }
@@ -76,13 +81,14 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
     return
 }
 
-method relationship-ast is hidden-from-sql-commenting {
+method relationship-ast($type = Nil) is hidden-from-sql-commenting {
     my \type = do if self.type ~~ Positional {
         $model ?? self.relationship-model !! self.type.of
     } else {
         self.package
     }
+
     my $col1 = rel1 type;
-    my $col2 = $col1.ref;
+    my $col2 = $col1.ref($type);
     Red::AST::Eq.new: $col1, $col2
 }

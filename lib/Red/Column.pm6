@@ -63,7 +63,7 @@ class ReferencesProxy does Callable {
     has         &.references;
     has Bool    $!tried-model   = False;
 
-    method model( --> Mu:U ) {
+    method model($alias = Nil --> Mu:U) {
         if !$!tried-model {
             my $model = ::($!model-name);
             if !$model && $model ~~ Failure {
@@ -73,15 +73,24 @@ class ReferencesProxy does Callable {
             $!model = $model;
             $!tried-model = True;
         }
-        $!model;
+        do if $alias !=== Nil {
+            do if $alias.^table eq $!model.^table {
+                $alias
+            } else {
+                die "$alias.^name() isn't an alias for the table $!model.^table()"
+            }
+        } else {
+            $!model
+        }
     }
 
-    method CALL-ME {
+    method CALL-ME($alias = Nil) {
         if &!references {
-            &!references.(self.model)
+            my $model = self.model($alias);
+            &!references.($model)
         }
         else {
-            self.model.^attributes.first(*.name.substr(2) eq $!column-name).column
+            self.model($alias).^columns.first(*.column.attr-name eq $!column-name).column
         }
     }
 }
@@ -109,8 +118,8 @@ method references(--> Callable) is rw {
     }
 }
 
-method ref {
-    $!ref //= .() with self.references
+method ref($model = Nil) {
+    .($model) with self.references
 }
 
 method returns { $!attr.type }
@@ -135,7 +144,7 @@ method as(Str $name, :$nullable = True) {
     self.clone: attr-name => $name, :$name, id => False, :$nullable, attr => Attribute
 }
 
-method TWEAK(:$unique) {
+submethod TWEAK(:$unique) {
     if $unique {
         $!attr.package.^add-unique-constraint: { self }
     }

@@ -78,20 +78,16 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
         }
     }
     $self.^add_multi_method: $name, $attr.type ~~ Positional
-        ?? my method (Mu:U:) {
-            my $ast = $attr.relationship-ast;
+        ?? my method (Mu:U \SELF:) {
+            my $ast = $attr.relationship-ast: SELF;
             $attr.package.^rs.new: :filter($ast)
         }
-        !! my method (Mu:U:) {
-            (my $grep-filter := $*RED-GREP-FILTER).Bool;
-            if $grep-filter ~~ Red::AST {
-                $grep-filter = $attr.relationship-ast
-            }
-            #Red::FromRelationship.new:
-            #    :from-relationship($name),
-            #    :model($attr.has-lazy-relationship ?? $attr.relationship-model !! $attr.type)
-            #;
-            $attr.has-lazy-relationship ?? $attr.relationship-model !! $attr.type
+        !! my method (Mu:U \SELF:) {
+            (
+                $attr.has-lazy-relationship
+                    ?? $attr.relationship-model
+                    !! $attr.type
+            ).^alias: "{ SELF.^as }_{ $name }", :base(SELF), :relationship($attr)
         }
     ;
 }
