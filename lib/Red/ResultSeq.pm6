@@ -110,13 +110,7 @@ method transform-item(*%data) is hidden-from-sql-commenting {
 method grep(&filter --> Red::ResultSeq) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     my Red::AST $*RED-GREP-FILTER;
-#    for what-does-it-do(&filter, self.of) -> Pair $_ {
-#        (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
-#
-#    }
     my $filter = do given what-does-it-do(&filter, self.of) {
-#        say .key, " => ", .value.perl for .pairs;
-#        say .key, " => ", .value.gist for .pairs;
         do if [eqv] .values {
             .values.head
         } else {
@@ -129,12 +123,9 @@ method grep(&filter --> Red::ResultSeq) is hidden-from-sql-commenting {
             }).reduce: { Red::AST::OR.new: $^agg, $^fil }
         }
     }
-#    my $filter2 = ast-value $_ given filter self.of;
     with $*RED-GREP-FILTER {
         $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
     }
-#    say $filter2;
-#    say $filter;
     self.where: $filter;
 }
 

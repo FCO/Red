@@ -158,7 +158,6 @@ multi method diff-to-ast($table, "-", "col", Red::Cli::Column $_ --> Hash()) {
     ;
 }
 multi method diff-to-ast(@diff) {
-#    .say for @diff;
     @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(|*.key, :as{ |.value }).sort.map: *.value
 }
 
@@ -273,12 +272,22 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     }
     my $tables = $ast.tables.grep({ not .?no-table }).unique
         .map({
-            "{
-                .^table
-            }{
-                " as { .^as }" if .^table ne .^as
-            }"
-        }).join: ",\n"                                                                  if $ast.^can: "tables";
+            .^tables.map({
+                "{
+                    "JOIN " if .HOW.^can("join-on") && .^join-on
+                }{
+                    .^table
+                }{
+                    do if .^table ne .^as {
+                        " as {
+                            .^as
+                        }{
+                            " ON { self.translate: $_, "where" }" with .HOW.^can("join-on") && .^join-on
+                        }"
+                    }
+                }"
+            }).join: "\n"
+        }).join: ",\n"                                                                   if $ast.^can: "tables";
     my ($where, @wb) := do given self.translate: $ast.filter, "where" { .key, .value }  if $ast.?filter;
     @bind.push: |@wb;
     my $order = $ast.order.map({
