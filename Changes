@@ -1,7 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
-
+    - join
+    - red-do isn't experimental anymore
+    - :api<2>
 0.0.4  2019-08-19T18:39:45+01:00
     - accept && and ||
     - Fix optimizations
