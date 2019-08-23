@@ -17,7 +17,7 @@ use Red::AST::Optimizer::AND;
 use Red::AST::Optimizer::OR;
 use Red::AST::Optimizer::Case;
 
-class Red:ver<0.0.4>:api<1> {}
+class Red:ver<0.0.4>:api<2> {}
 
 BEGIN {
     Red::Column.^add_role: Red::ColumnMethods;
@@ -86,7 +86,7 @@ Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):
 
 =begin code :lang<perl6>
 
-use Red;
+use Red:api<2>;
 
 model Person {...}
 

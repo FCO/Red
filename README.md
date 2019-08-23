@@ -19,7 +19,7 @@ SYNOPSIS
 --------
 
 ```perl6
-use Red;
+use Red:api<2>;
 
 model Person {...}
 
