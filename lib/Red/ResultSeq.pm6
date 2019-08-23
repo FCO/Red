@@ -91,6 +91,11 @@ method transform-item(*%data) is hidden-from-sql-commenting {
 }
 
 method grep(&filter) is hidden-from-sql-commenting {
+#    CATCH {
+#        default {
+#            return self.Seq.grep: &filter
+#        }
+#    }
     self.create-comment-to-caller;
     my Red::AST $*RED-GREP-FILTER;
     my $filter = do given what-does-it-do(&filter, self.of) {
@@ -206,16 +211,19 @@ sub what-does-it-do(&func, \type --> Hash) {
 #multi method create-map($, :&filter)     { self.do-it.map: &filter }
 multi method create-map(Red::Model  $_, :filter(&)) is hidden-from-sql-commenting { .^where: $.filter }
 multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from-sql-commenting {
+#    say @ret;
+    my @table-list;
     my \Meta  = self.of.HOW.WHAT;
     my \model = Meta.new(:table(self.of.^table)).new_type: :name(self.of.^name);
-    model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, self.of.^table;
+#    model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, self.of.^table;
     my $attr-name = 'data_0';
     my @attrs = do for @ret {
+        @table-list.push: .attr.package;
         my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;
         my $col-name = $_ ~~ Red::Column ?? .attr.name.substr(2) !! $name;
         my $attr  = Attribute.new:
             :name("\$!$name"),
-            :package(model),
+            :package(.attr.package),
             :type(.returns),
             :has_accessor,
             :build(.returns),
@@ -247,13 +255,18 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
         :chain($!chain.clone:
             :$.filter,
             :post{ my @data = do for @attrs -> $attr { ."{$attr.name.substr: 2}"() }; @data == 1 ?? @data.head !! |@data },
-            :table-list[(|@.table-list, self.of).unique],
+            :table-list[(|@.table-list, self.of, |@table-list).unique],
             |%_
         )
     ) but CMModel[model]
 }
 
 method map(&filter) is hidden-from-sql-commenting {
+#    CATCH {
+#        default {
+#            return self.Seq.map: &filter
+#        }
+#    }
     self.create-comment-to-caller;
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};

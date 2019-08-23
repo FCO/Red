@@ -253,12 +253,20 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
             $s
         }
     }
-    my $tables = $ast.tables.grep({ not .?no-table }).unique
-        .map({
-            .^tables.map({
-                "{
-                    "JOIN " if .HOW.^can("join-on") && .^join-on
-                }{
+    my %t{Red::Model} = $ast.tables.grep({ not .?no-table }).unique.map({ .^tables }).cache.classify: { .head }, :as{ .tail: *-1 };
+    my $tables = %t.kv.map(-> $_, @joins {
+        [
+            "{
+                .^table
+            }{
+                do if .^table ne .^as {
+                    " as {
+                        .^as
+                    }"
+                }
+            }",
+            |@joins.reduce({ |$^a, |$^b }).map({
+                " JOIN {
                     .^table
                 }{
                     do if .^table ne .^as {
@@ -269,8 +277,9 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                         }"
                     }
                 }"
-            }).join: "\n"
-        }).join: ",\n"                                                                   if $ast.^can: "tables";
+            })
+        ].join: "\n"
+    }).join: ",\n"                                                                   if $ast.^can: "tables";
     my ($where, @wb) := do given self.translate: $ast.filter, "where" { .key, .value }  if $ast.?filter;
     @bind.push: |@wb;
     my $order = $ast.order.map({
@@ -423,7 +432,7 @@ multi method translate(Red::Column $col, "select") {
     my ($str, @bind) := do with $col.computation {
         do given self.translate: $_ { .key, .value }
     } else {
-        "{ $col.class.^as }.{ $col.name }", []
+        "{ $col.attr.package.^as }.{ $col.name }", []
     }
     qq[$str {qq<as "{$col.attr-name}"> if $col.computation or $col.name ne $col.attr-name}] => @bind
 }

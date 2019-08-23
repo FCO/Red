@@ -144,7 +144,7 @@ multi method add-pk-constraint(Mu:U \type, @columns) {
     @!constraints.push: "pk" => @columns
 }
 
-method tables(\model) { model }
+method tables(\model) { [ model ] }
 
 my UInt $alias_num = 1;
 method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship) {
