@@ -19,7 +19,7 @@ use Red::AST::Optimizer::Case;
 use Red::Class;
 use Red::DB;
 
-class Red:ver<0.0.6>:api<1> {
+class Red:ver<0.0.6>:api<2> {
     method events { Red::Class.instance.events }
     method emit(|c) { get-RED-DB.emit: |c }
 }
@@ -92,7 +92,12 @@ Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):
 =head2 SYNOPSIS
 
 =begin code :lang<perl6>
+<<<<<<< HEAD
 use Red;
+=======
+
+use Red:api<2>;
+>>>>>>> Change api version
 
 model Person {...}
 
