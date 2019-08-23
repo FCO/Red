@@ -1,4 +1,5 @@
 use v6;
+use Red::Do;
 use Red::Model;
 use Red::Attr::Column;
 use Red::Column;
@@ -40,8 +41,10 @@ my package EXPORTHOW {
     }
 }
 
-multi EXPORT("red-do") {
-    use Red::Do;
+multi EXPORT("experimental migrations") {
+    use MetamodelX::Red::Migration;
+    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
+    MetamodelX::Red::Model.^compose;
 
     Map(
         Red::Do::EXPORT::ALL::,
@@ -51,20 +54,9 @@ multi EXPORT("red-do") {
     )
 }
 
-multi EXPORT("experimental migrations") {
-    use MetamodelX::Red::Migration;
-    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
-    MetamodelX::Red::Model.^compose;
-
-    Map(
-        Red::Traits::EXPORT::ALL::,
-        Red::Operators::EXPORT::ALL::,
-        ‘&database’ => &database,
-    )
-}
-
 multi EXPORT {
     Map(
+        Red::Do::EXPORT::ALL::,
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         ‘&database’ => &database,
@@ -92,12 +84,8 @@ Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):
 =head2 SYNOPSIS
 
 =begin code :lang<perl6>
-<<<<<<< HEAD
-use Red;
-=======
 
 use Red:api<2>;
->>>>>>> Change api version
 
 model Person {...}
 

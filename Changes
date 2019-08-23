@@ -1,6 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
+    - join
+    - red-do isn't experimental anymore
+    - :api<2>
 
 0.0.6  2019-10-18T00:36:18+01:00
     - Fix the flickering test
@@ -15,6 +18,7 @@ Revision history for Red
     - Red::ResultSeq does Positional
     - Fix .head
     - Lots of documentation
+
 
 0.0.4  2019-08-19T18:39:45+01:00
     - accept && and ||
