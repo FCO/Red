@@ -218,7 +218,7 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
 #    model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, self.of.^table;
     my $attr-name = 'data_0';
     my @attrs = do for @ret {
-        @table-list.push: .attr.package;
+        @table-list.push: |.tables;
         my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;
         my $col-name = $_ ~~ Red::Column ?? .attr.name.substr(2) !! $name;
         my $attr  = Attribute.new:
@@ -234,7 +234,7 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
             :attr-name($name),
             :type(.returns.^name),
             :$attr,
-            :model(.attr.package),
+            :model(.tables.head),
             :class(model),
         	|(do if $_ ~~ Red::Column {
                 :inflate(.inflate),
