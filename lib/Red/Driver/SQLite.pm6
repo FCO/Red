@@ -76,7 +76,7 @@ multi method translate(Red::AST::RowId $_, $context?) { "_rowid_" => [] }
 multi method translate(Red::AST::LastInsertedRow $_, $context?) {
     my $of     = .of;
     my $filter = Red::AST::Eq.new: Red::AST::RowId, Red::AST::Function.new: :func<last_insert_rowid>;
-    self.translate(Red::AST::Select.new: :$of, :$filter, :1limit)
+    self.translate(Red::AST::Select.new: :$of, :table-list[$of], :$filter, :1limit)
 }
 
 multi method translate(Red::Column $_, "column-auto-increment") { (.auto-increment ?? "AUTOINCREMENT" !! "") => [] }

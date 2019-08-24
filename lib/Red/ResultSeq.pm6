@@ -233,23 +233,13 @@ sub what-does-it-do(&func, \type --> Hash) {
 }
 
 #multi method create-map($, :&filter)     { self.do-it.map: &filter }
-<<<<<<< HEAD
-multi method create-map(\SELF: Red::Model  $_, :filter(&)) is hidden-from-sql-commenting {
+multi method create-map(\SELF: Red::Model $_, :filter(&)) is hidden-from-sql-commenting {
     .^where: $.filter
 }
 multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden-from-sql-commenting {
     my \Meta  = SELF.of.HOW.WHAT;
     my \model = Meta.new(:table(SELF.of.^table)).new_type: :name(SELF.of.^name);
     model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, SELF.of.^table;
-=======
-multi method create-map(Red::Model  $_, :filter(&)) is hidden-from-sql-commenting { .^where: $.filter }
-multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from-sql-commenting {
-#    say @ret;
-    my @table-list;
-    my \Meta  = self.of.HOW.WHAT;
-    my \model = Meta.new(:table(self.of.^table)).new_type: :name(self.of.^name);
-#    model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, self.of.^table;
->>>>>>> map working
     my $attr-name = 'data_0';
     my @attrs = do for @ret {
         @table-list.push: .attr.package;
@@ -257,7 +247,7 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
         my $col-name = $_ ~~ Red::Column ?? .attr.name.substr(2) !! $name;
         my $attr  = Attribute.new:
             :name("\$!$name"),
-            :package(.attr.package),
+            :package(model),
             :type(.returns),
             :has_accessor,
             :build(.returns),
@@ -268,8 +258,9 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
             :attr-name($name),
             :type(.returns.^name),
             :$attr,
+            :model(.attr.package),
             :class(model),
-            |(do if $_ ~~ Red::Column {
+        	|(do if $_ ~~ Red::Column {
                 :inflate(.inflate),
                 :deflate(.deflate),
             } else {
@@ -299,19 +290,14 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
     ) but CMModel[model]
 }
 
-<<<<<<< HEAD
 #| Change what will be returned (does not run the query)
 method map(\SELF: &filter --> Red::ResultSeq) is hidden-from-sql-commenting {
     SELF.create-comment-to-caller;
-=======
-method map(&filter) is hidden-from-sql-commenting {
 #    CATCH {
 #        default {
 #            return self.Seq.map: &filter
 #        }
 #    }
-    self.create-comment-to-caller;
->>>>>>> map working
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};
     my %*UPDATE := %!update;

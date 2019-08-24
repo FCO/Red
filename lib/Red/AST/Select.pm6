@@ -23,7 +23,7 @@ method args { $!sub-select ?? () !! ( $!of, $!filter, |@!order ) }
 
 method gist {
     do if $!sub-select {
-        "{ self.^name }:\n" ~ [$!of, $!filter, |@!order].map(*.gist).join("\n").indent: 4
+        "{ self.^name }:\n" ~ [|@!table-list, $!filter, |@!order].map(*.gist).join("\n").indent: 4
     } else {
         self.Red::AST::gist()
     }

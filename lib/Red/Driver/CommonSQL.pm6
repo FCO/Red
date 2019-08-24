@@ -457,7 +457,7 @@ multi method translate(Red::Column $col, "select") {
     my ($str, @bind) := do with $col.computation {
         do given self.translate: $_ { .key, .value }
     } else {
-        "{ $col.attr.package.^as }.{ $col.name }", []
+        "{ $col.model.^as }.{ $col.name }", []
     }
     qq[$str {qq<as "{$col.attr-name}"> if $col.computation or $col.name ne $col.attr-name}] => @bind
 }
@@ -471,7 +471,7 @@ multi method translate(Red::Column $_, "where") {
 }
 
 multi method translate(Red::Column $_, $context?) {
-    "{.attr.package.^as}.{.name}" => []
+    "{.model.^as}.{.name}" => []
 }
 
 multi method translate(Red::Column $_, "create-table-column-name") {
