@@ -270,7 +270,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
             $s
         }
     }
-    my %t{Red::Model} = $ast.tables.grep({ not .?no-table }).unique.map({ .^tables }).cache.classify: { .head }, :as{ .tail: *-1 };
+    my %t{Red::Model} = (|$ast.tables, $ast.of).grep({ not .?no-table }).unique.map({ .^tables }).cache.classify: { .head }, :as{ .tail: *-1 };
     my $tables = %t.kv.map(-> $_, @joins {
         [
             "{
