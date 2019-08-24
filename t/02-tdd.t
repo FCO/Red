@@ -237,7 +237,7 @@ is-deeply Post.author-id.ref, Person.id;
 
 lives-ok { Post.^all.grep: *.author.name eq "Bla" }
 
-is-deeply Post.author, Person;
+is-deeply Post.author.^table, Person.^table;
 
 
 model Person2 { ... }
@@ -258,7 +258,8 @@ is-deeply Post2.author-id.ref, Person2.id;
 
 lives-ok { Post2.^all.grep: *.author.name eq "Bla" }
 
-is-deeply Post2.author, Person2;
+is Post2.author.^table, Person2.^table;
+is Post2.author.^name, "post2_author";
 
 my $alias1 = Post2.^alias;
 is $alias1.^name,                   "Post2_1";
@@ -382,8 +383,8 @@ is-deeply Post3_2.author-id.ref, Post3_1.author-id.ref;
 
 lives-ok { Post3_2.^all.grep: *.author.name eq "Bla" }
 
-is-deeply Post3_1.author, Person3;
-is-deeply Post3_2.author, Person3;
-is-deeply Post3_1.author, Post3_2.author;
+is-deeply Post3_1.author.^table, Person3.^table;
+is-deeply Post3_2.author.^table, Person3.^table;
+is-deeply Post3_1.author.^table, Post3_2.author.^table;
 
 done-testing

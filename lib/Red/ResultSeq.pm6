@@ -223,7 +223,7 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
         my $col-name = $_ ~~ Red::Column ?? .attr.name.substr(2) !! $name;
         my $attr  = Attribute.new:
             :name("\$!$name"),
-            :package(.attr.package),
+            :package(model),
             :type(.returns),
             :has_accessor,
             :build(.returns),
@@ -234,13 +234,14 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
             :attr-name($name),
             :type(.returns.^name),
             :$attr,
+            :model(.attr.package),
             :class(model),
         	|(do if $_ ~~ Red::Column {
-        		:inflate(.inflate),
-        		:deflate(.deflate),
-        	} else {
+                :inflate(.inflate),
+                :deflate(.deflate),
+            } else {
                 :computation($_)
-        	})
+            })
         );
         $attr does Red::Attr::Column(%data);
         model.^add_attribute: $attr;

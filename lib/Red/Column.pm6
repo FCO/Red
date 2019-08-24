@@ -20,6 +20,7 @@ has             &.inflate          = *.self;
 has             &.deflate          = *.self;
 has             $.computation;
 has Str         $.model-name;
+has             $.model            = $!attr.package;
 has Str         $.column-name;
 has Str         $.require          = $!model-name;
 
