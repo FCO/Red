@@ -41,7 +41,7 @@ role SerialId {
 model Blu  { ... }
 
 model Blo does SerialId {
-    has UInt $!blu-id is referencing{ Blu.id };
+    has UInt $!blu-id is referencing( *.id, :model<Blu> );
     has Blu  $.blu    is relationship{ .blu-id };
 }
 

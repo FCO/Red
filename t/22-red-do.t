@@ -1,5 +1,5 @@
 use X::Red::Exceptions;
-use Red \<red-do>;
+use Red;
 use Red::Driver::SQLite;
 use Test;
 
