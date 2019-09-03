@@ -147,7 +147,10 @@ method compose(Mu \type) {
     type.^compose-columns;
 
     for type.^attributes -> $attr {
-        %!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;
+        if $attr ~~ Red::Attr::Column:D {
+            $attr.create-column;
+            %!attr-to-column{$attr.name} = $attr.column.name;
+        }
     }
 
     self.compose-dirtable: type;
@@ -235,7 +238,17 @@ method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
 }
 
 method compose-columns(Red::Model:U \type) {
-    for self.attributes(type).grep: Red::Attr::Column -> Red::Attr::Column $attr {
+    my @attrs = self.attributes(type)
+            .grep(Red::Attr::Column)
+            .grep: { .name eq @!columns>>.name.none }
+    ;
+    unless type.^can: "join-on" {
+        @attrs .= map: -> Red::Attr::Column $_ {
+            my $attr = Attribute.new(:name(.name), :type(.type), :package(type));
+            $attr but Red::Attr::Column(%( |.args, :$attr, :class(type), :model(type) ));
+        }
+    }
+    for @attrs -> Red::Attr::Column $attr {
         $attr.create-column;
         type.^add-column: $attr
     }
