@@ -4,6 +4,7 @@ Red
 ===
 
 Take a look at our Wiki: [https://github.com/FCO/Red/wiki](https://github.com/FCO/Red/wiki)
+(Getting "red" to the Squashathon!)
 
 Red - A **WiP** ORM for perl6
 -----------------------------
