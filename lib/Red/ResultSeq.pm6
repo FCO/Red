@@ -236,12 +236,12 @@ multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from
             :type(.returns.^name),
             :$attr,
             :class(model),
-        	|(do if $_ ~~ Red::Column {
-        		:inflate(.inflate),
-        		:deflate(.deflate),
-        	} else {
+            |(do if $_ ~~ Red::Column {
+                :inflate(.inflate),
+                :deflate(.deflate),
+            } else {
                 :computation($_)
-        	})
+            })
         );
         $attr does Red::Attr::Column(%data);
         model.^add_attribute: $attr;

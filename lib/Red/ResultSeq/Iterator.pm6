@@ -14,7 +14,7 @@ submethod TWEAK(|) {
     my @st-handler = $!driver.prepare: $ast;
 
     @st-handler>>.execute unless $*RED-DRY-RUN;
-	$!st-handler = @st-handler.tail
+    $!st-handler = @st-handler.tail
 }
 
 #method is-lazy { True }
