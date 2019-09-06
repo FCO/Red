@@ -200,7 +200,7 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$ba
             :build($col.build)
         ;
         $new-col does Red::Attr::Column($col.column.Hash);
-        $new-col.create-column;
+#        $new-col.create-column;
         alias.^add-comparate-methods: $new-col
     }
     for self.relationships.keys -> $rel {
@@ -212,10 +212,10 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$ba
 
 #| Creates a new column and adds it to the model.
 method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
-    if @!columns ∌ $attr {
+    if $attr.name eq @!columns.none.name {
         @!columns.push: $attr;
-        my $name = $attr.column.attr-name;
-        with $attr.column.references {
+        my $name = $attr.name.substr: 2;
+        with $attr.args<references> {
             self.add-reference: $name, $attr.column
         }
         self.add-comparate-methods(T, $attr);
@@ -236,8 +236,9 @@ method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
 
 method compose-columns(Red::Model:U \type) {
     for self.attributes(type).grep: Red::Attr::Column -> Red::Attr::Column $attr {
-        $attr.create-column;
-        type.^add-column: $attr
+#        $attr.clone;
+#        $attr.create-column;
+        type.^add-column: $attr.clone: :package(type)
     }
 }
 
@@ -280,7 +281,7 @@ multi method create-table(\model, :$with where not .defined) {
     my $data = Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
-            :columns[|model.^columns.map(*.column)],
+            :columns(model.^columns.map(*.column.clone: :class(model))),
             :constraints[
                 |@!constraints.unique.map: {
                     when .key ~~ "unique" {
@@ -424,8 +425,8 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
                     $ //= do {
                         my $obj;
                         my $*RED-DB = $RED-DB;
-                        with $filter {
-                            $obj = model.^find: $_
+                        if $filter.DEFINITE {
+                            $obj = model.^find: $filter
                         } else {
                             $obj = model.new($data.elems ?? |$data !! %orig-pars);
                             $obj.^saved-on-db;
@@ -551,9 +552,9 @@ multi method set-attr(\instance, Str $name, \value) {
 }
 
 multi method get-attr(\instance, Red::Attr::Column $attr) {
-    samewith instance, $attr.column.attr-name
+    samewith instance, $attr.name.substr: 2
 }
 
 multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
-    samewith instance, $attr.column.attr-name, value
+    samewith instance, $attr.name.subattr(2), value
 }

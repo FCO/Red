@@ -27,6 +27,7 @@ has Str         $.model-name;
 has             $.model            = $!attr.package;
 has Str         $.column-name;
 has Str         $.require          = $!model-name;
+has Mu          $.class            = $!attr.package;
 
 method Hash(--> Hash()) {
     %(
@@ -93,7 +94,11 @@ class ReferencesProxy does Callable {
     method CALL-ME($alias = Nil) {
         if &!references {
             my $model = self.model($alias);
-            &!references.($model)
+            my $ret = &!references.($model);
+            if $ret ~~ Red::Column && $ret.class.^name eq '$?CLASS' {
+                $ret .= clone: :class($model)
+            }
+            $ret
         }
         else {
             self.model($alias).^columns.first(*.column.attr-name eq $!column-name).column
@@ -102,7 +107,7 @@ class ReferencesProxy does Callable {
 }
 
 #| Returns the class that column is part of.
-method class { self.attr.package }
+#method class { self.attr.package }
 
 method comment { .Str with self.attr.WHY }
 
