@@ -4,6 +4,9 @@ use Red::ResultSeq;
 use Red::Phaser;
 unit module Red::Traits;
 
+#| This trait marks corresponding table of the model
+#| as TEMPORARY (so it only exists for the time
+#| of Red being connected to database
 multi trait_mod:<is>(Mu:U $model, Bool :$temp!) {
     $model.^temp = True;
 }
@@ -18,6 +21,10 @@ multi trait_mod:<is>(Mu:U $model, Mu:U :$rs-class!) {
     $model.HOW does RSClass[$rs-class];
 }
 
+#| This trait configures all model attributes (columns) to be NULLABLE by default, when used as `is nullable`.
+#| Without this trait applied, default for every attribute (column) is NOT NULL,
+#| though it can be stated explicitly with writing `is !nullable` for the model.
+#| Defaults can be overridden using `is nullable` or `is !nullable` for the attribute (column) itself.
 multi trait_mod:<is>(Mu:U $model, Bool :$nullable!) {
     $model.^default-nullable = $nullable
 }
@@ -30,14 +37,23 @@ multi trait_mod:<is>(Attribute $attr, Str :$column!) is export {
     trait_mod:<is>($attr, :column{:name($column)}) if $column
 }
 
+#| This trait marks an attribute (column) as SQL PRIMARY KEY
 multi trait_mod:<is>(Attribute $attr, Bool :$id! where $_ == True) is export {
     trait_mod:<is>($attr, :column{:id, :!nullable})
 }
 
+#| This trait marks an attribute (column) as SQL PRIMARY KEY with SERIAL data type, which
+#| means it auto-increments on each insertion
 multi trait_mod:<is>(Attribute $attr, Bool :$serial! where $_ == True) is export {
     trait_mod:<is>($attr, :column{:id, :!nullable, :auto-increment})
 }
 
+#| A generic trait used for customizing a column. It accepts a hash of Bool keys.
+#| Possible values include:
+#| * id - marks a column PRIMARY KEY
+#| * auto-increment - marks a column AUTO INCREMENT
+#| * nullable - marks a column as NULLABLE
+#| * TBD
 multi trait_mod:<is>(Attribute $attr, :%column!) is export {
     $attr does Red::Attr::Column(%column);
 }
@@ -54,6 +70,9 @@ multi trait_mod:<is>(Attribute $attr, :$referencing! (Str :$model!, Str :$column
     trait_mod:<is>($attr, :column{ :nullable, model-name => $model, column-name => $column, :$require })
 }
 
+#| This trait allows to set a custom name for a table corresponding to a model
+#| For example, `model MyModel is table<custom_table_name> {}` will use `custom_table_name`
+#| as name of the underlying database table
 multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
     $model.HOW.^attributes.first({ .name eq '$!table' }).set_value($model.HOW, $table)
 }
