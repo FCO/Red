@@ -7,7 +7,7 @@ has Red::AST $.right is required;
 has Bool     $.bind-left  = False;
 has Bool     $.bind-right = False;
 
-method gist { "$!left.gist() $.op $!right.gist()" }
+#method gist { "$!left.gist() $.op $!right.gist()" }
 
 proto method new(Red::AST $left, Red::AST $right, |) {*}
 

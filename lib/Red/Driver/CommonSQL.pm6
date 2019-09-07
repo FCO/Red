@@ -14,7 +14,11 @@ use Red::AST::Function;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::LastInsertedRow;
+use Red::AST::CreateColumn;
+use Red::AST::ChangeColumn;
+use Red::AST::DropColumn;
 use Red::AST::TableComment;
+use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
 
@@ -89,7 +93,115 @@ method reserved-words {<
     ZEROFILL ZONE
 >}
 
+multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
+    1 => Red::AST::CreateColumn.new(
+        :$table,
+        :name(.name),
+        :type(.type),
+        :nullable,
+        :!pk,
+        :!unique,
+        :ref-table(Str),
+        :ref-col(Str),
+    ),
+    8 => Red::AST::ChangeColumn.new(
+        :$table,
+        :name(.name),
+        :type(.type),
+        :nullable(.nullable),
+        :pk(.pk),
+        :unique(.unique),
+        :ref-table(.references.<table> // Str),
+        :ref-col(.references.<column> // Str),
+    ),
+}
+multi method diff-to-ast(Str, Str, "-", Str, $) {}
+
+#multi method diff-to-ast(Str:D, Str:D, "-", Str:D, Bool:D) {}
+multi method diff-to-ast($table, Str $column, "+", "nullable", Bool $nullable --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$nullable,
+    ),
+}
+multi method diff-to-ast($table, Str $column, "+", "type", Str $type --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$type,
+    ),
+}
+multi method diff-to-ast($table, Str $column, "+", "pk", Bool $pk --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$pk,
+    ),
+}
+multi method diff-to-ast($table, Str $column, "+", "unique", Bool $unique --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$unique,
+    ),
+}
+multi method diff-to-ast($table, "-", "col", Red::Cli::Column $_ --> Hash()) {
+    9 => Red::AST::DropColumn.new:
+        :table(.table.name),
+        :name(.name),
+    ;
+}
+multi method diff-to-ast(@diff) {
+#    .say for @diff;
+    @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(|*.key, :as{ |.value }).sort.map: *.value
+}
+
 proto method translate(Red::AST, $? --> Pair) {*}
+
+multi method translate(Red::AST::DropColumn $_, $context?) {
+    "ALTER TABLE {
+        .table
+    } DROP COLUMN {
+        .name
+    }" => []
+}
+
+multi method translate(Red::AST::ChangeColumn $_, $context?) {
+    "ALTER TABLE {
+        .table
+    } ALTER COLUMN {
+        .name
+    } {
+        .type // ""
+    }{
+        " NOT NULL" unless .nullable
+    }{
+        " UNIQUE" if .unique
+    }{
+        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
+    }{
+        " PRIMARY KEY" if .pk
+    }" => []
+}
+
+multi method translate(Red::AST::CreateColumn $_, $context?) {
+    "ALTER TABLE {
+        .table
+    } ADD {
+        .name
+    } {
+        .type
+    }{
+        " NOT NULL" unless .nullable
+    }{
+        " UNIQUE" if .unique
+    }{
+        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
+    }{
+        " PRIMARY KEY" if .pk
+    }" => []
+}
 
 multi method translate(Red::AST::Union $ast, $context?) {
     $ast.selects.map({
@@ -119,12 +231,19 @@ multi method translate(Red::AST::Comment $_, $context?) {
 
 method comment-starter { "--" }
 
-multi method translate(Red::AST::Select $ast, $context?) {
+multi method translate(Red::AST::Select $ast, 'where') {
+    my ( :$key, :$value ) = self.translate($ast);
+    '( ' ~ $key ~ ' )' => $value // [];
+}
+
+multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     my @bind;
     my $sel    = do given $ast.of {
         when Red::Model {
-            .^columns.keys.map({
-                my ($s, @b) := do given self.translate: .column, "select" { .key, .value }
+            my $class = $_;
+            my role ColClass [Mu:U \c] { method class { c } };
+            .^columns.map({
+                my ($s, @b) := do given self.translate: (.column but ColClass[$class]), "select" { .key, .value }
                 @bind.push: |@b;
                 $s
             }).join: ", ";
@@ -150,7 +269,8 @@ multi method translate(Red::AST::Select $ast, $context?) {
         @bind.push: |@b;
         $s
     }).join: ",\n"   if $ast.?order;
-    my $limit = $ast.limit;
+    my $limit  = $ast.limit;
+    my $offset = $ast.offset;
     my $group;
     if $ast.?group -> $g {
         when Red::Column {
@@ -179,6 +299,8 @@ multi method translate(Red::AST::Select $ast, $context?) {
         "\nGROUP BY\n{ .indent: 3 }" with $group
     }{
         "\nLIMIT $_" with $limit
+    }{
+        "\nOFFSET $_" with $offset
     }" => @bind
 }
 
@@ -306,6 +428,18 @@ multi method translate(Red::Column $_, "where") {
 }
 
 multi method translate(Red::Column $_, $context?) {
+    "{.attr.package.^as}.{.name}" => []
+}
+
+multi method translate(Red::Column $_, "create-table-column-name") {
+    .name => []
+}
+
+multi method translate(Red::Column $_, "unique") {
+    .name => []
+}
+
+multi method translate(Red::Column $_, "pk") {
     .name => []
 }
 
@@ -316,6 +450,19 @@ multi method translate(Red::AST::Cast $_, $context?) {
     default {
         self.translate: .value, $context
     }
+}
+
+multi method translate(Red::AST::Value $_ where not .value.defined, "update" ) {
+    "NULL" => []
+}
+
+multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $context? ) {
+    my ( :$key, :$value ) = self.translate(.value, $context );
+    '( ' ~ $key ~ ' )' => $value ;
+}
+
+multi method translate(Red::AST::Value $_ where .type ~~ Positional, $context?) {
+    '( ' ~ .get-value.map( -> $v { '?' } ).join(', ') ~ ' )' => .get-value;
 }
 
 multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW, $context?) {
@@ -347,7 +494,7 @@ method comment-on-same-statement { False }
 
 multi method translate(Red::Column $_, "create-table") {
     (
-        "column-name",
+        "create-table-column-name",
         "column-type",
         "nullable-column",
         (|(
@@ -386,7 +533,7 @@ multi method translate(Red::Column $_, "table-dot-column")     {
 }
 
 multi method translate(Red::Column $_, "column-comment")     {
-    (" COMMENT '$_'") => [] with .comment
+    (" COMMENT '$_'") => [] if .comment
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
@@ -398,8 +545,8 @@ multi method translate(Red::AST::CreateTable $_, $context?) {
             |.constraints.map({ self.translate($_, "create-table").key })
         ).join(",\n").indent: 3
     }\n)" => [],
-    |do if not self.comment-on-same-statement and .comment {
-        self.translate(.comment).key => []
+    |do if not self.comment-on-same-statement {
+        self.translate($_).key => [] with .comment
     },
     |(.columns.map({ self.translate: $_, "column-comment" }) if not self.comment-on-same-statement)
 }
@@ -471,16 +618,26 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> 
 multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> Str:D) {"varchar(36)"}
 multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
 
+multi method type-for-sql("real"     --> "Num"     ) {}
+multi method type-for-sql("varchar"  --> "Str"     ) {}
+multi method type-for-sql("interval" --> "Duration") {}
+multi method type-for-sql("integer"  --> "Int"     ) {}
+multi method type-for-sql("serial"   --> "UInt"    ) {}
+multi method type-for-sql("boolean"  --> "Bool"    ) {}
 
 multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
 multi method inflate(Str $value, DateTime :$to!) { $to.new: $value }
+multi method inflate(Str $value, Date     :$to!) { $to.new: $value }
 multi method inflate(Num $value, Duration :$to!) { $to.new: $value }
 multi method inflate(Int $value, Duration :$to!) { $to.new: $value }
+multi method inflate(Str $value, Version  :$to!) { $to.new: $value }
 
 multi method deflate(Instant  $value) { +$value }
+multi method deflate(Date     $value) { ~$value }
 multi method deflate(DateTime $value) { ~$value }
 multi method deflate(Duration $value) { +$value }
 multi method deflate(Duration $value) { +$value }
+multi method deflate(Version  $value) { ~$value }
 
 multi method deflate($value) { $value }
 

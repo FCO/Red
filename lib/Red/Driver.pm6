@@ -1,12 +1,27 @@
 use Red::AST;
 use Red::Column;
+use Red::SchemaReader;
 use X::Red::Exceptions;
 unit role Red::Driver;
 
+method schema-reader(--> Red::SchemaReader)             { ... }
 method translate(Red::AST, $?)                          { ... }
 multi method prepare(Str)                               { ... }
-multi method prepare(Red::AST)                          { ... }
 multi method default-type-for(Red::Column $ --> Str:D)  { ... }
+
+multi method prepare(Red::AST $query) {
+    note $query if $*RED-DEBUG-AST;
+    do for |self.translate: self.optimize: $query -> Pair \data {
+        my ($sql, @bind) := do given data { .key, .value }
+        next unless $sql;
+        do unless $*RED-DRY-RUN {
+            my $stt = self.prepare: $sql;
+            $stt.predefined-bind;
+            $stt.binds = @bind.map: { self.deflate: $_ };
+            $stt
+        }
+    }
+}
 
 multi method is-valid-table-name(Str --> Bool)          { True }
 
@@ -43,6 +58,6 @@ multi method debug($sql) {
 multi method debug($sql, @binds) {
     if $*RED-DEBUG {
         note "SQL : $sql";
-        note "BIND: @binds[]";
+        note "BIND: @binds.perl()";
     }
 }

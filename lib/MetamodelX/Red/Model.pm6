@@ -6,6 +6,7 @@ use Red::Utils;
 use Red::ResultSeq;
 use Red::DefaultResultSeq;
 use Red::Attr::Query;
+use Red::DB;
 use Red::AST;
 use Red::AST::Value;
 use Red::AST::Insert;
@@ -18,15 +19,24 @@ use Red::AST::TableComment;
 use Red::AST::LastInsertedRow;
 use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
+use MetamodelX::Red::Migration;
 use MetamodelX::Red::Relationship;
+use MetamodelX::Red::Describable;
+use MetamodelX::Red::OnDB;
+use MetamodelX::Red::Id;
 use X::Red::Exceptions;
+use Red::Phaser;
 
 unit class MetamodelX::Red::Model is Metamodel::ClassHOW;
 also does MetamodelX::Red::Dirtable;
 also does MetamodelX::Red::Comparate;
+#also does MetamodelX::Red::Migration;
 also does MetamodelX::Red::Relationship;
+also does MetamodelX::Red::Describable;
+also does MetamodelX::Red::OnDB;
+also does MetamodelX::Red::Id;
 
-has %!columns{Attribute};
+has Attribute @!columns;
 has Red::Column %!references;
 has %!attr-to-column;
 has $.rs-class;
@@ -34,22 +44,24 @@ has @!constraints;
 has $.table;
 has Bool $!temporary;
 
-method column-names(|) { %!columns.keys>>.column>>.name }
+method column-names(|) { @!columns>>.column>>.name }
 
 method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 
 method references(|) { %!references }
 
-method table(Mu \type) { $!table //= camel-to-snake-case type.^name }
+method table(Mu \type) is rw { $!table //= camel-to-snake-case type.^name }
 method as(Mu \type) { self.table: type }
 method orig(Mu \type) { type.WHAT }
 method rs-class-name(Mu \type) { "{type.^name}::ResultSeq" }
 method columns(|) is rw {
-    %!columns
+    @!columns
 }
 
-method id(Mu \type) {
-    %!columns.keys.grep(*.column.id).list
+method migration-hash(\model --> Hash()) {
+    columns => @!columns>>.column>>.migration-hash,
+    name    => model.^table,
+    version => model.^ver // v0,
 }
 
 method id-values(Red::Model:D $model) {
@@ -58,23 +70,18 @@ method id-values(Red::Model:D $model) {
 
 method default-nullable(|) is rw { $ //= False }
 
-multi method id-filter(Red::Model:D $model) {
-    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(self.get-attr: $model, $_), :type(.type) })
-    .reduce: { Red::AST::AND.new: $^a, $^b }
-}
-
-multi method id-filter(Red::Model:U $model, $id) {
-    die "Model must have only 1 id to use id-filter this way" if $model.^id.elems != 1;
-    self.id-filter: $model, |{$model.^id.head.column.attr-name => $id}
-}
-
-multi method id-filter(Red::Model:U $model, *%data) {
-    $model.^id.map({ Red::AST::Eq.new: .column, Red::AST::Value.new: :value(%data{.column.attr-name}), :type(.type) })
-    .reduce: { Red::AST::AND.new: $^a, $^b }
+method unique-constraints(\model) {
+    @!constraints.unique.grep(*.key eq "unique").map: *.value>>.attr
 }
 
 method attr-to-column(|) is rw {
     %!attr-to-column
+}
+
+method set-helper-attrs(Mu \type) {
+    self.MetamodelX::Red::Dirtable::set-helper-attrs(type);
+    self.MetamodelX::Red::OnDB::set-helper-attrs(type);
+    self.MetamodelX::Red::Id::set-helper-attrs(type);
 }
 
 method compose(Mu \type) {
@@ -96,8 +103,9 @@ method compose(Mu \type) {
     die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
     self.add_role: type, Red::Model;
     self.add_role: type, role :: {
-        method TWEAK(|) {
-            self.^set-dirty: self.^columns
+        method TWEAK(|c) {
+            self.^set-dirty: self.^columns;
+            self.?TWEAK-MODEL(|c)
         }
     }
     my @roles-cols = self.roles_to_compose(type).flatmap(*.^attributes).grep: Red::Attr::Column;
@@ -139,12 +147,13 @@ multi method add-pk-constraint(Mu:U \type, @columns) {
 my UInt $alias_num = 1;
 method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
     my \alias = ::?CLASS.new_type(:$name);
-    alias.HOW does role :: {
-        method table(|) { type.^table }
-        method as(|)    { camel-to-snake-case $name }
-        method orig(|)  { type }
+    my role RAlias[Red::Model:U \rtype, Str $rname] {
+        method table(|) { rtype.^table }
+        method as(|)    { camel-to-snake-case $rname }
+        method orig(|)  { rtype }
     }
-    for %!columns.keys -> $col {
+    alias.HOW does RAlias[type, $name];
+    for @!columns -> $col {
         my $new-col = Attribute.new:
             :name($col.name),
             :package(alias),
@@ -164,8 +173,8 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
 }
 
 method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
-    if %!columns ∌ $attr {
-        %!columns ∪= $attr;
+    if @!columns ∌ $attr {
+        @!columns.push: $attr;
         my $name = $attr.column.attr-name;
         with $attr.column.references {
             self.add-reference: $name, $attr.column
@@ -198,71 +207,146 @@ method all($obj)                    { $obj.^rs }
 
 method temp(|) is rw { $!temporary }
 
-method create-table(\model) {
+multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where ? *) {
+    CATCH { when X::Red::Driver::Mapped::TableExists {
+        return False
+    }}
+    callwith model
+}
+
+multi method create-table(\model) {
     die X::Red::InvalidTableName.new: :table(model.^table)
-    unless $*RED-DB.is-valid-table-name: model.^table;
-    $*RED-DB.execute:
+        unless get-RED-DB.is-valid-table-name: model.^table
+    ;
+    get-RED-DB.execute:
         Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
-            :columns[|model.^columns.keys.map(*.column)],
+            :columns[|model.^columns.map(*.column)],
             :constraints[
-                |@!constraints.unique.grep(*.key eq "unique").map({
-                    Red::AST::Unique.new: :columns[|.value]
-                }),
-                |@!constraints.grep(*.key eq "pk").map: {
-                    Red::AST::Pk.new: :columns[|.value]
-                },
+                |@!constraints.unique.map: {
+                    when .key ~~ "unique" {
+                        Red::AST::Unique.new: :columns[|.value]
+                    }
+                    when .key ~~ "pk" {
+                        Red::AST::Pk.new: :columns[|.value]
+                    }
+                }
             ],
             |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
+    ;
+    True
 }
 
-method remove-table(\model) {
-    # Check for foreign referencing this table. Throw error if any exist.
-    $*RED-DB.execute:
-      Red::AST::DropTable.new:
-        :name(model.^table);
+method apply-row-phasers($obj, Mu:U $phase ) {
+    for $obj.^methods.grep($phase) -> $meth {
+        $obj.$meth();
+    }
 }
-       
-multi method save($obj, Bool :$insert! where * == True) {
-    my $ret := $*RED-DB.execute: Red::AST::Insert.new: $obj;
+
+multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
+    self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
+    my $ret := get-RED-DB.execute: Red::AST::Insert.new: $obj;
+    $obj.^saved-on-db;
     $obj.^clean-up;
+    $obj.^populate-ids;
+    self.apply-row-phasers($obj, AfterCreate) unless $from-create;
     $ret
 }
 
 multi method save($obj, Bool :$update! where * == True) {
-    my $ret := $*RED-DB.execute: Red::AST::Update.new: $obj;
+    self.apply-row-phasers($obj, BeforeUpdate);
+    my $ret := get-RED-DB.execute: Red::AST::Update.new: $obj;
+    $obj.^saved-on-db;
     $obj.^clean-up;
+    $obj.^populate-ids;
+    self.apply-row-phasers($obj, AfterUpdate);
     $ret
 }
 
 multi method save($obj) {
-    do if $obj.^id and $obj.^id-values.all.defined {
+    do if $obj.^is-on-db {
         self.save: $obj, :update
     } else {
         self.save: $obj, :insert
     }
 }
 
-method create(\model, |pars) {
-    my $obj = model.new: |pars;
-    my $data := $obj.^save(:insert).row;
-    if model.^id.elems and $data.defined and not $data.elems {
-        $obj = model.new: |$*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row
-    } else {
-        $obj = model.new: |$data
+method create(\model, *%orig-pars) is rw {
+    my $RED-DB = get-RED-DB;
+    {
+        my $*RED-DB = $RED-DB;
+        my %relationships := set %.relationships.keys>>.name>>.substr: 2;
+        my %pars;
+        my %positionals;
+        for %orig-pars.kv -> $name, $val {
+            my \attr-type = model.^attributes.first(*.name.substr(2) eq $name).type;
+            if %relationships{ $name } {
+                if $val ~~ Positional && attr-type ~~ Positional {
+                    %positionals{$name} = $val
+                } elsif $val !~~ attr-type {
+                    %pars{$name} = attr-type.^create: |$val
+                } else {
+                    %pars{$name} = $val
+                }
+            } else {
+                %pars{$name} = $val
+            }
+        }
+        my $obj = model.new: |%pars;
+        self.apply-row-phasers($obj, BeforeCreate);
+        my $data := $obj.^save(:insert, :from-create).row;
+        my @ids = model.^id>>.column>>.attr-name;
+        my $filter = model.^id-filter: |do if $data.defined and not $data.elems {
+            $*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row{|@ids}:kv
+        } else {
+            $data{|@ids}:kv
+        }.Hash if @ids;
+
+        for %positionals.kv -> $name, @val {
+            FIRST my $no = model.^find($filter);
+            $no."$name"().create: |$_ for @val
+        }
+        self.apply-row-phasers($obj, AfterCreate);
+        return-rw Proxy.new:
+                STORE => -> | {
+                    die X::Assignment::RO.new(value => $obj)
+                },
+                FETCH => {
+                    $ //= do {
+                        my $obj;
+                        my $*RED-DB = $RED-DB;
+                        with $filter {
+                            $obj = model.^find: $_
+                        } else {
+                            $obj = model.new($data.elems ?? |$data !! %orig-pars);
+                            $obj.^saved-on-db;
+                            $obj.^clean-up;
+                            $obj.^populate-ids;
+                        }
+                        $obj
+                    }
+                }
     }
-    $obj.^clean-up;
-    $obj
 }
 
 method delete(\model) {
-    $*RED-DB. execute: Red::AST::Delete.new: model
+    self.apply-row-phasers(model, BeforeDelete);
+    get-RED-DB.execute: Red::AST::Delete.new: model ;
+    self.apply-row-phasers(model, AfterDelete);
 }
 
 method load(Red::Model:U \model, |ids) {
     my $filter = model.^id-filter: |ids;
     model.^rs.grep({ $filter }).head
+}
+
+multi method new-with-id(Red::Model:U \model, %ids) {
+    model.new: |model.^id-map: |%ids;
+}
+
+multi method new-with-id(Red::Model:U \model, |ids) {
+    model.new: |model.^id-map: |ids;
 }
 
 multi method search(Red::Model:U \model, &filter) {

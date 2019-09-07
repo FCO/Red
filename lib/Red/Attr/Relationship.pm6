@@ -1,6 +1,8 @@
 use Red::AST::Infixes;
 use Red::AST::Value;
 use Red::HiddenFromSQLCommenting;
+use X::Red::Exceptions;
+
 unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model, Str :$require = $model];
 has Mu:U $!type;
 
@@ -45,7 +47,10 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
         FETCH => method () {
             do if type ~~ Positional {
                 my $rel = rel1 rel-model;
-                my $val = $rel.ref.attr.get_value: instance;
+                X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;
+                my $ref = $rel.ref;
+                X::Red::RelationshipNotRelated.new(:relationship(attr), :points-to($rel)).throw without $ref;
+                my $val = $ref.attr.get_value: instance;
                 my \value = ast-value $val;
                 rel-model.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
             } else {

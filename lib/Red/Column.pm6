@@ -45,6 +45,16 @@ method Hash(--> Hash()) {
     )
 }
 
+method migration-hash(--> Hash()) {
+    |(:name($_)                                 with $!name             ),
+    |(:type(.type.^name)                        with $!attr             ),
+    |(:references-table(.attr.package.^table)   with $.ref              ),
+    |(:references-column(.column-name)          with $.ref              ),
+    |(:is-id($_)                                with $!id               ),
+    |(:is-auto-increment($_)                    with $!auto-increment   ),
+    |(:is-nullable($_)                          with $!nullable         ),
+}
+
 class ReferencesProxy does Callable {
     has Str     $.model-name    is required;
     has Str     $.column-name;
@@ -71,7 +81,7 @@ class ReferencesProxy does Callable {
             &!references.(self.model)
         }
         else {
-            self.model."{ $!column-name }"()
+            self.model.^attributes.first(*.name.substr(2) eq $!column-name).column
         }
     }
 }
@@ -103,7 +113,7 @@ method ref {
     $!ref //= .() with self.references
 }
 
-method returns { $!attr.package }
+method returns { $!attr.type }
 
 method transpose(&func) { func self }
 

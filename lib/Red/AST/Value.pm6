@@ -27,7 +27,7 @@ multi ast-value(Red::AST $value) is export {
     $value
 }
 
-multi ast-value($value) is export {
-    Red::AST::Value.new: :$value
+multi ast-value($value, :$type) is export {
+    Red::AST::Value.new: :$value, |(:$type with $type)
 }
 

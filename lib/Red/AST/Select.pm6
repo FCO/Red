@@ -11,13 +11,23 @@ has Red::AST            @.fields;
 has Red::AST            $.filter;
 has Red::AST            @.order;
 has Int                 $.limit;
+has Int                 $.offset;
 has Red::AST            @.group;
 has                     @.table-list;
 has Red::AST::Comment   @.comments;
+has Bool                $.sub-select;
 
 method returns { Red::Model }
 
-method args { $!of, $!filter, |@!order }
+method args { $!sub-select ?? () !! ( $!of, $!filter, |@!order ) }
+
+method gist {
+    do if $!sub-select {
+        "{ self.^name }:\n" ~ [$!of, $!filter, |@!order].map(*.gist).join("\n").indent: 4
+    } else {
+        self.Red::AST::gist()
+    }
+}
 
 method tables(::?CLASS:D:) {
     |($!of, |@!table-list, |(.tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique
@@ -43,4 +53,9 @@ method minus($sel) {
     $union.minus: self;
     $union.minus: $sel;
     $union
+}
+
+method as-sub-select {
+    $!sub-select = True;
+    self;
 }

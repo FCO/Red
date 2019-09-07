@@ -9,7 +9,7 @@ use Red::AST::Infixes;
 my $*RED-DB = database "Mock";
 
 my $*RED-DRY-RUN = True;
-my $*RED-DEBUG = True;
+my $*RED-DEBUG = so %*ENV<RED_DEBUG>;
 
 #isa-ok model {}.HOW, MetamodelX::Red::Model;
 
@@ -228,6 +228,7 @@ model Person {
 
 is Post.^id>>.name, < $!id >;
 is Post.new(:42id).^id-values, < 42 >;
+is Post.^new-with-id(42).id, < 42 >;
 
 isa-ok Person.new(:42id).posts, Post::ResultSeq;
 isa-ok Post.new(:123author-id).author, Person;

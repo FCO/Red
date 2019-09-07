@@ -5,11 +5,13 @@ unit role Red::AST;
 #multi method add(Red::AST:D: Red::AST:D $next) { if $!next { $!next.add: $next } else { $!next = $next } }
 #multi method add(Red::AST:U: Red::AST:D $next) { $next }
 
-method gist { ... }
+#method gist { ... }
 method find-column-name { ... }
 
 #method should-set($class       --> Hash()) { ... }
 #method should-validate(%values --> Bool()) { ... }
+
+method gist { self.^name ~ ":\n" ~ $.args.map(*.gist).join("\n").indent: 4 }
 
 method not { die "not on { self.^name } must be implemented" }
 

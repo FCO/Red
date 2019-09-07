@@ -12,11 +12,14 @@ use Red::AST::LastInsertedRow;
 use Red::AST::TableComment;
 use X::Red::Exceptions;
 use UUID;
+use Red::SchemaReader;
+use Red::Driver::SQLite::SchemaReader;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
 has $.database = q<:memory:>;
 has DBDish::SQLite::Connection $!dbh;
 
+method schema-reader { Red::Driver::SQLite::SchemaReader }
 
 submethod BUILD(DBDish::SQLite::Connection :$!dbh, Str :$!database = q<:memory:> ) {
 }
@@ -34,19 +37,12 @@ class Statement does Red::Statement {
     method stt-row($stt) { $stt.row: :hash }
 }
 
-multi method prepare(Red::AST $query) {
-    do for |self.translate: self.optimize: $query -> Pair \data {
-        my ($sql, @bind) := do given data { .key, .value }
-        do unless $*RED-DRY-RUN {
-            my $stt = self.prepare: $sql;
-            $stt.predefined-bind;
-            $stt.binds = @bind.map: { self.deflate: $_ };
-            $stt
+multi method prepare(Str $query) {
+    CATCH {
+        default {
+            self.map-exception($_).throw
         }
     }
-}
-
-multi method prepare(Str $query) {
     self.debug: $query;
     Statement.new: :driver(self), :statement($!dbh.prepare: $query)
 }
@@ -111,4 +107,11 @@ multi method map-exception(Exception $x where { .?code == 19 and .native-message
         :driver<SQLite>,
         :orig-exception($x),
         :fields($x.native-message.substr(26).split: /\s* "," \s*/)
+}
+
+multi method map-exception(Exception $x where { .?code == 1 and .native-message ~~ /^table \s+ $<table>=(\w+) \s+ already \s+ exists/ }) {
+    X::Red::Driver::Mapped::TableExists.new:
+            :driver<SQLite>,
+            :orig-exception($x),
+            :table($<table>.Str)
 }

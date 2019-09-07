@@ -1,7 +1,48 @@
+use Red::Column;
+
 class X::Red is Exception {}
+
+class X::Red::RedDbNotDefined is X::Red {
+    method message { Q[$*RED-DB wasn't defined] }
+}
+
+class X::Red::Defaults::FromConfNotFound is X::Red {
+    has Str $.file = "./.red.json";
+    method message { "Red configuration file ($!file) not found" }
+}
+
+class X::Red::Do is X::Red {
+    has Str $.driver = "default"
+}
+
+class X::Red::Do::DriverNotDefined is X::Red::Do {
+    method message { "Driver $.driver not specified" }
+}
+
+class X::Red::Do::DriverDefinedMoreThanOnce is X::Red::Do {
+    method message { "Driver $.driver defined mor than once" }
+}
 
 class X::Red::Driver is X::Red {
     has Str $.driver = $*RED-DB.^name;
+}
+
+class X::Red::RelationshipNotColumn is X::Red {
+    has Attribute   $.relationship;
+    has             $.points-to;
+
+    method message {
+        "The relationship '$!relationship.name()' points to a {$!points-to.^name} ($!points-to.Str()). Should point to a column that is refering to another column."
+    }
+}
+
+class X::Red::RelationshipNotRelated is X::Red {
+    has Attribute   $.relationship;
+    has Red::Column $.points-to;
+
+    method message {
+        "The relationship '$!relationship.name()' points to a column ('$!points-to.attr-name()') that does not refer to any where"
+    }
 }
 
 class X::Red::InvalidTableName is X::Red::Driver {
@@ -41,4 +82,9 @@ class X::Red::Driver::Mapped::UnknownError is X::Red::Driver::Mapped {
 class X::Red::Driver::Mapped::Unique is X::Red::Driver::Mapped {
     has Str @.fields;
     method msg { "Unique constraint ({@!fields.join: ", "}) violated" }
+}
+
+class X::Red::Driver::Mapped::TableExists is X::Red::Driver::Mapped {
+    has Str $.table is required;
+    method msg { "Table $!table already exists" }
 }
