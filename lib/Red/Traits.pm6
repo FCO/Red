@@ -4,9 +4,9 @@ use Red::ResultSeq;
 use Red::Phaser;
 unit module Red::Traits;
 
-#| This trait marks corresponding table of the model
-#| as TEMPORARY (so it only exists for the time
-#| of Red being connected to database
+#| This trait marks the corresponding table of the
+#| model as TEMPORARY (so it only exists for the time
+#| of Red being connected to database)
 multi trait_mod:<is>(Mu:U $model, Bool :$temp!) {
     $model.^temp = True;
 }
@@ -70,9 +70,9 @@ multi trait_mod:<is>(Attribute $attr, :$referencing! (Str :$model!, Str :$column
     trait_mod:<is>($attr, :column{ :nullable, model-name => $model, column-name => $column, :$require })
 }
 
-#| This trait allows to set a custom name for a table corresponding to a model
+#| This trait allows setting a custom name for a table corresponding to a model.
 #| For example, `model MyModel is table<custom_table_name> {}` will use `custom_table_name`
-#| as name of the underlying database table
+#| as the name of the underlying database table
 multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0) {
     $model.HOW.^attributes.first({ .name eq '$!table' }).set_value($model.HOW, $table)
 }
