@@ -17,12 +17,7 @@ If you are looking for tutorials, you can visit:
 
 If you are looking for pure API docs, here you go:
 
-* Red AST API
-* Red traits API
-* Red phasers API
-* Red operators
-* Red routines
-* *@Red-Classes
+* API Index page
 
 #### For developers
 
