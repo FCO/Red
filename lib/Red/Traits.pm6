@@ -6,7 +6,7 @@ unit module Red::Traits;
 
 #| This trait marks the corresponding table of the
 #| model as TEMPORARY (so it only exists for the time
-#| of Red being connected to database)
+#| of Red being connected to the database)
 multi trait_mod:<is>(Mu:U $model, Bool :$temp!) {
     $model.^temp = True;
 }
