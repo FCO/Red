@@ -6,3 +6,4 @@ before_install:
 script:
   - docker run -v $PWD:/code fernandocorrea/red-tester
   - docker run -v $PWD:/code fernandocorrea/red-tester-no-config
+  - make
