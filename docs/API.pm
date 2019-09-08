@@ -1,9 +1,9 @@
 API Pages
 ==========
 
-- [Red.pm6](docs/api/Red.pm6)
-- [Red::Utils.pm6](docs/api/Red/Utils.pm6)
-- [Red::Traits.pm6](docs/api/Red/Traits.pm6)
-- [Red::ResultSeq.pm6](docs/api/Red/ResultSeq.pm6)
-- [Red::AST::Optimizer::AND.pm6](docs/api/Red/AST/Optimizer/AND.pm6)
-- [Red::AST::Optimizer::OR.pm6](docs/api/Red/AST/Optimizer/OR.pm6)
+- [Red.md](docs/api/Red.md)
+- [Red::Utils.md](docs/api/Red/Utils.md)
+- [Red::Traits.md](docs/api/Red/Traits.md)
+- [Red::ResultSeq.md](docs/api/Red/ResultSeq.md)
+- [Red::AST::Optimizer::AND.md](docs/api/Red/AST/Optimizer/AND.md)
+- [Red::AST::Optimizer::OR.md](docs/api/Red/AST/Optimizer/OR.md)

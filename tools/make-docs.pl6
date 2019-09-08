@@ -33,9 +33,10 @@ sub MAIN (:$filename, :$output = 'API.pm') {
     my $docs = qqx{perl6 -Ilib --doc=Markdown $_};
 
     if $docs.trim {
-      $newFile.spurt: $docs;
-      @destFiles.push($newFile);
-      say "done";
+      my $destFile = $newFile.extension('md');
+      $destFile.spurt: $docs;
+      @destFiles.push($destFile);
+      say "output written to { $destFile.relative }";
     } else {
       say "nothing to output";
     }
