@@ -11,13 +11,14 @@ sub MAIN (:$filename, :$output = 'API.md') {
         dir => 'lib',
         name => /'.pm6' $/;
 
-  my $apiDocsDir = $*CWD;
-  unless $apiDocsDir.add('lib').e {
+  my ($docsDir, $apiDocsDir) = ($*CWD, '');
+  unless $docsDir.add('lib').e {
     say 'Please run this script from the project root directory.';
     exit;
   }
 
-  $apiDocsDir .= add($_) for <docs api>;
+  $docsDir    .= add('docs');
+  $apiDocsDir  = $docsDir.add('api');
   $apiDocsDir.mkdir;
 
   my @destFiles;
@@ -51,7 +52,7 @@ sub MAIN (:$filename, :$output = 'API.md') {
     for @destFiles {
       # skip(2) == Drop docs/api from path
       my $module-name = $*SPEC.splitdir( .relative ).skip(2).join('::');
-      $index ~= "- [{ $module-name }]({ .relative($apiDocsDir.parent).subst: /".md"$/, "" })\n";
+      $index ~= "- [{ $module-name }]({ .extension('').relative($docsDir) })\n";
     }
 
     my $index-page = $apiDocsDir.parent.resolve.add($output);
