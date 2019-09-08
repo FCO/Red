@@ -2,7 +2,7 @@
 
 use File::Find;
 
-sub MAIN (:$filename, :$output = 'API.pm') {
+sub MAIN (:$filename, :$output = 'API.md') {
 
   my @files = $filename ??
       $filename.Array
