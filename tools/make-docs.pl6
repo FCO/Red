@@ -51,8 +51,10 @@ sub MAIN (:$filename, :$output = 'API.md') {
 
     for @destFiles {
       # skip(2) == Drop docs/api from path
-      my $module-name = $*SPEC.splitdir( .relative ).skip(2).join('::');
-      $index ~= "- [{ $module-name }]({ .extension('').relative($docsDir) })\n";
+      my $m = .extension('');
+      my $module-name = $*SPEC.splitdir( $m.relative ).skip(2).join('::');
+
+      $index ~= "- [{ $module-name }]({ $m.relative($docsDir) })\n";
     }
 
     my $index-page = $apiDocsDir.parent.resolve.add($output);
