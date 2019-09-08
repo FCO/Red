@@ -4,6 +4,8 @@ use Red::AST::Value;
 
 unit role Red::AST::Optimizer::AND;
 
+=head2 Red::AST::Optimizer::AND
+
 my subset AstFalse of Red::AST::Value where { .value === False };
 my subset AstTrue  of Red::AST::Value where { .value === True  };
 

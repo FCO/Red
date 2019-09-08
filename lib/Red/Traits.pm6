@@ -4,6 +4,8 @@ use Red::ResultSeq;
 use Red::Phaser;
 unit module Red::Traits;
 
+=head2 Red::Traits
+
 #| This trait marks the corresponding table of the
 #| model as TEMPORARY (so it only exists for the time
 #| of Red being connected to the database)

@@ -22,6 +22,8 @@ use Red::HiddenFromSQLCommenting;
 use X::Red::Exceptions;
 unit role Red::ResultSeq[Mu $of = Any] does Sequence;
 
+=head2 Red::ResultSeq
+
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
     use Red::DefaultResultSeq;
     my $rs-class := Metamodel::ClassHOW.new_type: :name($rs-class-name);

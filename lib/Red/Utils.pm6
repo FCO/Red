@@ -1,3 +1,5 @@
+=head2 Red::Utils
+
 #| Accepts a string and converts snake case (`foo_bar`) into kebab case (`foo-bar`)
 sub snake-to-kebab-case($_) is export { S:g/'_'/-/ }
 #| Accepts a string and converts kebab case (`foo-bar`) into snake case (`foo_bar`)

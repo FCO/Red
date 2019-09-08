@@ -1,3 +1,6 @@
+Red::ResultSeq
+--------------
+
 ### method Seq
 
 ```perl6

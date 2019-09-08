@@ -1,3 +1,6 @@
+Red::Traits
+-----------
+
 ### multi sub trait_mod:<is>
 
 ```perl6

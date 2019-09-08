@@ -3,6 +3,8 @@ use Red::AST::Infixes;
 use Red::AST::Value;
 unit role Red::AST::Optimizer::OR;
 
+=head2 Red::AST::Optimizer::OR
+
 my subset AstFalse of Red::AST::Value where { .value === False };
 my subset AstTrue  of Red::AST::Value where { .value === True  };
 

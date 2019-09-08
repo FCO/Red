@@ -1,3 +1,6 @@
+Red::AST::Optimizer::OR
+-----------------------
+
 ### method optimize
 
 ```perl6

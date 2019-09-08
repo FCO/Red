@@ -1,3 +1,6 @@
+Red::Utils
+----------
+
 ### sub snake-to-kebab-case
 
 ```perl6
