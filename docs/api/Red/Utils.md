@@ -6,7 +6,7 @@ Red::Utils
 ```perl6
 sub snake-to-kebab-case(
     $_
-) returns Mu
+) returns Str
 ```
 
 Accepts a string and converts snake case (`foo_bar`) into kebab case (`foo-bar`)
@@ -16,7 +16,7 @@ Accepts a string and converts snake case (`foo_bar`) into kebab case (`foo-bar`)
 ```perl6
 sub kebab-to-snake-case(
     $_
-) returns Mu
+) returns Str
 ```
 
 Accepts a string and converts kebab case (`foo-bar`) into snake case (`foo_bar`)
@@ -26,7 +26,7 @@ Accepts a string and converts kebab case (`foo-bar`) into snake case (`foo_bar`)
 ```perl6
 sub camel-to-snake-case(
     $_
-) returns Mu
+) returns Str
 ```
 
 Accepts a string and converts camel case (`fooBar`) into snake case (`foo_bar`)
@@ -36,7 +36,7 @@ Accepts a string and converts camel case (`fooBar`) into snake case (`foo_bar`)
 ```perl6
 sub camel-to-kebab-case(
     $_
-) returns Mu
+) returns Str
 ```
 
 Accepts a string and converts camel case (`fooBar`) into kebab case (`foo-bar`)
@@ -46,7 +46,7 @@ Accepts a string and converts camel case (`fooBar`) into kebab case (`foo-bar`)
 ```perl6
 sub kebab-to-camel-case(
     $_
-) returns Mu
+) returns Str
 ```
 
 Accepts a string and converts kebab case (`foo-bar`) into camel case (`fooBar`)
@@ -56,7 +56,7 @@ Accepts a string and converts kebab case (`foo-bar`) into camel case (`fooBar`)
 ```perl6
 sub snake-to-camel-case(
     $_
-) returns Mu
+) returns Str
 ```
 
 Accepts a string and converts snake case (`foo_bar`) into camel case (`fooBar`)
