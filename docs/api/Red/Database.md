@@ -4,7 +4,7 @@
 multi sub database(
     Str $type,
     |c is raw
-) returns Mu
+) returns Red::Driver
 ```
 
 Receives a driver name and parameters to creates it
@@ -15,7 +15,7 @@ Receives a driver name and parameters to creates it
 multi sub database(
     Str $type,
     $dbh
-) returns Mu
+) returns Red::Driver
 ```
 
 Receives a driver name and a dbh and creates a driver
