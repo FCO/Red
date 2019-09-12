@@ -1,3 +1,0 @@
-- [introduction](introduction)
-- [general](https://github.com/FCO/Red/wiki)
-- [API](API)
