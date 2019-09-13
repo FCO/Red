@@ -373,7 +373,7 @@ multi method search(
 ) returns Mu
 ```
 
-#| Receives a `AST` of code and returns a `ResultSeq` using that `AST` as filter
+Receives a `AST` of code and returns a `ResultSeq` using that `AST` as filter
 
 ### multi method search
 
