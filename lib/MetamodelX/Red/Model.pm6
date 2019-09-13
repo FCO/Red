@@ -394,7 +394,7 @@ multi method search(Red::Model:U \model, &filter) {
     model.^rs.grep: &filter
 }
 
-#| #| Receives a `AST` of code and returns a `ResultSeq` using that `AST` as filter
+#| Receives a `AST` of code and returns a `ResultSeq` using that `AST` as filter
 multi method search(Red::Model:U \model, Red::AST $filter) {
     samewith model, { $filter }
 }
