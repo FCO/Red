@@ -44,36 +44,53 @@ has @!constraints;
 has $.table;
 has Bool $!temporary;
 
+#| Returns a list of columns names
 method column-names(|) { @!columns>>.column>>.name }
 
+#| Returns a hash of contraints classified by type
 method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 
+#| Returns a hash of foreign keys
 method references(|) { %!references }
 
+#| Returns the table name
 method table(Mu \type) is rw { $!table //= camel-to-snake-case type.^name }
+
+#| Returns the table alias
 method as(Mu \type) { self.table: type }
+
+#| Returns the original model
 method orig(Mu \type) { type.WHAT }
+
+#| Returns the name of the ResultSeq class
 method rs-class-name(Mu \type) { "{type.^name}::ResultSeq" }
+
+#| Returns a list of columns
 method columns(|) is rw {
     @!columns
 }
 
+#| Returns a hash with the migration hash
 method migration-hash(\model --> Hash()) {
     columns => @!columns>>.column>>.migration-hash,
     name    => model.^table,
     version => model.^ver // v0,
 }
 
+#| Returns a liast of id values
 method id-values(Red::Model:D $model) {
     self.id($model).map({ .get_value: $model }).list
 }
 
+#| Is it nullable by default?
 method default-nullable(|) is rw { $ //= False }
 
+#| Returns all columns with the unique counstraint
 method unique-constraints(\model) {
     @!constraints.unique.grep(*.key eq "unique").map: *.value>>.attr
 }
 
+#| A map from attr to column
 method attr-to-column(|) is rw {
     %!attr-to-column
 }
@@ -84,6 +101,7 @@ method set-helper-attrs(Mu \type) {
     self.MetamodelX::Red::Id::set-helper-attrs(type);
 }
 
+#| Compose
 method compose(Mu \type) {
     self.set-helper-attrs: type;
 
@@ -128,23 +146,28 @@ method compose(Mu \type) {
     }
 }
 
+#| Creates a new reference (foreign key)
 method add-reference($name, Red::Column $col) {
     %!references{$name} = $col
 }
 
+#| Creates a new unique constraint
 method add-unique-constraint(Mu:U \type, &columns) {
     @!constraints.push: "unique" => columns(type)
 }
 
+#| Creates a new unique constraint
 multi method add-pk-constraint(Mu:U \type, &columns) {
     nextwith type, columns(type)
 }
 
+#| Creates the primary key
 multi method add-pk-constraint(Mu:U \type, @columns) {
     @!constraints.push: "pk" => @columns
 }
 
 my UInt $alias_num = 1;
+#| Creates a new alias for the model
 method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
     my \alias = ::?CLASS.new_type(:$name);
     my role RAlias[Red::Model:U \rtype, Str $rname] {
@@ -172,6 +195,7 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
     alias
 }
 
+#| Creates a new column
 method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
     if @!columns ∌ $attr {
         @!columns.push: $attr;
@@ -202,11 +226,15 @@ method compose-columns(Red::Model:U \type) {
     }
 }
 
-method rs($)                        { $.rs-class.new }
-method all($obj)                    { $obj.^rs }
+#| Returns the ResultSeq
+method rs($ --> Red::ResultSeq)     { $.rs-class.new }
+#| Alias for C<.rs()>
+method all($obj --> Red::ResultSeq) { $obj.^rs }
 
+#| Sets model as a temporary table
 method temp(|) is rw { $!temporary }
 
+#| Creates table unless table already exists
 multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where ? *) {
     CATCH { when X::Red::Driver::Mapped::TableExists {
         return False
@@ -214,6 +242,7 @@ multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where ? *
     callwith model
 }
 
+#| Creates table
 multi method create-table(\model) {
     die X::Red::InvalidTableName.new: :table(model.^table)
         unless get-RED-DB.is-valid-table-name: model.^table
@@ -238,13 +267,15 @@ multi method create-table(\model) {
     True
 }
 
-method apply-row-phasers($obj, Mu:U $phase ) {
+#| Applies phasers
+method apply-row-phasers($obj, Mu:U $phase) {
     for $obj.^methods.grep($phase) -> $meth {
         $obj.$meth();
     }
 }
 
-multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
+#| Saves that object on database (create a new row)
+multi method save($obj, Bool :$insert! where * == True, Bool :$from-create) {
     self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
     my $ret := get-RED-DB.execute: Red::AST::Insert.new: $obj;
     $obj.^saved-on-db;
@@ -254,6 +285,7 @@ multi method save($obj, Bool :$insert! where * == True, Bool :$from-create ) {
     $ret
 }
 
+#| Saves that object on database (update the row)
 multi method save($obj, Bool :$update! where * == True) {
     self.apply-row-phasers($obj, BeforeUpdate);
     my $ret := get-RED-DB.execute: Red::AST::Update.new: $obj;
@@ -264,6 +296,7 @@ multi method save($obj, Bool :$update! where * == True) {
     $ret
 }
 
+#| Generic save, calls C<.^save: :insert> if C<.^is-on-db> or C<.^save: :update> otherwise
 multi method save($obj) {
     do if $obj.^is-on-db {
         self.save: $obj, :update
@@ -272,6 +305,9 @@ multi method save($obj) {
     }
 }
 
+#| Creates a new object and saves it on DB
+#| It accepts a list os pairs (the same as C<.new>)
+#| And Lists and/or Hashes for relationships
 method create(\model, *%orig-pars) is rw {
     my $RED-DB = get-RED-DB;
     {
@@ -330,33 +366,40 @@ method create(\model, *%orig-pars) is rw {
     }
 }
 
+#| Deletes row from database
 method delete(\model) {
     self.apply-row-phasers(model, BeforeDelete);
     get-RED-DB.execute: Red::AST::Delete.new: model ;
     self.apply-row-phasers(model, AfterDelete);
 }
 
+#| Loads object from the DB
 method load(Red::Model:U \model, |ids) {
     my $filter = model.^id-filter: |ids;
     model.^rs.grep({ $filter }).head
 }
 
+#| Creates a new object setting ids with this values
 multi method new-with-id(Red::Model:U \model, %ids) {
     model.new: |model.^id-map: |%ids;
 }
 
+#| Creates a new object setting the id
 multi method new-with-id(Red::Model:U \model, |ids) {
     model.new: |model.^id-map: |ids;
 }
 
+#| Receives a C<Block> of code and returns a C<ResultSeq> using the C<Block>'s return as filter
 multi method search(Red::Model:U \model, &filter) {
     model.^rs.grep: &filter
 }
 
+#| #| Receives a C<AST> of code and returns a C<ResultSeq> using that C<AST> as filter
 multi method search(Red::Model:U \model, Red::AST $filter) {
     samewith model, { $filter }
 }
 
+#| Receives a hash of C<AST>s of code and returns a C<ResultSeq> using that C<AST>s as filter
 multi method search(Red::Model:U \model, *%filter) {
     samewith
         model,
@@ -365,6 +408,7 @@ multi method search(Red::Model:U \model, *%filter) {
             .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
+#| Finds a specific row
 method find(|c) { self.search(|c).head }
 
 multi method get-attr(\instance, Str $name) {
