@@ -389,17 +389,17 @@ multi method new-with-id(Red::Model:U \model, |ids) {
     model.new: |model.^id-map: |ids;
 }
 
-#| Receives a C<Block> of code and returns a C<ResultSeq> using the C<Block>'s return as filter
+#| Receives a `Block` of code and returns a `ResultSeq` using the `Block`'s return as filter
 multi method search(Red::Model:U \model, &filter) {
     model.^rs.grep: &filter
 }
 
-#| #| Receives a C<AST> of code and returns a C<ResultSeq> using that C<AST> as filter
+#| #| Receives a `AST` of code and returns a `ResultSeq` using that `AST` as filter
 multi method search(Red::Model:U \model, Red::AST $filter) {
     samewith model, { $filter }
 }
 
-#| Receives a hash of C<AST>s of code and returns a C<ResultSeq> using that C<AST>s as filter
+#| Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter
 multi method search(Red::Model:U \model, *%filter) {
     samewith
         model,

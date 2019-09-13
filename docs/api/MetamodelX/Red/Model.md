@@ -362,7 +362,7 @@ multi method search(
 ) returns Mu
 ```
 
-Receives a C<Block> of code and returns a C<ResultSeq> using the C<Block>'s return as filter
+Receives a `Block` of code and returns a `ResultSeq` using the `Block`'s return as filter
 
 ### multi method search
 
@@ -373,7 +373,7 @@ multi method search(
 ) returns Mu
 ```
 
-#| Receives a C<AST> of code and returns a C<ResultSeq> using that C<AST> as filter
+#| Receives a `AST` of code and returns a `ResultSeq` using that `AST` as filter
 
 ### multi method search
 
@@ -384,7 +384,7 @@ multi method search(
 ) returns Mu
 ```
 
-Receives a hash of C<AST>s of code and returns a C<ResultSeq> using that C<AST>s as filter
+Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter
 
 ### method find
 
