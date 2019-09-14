@@ -118,12 +118,16 @@ method compose-dirtable(Mu \type) {
     }
 }
 
+#| Receives a Set  of attributes ans set this attributes as dirt
 multi method set-dirty(\obj, Set() $attr) {
     $!dirty-cols-attr.get_value(obj).{$_}++ for $attr.keys
 }
 
-method is-dirty(Any:D \obj)         { so $!dirty-cols-attr.get_value(obj) }
-method dirty-columns(Any:D \obj)    { $!dirty-cols-attr.get_value(obj) }
+#| Returns `True` is the object is dirt
+method is-dirty(Any:D \obj --> Bool) { so $!dirty-cols-attr.get_value(obj) }
+#| Returns the dirt columns
+method dirty-columns(Any:D \obj)     { $!dirty-cols-attr.get_value(obj) }
+#| Cleans up the object
 method clean-up(Any:D \obj) {
     $!dirty-cols-attr.set_value: obj, SetHash.new;
     $!dirty-old-values-attr.set_value: obj, {}

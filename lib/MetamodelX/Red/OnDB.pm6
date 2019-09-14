@@ -18,10 +18,12 @@ method set-helper-attrs(Mu \type) {
     type.^add_attribute: $!is-on-db-attr;
 }
 
+#| Is that object on DB?
 multi method is-on-db(\instance) {
     $!is-on-db-attr.get_value(instance)
 }
 
+#| Sets that that object is on DB
 multi method saved-on-db(\instance) {
     $!is-on-db-attr.get_value(instance) = True
 }

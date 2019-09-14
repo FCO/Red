@@ -4,6 +4,7 @@ use Red::Attr::Column;
 unit role MetamodelX::Red::Comparate;
 has SetHash $!added-method .= new;
 
+#| Creates methods to return columns
 method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr) {
     unless $!added-method{"{ type.^name }|$attr"} {
         if $attr.rw {
