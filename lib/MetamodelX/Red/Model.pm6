@@ -205,7 +205,7 @@ method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
         }
         self.add-comparate-methods(T, $attr);
         if $attr.has_accessor {
-            if $attr.rw {
+            if type.^rw or $attr.rw {
                 T.^add_multi_method: $name, method (Red::Model:D:) is rw {
                     use nqp;
                     nqp::getattr(self, self.WHAT, $attr.name)

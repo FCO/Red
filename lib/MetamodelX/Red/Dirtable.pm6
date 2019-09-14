@@ -46,7 +46,7 @@ method set-helper-attrs(Mu \type) {
     type.^add_attribute: $!dirty-old-values-attr;
 }
 
-submethod !TWEAK_pr(\instance: *%data) {
+submethod !TWEAK_pr(\instance: *%data) is rw {
     my @columns = instance.^columns;
 
     my %new = |@columns.map: {
