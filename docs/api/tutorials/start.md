@@ -128,8 +128,8 @@ $person2.^save; # does INSERT, not UPDATE
 Lets add some more records:
 
 ```perl6
-Person.new(name => "Paul"); # Method call with parentheses and an arrow pair
-Person.new: :name<Miki>;    # Semicolon form of method call is used
+Person.^create(name => "Paul"); # Method call with parentheses and an arrow pair
+Person.^create: :name<Miki>;    # Semicolon form of method call is used
 ```
 
 Lets begin with selecting all records of the table:
@@ -168,6 +168,12 @@ To express the query above, calls to `grep` can be combined:
 
 ```perl6
 for Person.^all.grep(*.name.starts-with('Jo')).grep(*.id == 2) -> $person { say $person }
+```
+
+Alternatively, boolean operators can be used:
+
+```perl6
+for Person.^all.grep({ $_.name.starts-with('Jo') && $_.id == 2}) -> $person { say $person }
 ```
 
 ### Selecting a single record
