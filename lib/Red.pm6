@@ -112,306 +112,398 @@ model Person is rw {
     has Post @.posts         is relationship{ .author-id };
     method active-posts { @!posts.grep: not *.deleted }
 }
+=end code
 
+=begin code :lang<perl6>
 my $*RED-DB = database “SQLite”;
 
-Person.^create-table;                                   # SQL : CREATE TABLE person(
-                                                        #    id integer NOT NULL primary key
-                                                        #       AUTOINCREMENT,
-                                                        #    name varchar(255) NOT NULL
-                                                        # )
-                                                        # BIND: []
+Person.^create-table;
 
-Post.^create-table;                                     # SQL : CREATE TABLE post(
-                                                        #    id integer NOT NULL primary key
-                                                        #       AUTOINCREMENT,
-                                                        #    author_id integer NULL
-                                                        #       references person(id),
-                                                        #    title varchar(255) NOT NULL,
-                                                        #    body varchar(255) NOT NULL,
-                                                        #    deleted integer NOT NULL,
-                                                        #    created varchar(32) NOT NULL,
-                                                        #    tags varchar(255) NOT NULL,
-                                                        #    UNIQUE (title)
-                                                        # )
-                                                        # BIND: []
+# Equivanelt to the following query:
+# SQL : CREATE TABLE person(
+#    id integer NOT NULL primary key
+#       AUTOINCREMENT,
+#    name varchar(255) NOT NULL
+# )
+=end code :lang<perl6>
 
-my Post $post1 = Post.^load: :42id;                     # SQL : SELECT
-                                                        #    post.id,
-                                                        #    post.author_id as “author-id”,
-                                                        #    post.title,
-                                                        #    post.body,
-                                                        #    post.deleted,
-                                                        #    post.created,
-                                                        #    post.tags
-                                                        # FROM
-                                                        #    post
-                                                        # WHERE
-                                                        #    post.id = 42
-                                                        # BIND: []
+=begin code :lang<perl6>
+Post.^create-table;
 
-my Post $post1 = Post.^load: 42;                        # SQL : SELECT
-                                                        #    post.id,
-                                                        #    post.author_id as “author-id”,
-                                                        #    post.title,
-                                                        #    post.body,
-                                                        #    post.deleted,
-                                                        #    post.created,
-                                                        #    post.tags
-                                                        # FROM
-                                                        #    post
-                                                        # WHERE
-                                                        #    post.id = 42
-                                                        # BIND: []
+# Equivalent to the following query:
+# SQL : CREATE TABLE post(
+#    id integer NOT NULL primary key
+#       AUTOINCREMENT,
+#    author_id integer NULL
+#       references person(id),
+#    title varchar(255) NOT NULL,
+#    body varchar(255) NOT NULL,
+#    deleted integer NOT NULL,
+#    created varchar(32) NOT NULL,
+#    tags varchar(255) NOT NULL,
+#    UNIQUE (title)
+# )
+=end code :lang<perl6>
 
-my Post $post1 = Post.^load: :title(“my title”);        # SQL : SELECT
-                                                        #    post.id,
-                                                        #    post.author_id as “author-id”,
-                                                        #    post.title,
-                                                        #    post.body,
-                                                        #    post.deleted,
-                                                        #    post.created,
-                                                        #    post.tags
-                                                        # FROM
-                                                        #    post
-                                                        # WHERE
-                                                        #    post.title = ‘my title’
-                                                        # BIND: []
+=begin code :lang<perl6>
+my Post $post1 = Post.^load: :42id;
 
-my $person = Person.^create: :name<Fernando>;           # SQL : INSERT INTO person(
-                                                        #    name
-                                                        # )
-                                                        # VALUES(
-                                                        #    ?
-                                                        # )
-                                                        # BIND: [“Fernando”]
-                                                        #
-                                                        # SQLite needs an extra select:
-                                                        #
-                                                        # SQL : SELECT
-                                                        #    person.id,
-                                                        #    person.name
-                                                        # FROM
-                                                        #    person
-                                                        # WHERE
-                                                        #    _rowid_ = last_insert_rowid()
-                                                        # LIMIT 1
-                                                        # BIND: []
-                                                        #
-                                                        # RETURNS:
-                                                        # Person.new(name => “Fernando”)
+# Equivalent to the following query:
+# SQL : SELECT
+#    post.id,
+#    post.author_id as “author-id”,
+#    post.title,
+#    post.body,
+#    post.deleted,
+#    post.created,
+#    post.tags
+# FROM
+#    post
+# WHERE
+#    post.id = 42
+=end code :lang<perl6>
 
+=begin code :lang<perl6>
+my Post $post1 = Post.^load: 42;
+
+# Equivalent to the following query:
+# SQL : SELECT
+#    post.id,
+#    post.author_id as “author-id”,
+#    post.title,
+#    post.body,
+#    post.deleted,
+#    post.created,
+#    post.tags
+# FROM
+#    post
+# WHERE
+#    post.id = 42
+=end code
+
+=begin code :lang<Perl6>
+my Post $post1 = Post.^load: :title(“my title”);
+
+# Equivalent to the following query:
+# SQL : SELECT
+#    post.id,
+#    post.author_id as “author-id”,
+#    post.title,
+#    post.body,
+#    post.deleted,
+#    post.created,
+#    post.tags
+# FROM
+#    post
+# WHERE
+#    post.title = ‘my title’
+=end code
+
+=begin code :lang<Perl6>
+my $person = Person.^create: :name<Fernando>;
+
+# Equivalent to the following query:
+# SQL : INSERT INTO person(
+#    name
+# )
+# VALUES(
+#    ?
+# )
+# BIND: [“Fernando”]
+#
+# SQLite needs an extra select:
+#
+# SQL : SELECT
+#    person.id,
+#    person.name
+# FROM
+#    person
+# WHERE
+#    _rowid_ = last_insert_rowid()
+# LIMIT 1
+#
+# RETURNS:
+# Person.new(name => “Fernando”)
+=end code
+
+=begin code :lang<Perl6>
+# Using Pg Driver for this block\
 {
-    my $*RED-DB = database “Pg”;                        # Using Pg Driver for this block
+    my $*RED-DB = database “Pg”;
 
-    my $person = Person.^create: :name<Fernando>;       # SQL : INSERT INTO person(
-                                                        #    name
-                                                        # )
-                                                        # VALUES(
-                                                        #    $1
-                                                        # ) RETURNING *
-                                                        # BIND: [“Fernando”]
-                                                        #
-                                                        # RETURNS:
-}                                                       # Person.new(name => “Fernando”)
+    my $person = Person.^create: :name<Fernando>;
+}
 
-say $person.posts;                                      # SQL : SELECT
-                                                        #    post.id,
-                                                        #    post.author_id as “author-id”,
-                                                        #    post.title,
-                                                        #    post.body,
-                                                        #    post.deleted,
-                                                        #    post.created,
-                                                        #    post.tags
-                                                        # FROM
-                                                        #    post
-                                                        # WHERE
-                                                        #    post.author_id = ?
-                                                        # BIND: [1]
+# Equivalent to the following query:
+# SQL : INSERT INTO person(
+#    name
+# )
+# VALUES(
+#    $1
+# ) RETURNING *
+# BIND: [“Fernando”]
+#
+# RETURNS:
+# Person.new(name => “Fernando”)
+=end code
 
-say Person.new(:2id)                                    # SQL : SELECT
-    .active-posts                                       #    post.id,
-    .grep: { .created > now }                           #    post.author_id as “author-id”,
-                                                        #    post.title,
-                                                        #    post.body,
-                                                        #    post.deleted,
-                                                        #    post.created,
-                                                        #    post.tags
-                                                        # FROM
-                                                        #    post
-                                                        # WHERE
-                                                        #    (
-                                                        #       post.author_id = ?
-                                                        #       AND (
-                                                        #           post.deleted == 0
-                                                        #           OR post.deleted IS NULL
-                                                        #       )
-                                                        #    )
-                                                        #    AND post.created > 1554246698.448671
-                                                        # BIND: [2]
+=begin code :lang<Perl6>
+say $person.posts;
 
+# Equivalent to the following query:
+# SQL : SELECT
+#    post.id,
+#    post.author_id as “author-id”,
+#    post.title,
+#    post.body,
+#    post.deleted,
+#    post.created,
+#    post.tags
+# FROM
+#    post
+# WHERE
+#    post.author_id = ?
+# BIND: [1]
+=end code
+
+=begin code :lang<Perl6>
+say Person.new(:2id)
+    .active-posts
+    .grep: { .created > now }
+
+# Equivalent to the following query:
+# SQL : SELECT
+#    post.id,
+#    post.author_id as “author-id”,
+#    post.title,
+#    post.body,
+#    post.deleted,
+#    post.created,
+#    post.tags
+# FROM
+#    post
+# WHERE
+#    (
+#       post.author_id = ?
+#       AND (
+#           post.deleted == 0
+#           OR post.deleted IS NULL
+#       )
+#    )
+#    AND post.created > 1554246698.448671
+# BIND: [2]
+=end code
+
+=begin code :lang<Perl6>
 my $now = now;
-say Person.new(:3id)                                    # SQL : SELECT
-    .active-posts                                       #    post.id,
-    .grep: { .created > $now }                          #    post.author_id as “author-id”,
-                                                        #    post.title,
-                                                        #    post.body,
-                                                        #    post.deleted,
-                                                        #    post.created,
-                                                        #    post.tags
-                                                        # FROM
-                                                        #    post
-                                                        # WHERE
-                                                        #    (
-                                                        #       post.author_id = ?
-                                                        #       AND (
-                                                        #           post.deleted == 0
-                                                        #           OR post.deleted IS NULL
-                                                        #       )
-                                                        #    )
-                                                        #    AND post.created > ?
-                                                        # BIND: [
-                                                        #   3,
-                                                        #   Instant.from-posix(
-                                                        #       <399441421363/257>,
-                                                        #       Bool::False
-                                                        #   )
-                                                        # ]
+say Person.new(:3id)
+    .active-posts
+    .grep: { .created > $now }
 
-Person.^create:                                         # SQL : INSERT INTO person(
-    :name<Fernando>,                                    #    name
-    :posts[                                             # )
-        {                                               # VALUES(
-            :title(“My new post”),                      #    ?
-            :body(“A long post”)                        # )
-        },                                              # BIND: [“Fernando”]
-    ]                                                   # SQL : SELECT
-;                                                       #    person.id,
-                                                        #    person.name
-                                                        # FROM
-                                                        #    person
-                                                        # WHERE
-                                                        #    _rowid_ = last_insert_rowid()
-                                                        # LIMIT 1
-                                                        # BIND: []
-                                                        # Nil
-                                                        # SQL : INSERT INTO post(
-                                                        #    created,
-                                                        #    title,
-                                                        #    author_id,
-                                                        #    tags,
-                                                        #    deleted,
-                                                        #    body
-                                                        # )
-                                                        # VALUES(
-                                                        #    ?,
-                                                        #    ?,
-                                                        #    ?,
-                                                        #    ?,
-                                                        #    ?,
-                                                        #    ?
-                                                        # )
-                                                        # BIND: [
-                                                        #   “2019-04-02T22:55:13.658596+01:00”,
-                                                        #   “My new post”,
-                                                        #   1,
-                                                        #   “”,
-                                                        #   Bool::False,
-                                                        #   “A long post”
-                                                        # ]
-                                                        # SQL : SELECT
-                                                        #    post.id,
-                                                        #    post.author_id as “author-id”,
-                                                        #    post.title,
-                                                        #    post.body,
-                                                        #    post.deleted,
-                                                        #    post.created,
-                                                        #    post.tags
-                                                        # FROM
-                                                        #    post
-                                                        # WHERE
-                                                        #    _rowid_ = last_insert_rowid()
-                                                        # LIMIT 1
-                                                        # BIND: []
+# Equivalent to the following query:
+# SQL : SELECT
+#    post.id,
+#    post.author_id as “author-id”,
+#    post.title,
+#    post.body,
+#    post.deleted,
+#    post.created,
+#    post.tags
+# FROM
+#    post
+# WHERE
+#    (
+#       post.author_id = ?
+#       AND (
+#           post.deleted == 0
+#           OR post.deleted IS NULL
+#       )
+#    )
+#    AND post.created > ?
+# BIND: [
+#   3,
+#   Instant.from-posix(
+#       <399441421363/257>,
+#       Bool::False
+#   )
+# ]
+=end code
 
-my $post = Post.^load: :title(“My new post”);           # SQL : SELECT
-                                                        #    post.id,
-                                                        #    post.author_id as “author-id”,
-                                                        #    post.title,
-                                                        #    post.body,
-                                                        #    post.deleted,
-                                                        #    post.created,
-                                                        #    post.tags
-                                                        # FROM
-                                                        #    post
-                                                        # WHERE
-                                                        #    post.title = ‘My new post’
-                                                        # BIND: []
-                                                        #
-                                                        # RETURNS:
-                                                        # Post.new(
-                                                        #   title   => “My new post”,
-                                                        #   body    => “A long post”,
-                                                        #   deleted => 0,
-                                                        #   created => DateTime.new(
-                                                        #       2019,
-                                                        #       4,
-                                                        #       2,
-                                                        #       23,
-                                                        #       7,
-                                                        #       46.677388,
-                                                        #       :timezone(3600)
-                                                        #   ),
-                                                        #   tags    => Set.new(“”)
-                                                        # )
+=begin code :lang<Perl6>
+Person.^create:
+    :name<Fernando>,
+    :posts[
+        {
+            :title(“My new post”),
+            :body(“A long post”)
+        },
+    ]
+;
 
-say $post.body;                                         # PRINTS:
-                                                        # A long post
+# Equivalent to the following query:
+# SQL : INSERT INTO person(
+#    name
+# )
+# VALUES(
+#    ?
+# )
+# BIND: [“Fernando”]
+# SQL : SELECT
+#    person.id,
+#    person.name
+# FROM
+#    person
+# WHERE
+#    _rowid_ = last_insert_rowid()
+# LIMIT 1
+# BIND: []
+# Nil
+# SQL : INSERT INTO post(
+#    created,
+#    title,
+#    author_id,
+#    tags,
+#    deleted,
+#    body
+# )
+# VALUES(
+#    ?,
+#    ?,
+#    ?,
+#    ?,
+#    ?,
+#    ?
+# )
+# BIND: [
+#   “2019-04-02T22:55:13.658596+01:00”,
+#   “My new post”,
+#   1,
+#   “”,
+#   Bool::False,
+#   “A long post”
+# ]
+# SQL : SELECT
+#    post.id,
+#    post.author_id as “author-id”,
+#    post.title,
+#    post.body,
+#    post.deleted,
+#    post.created,
+#    post.tags
+# FROM
+#    post
+# WHERE
+#    _rowid_ = last_insert_rowid()
+# LIMIT 1
+=end code
 
-my $author = $post.author;                              # RETURNS:
-                                                        # Person.new(name => “Fernando”)
+=begin code :lang<Perl6>
+my $post = Post.^load: :title(“My new post”);
+
+# Equivalent to the following query:
+# SQL : SELECT
+#    post.id,
+#    post.author_id as “author-id”,
+#    post.title,
+#    post.body,
+#    post.deleted,
+#    post.created,
+#    post.tags
+# FROM
+#    post
+# WHERE
+#    post.title = ‘My new post’
+# BIND: []
+#
+# RETURNS:
+# Post.new(
+#   title   => “My new post”,
+#   body    => “A long post”,
+#   deleted => 0,
+#   created => DateTime.new(
+#       2019,
+#       4,
+#       2,
+#       23,
+#       7,
+#       46.677388,
+#       :timezone(3600)
+#   ),
+#   tags    => Set.new(“”)
+# )
+=end code
+
+=begin code :lang<Perl6>
+say $post.body;
+
+# PRINTS:
+# A long post
+=end code
+
+=begin code :lang<Perl6>
+my $author = $post.author;
+
+# RETURNS:
+# Person.new(name => “Fernando”)
+=end code
+
+=begin code :lang<Perl6>
 $author.name = “John Doe”;
 
-$author.^save;                                          # SQL : UPDATE person SET
-                                                        #    name = ‘John Doe’
-                                                        # WHERE id = 1
+$author.^save;
 
-$author.posts.create:                                   # SQL : INSERT INTO post(
-    :title(“Second post”),                              #    title,
-    :body(“Another long post”),                         #    body,
-;                                                       #    created,
-                                                        #    tags,
-                                                        #    deleted,
-                                                        #    author_id
-                                                        # )
-                                                        # VALUES(
-                                                        #    ?,
-                                                        #    ?,
-                                                        #    ?,
-                                                        #    ?,
-                                                        #    ?,
-                                                        #    ?
-                                                        # )
-                                                        # BIND: [
-                                                        #   “Second post”,
-                                                        #   “Another long post”,
-                                                        #   “2019-04-02T23:28:09.346442+01:00”,
-                                                        #   “”,
-                                                        #   Bool::False,
-                                                        #   1
-                                                        # ]
+# Equivalent to the following query:
+# SQL : UPDATE person SET
+#    name = ‘John Doe’
+# WHERE id = 1
+=end code
 
-$author.posts.elems;                                    # SQL : SELECT
-                                                        #    count(*) as “data_1”
-                                                        # FROM
-                                                        #    post
-                                                        # WHERE
-                                                        #    post.author_id = ?
-                                                        # BIND: [1]
-                                                        #
-                                                        # RETURNS:
-                                                        # 2
+=begin code :lang<Perl6>
+$author.posts.create:
+    :title(“Second post”),
+    :body(“Another long post”);
 
+# Equivalent to the following query:
+# SQL : INSERT INTO post(
+#    title,
+#    body,
+#    created,
+#    tags,
+#    deleted,
+#    author_id
+# )
+# VALUES(
+#    ?,
+#    ?,
+#    ?,
+#    ?,
+#    ?,
+#    ?
+# )
+# BIND: [
+#   “Second post”,
+#   “Another long post”,
+#   “2019-04-02T23:28:09.346442+01:00”,
+#   “”,
+#   Bool::False,
+#   1
+# ]
+=end code
+
+=begin code :lang<Perl6>
+$author.posts.elems;
+
+# Equivalent to the following query:
+# SQL : SELECT
+#    count(*) as “data_1”
+# FROM
+#    post
+# WHERE
+#    post.author_id = ?
+# BIND: [1]
+#
+# RETURNS:
+# 2
 =end code
 
 =head2 DESCRIPTION
@@ -493,37 +585,29 @@ model MyModel is table<custom_table_name> {}
 Red, by default, has not nullable columns, to change it:
 
 =begin code :lang<perl6>
-
 model MyModel is nullable {                 # is nullable makes this model’s columns nullable by default
     has Int $.col1 is column;               # this column now is nullable
     has Int $.col2 is column{ :!nullable }; # this column is not nullable
 }
-
 =end code
 
 =head4 load object from database
 
 =begin code :lang<perl6>
-
 MyModel.^load: 42;
 MyModel.^load: id => 42;
-
 =end code
 
 =head4 save object on the database
 
 =begin code :lang<perl6>
-
 $object.^save;
-
 =end code
 
 =head4 search for a list of object
 
 =begin code :lang<perl6>
-
 Question.^all.grep: { .answer == 42 }; # returns a result seq
-
 =end code
 
 =head4 phasers
@@ -538,33 +622,26 @@ Question.^all.grep: { .answer == 42 }; # returns a result seq
 =head4 Temporary table
 
 =begin code :lang<perl6>
-
 model Bla is temp { ... }
-
 =end code
 
 =head4 Create table
 
 =begin code :lang<perl6>
-
 Question.^create-table;
 Question.^create-table: :if-not-exists;
 Question.^create-table: :unless-exists;
-
 =end code
 
 =head4 IN
 
 =begin code :lang<perl6>
-
 Question.^all.grep: *.answer ⊂ (3.14, 13, 42)
-
 =end code
 
 =head4 create
 
 =begin code :lanf<perl6>
-
 Post.^create: :body(“bla ble bli blo blu”), :title(“qwer”);
 
 model Tree {
@@ -579,7 +656,6 @@ model Tree {
 Tree.^create-table: :if-not-exists;
 
 Tree.^create: :value<Bla>, :parent{:value<Ble>}, :kids[{:value<Bli>}, {:value<Blo>}, {:value<Blu>}];
-
 =end code
 
 =head2 AUTHOR
