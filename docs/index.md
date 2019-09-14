@@ -25,6 +25,7 @@ More examples can be found at the project [Wiki](https://github.com/FCO/Red/wiki
 
 #### For developers
 
+* [Red architecture](tutorials/architecture)
 * How to create a new driver
 * How to create a new cache
 
