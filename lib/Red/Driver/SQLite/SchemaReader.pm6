@@ -1,7 +1,7 @@
 use Red::SchemaReader;
 use Red::Driver::SQLite::SQLiteMaster;
 
-#| class to read SQLite schema
+#| An internal class to read SQLite schemes.
 unit class Red::Driver::SQLite::SchemaReader;
 also does Red::SchemaReader;
 

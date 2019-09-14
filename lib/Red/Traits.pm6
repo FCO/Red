@@ -8,7 +8,7 @@ unit module Red::Traits;
 
 #| This trait marks the corresponding table of the
 #| model as TEMPORARY (so it only exists for the time
-#| of Red being connected to the database)
+#| of Red being connected to the database).
 multi trait_mod:<is>(Mu:U $model, Bool :$temp! --> Empty) {
     $model.^temp = True;
 }
@@ -39,13 +39,13 @@ multi trait_mod:<is>(Attribute $attr, Str :$column! --> Empty) is export {
     trait_mod:<is>($attr, :column{:name($column)}) if $column
 }
 
-#| This trait marks an attribute (column) as SQL PRIMARY KEY
+#| This trait marks an attribute (column) as SQL PRIMARY KEY.
 multi trait_mod:<is>(Attribute $attr, Bool :$id! where $_ == True --> Empty) is export {
     trait_mod:<is>($attr, :column{:id, :!nullable})
 }
 
 #| This trait marks an attribute (column) as SQL PRIMARY KEY with SERIAL data type, which
-#| means it auto-increments on each insertion
+#| means it auto-increments on each insertion.
 multi trait_mod:<is>(Attribute $attr, Bool :$serial! where $_ == True --> Empty) is export {
     trait_mod:<is>($attr, :column{:id, :!nullable, :auto-increment})
 }
@@ -74,7 +74,7 @@ multi trait_mod:<is>(Attribute $attr, :$referencing! (Str :$model!, Str :$column
 
 #| This trait allows setting a custom name for a table corresponding to a model.
 #| For example, `model MyModel is table<custom_table_name> {}` will use `custom_table_name`
-#| as the name of the underlying database table
+#| as the name of the underlying database table.
 multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0 --> Empty) {
     $model.HOW.^attributes.first({ .name eq '$!table' }).set_value($model.HOW, $table)
 }

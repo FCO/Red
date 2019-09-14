@@ -44,16 +44,16 @@ has @!constraints;
 has $.table;
 has Bool $!temporary;
 
-#| Returns a list of columns names
+#| Returns a list of columns names.of the model.
 method column-names(|) { @!columns>>.column>>.name }
 
-#| Returns a hash of contraints classified by type
+#| Returns a hash of model constraints classified by type.
 method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 
-#| Returns a hash of foreign keys
+#| Returns a hash of foreign keys of the model.
 method references(|) { %!references }
 
-#| Returns the table name
+#| Returns the table name for the model.
 method table(Mu \type) is rw { $!table //= camel-to-snake-case type.^name }
 
 #| Returns the table alias
@@ -82,7 +82,7 @@ method id-values(Red::Model:D $model) {
     self.id($model).map({ .get_value: $model }).list
 }
 
-#| Is it nullable by default?
+#| Check if the model is nullable by default.
 method default-nullable(|) is rw { $ //= False }
 
 #| Returns all columns with the unique counstraint
@@ -146,28 +146,28 @@ method compose(Mu \type) {
     }
 }
 
-#| Creates a new reference (foreign key)
+#| Creates a new reference (foreign key).
 method add-reference($name, Red::Column $col) {
     %!references{$name} = $col
 }
 
-#| Creates a new unique constraint
+#| Creates a new unique constraint.
 method add-unique-constraint(Mu:U \type, &columns) {
     @!constraints.push: "unique" => columns(type)
 }
 
-#| Creates a new unique constraint
+#| Creates a new primary key constraint.
 multi method add-pk-constraint(Mu:U \type, &columns) {
     nextwith type, columns(type)
 }
 
-#| Creates the primary key
+#| Creates the primary key constraint.
 multi method add-pk-constraint(Mu:U \type, @columns) {
     @!constraints.push: "pk" => @columns
 }
 
 my UInt $alias_num = 1;
-#| Creates a new alias for the model
+#| Creates a new alias for the model.
 method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
     my \alias = ::?CLASS.new_type(:$name);
     my role RAlias[Red::Model:U \rtype, Str $rname] {
@@ -195,7 +195,7 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
     alias
 }
 
-#| Creates a new column
+#| Creates a new column and adds it to the model.
 method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
     if @!columns ∌ $attr {
         @!columns.push: $attr;
