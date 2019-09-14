@@ -9,6 +9,7 @@ method translate(Red::AST, $?)                          { ... }
 multi method prepare(Str)                               { ... }
 multi method default-type-for(Red::Column $ --> Str:D)  { ... }
 
+#| Prepares a DB statement
 multi method prepare(Red::AST $query) {
     note $query if $*RED-DEBUG-AST;
     do for |self.translate: self.optimize: $query -> Pair \data {
@@ -23,11 +24,15 @@ multi method prepare(Red::AST $query) {
     }
 }
 
+#| Checks if a name is a valid table name
 multi method is-valid-table-name(Str --> Bool)          { True }
 
+#| Maps types
 multi method type-by-name("string" --> "text")          {}
+#| Maps types
 multi method type-by-name("int"    --> "integer")       {}
 
+#| Maps exception
 multi method map-exception($orig-exception) {
     X::Red::Driver::Mapped::UnknownError.new: :$orig-exception
 }
@@ -41,6 +46,7 @@ method execute($query, *@bind) {
     (.execute: |@bind.map: { self.deflate: $_ } for @stt).tail
 }
 
+#| Optimize AST
 method optimize(Red::AST $in --> Red::AST) { $in }
 
 multi method debug(@bind) {

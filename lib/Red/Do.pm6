@@ -1,8 +1,17 @@
 use Red::Database;
 use Red::Driver;
 use X::Red::Exceptions;
+
+=head1 This module is experimental, to use it, do:
+=begin code :lang<perl6>
+use Red <red-do>;
+=end code
+
 unit module Red::Do;
 
+#| Loads Red configuration (mostly the database connection)
+#| from a json configuration json file. If the file isn't defined
+#| try to get it on `./.red.json`
 multi red-defaults-from-config() is export {
     if "./.red.json".IO.f {
         return red-defaults-from-config "./.red.json"
@@ -10,6 +19,9 @@ multi red-defaults-from-config() is export {
     X::Red::Defaults::FromConfNotFound.new(:file<./.red.json>).throw
 }
 
+#| Loads Red configuration (mostly the database connection)
+#| from a json configuration json file. If the file isn't defined
+#| try to get it on `./.red.json`
 multi red-defaults-from-config($file where .IO.f) is export {
     require ::("Config");
     my $conf = ::("Config").new;
@@ -20,10 +32,13 @@ multi red-defaults-from-config($file where .IO.f) is export {
     red-defaults |%defaults
 }
 
+#| Sets the default connection to be used
 multi red-defaults(Str $driver, |c) is export {
     %GLOBAL::RED-DEFULT-DRIVERS = default => database $driver, |c
 }
 
+#| Sets the default connections to be used.
+#| The key is the name of the connection and the value the connection itself
 multi red-defaults(*%drivers) is export {
     my Bool $has-default = False;
     %GLOBAL::RED-DEFULT-DRIVERS = %drivers.kv.map(-> $name, ($driver, Bool :$default, |c) {
@@ -45,6 +60,8 @@ multi red-defaults(*%drivers) is export {
     }).Hash;
 }
 
+#| Receives a block and optionally a connection name.
+#| Runs the block with the connection with that name
 multi red-do(&block, :$use = "default") is export {
     X::Red::Do::DriverNotDefined.new(:driver($use)).throw unless %GLOBAL::RED-DEFULT-DRIVERS{$use}:exists;
     my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$use};
@@ -52,6 +69,8 @@ multi red-do(&block, :$use = "default") is export {
     block $*RED-DB
 }
 
+#| Receives list of pairs with connection name and block
+#| Runs each block with the connection with that name
 multi red-do(*@blocks) is export {
     for @blocks {
         when Pair {

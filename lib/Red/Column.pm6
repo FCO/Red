@@ -3,6 +3,7 @@ use Red::Model;
 use Red::AST;
 use Red::AST::Unary;
 use Red::AST::IsDefined;
+#| Represents a database column
 unit class Red::Column does Red::AST;
 
 has Attribute   $.attr is required;
@@ -55,6 +56,7 @@ method migration-hash(--> Hash()) {
     |(:is-nullable($_)                          with $!nullable         ),
 }
 
+#| Subclass used to lazy evaluation of parameter types
 class ReferencesProxy does Callable {
     has Str     $.model-name    is required;
     has Str     $.column-name;
@@ -86,10 +88,12 @@ class ReferencesProxy does Callable {
     }
 }
 
+#| Returns the class that column is part of.
 method class { self.attr.package }
 
 method comment { .Str with self.attr.WHY }
 
+#| Returns a function that will return a column that is referenced by this column
 method references(--> Callable) is rw {
     &!actual-references //= do {
         if &!references {
@@ -109,6 +113,7 @@ method references(--> Callable) is rw {
     }
 }
 
+#| Returns the column that is referenced by this one.
 method ref {
     $!ref //= .() with self.references
 }
@@ -127,6 +132,7 @@ method find-column-name {
     $!attr-name
 }
 
+#| Returns an alias of that column
 method alias(Str $name) {
     self.clone: name-alias => $name
 }

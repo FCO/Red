@@ -13,11 +13,14 @@ method find-column-name { ... }
 
 method gist { self.^name ~ ":\n" ~ $.args.map(*.gist).join("\n").indent: 4 }
 
+#| Returns the nagation of the AST.
 method not { die "not on { self.^name } must be implemented" }
 
 method args { ... }
 method returns { ... }
 
+#| If inside of a block for ResultSeq mothods throws a control exception
+#| and populates all possibilities
 method Bool(--> Bool()) {
     return True unless %*VALS.defined;
     %*VALS{self} = False if %*VALS{self}:!exists;
@@ -27,6 +30,7 @@ method Bool(--> Bool()) {
 
 method Str { self }
 
+#| Transposes the AST tree running the function.
 method transpose(::?CLASS:D: &func) {
     die self unless self.^can: "args";
     for self.args.grep: Red::AST -> $arg {
@@ -35,6 +39,7 @@ method transpose(::?CLASS:D: &func) {
     func self;
 }
 
+#| Returns a list with all the tables used on the AST
 method tables(::?CLASS:D:) {
     my @tables;
     self.transpose: {

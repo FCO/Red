@@ -3,19 +3,20 @@ use Red::AST::Infixes;
 use Red::AST::Divisable;
 use Red::AST::Value;
 use Red::ResultSeq;
+#| Operators
 unit module Red::Operators;
 
-# -X
+#| -X
 multi prefix:<->(Red::AST $a) is export {
     Red::AST::Mul.new: ast-value(-1), $a
 }
 
-# +X
+#| +X
 multi prefix:<+>(Red::AST $a) is export {
     Red::AST::Mul.new: ast-value(1), $a
 }
 
-# ==
+#| ==
 multi infix:<==>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Eq.new: $a, $b, :cast<num>
 }
@@ -32,7 +33,7 @@ multi infix:<==>(Numeric() $a is readonly, Red::AST $b) is export {
     Red::AST::Eq.new: ast-value($a), $b, :cast<num>
 }
 
-# !=
+#| !=
 multi infix:<!=>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Ne.new: $a, $b, :cast<num>
 }
@@ -49,7 +50,7 @@ multi infix:<!=>(Numeric() $a is readonly, Red::AST $b) is export {
     Red::AST::Ne.new: ast-value($a), $b, :cast<num>
 }
 
-# ==
+#| ==
 multi infix:<==>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Eq.new: $a, $b, :cast<num>
 }
@@ -66,7 +67,7 @@ multi infix:<==>(Date $a is readonly, Red::AST $b) is export {
     Red::AST::Eq.new: ast-value($a), $b, :cast<num>
 }
 
-# !=
+#| !=
 multi infix:<!=>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Ne.new: $a, $b, :cast<num>
 }
@@ -83,7 +84,7 @@ multi infix:<!=>(Date $a is readonly, Red::AST $b) is export {
     Red::AST::Ne.new: ast-value($a), $b, :cast<num>
 }
 
-# eq
+#| eq
 multi infix:<eq>(Red::AST $a, Str() $b is rw) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<str>, :bind-right
 }
@@ -97,7 +98,7 @@ multi infix:<eq>(Str() $a is readonly, Red::AST $b) is export {
     Red::AST::Eq.new: ast-value($a), $b, :cast<str>
 }
 
-# ne
+#| ne
 multi infix:<ne>(Red::AST $a, Str() $b is rw) is export {
     Red::AST::Ne.new: $a, ast-value($b), :cast<str>, :bind-right
 }
@@ -111,7 +112,7 @@ multi infix:<ne>(Str() $a is readonly, Red::AST $b) is export {
     Red::AST::Ne.new: ast-value($a), $b, :cast<str>
 }
 
-# <
+#| <
 multi infix:<< < >>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Lt.new: $a, $b, :cast<num>
 }
@@ -128,7 +129,7 @@ multi infix:<< < >>(Numeric() $a is readonly, Red::AST $b) is export {
     Red::AST::Lt.new: ast-value($a), $b, :cast<num>
 }
 
-# >
+#| >
 multi infix:<< > >>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Gt.new: $a, $b, :cast<num>
 }
@@ -145,7 +146,7 @@ multi infix:<< > >>(Numeric() $a is readonly, Red::AST $b) is export {
     Red::AST::Gt.new: ast-value($a), $b, :cast<num>
 }
 
-# <=
+#| <=
 multi infix:<< <= >>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Le.new: $a, $b, :cast<num>
 }
@@ -162,7 +163,7 @@ multi infix:<< <= >>(Numeric() $a is readonly, Red::AST $b) is export {
     Red::AST::Le.new: ast-value($a), $b, :cast<num>
 }
 
-# >=
+#| >=
 multi infix:<< >= >>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Ge.new: $a, $b, :cast<num>
 }
@@ -179,7 +180,7 @@ multi infix:<< >= >>(Numeric() $a is readonly, Red::AST $b) is export {
     Red::AST::Ge.new: ast-value($a), $b, :cast<num>
 }
 
-# <
+#| <
 multi infix:<< < >>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Lt.new: $a, $b, :cast<num>
 }
@@ -196,7 +197,7 @@ multi infix:<< < >>(Date $a is readonly, Red::AST $b) is export {
     Red::AST::Lt.new: ast-value($a), $b, :cast<num>
 }
 
-# >
+#| >
 multi infix:<< > >>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Gt.new: $a, $b, :cast<num>
 }
@@ -213,7 +214,7 @@ multi infix:<< > >>(Date $a is readonly, Red::AST $b) is export {
     Red::AST::Gt.new: ast-value($a), $b, :cast<num>
 }
 
-# <=
+#| <=
 multi infix:<< <= >>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Le.new: $a, $b, :cast<num>
 }
@@ -230,7 +231,7 @@ multi infix:<< <= >>(Date $a is readonly, Red::AST $b) is export {
     Red::AST::Le.new: ast-value($a), $b, :cast<num>
 }
 
-# >=
+#| >=
 multi infix:<< >= >>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Ge.new: $a, $b, :cast<num>
 }
@@ -247,7 +248,7 @@ multi infix:<< >= >>(Date $a is readonly, Red::AST $b) is export {
     Red::AST::Ge.new: ast-value($a), $b, :cast<num>
 }
 
-# lt
+#| lt
 multi infix:<lt>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Lt.new: $a, $b, :cast<str>
 }
@@ -264,7 +265,7 @@ multi infix:<lt>(Str() $a is readonly, Red::AST $b) is export {
     Red::AST::Lt.new: ast-value($a), $b, :cast<str>
 }
 
-# gt
+#| gt
 multi infix:<gt>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Gt.new: $a, $b, :cast<str>
 }
@@ -281,7 +282,7 @@ multi infix:<gt>(Str() $a is readonly, Red::AST $b) is export {
     Red::AST::Gt.new: ast-value($a), $b, :cast<str>
 }
 
-# le
+#| le
 multi infix:<le>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Le.new: $a, $b, :cast<str>
 }
@@ -298,7 +299,7 @@ multi infix:<le>(Str() $a is readonly, Red::AST $b) is export {
     Red::AST::Le.new: ast-value($a), $b, :cast<str>
 }
 
-# ge
+#| ge
 multi infix:<ge>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Ge.new: $a, $b, :cast<str>
 }
@@ -315,7 +316,7 @@ multi infix:<ge>(Str() $a is readonly, Red::AST $b) is export {
     Red::AST::Ge.new: ast-value($a), $b, :cast<str>
 }
 
-# *
+#| *
 multi infix:<*>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Mul.new: $a, $b, :cast<int>
 }
@@ -332,7 +333,7 @@ multi infix:<*>(Int() $a is readonly, Red::AST $b) is export {
     Red::AST::Mul.new: ast-value($a), $b, :cast<int>
 }
 
-# /
+#| /
 multi infix:</>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Div.new: $a, $b, :cast<int>
 }
@@ -349,7 +350,7 @@ multi infix:</>(Int() $a is readonly, Red::AST $b) is export {
     Red::AST::Div.new: ast-value($a), $b, :cast<int>
 }
 
-# %
+#| %
 multi infix:<%>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Mod.new: $a, $b, :cast<int>
 }
@@ -366,7 +367,7 @@ multi infix:<%>(Int() $a is readonly, Red::AST $b) is export {
     Red::AST::Mod.new: ast-value($a), $b, :cast<int>
 }
 
-# %%
+#| %%
 multi infix:<%%>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Divisable.new: $a, $b, :cast<int>
 }
@@ -383,7 +384,7 @@ multi infix:<%%>(Int() $a is readonly, Red::AST $b) is export {
     Red::AST::Divisable.new: ast-value($a), $b, :cast<int>
 }
 
-# ~
+#| ~
 multi infix:<~>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Concat.new: $a, $b, :cast<str>
 }
@@ -400,6 +401,7 @@ multi infix:<~>(Str() $a is readonly, Red::AST $b) is export {
     Red::AST::Concat.new: ast-value($a), $b, :cast<str>
 }
 
+#| not X
 multi prefix:<not>(Red::AST $a) is export {
     Red::AST::Not.new: $a
 }
@@ -412,62 +414,73 @@ multi prefix:<not>(Red::AST::In $a) is export {
     $a.not;
 }
 
+#| !X
 multi prefix:<!>(Red::AST::In $a) is export {
     $a.not;
 }
 
+#| so
 multi prefix:<so>(Red::AST $a) is export {
     Red::AST::So.new: $a
 }
 
+#| ?X
 multi prefix:<?>(Red::AST $a) is export {
     Red::AST::So.new: $a
 }
 
+#| AND
 multi infix:<AND>(Red::AST $a, Red::AST $b) is export is tighter(&infix:<==>) {
     Red::AST::AND.new: $a, $b
 }
 
+#| OR
 multi infix:<OR>(Red::AST $a, Red::AST $b) is export {
     Red::AST::OR.new: $a, $b
 }
 
+#| ∪
 multi infix:<∪>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
     $a (|) $b
 }
+#| (|)
 multi infix:<(|)>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
     $a.union: $b
 }
-
+#| ∩
 multi infix:<∩>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
     $a (&) $b
 }
+#| (&)
 multi infix:<(&)>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
     $a.intersect: $b
 }
-
+#| ⊖
 multi infix:<⊖>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
     $a (-) $b
 }
+#| (-)
 multi infix:<(-)>(Red::ResultSeq $a, Red::ResultSeq $b) is export {
     $a.minus: $b
 }
 
-
+#| in
 multi infix:<in>(Red::AST $a, Red::ResultSeq:D $b ) is export is default {
     Red::AST::In.new: $a, $b.ast(:sub-select);
 }
-
+#| ⊂
 multi infix:<⊂>(Red::AST $a, Red::ResultSeq $b ) is export is default {
     Red::AST::In.new: $a, $b.ast(:sub-select);
 }
+#| (<)
 multi infix:«(<)»(Red::AST $a, Red::ResultSeq $b ) is export is default {
     Red::AST::In.new: $a, $b.ast(:sub-select);
 }
-
+#| ⊃
 multi infix:<⊃>(Red::AST $a, Red::ResultSeq $b ) is export is default {
     Red::AST::NotIn.new: $a, $b.ast(:sub-select);
 }
+#| (>)
 multi infix:«(>)»(Red::AST $a, Red::ResultSeq $b ) is export is default {
     Red::AST::NotIn.new: $a, $b.ast(:sub-select);
 }

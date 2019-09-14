@@ -1,5 +1,6 @@
 use X::Red::Exceptions;
 
+#| Returns the database connection
 sub get-RED-DB is export {
     with $*RED-DB {
         .return

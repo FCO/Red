@@ -7,7 +7,7 @@ Red::AST::Optimizer::OR
 method optimize(
     Red::AST::Infix $left where { ... },
     Red::AST::Infix $right where { ... },
-    1
+    Int $ where { ... }
 ) returns Mu
 ```
 
@@ -19,7 +19,7 @@ x > 1 OR x > 10 ==> x > 10
 method optimize(
     Red::AST::Infix $left where { ... },
     Red::AST::Infix $right where { ... },
-    1
+    Int $ where { ... }
 ) returns Mu
 ```
 
@@ -31,7 +31,7 @@ x < 1 OR x < 10 ==> x < 1
 method optimize(
     Red::AST::Infix $left where { ... },
     Red::AST::Infix $right where { ... },
-    1
+    Int $ where { ... }
 ) returns Mu
 ```
 
@@ -43,7 +43,7 @@ x < 10 OR x > 1 ==> True
 method optimize(
     Red::AST::Infix $left where { ... },
     Red::AST::Infix $right where { ... },
-    1
+    Int $ where { ... }
 ) returns Mu
 ```
 
@@ -55,7 +55,7 @@ x > 1 OR x < 10 ==> True
 method optimize(
     $left where { ... },
     $right where { ... },
-    1
+    Int $ where { ... }
 ) returns Mu
 ```
 
@@ -67,7 +67,7 @@ a.b OR NOT(a.b) ==> True
 method optimize(
     $left where { ... },
     $right where { ... },
-    1
+    Int $ where { ... }
 ) returns Mu
 ```
 

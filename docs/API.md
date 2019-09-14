@@ -1,6 +1,7 @@
 API Pages
 ==========
 
+- [CX::Red::Bool](api/CX/Red/Bool)
 - [MetamodelX::Red::Comparate](api/MetamodelX/Red/Comparate)
 - [MetamodelX::Red::Describable](api/MetamodelX/Red/Describable)
 - [MetamodelX::Red::Dirtable](api/MetamodelX/Red/Dirtable)
@@ -10,10 +11,18 @@ API Pages
 - [MetamodelX::Red::OnDB](api/MetamodelX/Red/OnDB)
 - [MetamodelX::Red::Relationship](api/MetamodelX/Red/Relationship)
 - [Red](api/Red)
+- [Red::AST](api/Red/AST)
 - [Red::AST::Optimizer::AND](api/Red/AST/Optimizer/AND)
 - [Red::AST::Optimizer::OR](api/Red/AST/Optimizer/OR)
+- [Red::Column](api/Red/Column)
+- [Red::ColumnMethods](api/Red/ColumnMethods)
+- [Red::DB](api/Red/DB)
 - [Red::Database](api/Red/Database)
+- [Red::Do](api/Red/Do)
+- [Red::Driver](api/Red/Driver)
 - [Red::Driver::SQLite::SchemaReader](api/Red/Driver/SQLite/SchemaReader)
+- [Red::HiddenFromSQLCommenting](api/Red/HiddenFromSQLCommenting)
+- [Red::Operators](api/Red/Operators)
 - [Red::ResultAssociative](api/Red/ResultAssociative)
 - [Red::ResultSeq](api/Red/ResultSeq)
 - [Red::ResultSeqSeq](api/Red/ResultSeqSeq)
