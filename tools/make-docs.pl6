@@ -49,7 +49,7 @@ sub MAIN (:$filename, :$output = 'API.md') {
     my $index = "API Pages\n";
     $index ~= '=' x $index.chars.chomp ~ "\n\n";
 
-    for @destFiles {
+    for sort @destFiles {
       # skip(2) == Drop docs/api from path
       my $m = .extension('');
       my $module-name = $*SPEC.splitdir( $m.relative ).skip(2).join('::');
