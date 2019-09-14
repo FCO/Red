@@ -24,8 +24,8 @@ BEGIN {
     Red::Column.^compose;
 
     for <AND OR Case> -> $infix {
-        ::(“Red::AST::$infix”).^add_role: ::(“Red::AST::Optimizer::$infix”);
-        ::(“Red::AST::$infix”).^compose;
+        ::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
+        ::("Red::AST::$infix").^compose;
     }
 }
 
@@ -35,7 +35,7 @@ my package EXPORTHOW {
     }
 }
 
-multi EXPORT(“red-do”) {
+multi EXPORT("red-do") {
     use Red::Do;
 
     Map(
@@ -46,7 +46,7 @@ multi EXPORT(“red-do”) {
     )
 }
 
-multi EXPORT(“experimental migrations”) {
+multi EXPORT("experimental migrations") {
     use MetamodelX::Red::Migration;
     MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
     MetamodelX::Red::Model.^compose;
@@ -101,8 +101,8 @@ model Post is rw {
     has DateTime    $.created   is column .= now;
     has Set         $.tags      is column{
         :type<string>,
-        :deflate{ .keys.join: “,” },
-        :inflate{ set(.split: “,”) }
+        :deflate{ .keys.join: "," },
+        :inflate{ set(.split: ",") }
     } = set();
     method delete { $!deleted = True; self.^save }
 }
@@ -114,7 +114,7 @@ model Person is rw {
     method active-posts { @!posts.grep: not *.deleted }
 }
 
-my $*RED-DB = database “SQLite”;
+my $*RED-DB = database "SQLite";
 
 Person.^create-table;
 =end code
@@ -154,7 +154,7 @@ my Post $post1 = Post.^load: :42id;
 -- Equivalent to the following query:
 SELECT
     post.id,
-    post.author_id as “author-id”,
+    post.author_id as "author-id",
     post.title,
     post.body,
     post.deleted,
@@ -174,7 +174,7 @@ my Post $post1 = Post.^load: 42;
 -- Equivalent to the following query:
 SELECT
     post.id,
-    post.author_id as “author-id”,
+    post.author_id as "author-id",
     post.title,
     post.body,
     post.deleted,
@@ -187,14 +187,14 @@ WHERE
 =end code
 
 =begin code :lang<perl6>
-my Post $post1 = Post.^load: :title(“my title”);
+my Post $post1 = Post.^load: :title("my title");
 =end code
 
 =begin code :lang<sql>
 -- Equivalent to the following query:
 SELECT
     post.id,
-    post.author_id as “author-id”,
+    post.author_id as "author-id",
     post.title,
     post.body,
     post.deleted,
@@ -218,7 +218,7 @@ INSERT INTO person(
 VALUES(
     ?
 )
--- BIND: [“Fernando”]
+-- BIND: ["Fernando"]
 
 -- SQLite needs an extra select:
 
@@ -323,7 +323,7 @@ say Person.new(:3id)
 -- Equivalent to the following query:
 SELECT
     post.id,
-    post.author_id as “author-id”,
+    post.author_id as "author-id",
     post.title,
     post.body,
     post.deleted,
@@ -429,7 +429,7 @@ my $post = Post.^load: :title("My new post");
 -- Equivalent to the following query:
 SELECT
     post.id,
-    post.author_id as “author-id”,
+    post.author_id as "author-id",
     post.title,
     post.body,
     post.deleted,
@@ -480,7 +480,7 @@ Person.new(name => "Fernando")
 =end code
 
 =begin code :lang<perl6>
-$author.name = “John Doe”;
+$author.name = "John Doe";
 
 $author.^save;
 =end code
@@ -494,8 +494,8 @@ WHERE id = 1
 
 =begin code :lang<perl6>
 $author.posts.create:
-    :title(“Second post”),
-    :body(“Another long post”);
+    :title("Second post"),
+    :body("Another long post");
 =end code
 
 =begin code :lang<sql>
@@ -533,7 +533,7 @@ $author.posts.elems;
 =begin code :lang<sql>
 -- Equivalent to the following query:
 SELECT
-    count(*) as “data_1”
+    count(*) as "data_1"
 FROM
     post
 WHERE
@@ -587,7 +587,7 @@ model Related {
 }
 =end code
 
-If you want to put your schema into multiple files, you can create an “indirect”
+If you want to put your schema into multiple files, you can create an "indirect"
 relationship, and Red will look up the related models as necessary.
 
 =begin code :lang<perl6>
