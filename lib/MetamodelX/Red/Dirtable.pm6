@@ -118,16 +118,19 @@ method compose-dirtable(Mu \type) {
     }
 }
 
-#| Receives a Set  of attributes ans set this attributes as dirt
+#| Accepts a Set of attributes of model and enables dirtiness flag for them,
+#| which means that the values were changed and need a database sync.
 multi method set-dirty(\obj, Set() $attr) {
     $!dirty-cols-attr.get_value(obj).{$_}++ for $attr.keys
 }
 
-#| Returns `True` is the object is dirt
+#| Returns `True` if any of the object attributes were changed
+#| from original database record values.
 method is-dirty(Any:D \obj --> Bool) { so $!dirty-cols-attr.get_value(obj) }
-#| Returns the dirt columns
+#| Returns dirty columns of the object.
 method dirty-columns(Any:D \obj)     { $!dirty-cols-attr.get_value(obj) }
-#| Cleans up the object
+#| Erases dirty status from all model's attributes, but does not (!)
+#| revert their values to original ones.
 method clean-up(Any:D \obj) {
     $!dirty-cols-attr.set_value: obj, SetHash.new;
     $!dirty-old-values-attr.set_value: obj, {}

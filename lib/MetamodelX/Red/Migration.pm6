@@ -6,12 +6,12 @@ unit role MetamodelX::Red::Migration;
 my Callable    @migration-blocks;
 my Pair        @migrations;
 
-#| Creates a new migration
+#| Creates a new migration for the model.
 multi method migration(\model, &migr) {
     @migration-blocks.push: &migr
 }
 
-#| Runs migrations
+#| Executes migrations.
 multi method migrate(\model, Red::Model:U :$from) {
     my Red::Attr::Column %old-cols = $from.^columns.map: { .name.substr(2) => $_ };
     my Str               @new-cols = model.^columns.map: { .name.substr(2) };
@@ -34,7 +34,7 @@ multi method migrate(\model, Red::Model:U :$from) {
     .(Type) for @migration-blocks
 }
 
-#| Prints the migrations
+#| Prints the migrations.
 method dump-migrations(|) {
     say "{ .key } => { .value.gist }" for @migrations
 }

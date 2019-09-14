@@ -24,7 +24,7 @@ method set-helper-attrs(Mu \type) {
     type.^add_attribute: $!id-values-attr;
 }
 
-#| Returns if the given attr is an id
+#| Checks if the given attribute is a primary key of the model.
 multi method is-id($, Red::Attr::Column $attr) {
     so $attr.column.id
 }
@@ -36,7 +36,7 @@ method id(Mu \type) {
     self.columns(type).grep(*.column.id).list
 }
 
-#| get a list of ids and uniques
+#| Returns a list of attributes that are either primary keys or marked as unique.
 method general-ids(\model) {
     (|model.^id, |model.^unique-constraints)
 }
