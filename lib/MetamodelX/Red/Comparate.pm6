@@ -5,7 +5,7 @@ unit role MetamodelX::Red::Comparate;
 has SetHash $!added-method .= new;
 
 #| Creates methods to return columns
-method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr) {
+method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr --> Empty) {
     unless $!added-method{"{ type.^name }|$attr"} {
         if $attr.rw {
             type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) is rw {

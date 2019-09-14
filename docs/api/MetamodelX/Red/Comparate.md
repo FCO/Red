@@ -4,7 +4,7 @@
 method add-comparate-methods(
     Mu:U \type,
     Red::Attr::Column $attr
-) returns Mu
+) returns Empty
 ```
 
 Creates methods to return columns

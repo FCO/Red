@@ -14,7 +14,7 @@ Returns a Seq with the result of the SQL query
 ```perl6
 method grep(
     &filter
-) returns Mu
+) returns Red::ResultSeq
 ```
 
 Adds a new filter on the query (does not run the query)
@@ -24,7 +24,7 @@ Adds a new filter on the query (does not run the query)
 ```perl6
 method first(
     &filter
-) returns Mu
+) returns Red::Model
 ```
 
 Changes the query to return only the first row that matches the condition and run it (.grep(...).head)
@@ -34,7 +34,7 @@ Changes the query to return only the first row that matches the condition and ru
 ```perl6
 method map(
     &filter
-) returns Mu
+) returns Red::ResultSeq
 ```
 
 Change what will be returned (does not run the query)
@@ -44,7 +44,7 @@ Change what will be returned (does not run the query)
 ```perl6
 method sort(
     &order
-) returns Mu
+) returns Red::ResultSeq
 ```
 
 Defines the order of the query (does not run the query)
@@ -54,7 +54,7 @@ Defines the order of the query (does not run the query)
 ```perl6
 method pick(
     Whatever $
-) returns Mu
+) returns Red::ResultSeq
 ```
 
 Sets the query to return the rows in a randomic order (does not run the query)
@@ -65,7 +65,7 @@ Sets the query to return the rows in a randomic order (does not run the query)
 method classify(
     &func,
     :&as = { ... }
-) returns Mu
+) returns Red::ResultAssociative
 ```
 
 Returns a ResultAssociative classified by the passed code (does not run the query)
@@ -83,7 +83,7 @@ Gets the first row returned by the query (run the query)
 ```perl6
 method from(
     Int:D $num where { ... }
-) returns Mu
+) returns Red::ResultSeq
 ```
 
 Sets the ofset of the query
@@ -109,7 +109,7 @@ Returns True if there are lines returned by the query False otherwise (runs the 
 ```perl6
 method batch(
     Int $size
-) returns Mu
+) returns Red::ResultSeqSeq
 ```
 
 Returns a ResultSeqSeq containing ResultSeq that will return ResultSeqs with $size rows each (do not run the query)
@@ -145,7 +145,7 @@ Saves any change on any element of that ResultSet
 ```perl6
 method union(
     $other
-) returns Mu
+) returns Red::ResultSeq
 ```
 
 unifies 2 ResultSeqs
@@ -155,7 +155,7 @@ unifies 2 ResultSeqs
 ```perl6
 method intersect(
     $other
-) returns Mu
+) returns Red::ResultSeq
 ```
 
 intersects 2 ResultSeqs
@@ -165,7 +165,7 @@ intersects 2 ResultSeqs
 ```perl6
 method minus(
     $other
-) returns Mu
+) returns Red::ResultSeq
 ```
 
 Removes 1 ResultSeq elements from other ResultSeq

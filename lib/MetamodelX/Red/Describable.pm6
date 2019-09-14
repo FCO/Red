@@ -22,16 +22,16 @@ method describe(\model --> Red::Cli::Table) {
 }
 
 #| Returns the difference to transform this model  to the database version
-method diff-to-db(\model) {
+method diff-to-db(\model --> Red::Cli::Table) {
     model.^describe.diff: $*RED-DB.schema-reader.table-definition: model.^table
 }
 
 #| Returns the difference to transform the DB table into this model
-method diff-from-db(\model) {
+method diff-from-db(\model --> Red::Cli::Table) {
     $*RED-DB.schema-reader.table-definition(model.^table).diff: model.^describe
 }
 
 #| Returns the difference between two models
-method diff(\model, \other-model) {
+method diff(\model, \other-model --> Red::Cli::Table) {
     model.^describe.diff: other-model.^describe
 }
