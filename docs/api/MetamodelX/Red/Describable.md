@@ -6,7 +6,7 @@ method describe(
 ) returns Red::Cli::Table
 ```
 
-Return a `Red::Cli::Table` describing the table
+Returns an object of type `Red::Cli::Table` that represents a database table of the caller.
 
 ### method diff-to-db
 
@@ -16,7 +16,7 @@ method diff-to-db(
 ) returns Red::Cli::Table
 ```
 
-Returns the difference to transform this model to the database version
+Returns the difference to transform this model to the database version.
 
 ### method diff-from-db
 
@@ -26,7 +26,7 @@ method diff-from-db(
 ) returns Red::Cli::Table
 ```
 
-Returns the difference to transform the DB table into this model
+Returns the difference to transform the DB table into this model.
 
 ### method diff
 
@@ -37,5 +37,5 @@ method diff(
 ) returns Red::Cli::Table
 ```
 
-Returns the difference between two models
+Returns the difference between two models.
 

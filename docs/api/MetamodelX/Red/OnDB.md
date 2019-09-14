@@ -6,7 +6,7 @@ method is-on-db(
 ) returns Mu
 ```
 
-Is that object on DB?
+Checks if the instance of model has a record in the database or not. For example, `Person.^create(...).^is-on-db` returns True, because `^create` was called, but `Person.new(...).^is-on-db` will return False, because the created object does not have a representation in the database without calls to `^create` or `^save` done.
 
 ### method saved-on-db
 

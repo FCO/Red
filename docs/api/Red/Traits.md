@@ -10,7 +10,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-This trait marks the corresponding table of the model as TEMPORARY (so it only exists for the time of Red being connected to the database)
+This trait marks the corresponding table of the model as TEMPORARY (so it only exists for the time of Red being connected to the database).
 
 ### multi sub trait_mod:<is>
 
@@ -32,7 +32,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-This trait marks an attribute (column) as SQL PRIMARY KEY
+This trait marks an attribute (column) as SQL PRIMARY KEY.
 
 ### multi sub trait_mod:<is>
 
@@ -43,7 +43,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-This trait marks an attribute (column) as SQL PRIMARY KEY with SERIAL data type, which means it auto-increments on each insertion
+This trait marks an attribute (column) as SQL PRIMARY KEY with SERIAL data type, which means it auto-increments on each insertion.
 
 ### multi sub trait_mod:<is>
 
@@ -65,5 +65,5 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-This trait allows setting a custom name for a table corresponding to a model. For example, `model MyModel is table<custom_table_name> {}` will use `custom_table_name` as the name of the underlying database table
+This trait allows setting a custom name for a table corresponding to a model. For example, `model MyModel is table<custom_table_name> {}` will use `custom_table_name` as the name of the underlying database table.
 

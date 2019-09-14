@@ -6,7 +6,7 @@ method column-names(
 ) returns Mu
 ```
 
-Returns a list of columns names
+Returns a list of columns names.of the model.
 
 ### method constraints
 
@@ -16,7 +16,7 @@ method constraints(
 ) returns Mu
 ```
 
-Returns a hash of contraints classified by type
+Returns a hash of model constraints classified by type.
 
 ### method references
 
@@ -26,7 +26,7 @@ method references(
 ) returns Mu
 ```
 
-Returns a hash of foreign keys
+Returns a hash of foreign keys of the model.
 
 ### method table
 
@@ -36,7 +36,7 @@ method table(
 ) returns Mu
 ```
 
-Returns the table name
+Returns the table name for the model.
 
 ### method as
 
@@ -106,7 +106,7 @@ method default-nullable(
 ) returns Mu
 ```
 
-Is it nullable by default?
+Check if the model is nullable by default.
 
 ### method unique-constraints
 
@@ -147,7 +147,7 @@ method add-reference(
 ) returns Mu
 ```
 
-Creates a new reference (foreign key)
+Creates a new reference (foreign key).
 
 ### method add-unique-constraint
 
@@ -158,7 +158,7 @@ method add-unique-constraint(
 ) returns Mu
 ```
 
-Creates a new unique constraint
+Creates a new unique constraint.
 
 ### multi method add-pk-constraint
 
@@ -169,7 +169,7 @@ multi method add-pk-constraint(
 ) returns Mu
 ```
 
-Creates a new unique constraint
+Creates a new primary key constraint.
 
 ### multi method add-pk-constraint
 
@@ -180,7 +180,7 @@ multi method add-pk-constraint(
 ) returns Mu
 ```
 
-Creates the primary key
+Creates the primary key constraint.
 
 ### method alias
 
@@ -191,7 +191,7 @@ method alias(
 ) returns Mu
 ```
 
-Creates a new alias for the model
+Creates a new alias for the model.
 
 ### method add-column
 
@@ -202,7 +202,7 @@ method add-column(
 ) returns Mu
 ```
 
-Creates a new column
+Creates a new column and adds it to the model.
 
 ### method rs
 
