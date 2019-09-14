@@ -186,9 +186,10 @@ model MyModel is table<custom_table_name> {}
 Red, by default, has not nullable columns, to change it:
 
 ```perl6
-model MyModel is nullable {                 # is nullable makes this model’s columns nullable by default
-    has Int $.col1 is column;               # this column now is nullable
-    has Int $.col2 is column{ :!nullable }; # this column is not nullable
+#| This makes this model’s columns nullable by default
+model MyModel is nullable {
+    has Int $.col1 is column;               #= this column is nullable
+    has Int $.col2 is column{ :!nullable }; #= this one is not nullable
 }
 ```
 
@@ -247,7 +248,7 @@ Question.^all.grep: *.answer ⊂ (3.14, 13, 42)
 
 #### create
 
-    Post.^create: :body(“bla ble bli blo blu”), :title(“qwer”);
+    Post.^create: :body("bla ble bli blo blu"), :title("qwer");
 
     model Tree {
         has UInt   $!id        is id;
@@ -260,7 +261,15 @@ Question.^all.grep: *.answer ⊂ (3.14, 13, 42)
 
     Tree.^create-table: :if-not-exists;
 
-    Tree.^create: :value<Bla>, :parent{:value<Ble>}, :kids[{:value<Bli>}, {:value<Blo>}, {:value<Blu>}];
+    Tree.^create:
+        :value<Bla>,
+        :parent{:value<Ble>},
+        :kids[
+            {:value<Bli>},
+            {:value<Blo>},
+            {:value<Blu>}
+        ]
+    ;
 
 AUTHOR
 ------
