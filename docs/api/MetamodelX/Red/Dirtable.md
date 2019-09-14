@@ -7,7 +7,7 @@ method set-dirty(
 ) returns Mu
 ```
 
-Receives a Set of attributes ans set this attributes as dirt
+Accepts a Set of attributes of model and enables dirtiness flag for them, which means that the values were changed and need a database sync.
 
 ### method is-dirty
 
@@ -17,7 +17,7 @@ method is-dirty(
 ) returns Bool
 ```
 
-Returns `True` is the object is dirt
+Returns `True` if any of the object attributes were changed from original database record values.
 
 ### method dirty-columns
 
@@ -27,7 +27,7 @@ method dirty-columns(
 ) returns Mu
 ```
 
-Returns the dirt columns
+Returns dirty columns of the object.
 
 ### method clean-up
 
@@ -37,5 +37,5 @@ method clean-up(
 ) returns Mu
 ```
 
-Cleans up the object
+Erases dirty status from all model's attributes, but does not (!) revert their values to original ones.
 

@@ -1,5 +1,5 @@
 class Red::Driver::SQLite::SchemaReader
 ---------------------------------------
 
-class to read SQLite schema
+An internal class to read SQLite schemes.
 

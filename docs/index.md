@@ -6,7 +6,7 @@ Welcome to Red ORM documentation.
 
 If you are looking for tutorials, you can visit:
 
-* [Beginner tutorial](api/tutorials/start)
+* [Beginner tutorial](tutorials/start)
 * Relationships tutorial
 * Red CLI
 * Working with PostgreSQL
