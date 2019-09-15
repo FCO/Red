@@ -7,7 +7,7 @@ also does Red::SchemaReader;
 
 method sqlite-master { Red::Driver::SQLite::SQLiteMaster }
 
-use Grammar::Tracer::Compact;
+#use Grammar::Tracer::Compact;
 grammar SQL::CreateTable {
     rule  TOP                      { :i <create-table>+ %% ";" }
     rule  create-table             { :i CREATE TABLE <table-name=.name> '(' ~ ')' <column>+ %% [ "," ] }
