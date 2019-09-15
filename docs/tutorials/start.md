@@ -101,7 +101,7 @@ Person.^create; # error
 Let's try to update our record. In SQL it could be:
 
 ```sql
-UPDATE person SET name = ‘John Doe’ WHERE id = 1;
+UPDATE person SET name = 'John Doe' WHERE id = 1;
 ```
 
 To do the same in Red, we use setters and a call to `^save`:

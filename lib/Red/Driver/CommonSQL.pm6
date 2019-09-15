@@ -618,6 +618,7 @@ multi method type-for-sql("interval" --> "Duration") {}
 multi method type-for-sql("integer"  --> "Int"     ) {}
 multi method type-for-sql("serial"   --> "UInt"    ) {}
 multi method type-for-sql("boolean"  --> "Bool"    ) {}
+multi method type-for-sql(Str $ where /^ "varchar(" ~ ")" \d+ $/ --> "Str") {}
 
 multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
 multi method inflate(Str $value, DateTime :$to!) { $to.new: $value }
