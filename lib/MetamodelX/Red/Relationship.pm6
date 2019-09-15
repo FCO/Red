@@ -2,6 +2,8 @@ use Red::Attr::Relationship;
 use Red::FromRelationship;
 use Red::AST;
 
+=head2 MetamodelX::Red::Relationship
+
 unit role MetamodelX::Red::Relationship;
 has %!relationships{Attribute};
 

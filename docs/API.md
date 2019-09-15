@@ -22,6 +22,7 @@ API Pages
 - [Red::Driver](api/Red/Driver)
 - [Red::Driver::SQLite::SchemaReader](api/Red/Driver/SQLite/SchemaReader)
 - [Red::HiddenFromSQLCommenting](api/Red/HiddenFromSQLCommenting)
+- [Red::Model](api/Red/Model)
 - [Red::Operators](api/Red/Operators)
 - [Red::ResultAssociative](api/Red/ResultAssociative)
 - [Red::ResultSeq](api/Red/ResultSeq)

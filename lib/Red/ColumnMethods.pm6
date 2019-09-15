@@ -2,6 +2,8 @@ use Red::AST::Unary;
 use Red::AST::Infixes;
 use Red::AST::Value;
 
+=head2 Red::ColumnMethods
+
 #| Red::Column methods
 unit role Red::ColumnMethods;
 

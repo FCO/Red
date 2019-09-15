@@ -2,6 +2,9 @@ use Red::AST;
 use Red::Model;
 use Red::AST::Infixes;
 use Red::AST::Value;
+
+=head2 Red::ResultSeqSeq
+
 unit class Red::ResultSeqSeq does Positional;
 
 has     $.rs    is required;

@@ -2,6 +2,9 @@ use Red::AST;
 use Red::Model;
 use Red::AST::Infixes;
 use Red::AST::Value;
+
+=head2 Red::ResultAssociative
+
 unit role Red::ResultAssociative[Red::Model $of, Red::AST $key-of] does Associative;
 
 has Red::AST    $!key-of = $key-of;

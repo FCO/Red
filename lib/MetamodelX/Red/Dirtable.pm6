@@ -1,6 +1,9 @@
 use nqp;
 use Red::Attr::Column;
 use Red::Attr::Relationship;
+
+=head2 MetamodelX::Red::Dirtable
+
 unit role MetamodelX::Red::Dirtable;
 
 has %.dirty-cols{Mu} is rw;

@@ -1,3 +1,6 @@
+MetamodelX::Red::Relationship
+-----------------------------
+
 ### method add-relationship
 
 ```perl6

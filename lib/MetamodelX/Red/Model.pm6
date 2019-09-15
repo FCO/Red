@@ -27,6 +27,8 @@ use MetamodelX::Red::Id;
 use X::Red::Exceptions;
 use Red::Phaser;
 
+=head2 MetamodelX::Red::Model
+
 unit class MetamodelX::Red::Model is Metamodel::ClassHOW;
 also does MetamodelX::Red::Dirtable;
 also does MetamodelX::Red::Comparate;

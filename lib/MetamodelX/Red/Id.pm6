@@ -2,6 +2,9 @@ use Red::Model;
 use Red::AST::Value;
 use Red::AST::Infixes;
 use Red::Attr::Column;
+
+=head2 MetamodelX::Red::Id
+
 unit role MetamodelX::Red::Id;
 
 has $!id-values-attr;

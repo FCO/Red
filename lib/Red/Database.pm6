@@ -1,5 +1,7 @@
 use Red::Driver;
 
+=head2 Red::Database
+
 proto database(|c) is export { * }
 
 #| Accepts an SQL driver name and parameters and uses them to create

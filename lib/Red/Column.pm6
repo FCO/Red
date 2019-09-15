@@ -3,6 +3,9 @@ use Red::Model;
 use Red::AST;
 use Red::AST::Unary;
 use Red::AST::IsDefined;
+
+=head2 Red::Column
+
 #| Represents a database column
 unit class Red::Column does Red::AST;
 

@@ -1,6 +1,9 @@
 use Red::AST;
 use Red::Model;
 use Red::Attr::Column;
+
+=head2 MetamodelX::Red::Migration
+
 unit role MetamodelX::Red::Migration;
 
 my Callable    @migration-blocks;

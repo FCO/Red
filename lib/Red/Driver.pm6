@@ -2,6 +2,9 @@ use Red::AST;
 use Red::Column;
 use Red::SchemaReader;
 use X::Red::Exceptions;
+
+=head2 Red::Driver
+
 unit role Red::Driver;
 
 method schema-reader(--> Red::SchemaReader)             { ... }

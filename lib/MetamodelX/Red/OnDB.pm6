@@ -1,5 +1,8 @@
 use nqp;
 use Red::Attr::Column;
+
+=head2 MetamodelX::Red::OnDB
+
 unit role MetamodelX::Red::OnDB;
 
 has $!is-on-db-attr;

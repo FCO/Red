@@ -1,7 +1,5 @@
-module Red::Operators
----------------------
-
-Operators
+Red::Operators
+--------------
 
 ### multi sub prefix:<->
 

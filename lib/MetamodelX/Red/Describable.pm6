@@ -2,6 +2,9 @@ use Red::DB;
 use Red::Utils;
 use Red::Cli::Table;
 use Red::Cli::Column;
+
+=head2 MetamodelX::Red::Describable
+
 unit role MetamodelX::Red::Describable;
 
 method !create-column($_ --> Red::Cli::Column) {

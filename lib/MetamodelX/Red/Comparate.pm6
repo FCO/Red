@@ -1,6 +1,9 @@
 use Red::Model;
 use Red::AST::Value;
 use Red::Attr::Column;
+
+=head2 MetamodelX::Red::Comparate
+
 unit role MetamodelX::Red::Comparate;
 has SetHash $!added-method .= new;
 

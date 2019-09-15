@@ -1,3 +1,6 @@
+Red::Column
+-----------
+
 class Red::Column
 -----------------
 

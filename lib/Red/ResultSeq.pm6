@@ -21,9 +21,10 @@ use Red::ResultAssociative;
 use Red::ResultSeq::Iterator;
 use Red::HiddenFromSQLCommenting;
 use X::Red::Exceptions;
-unit role Red::ResultSeq[Mu $of = Any] does Sequence;
 
 =head2 Red::ResultSeq
+
+unit role Red::ResultSeq[Mu $of = Any] does Sequence;
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
     use Red::DefaultResultSeq;

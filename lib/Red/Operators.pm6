@@ -3,7 +3,9 @@ use Red::AST::Infixes;
 use Red::AST::Divisable;
 use Red::AST::Value;
 use Red::ResultSeq;
-#| Operators
+
+=head2 Red::Operators
+
 unit module Red::Operators;
 
 #| -X

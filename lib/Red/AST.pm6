@@ -1,4 +1,7 @@
 use CX::Red::Bool;
+
+=head2 Red::AST
+
 unit role Red::AST;
 #has Red::AST $.next;
 

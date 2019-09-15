@@ -1,3 +1,6 @@
+MetamodelX::Red::Comparate
+--------------------------
+
 ### method add-comparate-methods
 
 ```perl6

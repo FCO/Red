@@ -3,6 +3,9 @@ use Red::Driver;
 use X::Red::Exceptions;
 
 =head1 This module is experimental, to use it, do:
+
+=head2 Red::Do
+
 =begin code :lang<perl6>
 use Red <red-do>;
 =end code

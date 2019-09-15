@@ -1,3 +1,6 @@
+MetamodelX::Red::Id
+-------------------
+
 ### method is-id
 
 ```perl6
