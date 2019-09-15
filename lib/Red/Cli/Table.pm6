@@ -3,10 +3,11 @@ use Red::Cli::Column;
 use Red::Cli::Relationship;
 unit class Red::Cli::Table;
 
-has Str $.name is required;
-has Str $.model-name = snake-to-camel-case $!name;
-has @.columns;
-has @.relationships;
+has Str  $.name;
+has Str  $.model-name = try { snake-to-camel-case $!name };
+has      @.columns;
+has      @.relationships;
+has Bool $.exists = True;
 
 submethod TWEAK(:@columns) {
     for @columns -> $col {

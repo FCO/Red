@@ -58,9 +58,14 @@ method tables-names       { self.sqlite-master.tables.map: *.name }
 method indexes-of($table) { self.sqlite-master.find-table($table).indexes }
 method table-definition($table) {
     my $sql = self.sqlite-master.find-table($table).sql;
-    self.table-definition-from-create-table($sql).head
+    my $list = self.table-definition-from-create-table($sql);
+    return unless $list;
+    $list.head
 }
-method table-definition-from-create-table($sql) {
-    say $sql;
+multi method table-definition-from-create-table(Str:D $sql) {
     SQL::CreateTable.parse($sql, :actions(SQL::CreateTable::Action)).made;
+}
+
+multi method table-definition-from-create-table(Any:U) {
+    Red::Cli::Table.new
 }

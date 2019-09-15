@@ -10,7 +10,7 @@ my %*SUB-MAIN-OPTS =
   :named-anywhere,
 ;
 
-#| List tables from database schema
+#| Lists tables from database schema
 multi MAIN(
     "list-tables",
     Str  :$driver!,
@@ -35,7 +35,7 @@ sub gen-stub(:@includes, :@models, :$driver, :%pars) {
     }
 }
 
-#| Generate models' code from database schema
+#| Generates models' code from database schema
 multi MAIN(
     "print-stub",
     Str  :$schema-class,
@@ -63,10 +63,10 @@ multi MAIN(
 }
 
 
-#| Generate models' code from database schema
+#| Generates models' code from database schema
 multi MAIN(
     "migration-plan",
-    Str :$model,
+    Str :$model!,
     Str :$require = $model,
     Str :$driver!,
     *%pars
@@ -82,7 +82,7 @@ multi MAIN(
     }
 }
 
-#| Generate models' code from database schema
+#| Generates models' code from database schema
 multi MAIN(
     "generate-code",
     Str  :$path     where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
