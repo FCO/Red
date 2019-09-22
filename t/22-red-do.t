@@ -125,4 +125,30 @@ red-do
     },
 ;
 
+subtest {
+    plan 1;
+    model Ble {
+        has UInt $.id is serial;
+        has Str $.name is column
+    }
+
+    red-defaults db1 => \("SQLite", :default), db2 => (my $db2 = database("SQLite"));
+    red-do <db1 db2> => { Ble.^create-table: :if-not-exists };
+
+    red-do :with<db1>, { Ble.^create: :name("number $_") for ^5 };
+
+    await red-do :async,
+            {
+                sleep 1;
+                red-emit "dup", $_ for Ble.^all
+            },
+            :db2{
+                red-tap "dup", -> $record {
+                    $record.^save: :insert
+                }
+            },
+    ;
+    my $*RED-DB = $db2;
+    is-deeply Ble.^all.map(*.name).Seq, ("number 0", "number 1", "number 2", "number 3", "number 4")
+}
 done-testing
