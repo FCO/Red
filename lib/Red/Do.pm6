@@ -105,16 +105,23 @@ proto red-do(|) {
 
 #| Receives a block and optionally a connection name.
 #| Runs the block with the connection with that name
-multi red-do(&block, Str :$with = "default", :$async) is export {
+multi red-do(*@blocks where .all ~~ Callable, Str :$with = "default", :$async) is export {
     X::Red::Do::DriverNotDefined.new(:driver($with)).throw unless %GLOBAL::RED-DEFULT-DRIVERS{$with}:exists;
-    red-do :with(%GLOBAL::RED-DEFULT-DRIVERS{$with}), &block, :$async;
+    my @ret = do for @blocks {
+        red-do :with(%GLOBAL::RED-DEFULT-DRIVERS{$with}), $_, :$async
+    }
+    if $async {
+        return start await @ret
+    }
+    return @ret.head if @ret == 1;
+    @ret
 }
 
 
 #| Receives a block and optionally a connection name.
 #| Runs the block with the connection with that name
 #| synchronously
-multi red-do(&block, Red::Driver:D :$with = "default", :$async where not *) is export {
+multi red-do(&block, Red::Driver:D :$with, :$async where not *) is export {
     run-red-do $with, &block
 }
 
