@@ -44,43 +44,107 @@ multi red-defaults(Str $driver, |c) is export {
 #| The key is the name of the connection and the value the connection itself
 multi red-defaults(*%drivers) is export {
     my Bool $has-default = False;
-    %GLOBAL::RED-DEFULT-DRIVERS = %drivers.kv.map(-> $name, ($driver, Bool :$default, |c) {
-        if $default {
-            X::Red::Do::DriverDefinedMoreThanOnce.new.throw if $has-default;
-            $has-default = True;
-        }
+    %GLOBAL::RED-DEFULT-DRIVERS = %drivers.kv.map(-> $name, $_ {
+        when Capture|Positional {
+            my (Str $driver, Bool $default);
+            my \c = \();
+            :($driver, Bool :$default, |c) := $_;
+            if $default {
+                X::Red::Do::DriverDefinedMoreThanOnce.new.throw if $has-default;
+                $has-default = True;
+            }
 
-        my \db = do if $driver ~~ Red::Driver {
-            $driver
-        } else {
-            database $driver, |[|c];
-        }
+            my \db = do if $driver ~~ Red::Driver {
+                $driver
+            } else {
+                database $driver, |[|c];
+            }
 
-        |%(
-            $name     => db,
-            |(default => db if $default)
-        )
+            |%(
+                $name     => db,
+                |(default => db if $default)
+            )
+        }
+        when Red::Driver:D {
+            $name => $_
+        }
     }).Hash;
 }
 
-#| Receives a block and optionally a connection name.
-#| Runs the block with the connection with that name
-multi red-do(&block, :$use = "default") is export {
-    X::Red::Do::DriverNotDefined.new(:driver($use)).throw unless %GLOBAL::RED-DEFULT-DRIVERS{$use}:exists;
-    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$use};
+sub supply-pair-for-name(Str $name) {
+    %*RED-SUPPLIES{$name} //= do {
+        my Supplier $supplier .= new;
+        my $supply = $supplier.Supply;
+        { :$supplier, :$supply }
+    }
+}
+
+sub red-emit(Str() $name, |c) is export {
+    supply-pair-for-name($name)<supplier>.emit: |c
+}
+
+sub red-tap(Str() $name, &func, :$red-db = $*RED-DB) is export {
+    supply-pair-for-name($name)<supply>.tap: -> |c {
+        my $*RED-DB = $red-db;
+        func |c
+    }
+}
+
+sub run-red-do($*RED-DB, &block) {
     # TODO: test if its connected and reconnect if it's not
     block $*RED-DB
 }
 
+proto red-do(|) {
+    my %red-supplies := %*RED-SUPPLIES // {};
+    {
+        my %*RED-SUPPLIES := %red-supplies;
+        {*}
+    }
+}
+
+#| Receives a block and optionally a connection name.
+#| Runs the block with the connection with that name
+multi red-do(&block, Str :$with = "default", :$async) is export {
+    X::Red::Do::DriverNotDefined.new(:driver($with)).throw unless %GLOBAL::RED-DEFULT-DRIVERS{$with}:exists;
+    red-do :with(%GLOBAL::RED-DEFULT-DRIVERS{$with}), &block, :$async;
+}
+
+
+#| Receives a block and optionally a connection name.
+#| Runs the block with the connection with that name
+#| synchronously
+multi red-do(&block, Red::Driver:D :$with = "default", :$async where not *) is export {
+    run-red-do $with, &block
+}
+
+#| Receives a block and optionally a connection name.
+#| Runs the block with the connection with that name
+#| asynchronously
+multi red-do(&block, Red::Driver:D :$with = "default", :$async! where so *) is export {
+    start run-red-do $with, &block
+}
+
 #| Receives list of pairs with connection name and block
+#| or blocks (assuming the default connection) or named
+#| args where the name is the name of the connection
 #| Runs each block with the connection with that name
-multi red-do(*@blocks) is export {
-    for @blocks {
-        when Pair {
-            red-do :use(.key), .value
+multi red-do(*@blocks, Bool :$async, *%pars where *.none.key eq "with") is export {
+    my @ret = do for |@blocks , |%pars.pairs -> $block {
+        when $block ~~ Pair {
+            given $block.key -> $with {
+                when $with ~~ Positional {
+                    red-do :$async, |$with.map: { Pair.new: $_, $block.value }
+                }
+                default {
+                    red-do :$async, :$with, $block.value
+                }
+            }
         }
-        default {
-            .&red-do
+        when $block ~~ Callable {
+            red-do :$async, $block
         }
     }
+    return start await @ret if $async;
+    @ret
 }
