@@ -106,9 +106,9 @@ use Red::Driver::Cache;
 use Red::Driver::Cache::Memory;
 
 red-defaults
-    bla   => \(database("SQLite", :database<./a.db>)),
-    ble   => \(database("SQLite", :database<./b.db>)),
-    cache => \(cache "Memory", "SQLite"),
+    bla   => database("SQLite", :database<./a.db>),
+    ble   => database("SQLite", :database<./b.db>),
+    cache => cache("Memory", "SQLite"),
 ;
 
 red-do

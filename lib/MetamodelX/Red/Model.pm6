@@ -26,6 +26,7 @@ use MetamodelX::Red::OnDB;
 use MetamodelX::Red::Id;
 use X::Red::Exceptions;
 use Red::Phaser;
+use Red::Event;
 
 =head2 MetamodelX::Red::Model
 
@@ -45,6 +46,14 @@ has $.rs-class;
 has @!constraints;
 has $.table;
 has Bool $!temporary;
+
+multi method emit(Mu $model, Red::Event $event) {
+    get-RED-DB.emit: $event.clone: :model($model.WHAT)
+}
+
+multi method emit(Mu $model, $data) {
+    get-RED-DB.emit: Red::Event.new: :model($model.WHAT), :$data
+}
 
 #| Returns a list of columns names.of the model.
 method column-names(|) { @!columns>>.column>>.name }
@@ -249,8 +258,7 @@ multi method create-table(\model) {
     die X::Red::InvalidTableName.new: :table(model.^table)
         unless get-RED-DB.is-valid-table-name: model.^table
     ;
-    get-RED-DB.execute:
-        Red::AST::CreateTable.new:
+    my $data = Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
             :columns[|model.^columns.map(*.column)],
@@ -266,6 +274,14 @@ multi method create-table(\model) {
             ],
             |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
     ;
+    get-RED-DB.execute: |$data;
+    self.emit: model, Red::Event.new: :$data;
+    CATCH {
+        default {
+            self.emit: model, Red::Event.new: :$data, :error($_);
+            proceed
+        }
+    }
     True
 }
 

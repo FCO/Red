@@ -1,6 +1,9 @@
 use Red::Database;
 use Red::Driver;
 use X::Red::Exceptions;
+use Red::Class;
+use Red::Event;
+use Red::DB;
 
 =head1 This module is experimental, to use it, do:
 
@@ -71,22 +74,14 @@ multi red-defaults(*%drivers) is export {
     }).Hash;
 }
 
-sub supply-pair-for-name(Str $name) {
-    %*RED-SUPPLIES{$name} //= do {
-        my Supplier $supplier .= new;
-        my $supply = $supplier.Supply;
-        { :$supplier, :$supply }
-    }
-}
-
-sub red-emit(Str() $name, |c) is export {
-    supply-pair-for-name($name)<supplier>.emit: |c
+sub red-emit(Str() $name, $data) is export {
+    get-RED-DB.emit: Red::Event.new: :$name, :$data
 }
 
 sub red-tap(Str() $name, &func, :$red-db = $*RED-DB) is export {
-    supply-pair-for-name($name)<supply>.tap: -> |c {
+    Red::Class.instance.events.grep({ .name eq $name }).tap: -> Red::Event $_ {
         my $*RED-DB = $red-db;
-        func |c
+        func .data
     }
 }
 

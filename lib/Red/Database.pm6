@@ -15,6 +15,8 @@ multi sub database(Str $type, |c --> Red::Driver) is export {
     my $driver-name = "Red::Driver::$type";
     require ::($driver-name);
     my Red::Driver $driver = ::($driver-name).new: |c;
+    $driver.auto-register;
+    $driver
 }
 
 #| Accepts an SQL driver name and a database handle, and
@@ -23,4 +25,6 @@ multi sub database(Str $type, $dbh --> Red::Driver) {
     my $driver-name = "Red::Driver::$type";
     require ::($driver-name);
     my Red::Driver $driver = ::($driver-name).new: :$dbh;
+    $driver.auto-register;
+    $driver
 }
