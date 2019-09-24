@@ -22,7 +22,7 @@ multi method emit($data) {
 }
 
 multi method emit(Red::Event $event) {
-    $!supplier.emit: $event.clone: :db(self), :db-name(self.^name)
+    $!supplier.emit: $event.clone: :db(self), :db-name(self.^name), |(:db-name($_) with $*RED-DO-WITH)
 }
 
 method schema-reader(--> Red::SchemaReader)             { ... }

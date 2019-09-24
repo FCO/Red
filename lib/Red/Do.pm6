@@ -103,6 +103,7 @@ proto red-do(|) {
 multi red-do(*@blocks where .all ~~ Callable, Str :$with = "default", :$async) is export {
     X::Red::Do::DriverNotDefined.new(:driver($with)).throw unless %GLOBAL::RED-DEFULT-DRIVERS{$with}:exists;
     my @ret = do for @blocks {
+        my Str $*RED-DO-WITH = $with;
         red-do :with(%GLOBAL::RED-DEFULT-DRIVERS{$with}), $_, :$async
     }
     if $async {
