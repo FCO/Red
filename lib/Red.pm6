@@ -18,7 +18,9 @@ use Red::AST::Optimizer::OR;
 use Red::AST::Optimizer::Case;
 use Red::Class;
 
-class Red:ver<0.0.4>:api<1> {}
+class Red:ver<0.0.4>:api<1> {
+    method events { Red::Class.instance.events }
+}
 
 BEGIN {
     Red::Column.^add_role: Red::ColumnMethods;
@@ -44,7 +46,6 @@ multi EXPORT("red-do") {
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         ‘&database’ => &database,
-        'red'      => Red::Class.instance,
     )
 }
 
@@ -57,7 +58,6 @@ multi EXPORT("experimental migrations") {
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         ‘&database’ => &database,
-        'red'      => Red::Class.instance,
     )
 }
 
@@ -66,7 +66,6 @@ multi EXPORT {
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         ‘&database’ => &database,
-        'red'      => Red::Class.instance,
     )
 }
 
