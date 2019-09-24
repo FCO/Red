@@ -18,7 +18,7 @@ method auto-register(|) {
 }
 
 multi method emit($data) {
-    $!supplier.emit: Red::Event.new: :db(self), :db-name(self.^name), :$data
+    self.emit: Red::Event.new: :db(self), :db-name(self.^name), :$data
 }
 
 multi method emit(Red::Event $event) {

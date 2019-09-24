@@ -14,7 +14,14 @@ submethod TWEAK(|) {
     my @st-handler = $!driver.prepare: $ast;
 
     @st-handler>>.execute unless $*RED-DRY-RUN;
-    $!st-handler = @st-handler.tail
+    $!st-handler = @st-handler.tail;
+    $!of.^emit: $ast;
+    CATCH {
+        default {
+            $!of.^emit: $ast, :error($_);
+            proceed
+        }
+    }
 }
 
 #method is-lazy { True }

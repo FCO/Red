@@ -48,11 +48,11 @@ has $.table;
 has Bool $!temporary;
 
 multi method emit(Mu $model, Red::Event $event) {
-    get-RED-DB.emit: $event.clone: :model($model.WHAT)
+    start try get-RED-DB.emit: $event.clone: :model($model.WHAT)
 }
 
-multi method emit(Mu $model, $data) {
-    get-RED-DB.emit: Red::Event.new: :model($model.WHAT), :$data
+multi method emit(Mu $model, $data, Exception :$error, Red::Model :$origin) {
+    self.emit: $model, Red::Event.new: :model($model.WHAT), |(:$data with $data), |(:$error with $error)
 }
 
 #| Returns a list of columns names.of the model.
@@ -275,10 +275,10 @@ multi method create-table(\model) {
             |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
     ;
     get-RED-DB.execute: |$data;
-    self.emit: model, Red::Event.new: :$data;
+    self.emit: model, $data;
     CATCH {
         default {
-            self.emit: model, Red::Event.new: :$data, :error($_);
+            self.emit: model, $data, :error($_);
             proceed
         }
     }
@@ -295,22 +295,38 @@ method apply-row-phasers($obj, Mu:U $phase) {
 #| Saves that object on database (create a new row)
 multi method save($obj, Bool :$insert! where * == True, Bool :$from-create) {
     self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
-    my $ret := get-RED-DB.execute: Red::AST::Insert.new: $obj;
+    my $ast = Red::AST::Insert.new: $obj;
+    my $ret := get-RED-DB.execute: $ast;
     $obj.^saved-on-db;
     $obj.^clean-up;
     $obj.^populate-ids;
     self.apply-row-phasers($obj, AfterCreate) unless $from-create;
+    self.emit: $obj, $ast;
+    CATCH {
+        default {
+            self.emit: $obj, $ast, :error($_);
+            proceed
+        }
+    }
     $ret
 }
 
 #| Saves that object on database (update the row)
 multi method save($obj, Bool :$update! where * == True) {
     self.apply-row-phasers($obj, BeforeUpdate);
-    my $ret := get-RED-DB.execute: Red::AST::Update.new: $obj;
+    my $ast = Red::AST::Update.new: $obj;
+    my $ret := get-RED-DB.execute: $ast;
     $obj.^saved-on-db;
     $obj.^clean-up;
     $obj.^populate-ids;
     self.apply-row-phasers($obj, AfterUpdate);
+    self.emit: $obj, $ast;
+    CATCH {
+        default {
+            self.emit: $obj, $ast, :error($_);
+            proceed
+        }
+    }
     $ret
 }
 
@@ -386,8 +402,17 @@ method create(\model, *%orig-pars) is rw {
 
 #| Deletes row from database
 method delete(\model) {
+    my $origin = model.clone;
     self.apply-row-phasers(model, BeforeDelete);
-    get-RED-DB.execute: Red::AST::Delete.new: model ;
+    my $ast = Red::AST::Delete.new: model;
+    get-RED-DB.execute: $ast;
+    self.emit: model, $ast, :$origin;
+    CATCH {
+        default {
+            self.emit: model, $ast, :$origin, :error($_);
+            proceed
+        }
+    }
     self.apply-row-phasers(model, AfterDelete);
 }
 
