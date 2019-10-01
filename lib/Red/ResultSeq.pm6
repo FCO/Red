@@ -319,7 +319,7 @@ multi method head is hidden-from-sql-commenting {
 # TODO: Return a Red::ResultSeq
 multi method head(UInt:D $num) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    self.do-it(:limit(min $num, $.limit)).head: $num
+    self.clone: :chain($!chain.clone: :limit(min $num, $.limit))
 }
 
 #| Sets the ofset of the query
