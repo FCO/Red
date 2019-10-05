@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Red::ResultSeq does Positional
     - Fix .head
     - Lots of documentation
 

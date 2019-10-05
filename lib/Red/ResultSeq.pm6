@@ -25,6 +25,7 @@ use X::Red::Exceptions;
 =head2 Red::ResultSeq
 
 unit role Red::ResultSeq[Mu $of = Any] does Sequence;
+also does Positional;
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
     use Red::DefaultResultSeq;
@@ -221,8 +222,10 @@ sub what-does-it-do(&func, \type --> Hash) {
 }
 
 #multi method create-map($, :&filter)     { self.do-it.map: &filter }
-multi method create-map(Red::Model  $_, :filter(&)) is hidden-from-sql-commenting { .^where: $.filter }
-multi method create-map(*@ret where .all ~~ Red::AST, :filter(&)) is hidden-from-sql-commenting {
+multi method create-map(\SELF: Red::Model  $_, :filter(&)) is hidden-from-sql-commenting {
+    .^where: $.filter
+}
+multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :filter(&)) is hidden-from-sql-commenting {
     my \Meta  = self.of.HOW.WHAT;
     my \model = Meta.new(:table(self.of.^table)).new_type: :name(self.of.^name);
     model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, self.of.^table;
@@ -279,11 +282,11 @@ method map(&filter --> Red::ResultSeq) is hidden-from-sql-commenting {
     for what-does-it-do(&filter, self.of) -> Pair $_ {
         (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
     }
-    my $seq = self;
-    if %next {
-        $seq = self.where(%next.keys.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n }))
-    }
-    $seq.create-map: Red::AST::Case.new(:%when), :filter(&filter)
+    my \seq := do if %next {
+        self.where(%next.keys.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n }))
+    } else { self }
+    my \ast = Red::AST::Case.new(:%when);
+    seq.create-map: ast, :&filter
 }
 #method flatmap(&filter) {
 #    treat-map :flat, $.filter, filter(self.of), &filter
@@ -317,7 +320,7 @@ multi method head is hidden-from-sql-commenting {
 }
 
 # TODO: Return a Red::ResultSeq
-multi method head(UInt:D $num) is hidden-from-sql-commenting {
+multi method head(UInt() $num) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     self.clone: :chain($!chain.clone: :limit(min $num, $.limit))
 }
