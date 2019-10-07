@@ -1,6 +1,12 @@
 Revision history for Red
 
 {{$NEXT}}
+    - ResultSeq.classify(...).Bag
+    - ResultSeq.classify(...).Set
+    - ResultSeq.map(...).classify
+    - ResultSeq.map(...).Bag
+    - ResultSeq.map(...).Set
+    - Create ResultSeq.push
     - Red::ResultSeq does Positional
     - Fix .head
     - Lots of documentation

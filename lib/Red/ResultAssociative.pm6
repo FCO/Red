@@ -2,10 +2,11 @@ use Red::AST;
 use Red::Model;
 use Red::AST::Infixes;
 use Red::AST::Value;
+use Red::AST::Function;
 
 =head2 Red::ResultAssociative
 
-unit role Red::ResultAssociative[Red::Model $of, Red::AST $key-of] does Associative;
+unit role Red::ResultAssociative[$of, Red::AST $key-of] does Associative;
 
 has Red::AST    $!key-of = $key-of;
 has             $.rs is required;
@@ -19,7 +20,15 @@ method key-of { $!key-of.returns }
 #| return a list of keys
 #| run a SQL query to get it
 method keys {
-    $!rs.create-map: $key-of, :group($key-of)
+    $!rs.map({ Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Int)) })
+}
+
+method elems {
+    $!rs.map({
+        Red::AST::Function.new(:func<COUNT> :args[
+            Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Int))
+        ])
+    }).head
 }
 
 #| return a ResultSeq for the given key
@@ -33,4 +42,15 @@ method iterator {
 
 method gist {
     "\{{self.map({ "{.key} => {.value.gist}" }).join: ", "}\}"
+}
+
+method Bag {
+    my $rs = $!rs.map({ ($key-of, Red::AST::Function.new(:func<COUNT>, :args[ast-value("*"),], :returns(Int))) });
+    $rs.group = $!key-of;
+    $rs.Seq.map({ .[0] => .[1] }).Bag
+}
+
+method Set {
+    my $rs = $!rs.map({ Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Int)) });
+    $rs.Seq.Set
 }
