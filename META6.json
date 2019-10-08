@@ -12,10 +12,6 @@
     "DB::Pg",
     "UUID"
   ],
-  "build-depends": [],
-  "test-depends": [
-    "Test::META"
-  ],
   "provides": {
     "CX::Red::Bool": "lib/CX/Red/Bool.pm6",
     "MetamodelX::Red::Comparate": "lib/MetamodelX/Red/Comparate.pm6",
