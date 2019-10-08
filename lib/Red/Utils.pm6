@@ -1,3 +1,5 @@
+use Red::AST;
+use Red::AST::Unary;
 =head2 Red::Utils
 
 #| Accepts a string and converts snake case (`foo_bar`) into kebab case (`foo-bar`).
@@ -12,3 +14,16 @@ sub camel-to-kebab-case(Str() $_ --> Str) is export { lc S:g/(\w)<?before <[A..Z
 sub kebab-to-camel-case(Str() $_ --> Str) is export { S:g/"-"(\w)/{$0.uc}/ with .wordcase }
 #| Accepts a string and converts snake case (`foo_bar`) into camel case (`fooBar`).
 sub snake-to-camel-case(Str() $_ --> Str) is export { S:g/"_"(\w)/{$0.uc}/ with .wordcase }
+
+proto compare($,$) is export {*}
+multi compare(Red::AST $a, Red::AST $b) {
+    $a eqv $b || $a === $b
+}
+
+multi compare(Red::AST::So $a, Red::AST $b) {
+    compare $a.value, $b
+}
+
+multi compare(Red::AST $a, Red::AST::So $b) {
+    compare $a, $b.value
+}
