@@ -53,6 +53,7 @@
     "Red::AST::Optimizer::Case" : "lib/Red/AST/Optimizer/Case.pm6",
     "Red::AST::Optimizer::OR" : "lib/Red/AST/Optimizer/OR.pm6",
     "Red::AST::Select" : "lib/Red/AST/Select.pm6",
+    "Red::AST::StringFuncs" : "lib/Red/AST/StringFuncs.pm6",
     "Red::AST::TableComment" : "lib/Red/AST/TableComment.pm6",
     "Red::AST::Unary" : "lib/Red/AST/Unary.pm6",
     "Red::AST::Union" : "lib/Red/AST/Union.pm6",
