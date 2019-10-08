@@ -18,6 +18,7 @@ use Red::AST::CreateColumn;
 use Red::AST::ChangeColumn;
 use Red::AST::DropColumn;
 use Red::AST::TableComment;
+use Red::AST::StringFuncs;
 use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
@@ -304,6 +305,9 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     }" => @bind
 }
 
+multi method translate(Red::AST::StringFunction $_, $context?) {
+    self.translate: .default-implementation, $context
+}
 multi method translate(Red::AST::Function $_, $context?) {
     my @bind;
     "{ .func }({ .args.map({

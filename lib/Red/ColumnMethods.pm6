@@ -1,6 +1,7 @@
 use Red::AST::Unary;
 use Red::AST::Infixes;
 use Red::AST::Value;
+use Red::AST::StringFuncs;
 
 =head2 Red::ColumnMethods
 
@@ -19,3 +20,7 @@ method ends-with(Str() $text) { Red::AST::Like.new: self, ast-value "%{ $text }"
 #| #| is usually translated for SQL as `column like %'substr%'`
 method contains(Str() $text) { Red::AST::Like.new: self, ast-value "%{ $text }%" }
 
+
+method substr($base where { .returns ~~ Str }: Int() $offset = 0, Int() $size?) {
+    Red::AST::Substring.new: :$base, :$offset, |(:$size with $size)
+}
