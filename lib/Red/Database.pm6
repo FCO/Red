@@ -1,5 +1,5 @@
 use Red::Driver;
-
+unit module Red::Database;
 =head2 Red::Database
 
 proto database(|c) is export { * }

@@ -67,6 +67,23 @@ given model { has $.a is rw is column; has $.b is rw is column }.new {
     ok not .^is-dirty;
 }
 
+
+given model :: { has UInt $.a is rw is id; has Int $.b is rw is column }.new {
+    ok .^is-dirty;
+    is .^dirty-columns.keys.sort, < $!a $!b >;
+    .^save;
+    ok not .^is-dirty;
+    .a = 42;
+    is .a, 42;
+    ok .^is-dirty;
+    is .^dirty-columns.keys.sort, < $!a >;
+    .b = 13;
+    is .b, 13;
+    is .^dirty-columns.keys.sort, < $!a $!b >;
+    .^save;
+    ok not .^is-dirty;
+}
+
 given model {
     has $.a is column;
     has $!b is column;

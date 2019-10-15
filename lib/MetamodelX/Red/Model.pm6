@@ -298,7 +298,6 @@ multi method save($obj, Bool :$insert! where * == True, Bool :$from-create) {
     my $ast = Red::AST::Insert.new: $obj;
     my $ret := get-RED-DB.execute: $ast;
     $obj.^saved-on-db;
-    $obj.^clean-up;
     $obj.^populate-ids;
     self.apply-row-phasers($obj, AfterCreate) unless $from-create;
     self.emit: $obj, $ast;
@@ -308,6 +307,7 @@ multi method save($obj, Bool :$insert! where * == True, Bool :$from-create) {
             proceed
         }
     }
+    $obj.^clean-up;
     $ret
 }
 
@@ -317,7 +317,6 @@ multi method save($obj, Bool :$update! where * == True) {
     my $ast = Red::AST::Update.new: $obj;
     my $ret := get-RED-DB.execute: $ast;
     $obj.^saved-on-db;
-    $obj.^clean-up;
     $obj.^populate-ids;
     self.apply-row-phasers($obj, AfterUpdate);
     self.emit: $obj, $ast;
@@ -327,6 +326,7 @@ multi method save($obj, Bool :$update! where * == True) {
             proceed
         }
     }
+    $obj.^clean-up;
     $ret
 }
 
