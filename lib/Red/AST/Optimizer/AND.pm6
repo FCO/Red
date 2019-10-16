@@ -72,6 +72,10 @@ multi method optimize(Red::AST::Not $left, Red::Column $right, 1) {
     self.optimize: $right, $left, 1
 }
 
+multi method optimize(Red::AST $left, Red::AST $right where compare($left, $right.not), 1) {
+    return ast-value True if compare $left, $right.value
+}
+
 multi method optimize($, $, $) {}
 
 multi method optimize(AstFalse, Red::AST $)  { ast-value False }
