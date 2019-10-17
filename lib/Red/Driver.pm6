@@ -17,12 +17,22 @@ method auto-register(|) {
     self
 }
 
-multi method emit($data) {
-    self.emit: Red::Event.new: :db(self), :db-name(self.^name), :$data
+multi method emit($data?) {
+    self.emit:
+            Red::Event.new:
+                    :db(self),
+                    :db-name(self.^name),
+                    :$data,
+                    |(:metadata($_) with %*RED-METADATA)
 }
 
 multi method emit(Red::Event $event) {
-    $!supplier.emit: $event.clone: :db(self), :db-name(self.^name), |(:db-name($_) with $*RED-DO-WITH)
+    $!supplier.emit:
+            $event.clone:
+                    :db(self),
+                    :db-name(self.^name),
+                    |(:db-name($_) with $*RED-DO-WITH),
+                    |(:metadata($_) with %*RED-METADATA),
 }
 
 method schema-reader(--> Red::SchemaReader)             { ... }

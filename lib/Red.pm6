@@ -17,9 +17,11 @@ use Red::AST::Optimizer::AND;
 use Red::AST::Optimizer::OR;
 use Red::AST::Optimizer::Case;
 use Red::Class;
+use Red::DB;
 
 class Red:ver<0.0.4>:api<1> {
     method events { Red::Class.instance.events }
+    method emit(|c) { get-RED-DB.emit: |c }
 }
 
 BEGIN {

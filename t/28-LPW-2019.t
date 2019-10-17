@@ -5,29 +5,29 @@ model Person { ... }
 
 model Post {
     has UInt     $!id        is serial;
-has Str      $.title     is column{ :unique };
-has Str      $.body      is column;
-has UInt     $.author-id is referencing{ Person.id };
-has Person   $.author    is relationship{ .author-id };
-has DateTime $.created   is column .= now;
-has DateTime $.published is column{ :nullable };
-has DateTime $.deleted   is column{ :nullable };
+    has Str      $.title     is column{ :unique };
+    has Str      $.body      is column;
+    has UInt     $.author-id is referencing{ Person.id };
+    has Person   $.author    is relationship{ .author-id };
+    has DateTime $.created   is column .= now;
+    has DateTime $.published is column{ :nullable };
+    has DateTime $.deleted   is column{ :nullable };
 
-method is-published {
-    !self.deleted.defined and self.published.defined
-}
-method publish {
-    $!published .= now;
-    $!deleted    = Nil;
-    self.^save
-}
+    method is-published {
+        !self.deleted.defined and self.published.defined
+    }
+    method publish {
+        $!published .= now;
+        $!deleted    = Nil;
+        self.^save
+    }
 }
 
 model Person {
     has UInt $!id    is serial;
-has Str  $.name  is column;
-has Str  $.email is column{ :unique };
-has Post @.posts is relationship{ .author-id };
+    has Str  $.name  is column;
+    has Str  $.email is column{ :unique };
+    has Post @.posts is relationship{ .author-id };
 }
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;

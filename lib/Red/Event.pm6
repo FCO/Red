@@ -10,3 +10,4 @@ has              @.bind;
 has Red::Model:U $.model;
 has Red::Model   $.origin;
 has Exception    $.error;
+has              %.metadata;
