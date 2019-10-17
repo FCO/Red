@@ -9,3 +9,4 @@
 *.sw[po]
 .cloned
 .idea/workspace.xml
+*.db
