@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.0.5  2019-10-18T00:00:57+01:00
     - ResultSeq.classify(...).Bag
     - ResultSeq.classify(...).Set
     - ResultSeq.map(...).classify
