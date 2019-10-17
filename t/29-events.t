@@ -42,6 +42,7 @@ my $s = start react whenever Red.events -> $event {
         }
     }
 }
+sleep 1;
 
 Red.emit: 42;
 
