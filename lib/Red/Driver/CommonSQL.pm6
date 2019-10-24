@@ -525,6 +525,7 @@ multi method translate(Red::Column $_, "create-table") {
 multi method translate(Red::Column $_, "column-name")           { .name // "" => [] }
 
 multi method translate(Red::Column $_, "column-type")           {
+    return self.type-by-name("text") => [] if .attr.type =:= Mu;
     (.type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_) => []
 }
 
