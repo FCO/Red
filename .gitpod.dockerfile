@@ -4,4 +4,3 @@ RUN  apk add gcc libc-dev libuuid sqlite-libs
 RUN  zef install "NativeLibs:ver<0.0.7>:auth<github:salortiz>" --/test
 RUN  zef install Config Config::Parser::json --/test
 RUN  zef install --deps-only . --/test
-RUN  zef install -v .
