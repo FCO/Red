@@ -4,8 +4,6 @@ RUN apt-get update                                                 \
   && apt-get install -y build-essential uuid-dev sqlite3
 
 USER gitpod
-RUN git clone https://github.com/tadzik/rakudobrew ~/.rakudobrew
-RUN echo 'eval "$(/home/gitpod/.rakudobrew/bin/rakudobrew init -)"' >> ~/.bashrc
-RUN ~/.rakudobrew/bin/rakudobrew build moar
-RUN ~/.rakudobrew/bin/rakudobrew global moar
+RUN git clone http://github.com/rakudo/rakudo && cd rakudo && ./Configure.pl --build-moar --build-nqp && make install && cd -
+RUN git clone http://github.com/ugexe/zef && cd zef && ../rakudo/perl6 -I. bin/zef install .
 RUN zef install --/test App::Mi6 DBIish
