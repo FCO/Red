@@ -5,7 +5,7 @@ RUN apt-get update                                                 \
 
 USER gitpod
 RUN git clone http://github.com/rakudo/rakudo && cd rakudo && ./Configure.pl --gen-moar --gen-nqp && make install && cd -
-RUN git clone http://github.com/ugexe/zef && cd zef && ../rakudo/perl6-m -Ilib bin/zef install .
+RUN git clone https://github.com/ugexe/zef && cd zef && ../rakudo/perl6-m -Ilib bin/zef install .
 RUN zef install --/test App::Mi6 DBIish
 USER root
 RUN ln -s ~/rakudo/perl6-m /usr/local/bin/perl6
