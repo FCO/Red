@@ -1,5 +1,5 @@
 image:
-  image: fernandocorrea/red-workspace
+  file: gitpod.dockerfile
 tasks:
   - init: . <(~/.rakudobrew/bin/rakudobrew init Bash -) && zef install --/test App::Mi6 && zef install --deps-only --/test .
     command: PATH=$PATH:/home/gitpod/.rakudobrew/bin/; mi6 test
