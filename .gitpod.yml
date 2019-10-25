@@ -2,4 +2,4 @@ image:
   file: .gitpod.dockerfile
 tasks:
   - init: zef install --deps-only --/test .
-    command: PATH=$PATH:/home/gitpod/.perl6/bin; mi6 test
+    command: PATH=$PATH:/home/gitpod/.rakudobrew/bin/; mi6 test
