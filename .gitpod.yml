@@ -2,3 +2,4 @@ image:
   file: .gitpod.dockerfile
 tasks:
   - init: zef install --deps-only --/test .
+    command: mi6 test
