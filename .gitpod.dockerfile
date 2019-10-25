@@ -5,7 +5,7 @@ RUN apt-get update                                                 \
 
 USER gitpod
 RUN git clone https://github.com/tadzik/rakudobrew ~/.rakudobrew
-RUN echo 'eval "$(/home/gitpod/.rakudobrew/bin/rakudobrew init Bash)"' >> ~/.bashrc
+RUN echo 'eval "$(/home/gitpod/.rakudobrew/bin/rakudobrew init -)"' >> ~/.bashrc
 RUN eval "$(/home/gitpod/.rakudobrew/bin/rakudobrew init Bash)"
 RUN ~/.rakudobrew/bin/rakudobrew build moar
 RUN ~/.rakudobrew/bin/rakudobrew global moar
