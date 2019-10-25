@@ -5,7 +5,7 @@ RUN apt-get update                                                 \
 
 USER gitpod
 RUN git clone https://github.com/tadzik/rakudobrew ~/.rakudobrew
-RUN ~/.rakudobrew/bin/rakudobrew init Bash >> ~/.bashrc
+echo 'eval "$(/Users/fernando/.rakudobrew/bin/rakudobrew init -)"' >> ~/.bashrc
 RUN ~/.rakudobrew/bin/rakudobrew build moar
 RUN ~/.rakudobrew/bin/rakudobrew global moar
 RUN zef install --/test App::Mi6 DBIish
