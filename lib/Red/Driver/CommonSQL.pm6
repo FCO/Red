@@ -20,6 +20,9 @@ use Red::AST::DropColumn;
 use Red::AST::TableComment;
 use Red::AST::StringFuncs;
 use Red::AST::DateTimeFuncs;
+use Red::AST::BeginTransaction;
+use Red::AST::CommitTransaction;
+use Red::AST::RollbackTransaction;
 use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
@@ -160,6 +163,18 @@ multi method diff-to-ast(@diff) {
 }
 
 proto method translate(Red::AST, $? --> Pair) {*}
+
+multi method translate(Red::AST::BeginTransaction, $context?) {
+    "BEGIN" => []
+}
+
+multi method translate(Red::AST::CommitTransaction, $context?) {
+    "COMMIT" => []
+}
+
+multi method translate(Red::AST::RollbackTransaction, $context?) {
+    "ROLLBACK" => []
+}
 
 multi method translate(Red::AST::DropColumn $_, $context?) {
     "ALTER TABLE {

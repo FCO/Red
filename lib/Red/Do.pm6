@@ -124,8 +124,21 @@ multi red-do(&block, Red::Driver:D :$with, :$async where not *) is export {
 #| Receives a block and optionally a connection name.
 #| Runs the block with the connection with that name
 #| asynchronously
-multi red-do(&block, Red::Driver:D :$with = "default", :$async! where so *) is export {
-    start run-red-do $with, &block
+multi red-do(&block, Str:D :$with = "default", :$async! where so *) is export {
+    my Str $*RED-DO-WITH = $with;
+    start run-red-do %GLOBAL::RED-DEFULT-DRIVERS{$with}, &block
+}
+
+multi red-do(
+        *@blocks,
+        Bool :$async,
+        Bool :$transaction! where so *,
+        *%pars where *.none.key eq "with"
+) is export {
+    KEEP get-RED-DB.commit;
+    UNDO get-RED-DB.rollback;
+    red-do |@blocks, :$async, |%pars, :with(get-RED-DB.begin);
+    True
 }
 
 #| Receives list of pairs with connection name and block
