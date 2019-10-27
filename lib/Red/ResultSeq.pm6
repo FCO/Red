@@ -309,9 +309,19 @@ method sort(&order --> Red::ResultSeq) is hidden-from-sql-commenting {
 }
 
 #| Sets the query to return the rows in a randomic order (does not run the query)
-method pick(Whatever --> Red::ResultSeq) is hidden-from-sql-commenting {
+multi method pick(Whatever --> Red::ResultSeq) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     self.clone: :chain($!chain.clone: :order[Red::AST::Function.new: :func<random>])
+}
+
+multi method pick(Int() $num) is hidden-from-sql-commenting {
+    self.create-comment-to-caller;
+    self.pick(*).head: |($_ with $num)
+}
+
+multi method pick() is hidden-from-sql-commenting {
+    self.create-comment-to-caller;
+    self.pick(*).head
 }
 
 #| Returns a ResultAssociative classified by the passed code (does not run the query)
