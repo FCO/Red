@@ -238,23 +238,38 @@ method compose-columns(Red::Model:U \type) {
 }
 
 #| Returns the ResultSeq
-method rs($ --> Red::ResultSeq)     { $.rs-class.new }
+multi method rs($ --> Red::ResultSeq)          { $.rs-class.new }
+multi method rs($, :$with! --> Red::ResultSeq) { $.rs-class.new.with: $with }
 #| Alias for C<.rs()>
-method all($obj --> Red::ResultSeq) { $obj.^rs }
+multi method all($obj --> Red::ResultSeq)          { $obj.^rs }
+multi method all($obj, :$with! --> Red::ResultSeq) { $obj.^rs(:$with) }
 
 #| Sets model as a temporary table
 method temp(|) is rw { $!temporary }
 
+
+multi method create-table(Str :$with!, |c) {
+    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    self.create-table: |c
+}
+
+multi method create-table(Red::Driver :$with!, |c) {
+    my $*RED-DB = $with;
+    self.create-table: |c
+}
+
 #| Creates table unless table already exists
-multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where ? *) {
-    CATCH { when X::Red::Driver::Mapped::TableExists {
-        return False
-    }}
+multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where ? *, *% where .keys.all ne "with") {
+    CATCH {
+        when X::Red::Driver::Mapped::TableExists {
+            return False
+        }
+    }
     callwith model
 }
 
 #| Creates table
-multi method create-table(\model) {
+multi method create-table(\model, :$with where not .defined) {
     die X::Red::InvalidTableName.new: :table(model.^table)
         unless get-RED-DB.is-valid-table-name: model.^table
     ;
@@ -292,8 +307,18 @@ method apply-row-phasers($obj, Mu:U $phase) {
     }
 }
 
+multi method save(Red::Driver :$with!, |c) {
+    my $*RED-DB = $with;
+    self.save: |c
+}
+
+multi method save(Str :$with!, |c) {
+    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    self.save: |c
+}
+
 #| Saves that object on database (create a new row)
-multi method save($obj, Bool :$insert! where * == True, Bool :$from-create) {
+multi method save($obj, Bool :$insert! where * == True, Bool :$from-create, :$with where not .defined) {
     self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
     my $ast = Red::AST::Insert.new: $obj;
     my $ret := get-RED-DB.execute: $ast;
@@ -312,7 +337,7 @@ multi method save($obj, Bool :$insert! where * == True, Bool :$from-create) {
 }
 
 #| Saves that object on database (update the row)
-multi method save($obj, Bool :$update! where * == True) {
+multi method save($obj, Bool :$update! where * == True, :$with where not .defined) {
     self.apply-row-phasers($obj, BeforeUpdate);
     my $ast = Red::AST::Update.new: $obj;
     my $ret := get-RED-DB.execute: $ast;
@@ -331,7 +356,7 @@ multi method save($obj, Bool :$update! where * == True) {
 }
 
 #| Generic save, calls C<.^save: :insert> if C<.^is-on-db> or C<.^save: :update> otherwise
-multi method save($obj) {
+multi method save($obj, :$with where not .defined) {
     do if $obj.^is-on-db {
         self.save: $obj, :update
     } else {
@@ -339,10 +364,19 @@ multi method save($obj) {
     }
 }
 
+multi method create(Red::Driver :$with!, |c) {
+    my $*RED-DB = $with;
+    self.create: |c
+}
+
+multi method create(Str :$with!, |c) {
+    self.create: :with(%GLOBAL::RED-DEFULT-DRIVERS{$with}), |c
+}
+
 #| Creates a new object and saves it on DB
 #| It accepts a list os pairs (the same as C<.new>)
 #| And Lists and/or Hashes for relationships
-method create(\model, *%orig-pars) is rw {
+multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
     my $RED-DB = get-RED-DB;
     {
         my $*RED-DB = $RED-DB;
@@ -400,8 +434,18 @@ method create(\model, *%orig-pars) is rw {
     }
 }
 
+multi method delete(Red::Driver :$with!, |c) {
+    my $*RED-DB = $with;
+    self.delete: |c
+}
+
+multi method delete(Str :$with!, |c) {
+    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    self.delete: |c
+}
+
 #| Deletes row from database
-method delete(\model) {
+multi method delete(\model, :$with where not .defined) {
     my $origin = model.clone;
     self.apply-row-phasers(model, BeforeDelete);
     my $ast = Red::AST::Delete.new: model;
@@ -416,15 +460,35 @@ method delete(\model) {
     self.apply-row-phasers(model, AfterDelete);
 }
 
+multi method load(Red::Driver :$with!, |c) {
+    my $*RED-DB = $with;
+    self.load: |c
+}
+
+multi method load(Str :$with!, |c) {
+    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    self.load: |c
+}
+
 #| Loads object from the DB
-method load(Red::Model:U \model, |ids) {
+multi method load(Red::Model:U \model, |ids) {
     my $filter = model.^id-filter: |ids;
     model.^rs.grep({ $filter }).head
 }
 
 #| Creates a new object setting ids with this values
-multi method new-with-id(Red::Model:U \model, %ids) {
+multi method new-with-id(Red::Model:U \model, %ids, :$with where not .defined) {
     model.new: |model.^id-map: |%ids;
+}
+
+multi method new-with-id(Red::Driver :$with!, |c) {
+    my $*RED-DB = $with;
+    self.new-with-id: |c
+}
+
+multi method new-with-id(Str :$with!, |c) {
+    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    self.new-with-id: |c
 }
 
 #| Creates a new object setting the id
@@ -432,18 +496,28 @@ multi method new-with-id(Red::Model:U \model, |ids) {
     model.new: |model.^id-map: |ids;
 }
 
+multi method search(Red::Driver :$with!, |c) {
+    my $*RED-DB = $with;
+    self.search: |c
+}
+
+multi method search(Str :$with!, |c) {
+    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    self.search: |c
+}
+
 #| Receives a `Block` of code and returns a `ResultSeq` using the `Block`'s return as filter
-multi method search(Red::Model:U \model, &filter) {
+multi method search(Red::Model:U \model, &filter, :$with where not .defined) {
     model.^rs.grep: &filter
 }
 
 #| Receives a `AST` of code and returns a `ResultSeq` using that `AST` as filter
-multi method search(Red::Model:U \model, Red::AST $filter) {
+multi method search(Red::Model:U \model, Red::AST $filter, :$with where not .defined) {
     samewith model, { $filter }
 }
 
 #| Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter
-multi method search(Red::Model:U \model, *%filter) {
+multi method search(Red::Model:U \model, *%filter, :$with where not .defined) {
     samewith
         model,
         %filter.kv
@@ -451,8 +525,18 @@ multi method search(Red::Model:U \model, *%filter) {
             .reduce: { Red::AST::AND.new: $^a, $^b }
 }
 
+multi method find(Red::Driver :$with!, |c) {
+    my $*RED-DB = $with;
+    self.find: |c
+}
+
+multi method find(Str :$with!, |c) {
+    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    self.find: |c
+}
+
 #| Finds a specific row
-method find(|c) { self.search(|c).head }
+multi method find(|c) { self.search(|c).head }
 
 multi method get-attr(\instance, Str $name) {
     $!col-data-attr.get_value(instance).{ $name }

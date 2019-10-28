@@ -7,7 +7,7 @@ has Mu:U        $.of            is required;
 has Red::AST    $.ast           is required;
 has             &.post;
 has             $!st-handler;
-has Red::Driver $!driver = get-RED-DB;
+has Red::Driver $.driver        = get-RED-DB;
 
 submethod TWEAK(|) {
     my $ast = $!driver.optimize: $!ast;

@@ -3,6 +3,7 @@ use Red::AST;
 use Red::Utils;
 use Red::Model;
 use Red::Column;
+use Red::Driver;
 use Red::AST::Next;
 use Red::AST::Case;
 use Red::AST::Empty;
@@ -68,12 +69,22 @@ method cache is hidden-from-sql-commenting {
 has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new;
 has Red::AST          %.update;
 has Red::AST::Comment @.comments;
+has Red::Driver       $.with;
 
-method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {
-    Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post
+multi method with(Red::Driver $with) {
+    self.clone: :$with
 }
 
-#| Returns a Seq with the result of the SQL query
+multi method with(Str $with) {
+    self.with: %GLOBAL::RED-DEFULT-DRIVERS{$with}
+}
+
+method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {
+    say $!with;
+    Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post, |(:driver($_) with $!with)
+}
+
+        #| Returns a Seq with the result of the SQL query
 method Seq is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     Seq.new: self.iterator
