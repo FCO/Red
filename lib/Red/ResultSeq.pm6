@@ -80,7 +80,6 @@ multi method with(Str $with) {
 }
 
 method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {
-    say $!with;
     Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post, |(:driver($_) with $!with)
 }
 
