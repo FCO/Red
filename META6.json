@@ -26,13 +26,16 @@
     "MetamodelX::Red::Relationship" : "lib/MetamodelX/Red/Relationship.pm6",
     "Red" : "lib/Red.pm6",
     "Red::AST" : "lib/Red/AST.pm6",
+    "Red::AST::BeginTransaction" : "lib/Red/AST/BeginTransaction.pm6",
     "Red::AST::Case" : "lib/Red/AST/Case.pm6",
     "Red::AST::Chained" : "lib/Red/AST/Chained.pm6",
     "Red::AST::ChangeColumn" : "lib/Red/AST/ChangeColumn.pm6",
     "Red::AST::Comment" : "lib/Red/AST/Comment.pm6",
+    "Red::AST::CommitTransaction" : "lib/Red/AST/CommitTransaction.pm6",
     "Red::AST::Constraints" : "lib/Red/AST/Constraints.pm6",
     "Red::AST::CreateColumn" : "lib/Red/AST/CreateColumn.pm6",
     "Red::AST::CreateTable" : "lib/Red/AST/CreateTable.pm6",
+    "Red::AST::DateTimeFuncs" : "lib/Red/AST/DateTimeFuncs.pm6",
     "Red::AST::Delete" : "lib/Red/AST/Delete.pm6",
     "Red::AST::Divisable" : "lib/Red/AST/Divisable.pm6",
     "Red::AST::DropColumn" : "lib/Red/AST/DropColumn.pm6",
@@ -51,7 +54,9 @@
     "Red::AST::Optimizer::AND" : "lib/Red/AST/Optimizer/AND.pm6",
     "Red::AST::Optimizer::Case" : "lib/Red/AST/Optimizer/Case.pm6",
     "Red::AST::Optimizer::OR" : "lib/Red/AST/Optimizer/OR.pm6",
+    "Red::AST::RollbackTransaction" : "lib/Red/AST/RollbackTransaction.pm6",
     "Red::AST::Select" : "lib/Red/AST/Select.pm6",
+    "Red::AST::StringFuncs" : "lib/Red/AST/StringFuncs.pm6",
     "Red::AST::TableComment" : "lib/Red/AST/TableComment.pm6",
     "Red::AST::Unary" : "lib/Red/AST/Unary.pm6",
     "Red::AST::Union" : "lib/Red/AST/Union.pm6",
@@ -60,6 +65,7 @@
     "Red::Attr::Column" : "lib/Red/Attr/Column.pm6",
     "Red::Attr::Query" : "lib/Red/Attr/Query.pm6",
     "Red::Attr::Relationship" : "lib/Red/Attr/Relationship.pm6",
+    "Red::Class" : "lib/Red/Class.pm6",
     "Red::Cli::Column" : "lib/Red/Cli/Column.pm6",
     "Red::Cli::Relationship" : "lib/Red/Cli/Relationship.pm6",
     "Red::Cli::Table" : "lib/Red/Cli/Table.pm6",
@@ -80,6 +86,7 @@
     "Red::Driver::SQLite" : "lib/Red/Driver/SQLite.pm6",
     "Red::Driver::SQLite::SQLiteMaster" : "lib/Red/Driver/SQLite/SQLiteMaster.pm6",
     "Red::Driver::SQLite::SchemaReader" : "lib/Red/Driver/SQLite/SchemaReader.pm6",
+    "Red::Event" : "lib/Red/Event.pm6",
     "Red::FromRelationship" : "lib/Red/FromRelationship.pm6",
     "Red::HiddenFromSQLCommenting" : "lib/Red/HiddenFromSQLCommenting.pm6",
     "Red::Migration::Column" : "lib/Red/Migration/Column.pm6",
@@ -106,8 +113,6 @@
     "map",
     "relational"
   ],
-  "test-depends" : [
-    "Test::META"
-  ],
-  "version" : "0.0.3"
+  "test-depends" : [ ],
+  "version" : "0.0.6"
 }

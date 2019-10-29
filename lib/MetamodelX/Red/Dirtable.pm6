@@ -1,6 +1,9 @@
 use nqp;
 use Red::Attr::Column;
 use Red::Attr::Relationship;
+
+=head2 MetamodelX::Red::Dirtable
+
 unit role MetamodelX::Red::Dirtable;
 
 has %.dirty-cols{Mu} is rw;
@@ -46,7 +49,7 @@ method set-helper-attrs(Mu \type) {
     type.^add_attribute: $!dirty-old-values-attr;
 }
 
-submethod !TWEAK_pr(\instance: *%data) {
+submethod !TWEAK_pr(\instance: *%data) is rw {
     my @columns = instance.^columns;
 
     my %new = |@columns.map: {
@@ -118,12 +121,19 @@ method compose-dirtable(Mu \type) {
     }
 }
 
+#| Accepts a Set of attributes of model and enables dirtiness flag for them,
+#| which means that the values were changed and need a database sync.
 multi method set-dirty(\obj, Set() $attr) {
     $!dirty-cols-attr.get_value(obj).{$_}++ for $attr.keys
 }
 
-method is-dirty(Any:D \obj)         { so $!dirty-cols-attr.get_value(obj) }
-method dirty-columns(Any:D \obj)    { $!dirty-cols-attr.get_value(obj) }
+#| Returns `True` if any of the object attributes were changed
+#| from original database record values.
+method is-dirty(Any:D \obj --> Bool) { so $!dirty-cols-attr.get_value(obj) }
+#| Returns dirty columns of the object.
+method dirty-columns(Any:D \obj)     { $!dirty-cols-attr.get_value(obj) }
+#| Erases dirty status from all model's attributes, but does not (!)
+#| revert their values to original ones.
 method clean-up(Any:D \obj) {
     $!dirty-cols-attr.set_value: obj, SetHash.new;
     $!dirty-old-values-attr.set_value: obj, {}

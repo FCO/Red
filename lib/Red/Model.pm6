@@ -1,4 +1,7 @@
 use Red::AST;
+
+=head2 Red::Model
+
 unit role Red::Model;
 
 has $!filter;

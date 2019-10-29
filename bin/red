@@ -10,7 +10,7 @@ my %*SUB-MAIN-OPTS =
   :named-anywhere,
 ;
 
-#| List tables from database schema
+#| Lists tables from database schema
 multi MAIN(
     "list-tables",
     Str  :$driver!,
@@ -35,7 +35,7 @@ sub gen-stub(:@includes, :@models, :$driver, :%pars) {
     }
 }
 
-#| Generate models' code from database schema
+#| Generates models' code from database schema
 multi MAIN(
     "print-stub",
     Str  :$schema-class,
@@ -63,12 +63,11 @@ multi MAIN(
 }
 
 
-#| Generate models' code from database schema
+#| Generates models' code from database schema
 multi MAIN(
     "migration-plan",
-    Str :$model,
+    Str :$model!,
     Str :$require = $model,
-    Str :$I?,
     Str :$driver!,
     *%pars
 ) {
@@ -78,11 +77,12 @@ multi MAIN(
     for $*RED-DB.diff-to-ast: ::($model).^diff-from-db -> @data {
         say "Step ", ++$, ":";
         #say @data.join("\n").indent: 4
+#        $*RED-DB.translate($_).key.indent(4).say for Red::AST::ChangeColumn.optimize: @data
         $*RED-DB.translate($_).key.indent(4).say for @data
     }
 }
 
-#| Generate models' code from database schema
+#| Generates models' code from database schema
 multi MAIN(
     "generate-code",
     Str  :$path     where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },

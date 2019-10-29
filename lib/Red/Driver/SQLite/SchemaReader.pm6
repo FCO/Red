@@ -1,6 +1,7 @@
 use Red::SchemaReader;
 use Red::Driver::SQLite::SQLiteMaster;
 
+#| An internal class to read SQLite schemes.
 unit class Red::Driver::SQLite::SchemaReader;
 also does Red::SchemaReader;
 
@@ -11,7 +12,9 @@ grammar SQL::CreateTable {
     rule  TOP                      { :i <create-table>+ %% ";" }
     rule  create-table             { :i CREATE TABLE <table-name=.name> '(' ~ ')' <column>+ %% [ "," ] }
     token name                     { :i \w+ }
-    rule  column                   { :i <column-name=.name> <type=.name> <modifier>? <index-mod>? }
+    rule  type                     { :i <name>["(" ~ ")" \d+]? }
+    rule  column                   { :i <column-name=.name> <type> <modifier>? <index-mod>? <auto-increment>? }
+    rule  auto-increment           { :i "AUTOINCREMENT" }
     proto rule modifier            {*}
     multi rule modifier:<null>     { :i NULL }
     multi rule modifier:<not-null> { :i NOT NULL }
@@ -31,6 +34,7 @@ class SQL::CreateTable::Action {
     method TOP($/)                 { make $<create-table>».made }
     method create-table($/)        { make Red::Cli::Table.new: name => $<table-name>.made, columns => $<column>».made }
     method name($/)                { make ~$/ }
+    method type($/)                { make $/.Str.trim}
     method column($/)              {
         make Red::Cli::Column.new(
             $<column-name>.made,
@@ -39,6 +43,7 @@ class SQL::CreateTable::Action {
             |$<index-mod>.made<pk unique references>
         )
     }
+    method autp-increment          { make ( :auto-increment ) }
     method modifier:<null>($/)     { make ( :nullable ) }
     method modifier:<not-null>($/) { make ( :!nullable ) }
     method index-mod:<pk>($/)      { make ( :pk ) }
@@ -52,9 +57,15 @@ class SQL::CreateTable::Action {
 method tables-names       { self.sqlite-master.tables.map: *.name }
 method indexes-of($table) { self.sqlite-master.find-table($table).indexes }
 method table-definition($table) {
-   my $sql = self.sqlite-master.find-table($table).sql;
-   self.table-definition-from-create-table($sql).head
+    my $sql = self.sqlite-master.find-table($table).sql;
+    my $list = self.table-definition-from-create-table($sql);
+    return unless $list;
+    $list.head
 }
-method table-definition-from-create-table($sql) {
-   SQL::CreateTable.parse($sql, :actions(SQL::CreateTable::Action)).made;
+multi method table-definition-from-create-table(Str:D $sql) {
+    SQL::CreateTable.parse($sql, :actions(SQL::CreateTable::Action)).made;
+}
+
+multi method table-definition-from-create-table(Any:U) {
+    Red::Cli::Table.new
 }

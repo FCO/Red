@@ -18,6 +18,11 @@ use Red::AST::CreateColumn;
 use Red::AST::ChangeColumn;
 use Red::AST::DropColumn;
 use Red::AST::TableComment;
+use Red::AST::StringFuncs;
+use Red::AST::DateTimeFuncs;
+use Red::AST::BeginTransaction;
+use Red::AST::CommitTransaction;
+use Red::AST::RollbackTransaction;
 use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
@@ -93,9 +98,9 @@ method reserved-words {<
     ZEROFILL ZONE
 >}
 
-multi method diff-to-ast("+", "col", Red::Cli::Column $_ --> Hash()) {
+multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
     1 => Red::AST::CreateColumn.new(
-        :table(.table.name),
+        :$table,
         :name(.name),
         :type(.type),
         :nullable,
@@ -105,7 +110,7 @@ multi method diff-to-ast("+", "col", Red::Cli::Column $_ --> Hash()) {
         :ref-col(Str),
     ),
     8 => Red::AST::ChangeColumn.new(
-        :table(.table.name),
+        :$table,
         :name(.name),
         :type(.type),
         :nullable(.nullable),
@@ -115,22 +120,61 @@ multi method diff-to-ast("+", "col", Red::Cli::Column $_ --> Hash()) {
         :ref-col(.references.<column> // Str),
     ),
 }
-multi method diff-to-ast($a) {
+multi method diff-to-ast(Str, Str, "-", Str, $) {}
+
+#multi method diff-to-ast(Str:D, Str:D, "-", Str:D, Bool:D) {}
+multi method diff-to-ast($table, Str $column, "+", "nullable", Bool $nullable --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$nullable,
+    ),
 }
-multi method diff-to-ast(Str $column, *@data) {
+multi method diff-to-ast($table, Str $column, "+", "type", Str $type --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$type,
+    ),
 }
-multi method diff-to-ast("-", "col", Red::Cli::Column $_ --> Hash()) {
+multi method diff-to-ast($table, Str $column, "+", "pk", Bool $pk --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$pk,
+    ),
+}
+multi method diff-to-ast($table, Str $column, "+", "unique", Bool $unique --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$unique,
+    ),
+}
+multi method diff-to-ast($table, "-", "col", Red::Cli::Column $_ --> Hash()) {
     9 => Red::AST::DropColumn.new:
         :table(.table.name),
         :name(.name),
     ;
 }
 multi method diff-to-ast(@diff) {
-    my %steps;
+#    .say for @diff;
     @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(|*.key, :as{ |.value }).sort.map: *.value
 }
 
 proto method translate(Red::AST, $? --> Pair) {*}
+
+multi method translate(Red::AST::BeginTransaction, $context?) {
+    "BEGIN" => []
+}
+
+multi method translate(Red::AST::CommitTransaction, $context?) {
+    "COMMIT" => []
+}
+
+multi method translate(Red::AST::RollbackTransaction, $context?) {
+    "ROLLBACK" => []
+}
 
 multi method translate(Red::AST::DropColumn $_, $context?) {
     "ALTER TABLE {
@@ -146,7 +190,7 @@ multi method translate(Red::AST::ChangeColumn $_, $context?) {
     } ALTER COLUMN {
         .name
     } {
-        .type
+        .type // ""
     }{
         " NOT NULL" unless .nullable
     }{
@@ -277,6 +321,14 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     }" => @bind
 }
 
+multi method translate(Red::AST::StringFunction $_, $context?) {
+    self.translate: .default-implementation, $context
+}
+
+multi method translate(Red::AST::DateTimeFunction $_, $context?) {
+    self.translate: .default-implementation, $context
+}
+
 multi method translate(Red::AST::Function $_, $context?) {
     my @bind;
     "{ .func }({ .args.map({
@@ -401,6 +453,18 @@ multi method translate(Red::Column $_, "where") {
 }
 
 multi method translate(Red::Column $_, $context?) {
+    "{.attr.package.^as}.{.name}" => []
+}
+
+multi method translate(Red::Column $_, "create-table-column-name") {
+    .name => []
+}
+
+multi method translate(Red::Column $_, "unique") {
+    .name => []
+}
+
+multi method translate(Red::Column $_, "pk") {
     .name => []
 }
 
@@ -455,7 +519,7 @@ method comment-on-same-statement { False }
 
 multi method translate(Red::Column $_, "create-table") {
     (
-        "column-name",
+        "create-table-column-name",
         "column-type",
         "nullable-column",
         (|(
@@ -476,6 +540,10 @@ multi method translate(Red::Column $_, "create-table") {
 multi method translate(Red::Column $_, "column-name")           { .name // "" => [] }
 
 multi method translate(Red::Column $_, "column-type")           {
+    if .attr.type =:= Mu {
+        return self.type-by-name("int")  => [] if .auto-increment;
+        return self.type-by-name("text") => []
+    }
     (.type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_) => []
 }
 
@@ -579,6 +647,7 @@ multi method type-for-sql("interval" --> "Duration") {}
 multi method type-for-sql("integer"  --> "Int"     ) {}
 multi method type-for-sql("serial"   --> "UInt"    ) {}
 multi method type-for-sql("boolean"  --> "Bool"    ) {}
+multi method type-for-sql(Str $ where /^ "varchar(" ~ ")" \d+ $/ --> "Str") {}
 
 multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
 multi method inflate(Str $value, DateTime :$to!) { $to.new: $value }

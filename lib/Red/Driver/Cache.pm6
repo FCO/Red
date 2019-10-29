@@ -26,13 +26,24 @@ multi cache(Str $cache, Pair $driver-pair) {
     cache $cache => \(), $driver-pair
 }
 
-multi cache(
-    Pair (Str :key($cache-driver), Capture :value($cache-conf)),
-    Pair (Str :key($driver),       Capture :value($driver-conf))
-) is export {
+multi cache(Str $cache, Red::Driver $driver) {
+    cache $cache => \(), $driver
+}
+
+multi cache(Pair (Str :key($cache-driver), Capture :value($cache-conf)), Red::Driver $driver) {
     my $cache = "Red::Driver::Cache::$cache-driver";
     require ::($cache);
-    ::($cache).new: :driver(database $driver, |$driver-conf), |$cache-conf
+    ::($cache).new: :$driver, |$cache-conf
+}
+
+multi cache(
+    Pair (Str :key($cache-driver), Capture :value($cache-conf)),
+    Pair (Str :key($driver-name),  Capture :value($driver-conf))
+) is export {
+    my $driver = database $driver-name, |$driver-conf;
+    my $cache = "Red::Driver::Cache::$cache-driver";
+    require ::($cache);
+    ::($cache).new: :$driver, |$cache-conf
 }
 
 multi method get-from-cache(Red::AST)  { ... }

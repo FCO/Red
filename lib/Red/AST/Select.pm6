@@ -21,6 +21,14 @@ method returns { Red::Model }
 
 method args { $!sub-select ?? () !! ( $!of, $!filter, |@!order ) }
 
+method gist {
+    do if $!sub-select {
+        "{ self.^name }:\n" ~ [$!of, $!filter, |@!order].map(*.gist).join("\n").indent: 4
+    } else {
+        self.Red::AST::gist()
+    }
+}
+
 method tables(::?CLASS:D:) {
     |($!of, |@!table-list, |(.tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique
 }
