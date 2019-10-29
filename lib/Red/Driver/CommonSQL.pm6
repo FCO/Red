@@ -606,7 +606,8 @@ multi method translate(Red::AST::Insert $_, $context?) {
 }
 
 multi method translate(Red::AST::Delete $_, $context?) {
-    "DELETE FROM { .from }\n{ "WHERE { self.translate($_).key }" with .filter }" => []
+    my ($key, @binds) := do given self.translate(.filter) { .key, .value }
+    "DELETE FROM { .from }\n{ "WHERE { $key }" }" => @binds
 }
 
 multi method translate(Red::AST::Update $_, $context?) {
