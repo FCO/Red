@@ -241,6 +241,7 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
     my \model = Meta.new(:table(SELF.of.^table)).new_type: :name(SELF.of.^name);
     model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, SELF.of.^table;
     my $attr-name = 'data_0';
+    my @table-list;
     my @attrs = do for @ret {
         @table-list.push: |.tables;
         my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;

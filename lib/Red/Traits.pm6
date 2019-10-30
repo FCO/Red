@@ -28,7 +28,7 @@ multi trait_mod:<is>(Mu:U $model, Mu:U :$rs-class! --> Empty) {
 #| though it can be stated explicitly with writing `is !nullable` for the model.
 #| Defaults can be overridden using `is nullable` or `is !nullable` for the attribute (column) itself.
 multi trait_mod:<is>(Mu:U $model, Bool :$nullable! --> Empty) {
-    $model.^default-nullable = $nullable
+    $model.HOW does role :: { method default-nullable(|) { $nullable } }
 }
 
 multi trait_mod:<is>(Attribute $attr, Bool :$column! --> Empty) is export {

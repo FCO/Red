@@ -53,9 +53,9 @@ multi infix:<!=>(Numeric() $a is readonly, Red::AST $b) is export {
 }
 
 #| ==
-multi infix:<==>(Red::AST $a, Red::AST $b) is export {
-    Red::AST::Eq.new: $a, $b, :cast<num>
-}
+#multi infix:<==>(Red::AST $a, Red::AST $b) is export {
+#    Red::AST::Eq.new: $a, $b, :cast<num>
+#}
 multi infix:<==>(Red::AST $a, Date $b is rw) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<num>, :bind-right
 }

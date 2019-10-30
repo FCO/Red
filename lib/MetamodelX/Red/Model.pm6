@@ -46,6 +46,7 @@ has $.rs-class;
 has @!constraints;
 has $.table;
 has Bool $!temporary;
+has Bool $!default-null;
 
 multi method emit(Mu $model, Red::Event $event) {
     start try get-RED-DB.emit: $event.clone: :model($model.WHAT)
@@ -94,7 +95,7 @@ method id-values(Red::Model:D $model) {
 }
 
 #| Check if the model is nullable by default.
-method default-nullable(|) is rw { $ //= False }
+method default-nullable(|) is rw { $!default-null }
 
 #| Returns all columns with the unique counstraint
 method unique-constraints(\model) {
@@ -215,7 +216,7 @@ method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
     if $attr.name eq @!columns.none.name {
         @!columns.push: $attr;
         my $name = $attr.name.substr: 2;
-        with $attr.args<references> {
+        with $attr.args{"references" | "model-name"} {
             self.add-reference: $name, $attr.column
         }
         self.add-comparate-methods(T, $attr);
@@ -556,5 +557,5 @@ multi method get-attr(\instance, Red::Attr::Column $attr) {
 }
 
 multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
-    samewith instance, $attr.name.subattr(2), value
+    samewith instance, $attr.name.substr(2), value
 }
