@@ -19,7 +19,6 @@ Revision history for Red
     - Fix .head
     - Lots of documentation
 
-
 0.0.4  2019-08-19T18:39:45+01:00
     - accept && and ||
     - Fix optimizations

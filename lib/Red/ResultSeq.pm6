@@ -292,7 +292,7 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
 }
 
 #| Change what will be returned (does not run the query)
-method map(\SELF: &filter --> Red::ResultSeq) is hidden-from-sql-commenting {
+method map(\SELF: &filter) is hidden-from-sql-commenting {
     SELF.create-comment-to-caller;
 #    CATCH {
 #        default {
