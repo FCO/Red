@@ -222,12 +222,13 @@ method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
         self.add-comparate-methods(T, $attr);
         if $attr.has_accessor {
             if type.^rw or $attr.rw {
-                T.^add_multi_method: $name, method (Red::Model:D:) is rw {
+                $attr does role :: { method rw { True } };
+                T.^add_multi_method: $name, my method (Red::Model:D:) is rw {
                     use nqp;
                     nqp::getattr(self, self.WHAT, $attr.name)
                 }
             } else {
-                T.^add_multi_method: $name, method (Red::Model:D:) {
+                T.^add_multi_method: $name, my method (Red::Model:D:) {
                     $attr.get_value: self
                 }
             }
