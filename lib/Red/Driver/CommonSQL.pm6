@@ -462,6 +462,38 @@ multi method translate(Red::Column $col, "select") {
     qq[$str {qq<as "{$col.attr-name}"> if $col.computation or $col.name ne $col.attr-name}] => @bind
 }
 
+
+multi method  translate(Red::AST::Sum $_, $context?) {
+    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
+    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
+    "$l + $r" => [|@l-bind, |@r-bind]
+}
+
+multi method  translate(Red::AST::Sub $_, $context?) {
+    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
+    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
+    "$l - $r" => [|@l-bind, |@r-bind]
+}
+
+multi method  translate(Red::AST::Mul $_, $context?) {
+    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
+    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
+    "$l * $r" => [|@l-bind, |@r-bind]
+}
+
+multi method  translate(Red::AST::Div $_, $context?) {
+    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
+    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
+    "$l / $r" => [|@l-bind, |@r-bind]
+}
+
+
+multi method  translate(Red::AST::Mod $_, $context?) {
+    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
+    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
+    "$l % $r" => [|@l-bind, |@r-bind]
+}
+
 multi method translate(Red::AST::Mul $_ where .left.?value == -1, "order") {
     "{ .right.name } DESC" => []
 }
@@ -629,7 +661,7 @@ multi method translate(Red::AST::Delete $_, $context?) {
 }
 
 multi method translate(Red::AST::Update $_, $context?) {
-    my ($wstr, @wbind) := do given self.translate(.filter) { .key, .value }
+    my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };
     my @bind;
     my $str = .values.kv.map(-> $col, $val {
         my ($s, @b) := do given self.translate: $val, 'update' { .key, .value }
@@ -641,8 +673,11 @@ multi method translate(Red::AST::Update $_, $context?) {
         .into
     } SET
     $str
-    WHERE $wstr
+    {
+        "WHERE $wstr" with .filter
+    }
     END
+
 }
 
 multi method translate(Red::AST::LastInsertedRow $_, $context?) { "" => [] }

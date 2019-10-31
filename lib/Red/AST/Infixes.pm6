@@ -1,5 +1,6 @@
 use Red::AST::Infix;
 use Red::AST::Value;
+class Red::AST::Sum     { ... }
 class Red::AST::Eq      { ... }
 class Red::AST::Ne      { ... }
 class Red::AST::Lt      { ... }
@@ -14,6 +15,52 @@ class Red::AST::Mod     { ... }
 class Red::AST::Concat  { ... }
 class Red::AST::Like    { ... }
 class Red::AST::In      { ... }
+
+class Red::AST::Sum does Red::AST::Infix {
+    has $.op = "+";
+    has Num $.returns;
+
+    method should-set(--> Hash()) {
+        self.find-column-name => self.find-value
+    }
+
+    method should-validate {}
+
+    method find-column-name {
+        gather for self.args {
+            .take for .?find-column-name
+        }
+    }
+
+    method find-value {
+        for self.args {
+            .return with .?find-value
+        }
+    }
+}
+
+class Red::AST::Sub does Red::AST::Infix {
+    has $.op = "-";
+    has Num $.returns;
+
+    method should-set(--> Hash()) {
+        self.find-column-name => self.find-value
+    }
+
+    method should-validate {}
+
+    method find-column-name {
+        gather for self.args {
+            .take for .?find-column-name
+        }
+    }
+
+    method find-value {
+        for self.args {
+            .return with .?find-value
+        }
+    }
+}
 
 class Red::AST::Eq does Red::AST::Infix {
     has $.op = "=";
