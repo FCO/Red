@@ -18,6 +18,58 @@ multi prefix:<+>(Red::AST $a) is export {
     Red::AST::Mul.new: ast-value(1), $a
 }
 
+#| X + Y
+multi infix:<+>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Sum.new: $a, $b
+}
+
+multi infix:<+>(Red::AST $a, Numeric() $b) is export {
+    Red::AST::Sum.new: $a, ast-value $b
+}
+
+multi infix:<+>(Numeric() $a, Red::AST $b) is export {
+    Red::AST::Sum.new: ast-value($a), $b
+}
+
+#| X - Y
+multi infix:<->(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Sub.new: $a, $b
+}
+
+multi infix:<->(Red::AST $a, Numeric() $b) is export {
+    Red::AST::Sub.new: $a, ast-value $b
+}
+
+multi infix:<->(Numeric() $a, Red::AST $b) is export {
+    Red::AST::Sub.new: ast-value($a), $b
+}
+
+#| X * Y
+multi infix:<*>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Mul.new: $a, $b
+}
+
+multi infix:<*>(Red::AST $a, Numeric() $b) is export {
+    Red::AST::Mul.new: $a, ast-value $b
+}
+
+multi infix:<*>(Numeric() $a, Red::AST $b) is export {
+    Red::AST::Mul.new: ast-value($a), $b
+}
+
+        #| X - Y
+multi infix:</>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Div.new: $a, $b
+}
+
+multi infix:</>(Red::AST $a, Numeric() $b) is export {
+    Red::AST::Div.new: $a, ast-value $b
+}
+
+multi infix:</>(Numeric() $a, Red::AST $b) is export {
+    Red::AST::Div.new: ast-value($a), $b
+}
+
 #| ==
 multi infix:<==>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Eq.new: $a, $b, :cast<num>
@@ -318,39 +370,39 @@ multi infix:<ge>(Str() $a is readonly, Red::AST $b) is export {
     Red::AST::Ge.new: ast-value($a), $b, :cast<str>
 }
 
-#| *
-multi infix:<*>(Red::AST $a, Red::AST $b) is export {
-    Red::AST::Mul.new: $a, $b, :cast<int>
-}
-multi infix:<*>(Red::AST $a, Int() $b is rw) is export {
-    Red::AST::Mul.new: $a, ast-value($b), :cast<int>, :bind-right
-}
-multi infix:<*>(Red::AST $a, Int() $b is readonly) is export {
-    Red::AST::Mul.new: $a, ast-value($b), :cast<int>
-}
-multi infix:<*>(Int() $a is rw, Red::AST $b) is export {
-    Red::AST::Mul.new: ast-value($a), $b, :cast<int>, :bind-left
-}
-multi infix:<*>(Int() $a is readonly, Red::AST $b) is export {
-    Red::AST::Mul.new: ast-value($a), $b, :cast<int>
-}
+##| *
+#multi infix:<*>(Red::AST $a, Red::AST $b) is export {
+#    Red::AST::Mul.new: $a, $b, :cast<int>
+#}
+#multi infix:<*>(Red::AST $a, Int() $b is rw) is export {
+#    Red::AST::Mul.new: $a, ast-value($b), :cast<int>, :bind-right
+#}
+#multi infix:<*>(Red::AST $a, Int() $b is readonly) is export {
+#    Red::AST::Mul.new: $a, ast-value($b), :cast<int>
+#}
+#multi infix:<*>(Int() $a is rw, Red::AST $b) is export {
+#    Red::AST::Mul.new: ast-value($a), $b, :cast<int>, :bind-left
+#}
+#multi infix:<*>(Int() $a is readonly, Red::AST $b) is export {
+#    Red::AST::Mul.new: ast-value($a), $b, :cast<int>
+#}
 
-#| /
-multi infix:</>(Red::AST $a, Red::AST $b) is export {
-    Red::AST::Div.new: $a, $b, :cast<int>
-}
-multi infix:</>(Red::AST $a, Int() $b is rw) is export {
-    Red::AST::Div.new: $a, ast-value($b), :cast<int>, :bind-right
-}
-multi infix:</>(Red::AST $a, Int() $b is readonly) is export {
-    Red::AST::Div.new: $a, ast-value($b), :cast<int>
-}
-multi infix:</>(Int() $a is rw, Red::AST $b) is export {
-    Red::AST::Div.new: ast-value($a), $b, :cast<int>, :bind-left
-}
-multi infix:</>(Int() $a is readonly, Red::AST $b) is export {
-    Red::AST::Div.new: ast-value($a), $b, :cast<int>
-}
+##| /
+#multi infix:</>(Red::AST $a, Red::AST $b) is export {
+#    Red::AST::Div.new: $a, $b, :cast<int>
+#}
+#multi infix:</>(Red::AST $a, Int() $b is rw) is export {
+#    Red::AST::Div.new: $a, ast-value($b), :cast<int>, :bind-right
+#}
+#multi infix:</>(Red::AST $a, Int() $b is readonly) is export {
+#    Red::AST::Div.new: $a, ast-value($b), :cast<int>
+#}
+#multi infix:</>(Int() $a is rw, Red::AST $b) is export {
+#    Red::AST::Div.new: ast-value($a), $b, :cast<int>, :bind-left
+#}
+#multi infix:</>(Int() $a is readonly, Red::AST $b) is export {
+#    Red::AST::Div.new: ast-value($a), $b, :cast<int>
+#}
 
 #| %
 multi infix:<%>(Red::AST $a, Red::AST $b) is export {
