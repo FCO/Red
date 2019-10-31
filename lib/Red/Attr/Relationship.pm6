@@ -55,7 +55,9 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
                 X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;
                 my $ref = $rel.ref;
                 X::Red::RelationshipNotRelated.new(:relationship(attr), :points-to($rel)).throw without $ref;
-                my $val = $ref.attr.get_value: instance;
+                my $val = do given $ref.attr but role :: { method package { instance.WHAT } } {
+                    instance.^get-attr: .name.substr: 2
+                }
                 my \value = ast-value $val;
                 rel-model.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
             } else {
