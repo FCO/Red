@@ -282,7 +282,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                     }"
                 }
             }",
-            |@joins.reduce({ |$^a, |$^b }).map({
+            |@joins.reduce({ |$^a, |$^b }).unique(:as{ .^table }).map({
                 " JOIN {
                     .^table
                 }{
