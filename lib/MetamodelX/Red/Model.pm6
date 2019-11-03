@@ -391,12 +391,18 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
         my %pars;
         my %positionals;
         for %orig-pars.kv -> $name, $val {
-            my \attr-type = model.^attributes.first(*.name.substr(2) eq $name).type;
+            my \attr = model.^attributes.first(*.name.substr(2) eq $name);
+            my \attr-type = attr.type;
             if %relationships{ $name } {
+                my \attr-model = attr.relationship-model;
                 if $val ~~ Positional && attr-type ~~ Positional {
                     %positionals{$name} = $val
-                } elsif $val !~~ attr-type {
-                    %pars{$name} = attr-type.^create: |$val
+                } elsif $val ~~ Associative && $val !~~ Red::Model {
+                    %pars{$name} = do if attr-model ~~ Red::Model {
+                        attr-model
+                    } else {
+                        attr-type
+                    }.^create: |$val
                 } else {
                     %pars{$name} = $val
                 }

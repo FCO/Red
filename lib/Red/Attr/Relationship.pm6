@@ -22,7 +22,7 @@ method rel {
 }
 
 method relationship-model(--> Mu:U)  is hidden-from-sql-commenting {
-    if !$!loaded-model {
+    if !$!loaded-model && $model.defined {
         my $t = ::($model);
         if !$t && $t ~~ Failure {
             require ::($require);
