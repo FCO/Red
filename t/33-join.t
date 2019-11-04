@@ -14,12 +14,12 @@ Ble.^create-table;
 Bla.^create: :ble($_) for ^10;
 Ble.^create: :bla($_) for ^10;
 
-is Bla.^all.grep(-> $bla {
-    Ble.^alias("test", :base($bla), :relationship{.bla == $bla.ble}).bla == 3
-}).Seq>>.ble, < 3 >;
+is Bla.^all.grep({ .^join(Ble, *.ble == *.bla).bla == 3 }).Seq>>.ble, < 3 >;
 
 is Bla.^join(Ble, *.ble == *.bla).^all.map(*.bla), ^10;
 
 is Bla.^join(:name<test>, Ble, *.ble == *.bla).^all.map(*.bla), ^10;
+
+is Bla.^all.grep(*.ble % 2 == 0).join(Ble, *.ble / 2 == *.bla).map(*.bla), ^5;
 
 done-testing;

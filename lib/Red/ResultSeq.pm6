@@ -449,6 +449,10 @@ method minus(::?CLASS:D: $other --> Red::ResultSeq) is hidden-from-sql-commentin
     self.clone: :chain($!chain.clone: :$filter)
 }
 
+method join(Red::Model \model, &on, :$name = "{ self.^name }_{ model.^name }") {
+    self.of.^join(model, &on).^all.clone: :$!chain
+}
+
 #|Returns the AST that will generate the SQL
 method ast(Bool :$sub-select --> Red::AST) is hidden-from-sql-commenting {
     if $.filter ~~ Red::AST::MultiSelect {
