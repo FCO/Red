@@ -11,6 +11,7 @@ use Red::AST::Update;
 use Red::AST::Delete;
 use Red::AST::Infixes;
 use Red::AST::Function;
+use Red::AST::Divisable;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::LastInsertedRow;
@@ -463,35 +464,43 @@ multi method translate(Red::Column $col, "select") {
 }
 
 
-multi method  translate(Red::AST::Sum $_, $context?) {
+multi method translate(Red::AST::Sum $_, $context?) {
     my ($l, @l-bind) := do given self.translate: .left { .key, .value }
     my ($r, @r-bind) := do given self.translate: .right { .key, .value }
     "$l + $r" => [|@l-bind, |@r-bind]
 }
 
-multi method  translate(Red::AST::Sub $_, $context?) {
+multi method translate(Red::AST::Sub $_, $context?) {
     my ($l, @l-bind) := do given self.translate: .left { .key, .value }
     my ($r, @r-bind) := do given self.translate: .right { .key, .value }
     "$l - $r" => [|@l-bind, |@r-bind]
 }
 
-multi method  translate(Red::AST::Mul $_, $context?) {
+multi method translate(Red::AST::Mul $_, $context?) {
     my ($l, @l-bind) := do given self.translate: .left { .key, .value }
     my ($r, @r-bind) := do given self.translate: .right { .key, .value }
     "$l * $r" => [|@l-bind, |@r-bind]
 }
 
-multi method  translate(Red::AST::Div $_, $context?) {
+multi method translate(Red::AST::Div $_, $context?) {
     my ($l, @l-bind) := do given self.translate: .left { .key, .value }
     my ($r, @r-bind) := do given self.translate: .right { .key, .value }
     "$l / $r" => [|@l-bind, |@r-bind]
 }
 
-
-multi method  translate(Red::AST::Mod $_, $context?) {
+multi method translate(Red::AST::Mod $_, $context?) {
     my ($l, @l-bind) := do given self.translate: .left { .key, .value }
     my ($r, @r-bind) := do given self.translate: .right { .key, .value }
     "$l % $r" => [|@l-bind, |@r-bind]
+}
+
+multi method translate(Red::AST::Divisable $_, $context?) {
+    return self.translate:
+            Red::AST::Eq.new(
+                Red::AST::Mod.new(.left, .right),
+                ast-value(0),
+            ),
+            $context
 }
 
 multi method translate(Red::AST::Mul $_ where .left.?value == -1, "order") {
