@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix Divisable (%%)
     - ResultSeq.join
     - custom join
     - join
