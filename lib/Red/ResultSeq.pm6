@@ -449,8 +449,8 @@ method minus(::?CLASS:D: $other --> Red::ResultSeq) is hidden-from-sql-commentin
     self.clone: :chain($!chain.clone: :$filter)
 }
 
-method join(Red::Model \model, &on, :$name = "{ self.^name }_{ model.^name }") {
-    self.of.^join(model, &on).^all.clone: :$!chain
+method join(Red::Model \model, &on, :$name = "{ self.^name }_{ model.^name }", *%pars where { .elems == 0 || ( .elems == 1 && so .values.head ) }) {
+    self.of.^join(model, &on, |%pars).^all.clone: :$!chain
 }
 
 #|Returns the AST that will generate the SQL

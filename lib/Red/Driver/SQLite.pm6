@@ -47,6 +47,9 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh.prepare: $query)
 }
 
+multi method join-type("outer") { die "'OUTER JOIN' is not supported by SQLite" }
+multi method join-type("right") { die "'RIGHT JOIN' is not supported by SQLite" }
+
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
     (.value ?? 1 !! 0) => []
 }

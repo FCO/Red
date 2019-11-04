@@ -180,18 +180,29 @@ multi method add-pk-constraint(Mu:U \type, @columns) {
 
 method tables(\model) { [ model ] }
 
-method join(\model, \to-join, &on, :$name) {
-    to-join.^alias: |($_ with $name), :base(model), :relationship(&on.assuming: model)
+proto method join($, $, $, :$name, *%pars where { .elems == 0 || ( .elems == 1 && get-RED-DB.join-type(.keys.head) && so .values.head ) }) {*}
+
+multi method join(\model, \to-join, &on, :$name, *%pars) {
+    to-join.^alias: |($_ with $name), :base(model), :relationship(&on.assuming: model), :join-type(%pars.keys.head // "")
+}
+
+multi method join(\model, \to-join, Red::AST $on, :$name, *%pars) {
+    to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type(%pars.keys.head // "")
+}
+
+multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name, *%pars) {
+    to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type(%pars.keys.head // "")
 }
 
 my UInt $alias_num = 1;
-method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship) {
+method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type) {
     my \alias = ::?CLASS.new_type(:$name);
-    my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base] {
-        method table(|)   { rtype.^table }
-        method as(|)      { camel-to-snake-case $rname }
-        method orig(|)    { rtype }
-        method join-on(|) {
+    my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type] {
+        method table(|)     { rtype.^table }
+        method as(|)        { camel-to-snake-case $rname }
+        method orig(|)      { rtype }
+        method join-type(|) { join-type }
+        method join-on(|)   {
             do given rel {
                 when Red::AST {
                     $_
@@ -205,9 +216,9 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$ba
                 }
             }
         }
-        method tables(|)  { [ |base.^tables, alias ] }
+        method tables(|)    { [ |base.^tables, alias ] }
     }
-    alias.HOW does RAlias[type, $name, alias, $relationship, $base];
+    alias.HOW does RAlias[type, $name, alias, $relationship, $base, $join-type];
 #    alias.^add_role: Red::Model;
     for @!columns -> $col {
         my $new-col = Attribute.new:

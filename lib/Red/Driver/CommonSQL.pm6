@@ -253,6 +253,13 @@ multi method translate(Red::AST::Select $ast, 'where') {
     '( ' ~ $key ~ ' )' => $value // [];
 }
 
+multi method join-type("inner" --> "INNER") {}
+multi method join-type("outer" --> "OUTER") {}
+multi method join-type("left"  --> "LEFT" ) {}
+multi method join-type("right" --> "RIGHT") {}
+multi method join-type("") { self.join-type: "inner" }
+multi method join-type($type) { die "'$type' isn't a valid join type" }
+
 multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     my @bind;
     my $sel    = do given $ast.of {
@@ -284,7 +291,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                 }
             }",
             |@joins.reduce({ |$^a, |$^b }).unique(:as{ .^table }).map({
-                " JOIN {
+                " { self.join-type: .^join-type } JOIN {
                     .^table
                 }{
                     do if .^table ne .^as {

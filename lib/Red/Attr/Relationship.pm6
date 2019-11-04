@@ -3,7 +3,7 @@ use Red::AST::Value;
 use Red::HiddenFromSQLCommenting;
 use X::Red::Exceptions;
 
-unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model, Str :$require = $model];
+unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model, Str :$require = $model, Bool :$optional];
 has Mu:U $!type;
 
 has Bool $.has-lazy-relationship = ?$model;
@@ -11,6 +11,8 @@ has Bool $.has-lazy-relationship = ?$model;
 has Mu:U $!relationship-model;
 
 has Bool $!loaded-model = False;
+
+has Bool $!optional = $optional;
 
 method transfer(Mu:U $package) {
     my $attr = Attribute.new: :$package, :$.name, :$.type;
@@ -83,14 +85,33 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
     return
 }
 
-method relationship-ast($type = Nil) is hidden-from-sql-commenting {
-    my \type = do if self.type ~~ Positional {
+method relationship-type {
+    do if self.type ~~ Positional {
         $model ?? self.relationship-model !! self.type.of
     } else {
         self.package
     }
+}
 
+method relationship-ast($type = Nil) is hidden-from-sql-commenting {
+    my \type = self.relationship-type;
     my $col1 = rel1 type;
     my $col2 = $col1.ref($type);
     Red::AST::Eq.new: $col1, $col2
+}
+
+method join-type {
+    with $!optional {
+        return $!optional
+                ?? :left
+                !! :inner
+    }
+    do given rel1 self.relationship-type {
+        when .nullable {
+            :left
+        }
+        default {
+            :inner
+        }
+    }
 }

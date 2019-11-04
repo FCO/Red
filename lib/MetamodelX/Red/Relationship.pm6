@@ -41,19 +41,19 @@ method prepare-relationships(::Type Mu \type) {
 }
 
 #| Adds a new relationship by column.
-multi method add-relationship(Mu:U $self, Attribute $attr, Str :$column!, Str :$model!, Str :$require = $model ) {
-    self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require
+multi method add-relationship(Mu:U $self, Attribute $attr, Str :$column!, Str :$model!, Str :$require = $model, Bool :$optional ) {
+    self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require, :$optional
 }
 
 #| Adds a new relationship by reference.
-multi method add-relationship(Mu:U $self, Attribute $attr, &reference, Str :$model, Str :$require = $model) {
-    $attr does Red::Attr::Relationship[&reference, :$model, :$require];
+multi method add-relationship(Mu:U $self, Attribute $attr, &reference, Str :$model, Str :$require = $model, Bool :$optional ) {
+    $attr does Red::Attr::Relationship[&reference, :$model, :$require, :$optional];
     self.add-relationship: $self, $attr
 }
 
 #| Adds a new relationship by two references.
-multi method add-relationship(Mu:U $self, Attribute $attr, &ref1, &ref2, Str :$model, Str :$require  = $model) {
-    $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require];
+multi method add-relationship(Mu:U $self, Attribute $attr, &ref1, &ref2, Str :$model, Str :$require = $model, Bool :$optional ) {
+    $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require, :$optional];
     self.add-relationship: $self, $attr
 }
 
@@ -89,11 +89,15 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
             $attr.package.^rs.new: :filter($ast)
         }
         !! my method (Mu:U \SELF:) {
-            (
+            SELF.^join(
                 $attr.has-lazy-relationship
                     ?? $attr.relationship-model
                     !! $attr.type
-            ).^alias: "{ SELF.^as }_{ $name }", :base(SELF), :relationship($attr)
+                ,
+                :name("{ SELF.^as }_{ $name }"),
+                $attr,
+                |$attr.join-type.Hash,
+            )
         }
     ;
 }

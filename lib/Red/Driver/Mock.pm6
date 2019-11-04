@@ -32,6 +32,7 @@ multi method is-valid-table-name(|c)                    { $!driver-obj.is-valid-
 multi method type-by-name(|c)                           { $!driver-obj.type-by-name(|c)         }
 multi method inflate(|c)                                { $!driver-obj.inflate(|c)              }
 method translate(|c)                                    { $!driver-obj.translate(|c)            }
+multi method join-type(|c)                              { $!driver-obj.join-type(|c)            }
 
 class Statement does Red::Statement {
     has Iterator $.iterator;

@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - :optional on relationships
+    - join types (inner, outer, left, right)
     - Fix Divisable (%%)
     - ResultSeq.join
     - custom join
