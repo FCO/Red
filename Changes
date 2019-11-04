@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - custom join
     - join
     - red-do isn't experimental anymore
     - :api<2>

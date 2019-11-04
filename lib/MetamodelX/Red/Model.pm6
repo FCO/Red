@@ -180,6 +180,10 @@ multi method add-pk-constraint(Mu:U \type, @columns) {
 
 method tables(\model) { [ model ] }
 
+method join(\model, \to-join, &on, :$name) {
+    to-join.^alias: |($_ with $name), :base(model), :relationship(&on.assuming: model)
+}
+
 my UInt $alias_num = 1;
 method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship) {
     my \alias = ::?CLASS.new_type(:$name);
@@ -187,7 +191,20 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$ba
         method table(|)   { rtype.^table }
         method as(|)      { camel-to-snake-case $rname }
         method orig(|)    { rtype }
-        method join-on(|) { rel.relationship-ast(alias) }
+        method join-on(|) {
+            do given rel {
+                when Red::AST {
+                    $_
+                }
+                when Callable {
+                    .(alias)
+                }
+                default {
+                    .relationship-ast(alias)
+
+                }
+            }
+        }
         method tables(|)  { [ |base.^tables, alias ] }
     }
     alias.HOW does RAlias[type, $name, alias, $relationship, $base];
