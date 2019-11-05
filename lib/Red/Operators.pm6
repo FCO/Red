@@ -62,12 +62,20 @@ multi infix:</>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Div.new: $a, $b
 }
 
-multi infix:</>(Red::AST $a, Numeric() $b) is export {
+multi infix:</>(Red::AST $a, Numeric() $b is readonly) is export {
     Red::AST::Div.new: $a, ast-value $b
 }
 
-multi infix:</>(Numeric() $a, Red::AST $b) is export {
+multi infix:</>(Numeric() $a is readonly, Red::AST $b) is export {
     Red::AST::Div.new: ast-value($a), $b
+}
+
+multi infix:</>(Red::AST $a, Numeric() $b is rw) is export {
+    Red::AST::Div.new: $a, ast-value($b), :bind-right
+}
+
+multi infix:</>(Numeric() $a is rw, Red::AST $b) is export {
+    Red::AST::Div.new: ast-value($a), $b, :bind-left
 }
 
 #| ==
@@ -422,8 +430,11 @@ multi infix:<~>(Str() $a is readonly, Red::AST $b) is export {
 }
 
 #| not X
-multi prefix:<not>(Red::AST $a) is export {
+multi prefix:<not>(Red::AST $a is readonly) is export {
     Red::AST::Not.new: $a
+}
+multi prefix:<not>(Red::AST $a is rw) is export {
+    Red::AST::Not.new: $a, :bind
 }
 
 multi prefix:<!>(Red::AST $a) is export {

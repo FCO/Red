@@ -279,6 +279,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
         }
     }
     my %t{Red::Model} = (|$ast.tables, $ast.of).grep({ not .?no-table }).unique.map({ .^tables }).cache.classify: { .head }, :as{ .tail: *-1 };
+    my @join-binds;
     my $tables = %t.kv.map(-> $_, @joins {
         [
             "{
@@ -298,13 +299,18 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                         " as {
                             .^as
                         }{
-                            " ON { self.translate: $_, "where" }" with .HOW.^can("join-on") && .^join-on
+                            do with .HOW.^can("join-on") && .^join-on {
+                                my ($str, @b) := do given self.translate: $_, "where" { .key, .value }
+                                @join-binds.push: |@b;
+                                " ON { $str }"
+                            }
                         }"
                     }
                 }"
             })
         ].join: "\n"
     }).join: ",\n"                                                                   if $ast.^can: "tables";
+    @bind.push: |@join-binds;
     my ($where, @wb) := do given self.translate: $ast.filter, "where" { .key, .value }  if $ast.?filter;
     @bind.push: |@wb;
     my $order = $ast.order.map({
@@ -405,22 +411,10 @@ multi method translate(Red::AST::Case $_, $context?) {
 }
 
 multi method translate(Red::AST::Infix $_, $context?) {
-    my ($lstr, @lbind) := do given self.translate: .left,  $context { .key, .value }
-    my ($rstr, @rbind) := do given self.translate: .right, $context { .key, .value }
+    my ($lstr, @lbind) := do given self.translate: .left,  .bind-left  ?? "bind" !! $context { .key, .value }
+    my ($rstr, @rbind) := do given self.translate: .right, .bind-right ?? "bind" !! $context { .key, .value }
 
     "$lstr { .op } $rstr" => [|@lbind, |@rbind]
-}
-
-multi method translate(Red::AST::Infix $_ where .bind-left, $context?) {
-    my ($rstr, @rbind) := do given self.translate: .right, $context { .key, .value }
-
-    "{self.wildcard} { .op } $rstr" => [.left.get-value, |@rbind]
-}
-
-multi method translate(Red::AST::Infix $_ where .bind-right, $context?) {
-    my ($lstr, @lbind) := do given self.translate: .left, $context { .key, .value }
-
-    "$lstr { .op } {self.wildcard}" => [|@lbind, .right.get-value]
 }
 
 multi method translate(Red::AST::OR $_, $context?) {
@@ -441,24 +435,12 @@ multi method translate(Red::AST::Not $_ where .value ~~ Red::AST::IsDefined, $co
 }
 
 multi method translate(Red::AST::Not $_, $context?) {
-    my ($str, @bind) := do given self.translate: .value, $context { .key, .value }
+    my ($str, @bind) := do given self.translate: .value, .bind ?? "bind" !! $context { .key, .value }
     "NOT ($str)" => @bind
 }
 
 multi method translate(Red::AST::So $_, $context?) {
-    self.translate: .value, $context;
-}
-
-multi method translate(Red::AST::Concat $_, $context?) {
-    my ($l, @lb) := do given self.translate: .left,  $context { .key, .value }
-    my ($r, @rb) := do given self.translate: .right, $context { .key, .value }
-    "{ $l } || { $r }" => [|@lb, |@rb]
-}
-
-multi method translate(Red::AST::Like $_, $context?) {
-    my ($l, @lbind) := do given self.translate: .left, $context  { .key, .value }
-    my ($r, @rbind) := do given self.translate: .right, $context { .key, .value }
-    "{ $l } like { $r }" => [|@lbind, |@rbind]
+    self.translate: .value, .bind ?? "bind" !! $context;
 }
 
 multi method translate(Red::Column $col, "select") {
@@ -470,36 +452,7 @@ multi method translate(Red::Column $col, "select") {
     qq[$str {qq<as "{$col.attr-name}"> if $col.computation or $col.name ne $col.attr-name}] => @bind
 }
 
-
-multi method translate(Red::AST::Sum $_, $context?) {
-    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
-    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
-    "$l + $r" => [|@l-bind, |@r-bind]
-}
-
-multi method translate(Red::AST::Sub $_, $context?) {
-    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
-    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
-    "$l - $r" => [|@l-bind, |@r-bind]
-}
-
-multi method translate(Red::AST::Mul $_, $context?) {
-    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
-    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
-    "$l * $r" => [|@l-bind, |@r-bind]
-}
-
-multi method translate(Red::AST::Div $_, $context?) {
-    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
-    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
-    "$l / $r" => [|@l-bind, |@r-bind]
-}
-
-multi method translate(Red::AST::Mod $_, $context?) {
-    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
-    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
-    "$l % $r" => [|@l-bind, |@r-bind]
-}
+multi method translate(Red::AST::Value $_, "bind") { self.wildcard => [ .value ] }
 
 multi method translate(Red::AST::Divisable $_, $context?) {
     return self.translate:
@@ -536,10 +489,10 @@ multi method translate(Red::Column $_, "pk") {
 
 multi method translate(Red::AST::Cast $_, $context?) {
     when Red::AST::Value {
-        qq|'{ .value }'| => []
+        .bind ?? self.translate(.value, "bind") !! qq|'{ .value }'| => []
     }
     default {
-        self.translate: .value, $context
+        self.translate: .value, .bind ?? "bind" !! $context
     }
 }
 

@@ -3,6 +3,7 @@ use Red::AST::Operator;
 class Red::AST::Not { ... }
 
 role Red::AST::Unary does Red::AST::Operator {
+    has Bool $.bind = False;
     method value { ... }
 
     method find-column-name {
@@ -17,6 +18,10 @@ role Red::AST::Unary does Red::AST::Operator {
 
     method gist {
         "{ $.op ~ " " if $.op.defined && $.op }{ $.value.?gist // "" }"
+    }
+
+    method new($value, Bool :$bind) {
+        self.bless: :$value, :$bind
     }
 }
 
@@ -34,8 +39,8 @@ class Red::AST::Cast does Red::AST::Unary {
         $!value.should-set
     }
 
-    method new($value, $type) {
-        ::?CLASS.bless: :$value, :$type
+    method new($value, $type, Bool :$bind) {
+        self.bless: :$value, :$type, :$bind
     }
 
 
@@ -54,10 +59,6 @@ class Red::AST::Not does Red::AST::Unary {
 
     method should-validate {}
 
-    multi method new(Red::AST $value) {
-        ::?CLASS.bless: :$value
-    }
-
     method not { Red::AST::So.new: $!value }
 }
 
@@ -70,10 +71,6 @@ class Red::AST::So does Red::AST::Unary {
     method should-set(|) { }
 
     method should-validate {}
-
-    method new($value) {
-        ::?CLASS.bless: :$value
-    }
 
     method not { Red::AST::Not.new: $!value }
 }

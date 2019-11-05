@@ -11,20 +11,32 @@ unit role Red::ColumnMethods;
 
 #| Tests if that column value starts with a specific sub-string
 #| is usually translated for SQL as `column like 'substr%'`
-method starts-with(Str() $text) {
+multi method starts-with(Str() $text is readonly) {
     Red::AST::Like.new(self, ast-value "{ $text }%") but Red::ColumnMethods
+}
+
+multi method starts-with(Str() $text is rw) {
+    Red::AST::Like.new(self, ast-value("{ $text }%"), :bind-left) but Red::ColumnMethods
 }
 
 #| Tests if that column value ends with a specific sub-string
 #| is usually translated for SQL as `column like '%substr'`
-method ends-with(Str() $text) {
+multi method ends-with(Str() $text is readonly) {
     Red::AST::Like.new(self, ast-value "%{ $text }") but Red::ColumnMethods
+}
+
+multi method ends-with(Str() $text is rw) {
+    Red::AST::Like.new(self, ast-value("%{ $text }"), :bind-left) but Red::ColumnMethods
 }
 
 #| Tests if that column value contains a specific sub-string
 #| #| is usually translated for SQL as `column like %'substr%'`
-method contains(Str() $text) {
+multi method contains(Str() $text is readonly) {
     Red::AST::Like.new(self, ast-value "%{ $text }%") but Red::ColumnMethods
+}
+
+multi method contains(Str() $text is rw) {
+    Red::AST::Like.new(self, ast-value("%{ $text }%"), :bind-left) but Red::ColumnMethods
 }
 
 
