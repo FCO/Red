@@ -50,7 +50,7 @@ multi method prepare(Str $query) {
 multi method join-type("outer") { die "'OUTER JOIN' is not supported by SQLite" }
 multi method join-type("right") { die "'RIGHT JOIN' is not supported by SQLite" }
 
-multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
+multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context? where $_ ne "bind") {
     (.value ?? 1 !! 0) => []
 }
 

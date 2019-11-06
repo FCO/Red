@@ -24,6 +24,8 @@ use Red::AST::DateTimeFuncs;
 use Red::AST::BeginTransaction;
 use Red::AST::CommitTransaction;
 use Red::AST::RollbackTransaction;
+use Red::AST::Generic::Prefix;
+use Red::AST::Generic::Postfix;
 use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
@@ -429,6 +431,16 @@ multi method translate(Red::AST::AND $_, $context?) {
     "{ .left ~~ Red::AST::AND|Red::AST::OR??"($l)"!!$l } AND { .right ~~ Red::AST::AND|Red::AST::OR??"($r)"!!$r }" => [|@lbind, |@rbind]
 }
 
+multi method translate(Red::AST::Generic::Postfix $_ , $context?) {
+    my ($str, @bind) := do given self.translate: .value, .bind ?? "bind" !! $context { .key, .value }
+    "$str { .op }" => @bind
+}
+
+multi method translate(Red::AST::Generic::Prefix $_ , $context?) {
+    my ($str, @bind) := do given self.translate: .value, .bind ?? "bind" !! $context { .key, .value }
+    "{ .op } $str" => @bind
+}
+
 multi method translate(Red::AST::Not $_ where .value ~~ Red::AST::IsDefined, $context?) {
     my ($str, @bind) := do given self.translate: .value.col, "is defined" { .key, .value }
     "$str IS NULL" => @bind
@@ -452,7 +464,9 @@ multi method translate(Red::Column $col, "select") {
     qq[$str {qq<as "{$col.attr-name}"> if $col.computation or $col.name ne $col.attr-name}] => @bind
 }
 
-multi method translate(Red::AST::Value $_, "bind") { self.wildcard => [ .value ] }
+multi method translate(Red::AST::Value $_, "bind") {
+    self.wildcard => [ .value ]
+}
 
 multi method translate(Red::AST::Divisable $_, $context?) {
     return self.translate:

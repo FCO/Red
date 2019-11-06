@@ -1,9 +1,10 @@
-use Red::AST::Infix;
+use Red::AST::Unary;
 use Red::AST::Value;
-unit class Red::AST::Generic::Infix does Red::AST::Infix;
+unit class Red::AST::Generic::Postfix does Red::AST::Unary;
 
 has Str $.op is required;
 has $.returns;
+has $.value;
 
 method should-set(--> Hash()) {
     self.find-column-name => self.find-value
@@ -23,12 +24,6 @@ method find-value {
     }
 }
 
-multi method new($left, $right, Str :$op, :$returns, Bool :$bind-left, Bool :$bind-right) {
-    self.bless:
-            :left(ast-value $left),
-            :right(ast-value $right),
-            :$op,
-            :$returns,
-            :$bind-left,
-            :$bind-right
+method new($value, Str :$op, :$returns, Bool :$bind) {
+    self.bless: :value(ast-value $value), :$op, :$returns, :$bind
 }

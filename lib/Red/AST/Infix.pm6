@@ -9,7 +9,7 @@ has Bool     $.bind-right = False;
 
 #method gist { "$!left.gist() $.op $!right.gist()" }
 
-proto method new(Red::AST $left, Red::AST $right, |) {*}
+proto method new($left, $right, |) {*}
 
 multi method new($left, $right, Bool() :$bind-left = False, Bool() :$bind-right = False, Str() :$cast!) {
     ::?CLASS.new:
