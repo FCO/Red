@@ -302,7 +302,7 @@ multi method create-table(\model, :$with where not .defined) {
 
 #| Applies phasers
 method apply-row-phasers($obj, Mu:U $phase ) {
-    for (|$obj.^methods.grep($phase), |$obj.^private_methods.grep($phase)) -> $meth {
+    for (|$obj.^methods.grep($phase), |$obj.^private_method_table.values.grep($phase)) -> $meth {
         $obj.$meth();
     }
 }
