@@ -67,7 +67,7 @@ method cache is hidden-from-sql-commenting {
 }
 
 has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new;
-has Red::AST          %.update;
+has Pair              @.update;
 has Red::AST::Comment @.comments;
 has Red::Driver       $.with;
 
@@ -301,7 +301,7 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
 #    }
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};
-    my %*UPDATE := %!update;
+    my @*UPDATE := @!update;
     for what-does-it-do(&filter, SELF.of) -> Pair $_ {
         (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
     }
@@ -309,7 +309,7 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
         SELF.where(%next.keys.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n }))
     } else { SELF }
     my \ast = Red::AST::Case.new(:%when);
-    seq.create-map: ast, :&filter
+    seq.create-map: ast, :&filter;
 }
 #method flatmap(&filter) {
 #    treat-map :flat, $.filter, filter(self.of), &filter
@@ -425,7 +425,7 @@ method delete(::?CLASS:D:) is hidden-from-sql-commenting {
 #| Saves any change on any element of that ResultSet
 method save(::?CLASS:D:) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    get-RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(%!update), :filter($.filter)
+    get-RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(@!update), :filter($.filter)
 }
 
 #| unifies 2 ResultSeqs

@@ -4,21 +4,22 @@ use Red::Column;
 use Red::Model;
 unit class Red::AST::Update does Red::AST;
 
-has Str         $.into;
-has             %.values;
-has Red::AST    $.filter;
+has Str      $.into;
+has Pair     @.values;
+has Red::AST $.filter;
 
 method returns { Nil }
-method args { |%!values.keys }
+method args { |@!values }
 
 multi method new(Red::Model $model) {
-    die "No data to be updated on object of type '{ $model.^name }'." unless $model.^is-dirty;
-    ::?CLASS.bless:
-        :into($model.^table),
-        :filter($model.^id-filter),
-        :values($model.^dirty-columns.keys.map(-> $column {
-            #next without $column.get_value: $model;
-            $column.column.name => ast-value :type($column.type), $column.column.deflate.($column.get_value: $model),
-        }).Hash)
+    do given $model {
+        die "No data to be updated on object of type '{ .^name }'." unless .^is-dirty;
+        self.bless:
+                :into(.^table),
+                :filter(.^id-filter),
+                :values(Array[Pair].new: .^dirty-columns.keys.map({
+                    .column => ast-value :type(.type), .column.deflate.(.get_value: $model),
+                }))
+    }
 }
 method find-column-name {}

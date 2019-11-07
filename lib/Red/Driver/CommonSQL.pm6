@@ -598,6 +598,10 @@ multi method translate(Red::Column $_, "column-comment")     {
     (" COMMENT '$_'") => [] if .comment
 }
 
+multi method translate(Red::Column $_, "update-lval")     {
+    .name // "" => []
+}
+
 multi method translate(Red::AST::CreateTable $_, $context?) {
     "CREATE{ " TEMPORARY" if .temp } TABLE {
         .name
@@ -646,10 +650,11 @@ multi method translate(Red::AST::Delete $_, $context?) {
 multi method translate(Red::AST::Update $_, $context?) {
     my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };
     my @bind;
-    my $str = .values.kv.map(-> $col, $val {
-        my ($s, @b) := do given self.translate: $val, 'update' { .key, .value }
-        @bind.push: |@b;
-        $col ~ ' = ' ~ $s
+    my $str = .values.map(-> (:$key!, :$value!) {
+        my ($c, @c) := do given self.translate: $key, 'update-lval' { .key, .value }
+        my ($s, @b) := do given self.translate: $value, 'update' { .key, .value }
+        @bind.push: |(|@c, |@b);
+        "{ $c } = { $s }"
     }).join(",\n").indent: 3;
     qq:to/END/ => [|@bind, |@wbind];
     UPDATE {
