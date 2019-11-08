@@ -650,11 +650,10 @@ multi method translate(Red::AST::Delete $_, $context?) {
 multi method translate(Red::AST::Update $_, $context?) {
     my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };
     my @bind;
-    my $str = .values.map(-> (:$key!, :$value!) {
-        my ($c, @c) := do given self.translate: $key, 'update-lval' { .key, .value }
-        my ($s, @b) := do given self.translate: $value, 'update' { .key, .value }
-        @bind.push: |(|@c, |@b);
-        "{ $c } = { $s }"
+    my $str = .values.map({
+        my ($c, @c) := do given self.translate: .&ast-value, "update" { .key, .value }
+        @bind.append: @c;
+        $c
     }).join(",\n").indent: 3;
     qq:to/END/ => [|@bind, |@wbind];
     UPDATE {
@@ -666,6 +665,12 @@ multi method translate(Red::AST::Update $_, $context?) {
     }
     END
 
+}
+
+multi method translate(Red::AST::Value $_ where .type ~~ Pair, "update") {
+    my ($c, @c) := do given self.translate: .value.key, 'update-lval' { .key, .value }
+    my ($s, @b) := do given self.translate: .value.value, 'update-rval' { .key, .value }
+    "{ $c } = { $s }" => [|@c, |@b]
 }
 
 multi method translate(Red::AST::LastInsertedRow $_, $context?) { "" => [] }
