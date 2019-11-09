@@ -231,6 +231,16 @@ method rs($ --> Red::ResultSeq)     { $.rs-class.new }
 #| Alias for C<.rs()>
 method all($obj --> Red::ResultSeq) { $obj.^rs }
 
+#| Alias for .^rs.grep
+method where($obj, Callable $filter --> Red::ResultSeq) {
+  $obj.^rs.grep($filter)
+}
+
+#| Alias for .^rs.map
+method update($obj, Callable $filter --> Red::ResultSeq {
+  $obj.^rs.map($filter)
+}
+
 #| Sets model as a temporary table
 method temp(|) is rw { $!temporary }
 
