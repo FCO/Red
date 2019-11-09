@@ -18,6 +18,11 @@ use Red::AST::CreateColumn;
 use Red::AST::ChangeColumn;
 use Red::AST::DropColumn;
 use Red::AST::TableComment;
+use Red::AST::StringFuncs;
+use Red::AST::DateTimeFuncs;
+use Red::AST::BeginTransaction;
+use Red::AST::CommitTransaction;
+use Red::AST::RollbackTransaction;
 use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
@@ -158,6 +163,18 @@ multi method diff-to-ast(@diff) {
 }
 
 proto method translate(Red::AST, $? --> Pair) {*}
+
+multi method translate(Red::AST::BeginTransaction, $context?) {
+    "BEGIN" => []
+}
+
+multi method translate(Red::AST::CommitTransaction, $context?) {
+    "COMMIT" => []
+}
+
+multi method translate(Red::AST::RollbackTransaction, $context?) {
+    "ROLLBACK" => []
+}
 
 multi method translate(Red::AST::DropColumn $_, $context?) {
     "ALTER TABLE {
@@ -304,6 +321,14 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     }" => @bind
 }
 
+multi method translate(Red::AST::StringFunction $_, $context?) {
+    self.translate: .default-implementation, $context
+}
+
+multi method translate(Red::AST::DateTimeFunction $_, $context?) {
+    self.translate: .default-implementation, $context
+}
+
 multi method translate(Red::AST::Function $_, $context?) {
     my @bind;
     "{ .func }({ .args.map({
@@ -419,6 +444,38 @@ multi method translate(Red::Column $col, "select") {
     qq[$str {qq<as "{$col.attr-name}"> if $col.computation or $col.name ne $col.attr-name}] => @bind
 }
 
+
+multi method  translate(Red::AST::Sum $_, $context?) {
+    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
+    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
+    "$l + $r" => [|@l-bind, |@r-bind]
+}
+
+multi method  translate(Red::AST::Sub $_, $context?) {
+    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
+    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
+    "$l - $r" => [|@l-bind, |@r-bind]
+}
+
+multi method  translate(Red::AST::Mul $_, $context?) {
+    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
+    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
+    "$l * $r" => [|@l-bind, |@r-bind]
+}
+
+multi method  translate(Red::AST::Div $_, $context?) {
+    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
+    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
+    "$l / $r" => [|@l-bind, |@r-bind]
+}
+
+
+multi method  translate(Red::AST::Mod $_, $context?) {
+    my ($l, @l-bind) := do given self.translate: .left { .key, .value }
+    my ($r, @r-bind) := do given self.translate: .right { .key, .value }
+    "$l % $r" => [|@l-bind, |@r-bind]
+}
+
 multi method translate(Red::AST::Mul $_ where .left.?value == -1, "order") {
     "{ .right.name } DESC" => []
 }
@@ -515,6 +572,10 @@ multi method translate(Red::Column $_, "create-table") {
 multi method translate(Red::Column $_, "column-name")           { .name // "" => [] }
 
 multi method translate(Red::Column $_, "column-type")           {
+    if .attr.type =:= Mu {
+        return self.type-by-name("int")  => [] if .auto-increment;
+        return self.type-by-name("text") => []
+    }
     (.type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_) => []
 }
 
@@ -577,11 +638,12 @@ multi method translate(Red::AST::Insert $_, $context?) {
 }
 
 multi method translate(Red::AST::Delete $_, $context?) {
-    "DELETE FROM { .from }\n{ "WHERE { self.translate($_).key }" with .filter }" => []
+    my ($key, @binds) := do given self.translate(.filter) { .key, .value }
+    "DELETE FROM { .from }\n{ "WHERE { $key }" }" => @binds
 }
 
 multi method translate(Red::AST::Update $_, $context?) {
-    my ($wstr, @wbind) := do given self.translate(.filter) { .key, .value }
+    my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };
     my @bind;
     my $str = .values.kv.map(-> $col, $val {
         my ($s, @b) := do given self.translate: $val, 'update' { .key, .value }
@@ -593,8 +655,11 @@ multi method translate(Red::AST::Update $_, $context?) {
         .into
     } SET
     $str
-    WHERE $wstr
+    {
+        "WHERE $wstr" with .filter
+    }
     END
+
 }
 
 multi method translate(Red::AST::LastInsertedRow $_, $context?) { "" => [] }
@@ -618,6 +683,7 @@ multi method type-for-sql("interval" --> "Duration") {}
 multi method type-for-sql("integer"  --> "Int"     ) {}
 multi method type-for-sql("serial"   --> "UInt"    ) {}
 multi method type-for-sql("boolean"  --> "Bool"    ) {}
+multi method type-for-sql(Str $ where /^ "varchar(" ~ ")" \d+ $/ --> "Str") {}
 
 multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
 multi method inflate(Str $value, DateTime :$to!) { $to.new: $value }

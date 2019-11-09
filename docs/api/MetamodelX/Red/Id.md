@@ -1,3 +1,6 @@
+MetamodelX::Red::Id
+-------------------
+
 ### method is-id
 
 ```perl6
@@ -7,7 +10,7 @@ method is-id(
 ) returns Mu
 ```
 
-Returns if the given attr is an id
+Checks if the given attribute is a primary key of the model.
 
 ### method id
 
@@ -27,7 +30,7 @@ method general-ids(
 ) returns Mu
 ```
 
-get a list of ids and uniques
+Returns a list of attributes that are either primary keys or marked as unique.
 
 ### method populate-ids
 

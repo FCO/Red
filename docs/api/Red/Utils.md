@@ -9,7 +9,7 @@ sub snake-to-kebab-case(
 ) returns Str
 ```
 
-Accepts a string and converts snake case (`foo_bar`) into kebab case (`foo-bar`)
+Accepts a string and converts snake case (`foo_bar`) into kebab case (`foo-bar`).
 
 ### sub kebab-to-snake-case
 
@@ -19,7 +19,7 @@ sub kebab-to-snake-case(
 ) returns Str
 ```
 
-Accepts a string and converts kebab case (`foo-bar`) into snake case (`foo_bar`)
+Accepts a string and converts kebab case (`foo-bar`) into snake case (`foo_bar`).
 
 ### sub camel-to-snake-case
 
@@ -29,7 +29,7 @@ sub camel-to-snake-case(
 ) returns Str
 ```
 
-Accepts a string and converts camel case (`fooBar`) into snake case (`foo_bar`)
+Accepts a string and converts camel case (`fooBar`) into snake case (`foo_bar`).
 
 ### sub camel-to-kebab-case
 
@@ -39,7 +39,7 @@ sub camel-to-kebab-case(
 ) returns Str
 ```
 
-Accepts a string and converts camel case (`fooBar`) into kebab case (`foo-bar`)
+Accepts a string and converts camel case (`fooBar`) into kebab case (`foo-bar`).
 
 ### sub kebab-to-camel-case
 
@@ -49,7 +49,7 @@ sub kebab-to-camel-case(
 ) returns Str
 ```
 
-Accepts a string and converts kebab case (`foo-bar`) into camel case (`fooBar`)
+Accepts a string and converts kebab case (`foo-bar`) into camel case (`fooBar`).
 
 ### sub snake-to-camel-case
 
@@ -59,5 +59,5 @@ sub snake-to-camel-case(
 ) returns Str
 ```
 
-Accepts a string and converts snake case (`foo_bar`) into camel case (`fooBar`)
+Accepts a string and converts snake case (`foo_bar`) into camel case (`fooBar`).
 

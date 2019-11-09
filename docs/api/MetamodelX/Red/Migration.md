@@ -1,3 +1,6 @@
+MetamodelX::Red::Migration
+--------------------------
+
 ### method migration
 
 ```perl6
@@ -7,7 +10,7 @@ method migration(
 ) returns Mu
 ```
 
-Creates a new migration
+Creates a new migration for the model.
 
 ### method migrate
 
@@ -18,7 +21,7 @@ method migrate(
 ) returns Mu
 ```
 
-Runs migrations
+Executes migrations.
 
 ### method dump-migrations
 
@@ -28,5 +31,5 @@ method dump-migrations(
 ) returns Mu
 ```
 
-Prints the migrations
+Prints the migrations.
 

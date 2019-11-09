@@ -1,36 +1,50 @@
 use Test;
-
 use Red;
+
+plan 32;
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
 
 
-my $before-create   = 0;
-my $after-create    = 0;
-my $before-update   = 0;
-my $after-update    = 0;
-my $before-delete   = 0;
-my $after-delete    = 0;
+my %call-count;
 
 role TestPhasersRole {
-    method before-create-role() is before-create {
-        $before-create++
+    method before-create-role-public() is before-create {
+        %call-count{ &?ROUTINE.name }++;
     }
-    method after-create-role() is after-create {
-        $after-create++
+    method after-create-role-public() is after-create {
+        %call-count{ &?ROUTINE.name }++;
     }
-    method before-update-role() is before-update {
-        $before-update++
+    method before-update-role-public() is before-update {
+        %call-count{ &?ROUTINE.name }++;
     }
-    method after-update-role() is after-update {
-        $after-update++
+    method after-update-role-public() is after-update {
+        %call-count{ &?ROUTINE.name }++;
     }
-    method before-delete-role() is before-delete {
-        $before-delete++
+    method before-delete-role-public() is before-delete {
+        %call-count{ &?ROUTINE.name }++;
     }
-    method after-delete-role() is after-delete {
-        $after-delete++
+    method after-delete-role-public() is after-delete {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !before-create-role-private() is before-create {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !after-create-role-private() is after-create {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !before-update-role-private() is before-update {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !after-update-role-private() is after-update {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !before-delete-role-private() is before-delete {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !after-delete-role-private() is after-delete {
+        %call-count{ &?ROUTINE.name }++;
     }
 }
 
@@ -38,48 +52,72 @@ model TestPhasers does TestPhasersRole {
     has Int $.id is serial;
     has Str $.name is column is rw;
 
-    method before-create-model() is before-create {
-        $before-create++
+    method before-create-model-public() is before-create {
+        %call-count{ &?ROUTINE.name }++;
     }
-    method after-create-model() is after-create {
-        $after-create++
+    method after-create-model-public() is after-create {
+        %call-count{ &?ROUTINE.name }++;
     }
-    method before-update-model() is before-update {
-        $before-update++
+    method before-update-model-public() is before-update {
+        %call-count{ &?ROUTINE.name }++;
     }
-    method after-update-model() is after-update {
-        $after-update++
+    method after-update-model-public() is after-update {
+        %call-count{ &?ROUTINE.name }++;
     }
-    method before-delete-model() is before-delete {
-        $before-delete++
+    method before-delete-model-public() is before-delete {
+        %call-count{ &?ROUTINE.name }++;
     }
-    method after-delete-model() is after-delete {
-        $after-delete++
+    method after-delete-model-public() is after-delete {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !before-create-model-private() is before-create {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !after-create-model-private() is after-create {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !before-update-model-private() is before-update {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !after-update-model-private() is after-update {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !before-delete-model-private() is before-delete {
+        %call-count{ &?ROUTINE.name }++;
+    }
+    method !after-delete-model-private() is after-delete {
+        %call-count{ &?ROUTINE.name }++;
+    }
+}
+
+sub call-count-ok (Str:D $phaser, Int:D $expected = 1, Str :$msg?) {
+    for <public private> -> $visibility {
+        for <before after> -> $stage {
+            for <role model> -> $where {
+                my $method = "{ $stage }-{ $phaser }-{ $where }-{ $visibility }";
+                is %call-count{$method}, $expected, 
+                    "$visibility $stage $phaser phaser on $where was called exactly $expected times" 
+                    ~ ($msg ?? " $msg" !! "") ;
+            }
+        }
     }
 }
 
 TestPhasers.^create-table;
 
 my $test-row = TestPhasers.^create(name => "test");
-is $before-create, 2, "before-create got called the right number of times";
-is $after-create, 2, "after-create got called the right number of times";
+call-count-ok 'create';
 
 $test-row.name = "something else";
 $test-row.^save;
-is $before-update, 2, "before-update got called the right number of times";
-is $after-update, 2, "after-update got called the right number of times";
+call-count-ok 'update';
 
 $test-row.^delete;
-is $before-delete, 2, "before-delete got called the right number of times";
-is $after-delete, 2, "after-delete got called the right number of times";
-
-$before-create  = 0;
-$after-create   = 0;
+call-count-ok 'delete';
 
 $test-row = TestPhasers.new(name => "test two");
 $test-row.^save(:insert);
-is $before-create, 2, "before-create got called the right number of times when using ^save(:insert)";
-is $after-create, 2, "after-create got called the right number of times when using ^save(:insert)";
+call-count-ok 'create', 2, msg => "when using ^save(:insert)";
 
 done-testing;
 

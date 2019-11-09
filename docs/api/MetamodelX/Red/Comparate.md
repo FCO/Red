@@ -1,3 +1,6 @@
+MetamodelX::Red::Comparate
+--------------------------
+
 ### method add-comparate-methods
 
 ```perl6
@@ -7,5 +10,5 @@ method add-comparate-methods(
 ) returns Empty
 ```
 
-Creates methods to return columns
+An internal method that generates Red getters and setters for an attribute $attr of a type.
 

@@ -1,3 +1,6 @@
+MetamodelX::Red::Describable
+----------------------------
+
 ### method describe
 
 ```perl6
@@ -6,27 +9,27 @@ method describe(
 ) returns Red::Cli::Table
 ```
 
-Return a `Red::Cli::Table` describing the table
+Returns an object of type `Red::Cli::Table` that represents a database table of the caller.
 
 ### method diff-to-db
 
 ```perl6
 method diff-to-db(
     \model
-) returns Red::Cli::Table
+) returns Mu
 ```
 
-Returns the difference to transform this model to the database version
+Returns the difference to transform this model to the database version.
 
 ### method diff-from-db
 
 ```perl6
 method diff-from-db(
     \model
-) returns Red::Cli::Table
+) returns Mu
 ```
 
-Returns the difference to transform the DB table into this model
+Returns the difference to transform the DB table into this model.
 
 ### method diff
 
@@ -34,8 +37,8 @@ Returns the difference to transform the DB table into this model
 method diff(
     \model,
     \other-model
-) returns Red::Cli::Table
+) returns Mu
 ```
 
-Returns the difference between two models
+Returns the difference between two models.
 

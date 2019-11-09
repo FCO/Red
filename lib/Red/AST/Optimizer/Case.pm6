@@ -1,6 +1,7 @@
 use Red::AST;
 use Red::AST::Infixes;
 use Red::AST::Value;
+use Red::Utils;
 
 unit role Red::AST::Optimizer::Case;
 
@@ -49,7 +50,7 @@ multi method optimize(
     Red::AST:U :$case,
     Red::AST :%when! where {
         .elems == 2
-        && Red::AST::AND.new(|.keys) ~~ AstTrue
+        && Red::AST::AND.new(|.keys) ~~ (AstTrue|AstFalse)
     },
     Red::AST:U :else($),
 ) {
@@ -61,6 +62,42 @@ multi method optimize(
     return ret if ret.DEFINITE && ret ~~ Red::AST;
 
     self.bless: :$else, :%when
+}
+
+multi method optimize(
+        Red::AST:U :$case,
+        Red::AST :%when! where {
+            .elems == 2
+                    && .keys[0] ~~ Red::AST::AND
+                    && .keys[1] ~~ Red::AST::AND
+                    && (
+                        compare(   .keys[0].left,  .keys[1].left)
+                        || compare(.keys[0].left,  .keys[1].right)
+                        || compare(.keys[0].right, .keys[1].left)
+                        || compare(.keys[0].right, .keys[1].right)
+                    )
+        },
+        Red::AST:U :else($),
+        ) {
+    %when = do given %when.keys {
+        when compare(.[0].left, .[1].left) {
+            .[0].right => %when{.[0]}, .[1].right => %when{.[1]}
+        }
+        when compare(.[0].left, .[1].right) {
+            .[0].right => %when{.[0]}, .[1].left => %when{.[1]}
+        }
+        when compare(.[0].right, .[1].left) {
+            .[0].left => %when{.[0]}, .[1].right => %when{.[1]}
+        }
+        when compare(.[0].right, .[1].right) {
+            .[0].left => %when{.[0]}, .[1].left => %when{.[1]}
+        }
+    }
+
+    my \ret = self.optimize: :$case, :%when;
+    return ret if ret.DEFINITE && ret ~~ Red::AST;
+
+    self.bless: :%when
 }
 
 multi method optimize(Red::AST :$case, Red::AST :%when, Red::AST :$else, UInt :$c where { $_ < 1 } = 0) {

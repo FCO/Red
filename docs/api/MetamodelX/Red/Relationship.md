@@ -1,3 +1,6 @@
+MetamodelX::Red::Relationship
+-----------------------------
+
 ### method add-relationship
 
 ```perl6
@@ -10,7 +13,7 @@ method add-relationship(
 ) returns Mu
 ```
 
-Adds a new relationship
+Adds a new relationship by column.
 
 ### method add-relationship
 
@@ -24,7 +27,7 @@ method add-relationship(
 ) returns Mu
 ```
 
-Adds a new relationship
+Adds a new relationship by reference.
 
 ### method add-relationship
 
@@ -39,7 +42,7 @@ method add-relationship(
 ) returns Mu
 ```
 
-Adds a new relationship
+Adds a new relationship by two references.
 
 ### method add-relationship
 
@@ -50,5 +53,5 @@ method add-relationship(
 ) returns Mu
 ```
 
-Adds a new relationship
+Adds a new relationship using an attribute of type `Red::Attr::Relationship`.
 

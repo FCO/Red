@@ -54,7 +54,6 @@ lives-ok { $post2 = $p.posts.create: :title("Another commit"), :body("Blablabla"
 is $post2.author-id, $p.id;
 is $post2.title, "Another commit";
 is $post2.body, "Blablabla";
-todo "NYI: use the custom inflator creating the user";
 ok $post2.tags ~~ set <bla ble>;
 
 lives-ok { $post.^delete }

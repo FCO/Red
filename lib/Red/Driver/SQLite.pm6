@@ -92,9 +92,12 @@ multi method translate(Red::AST::TableComment $_, $context?) {
 method comment-on-same-statement { True }
 
 #multi method default-type-for(Red::Column $ where .attr.type ~~ Mu             --> Str:D) {"varchar(255)"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> Str:D) {"integer"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> Str:D) {"integer"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> Str:D) {"varchar(36)"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Bool            --> Str:D) {"integer"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)  --> Str:D) {"integer"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ UUID            --> Str:D) {"varchar(36)"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Any             --> Str:D) {"varchar(255)"}
+multi method default-type-for(Red::Column $                                     --> Str:D) {"varchar(255)"}
+multi method default-type-for($ --> Str:D) is default {"varchar(255)"}
 
 multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" => [] }
 

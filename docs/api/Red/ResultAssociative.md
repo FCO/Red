@@ -1,3 +1,6 @@
+Red::ResultAssociative
+----------------------
+
 ### method of
 
 ```perl6

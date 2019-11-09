@@ -2,6 +2,8 @@ use Red::Attr::Relationship;
 use Red::FromRelationship;
 use Red::AST;
 
+=head2 MetamodelX::Red::Relationship
+
 unit role MetamodelX::Red::Relationship;
 has %!relationships{Attribute};
 
@@ -38,24 +40,24 @@ method prepare-relationships(::Type Mu \type) {
     }
 }
 
-#| Adds a new relationship
+#| Adds a new relationship by column.
 multi method add-relationship(Mu:U $self, Attribute $attr, Str :$column!, Str :$model!, Str :$require = $model ) {
     self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require
 }
 
-#| Adds a new relationship
+#| Adds a new relationship by reference.
 multi method add-relationship(Mu:U $self, Attribute $attr, &reference, Str :$model, Str :$require = $model) {
     $attr does Red::Attr::Relationship[&reference, :$model, :$require];
     self.add-relationship: $self, $attr
 }
 
-#| Adds a new relationship
+#| Adds a new relationship by two references.
 multi method add-relationship(Mu:U $self, Attribute $attr, &ref1, &ref2, Str :$model, Str :$require  = $model) {
     $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require];
     self.add-relationship: $self, $attr
 }
 
-#| Adds a new relationship
+#| Adds a new relationship using an attribute of type `Red::Attr::Relationship`.
 multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) {
     %!relationships ∪= $attr;
     my $name = $attr.name.substr: 2;
