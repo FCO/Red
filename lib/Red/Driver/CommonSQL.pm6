@@ -705,7 +705,6 @@ multi method inflate(Str $value, Date     :$to!) { $to.new: $value  }
 multi method inflate(Num $value, Duration :$to!) { $to.new: $value  }
 multi method inflate(Int $value, Duration :$to!) { $to.new: $value  }
 multi method inflate(Str $value, Version  :$to!) { $to.new: $value  }
-multi method inflate(Str $value, Json     :$to!) { from-json $value }
 
 multi method deflate(Instant  $value) { +$value }
 multi method deflate(Date     $value) { ~$value }
@@ -713,7 +712,6 @@ multi method deflate(DateTime $value) { ~$value }
 multi method deflate(Duration $value) { +$value }
 multi method deflate(Duration $value) { +$value }
 multi method deflate(Version  $value) { ~$value }
-multi method deflate(Json     $value) { to-json $value }
 
 multi method deflate($value) { $value }
 

@@ -20,8 +20,8 @@ has Bool        $.nullable         = $!attr.package.HOW.?default-nullable($!attr
 has Str         $.name             = kebab-to-snake-case self.attr.name.substr: 2;
 has Str         $.name-alias       = $!name;
 has Str         $.type;
-has             &.inflate          = *.self;
-has             &.deflate          = *.self;
+has             &.inflate          = $!attr.type.?inflator // *.self;
+has             &.deflate          = $!attr.type.?deflator // *.self;
 has             $.computation;
 has Str         $.model-name;
 has             $.model            = $!attr.package;
