@@ -3,7 +3,7 @@ use Red::AST::Infixes;
 use Red::AST::Value;
 use Red::AST::StringFuncs;
 use Red::AST::DateTimeFuncs;
-use Red::AST::JsonItemOnKey;
+use Red::AST::JsonItem;
 
 =head2 Red::ColumnMethods
 
@@ -59,12 +59,22 @@ method day($base where { .returns ~~ (Date|DateTime|Instant) }:) {
 }
 
 
-method AT-KEY(\SELF: $key) is rw {
-    my $obj = Red::AST::JsonItemOnKey.new(SELF, ast-value $key);
+method AT-KEY(\SELF: $key where { $_ ~~ Str or ( $_ ~~ Red::AST and .returns ~~ Str )}) is rw {
+    my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);
     Proxy.new:
-            FETCH => -> $ { $obj },
+            FETCH => -> $ { $obj but Red::ColumnMethods },
             STORE => -> $, $value {
                 @*UPDATE.push: Pair.new: $obj, ast-value $value;
-                $obj
+                $obj but Red::ColumnMethods
+            }
+}
+
+method AT-POS(\SELF: $key where { $_ ~~ Int or ( $_ ~~ Red::AST and .returns ~~ Int )}) is rw {
+    my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);
+    Proxy.new:
+            FETCH => -> $ { $obj but Red::ColumnMethods },
+            STORE => -> $, $value {
+                @*UPDATE.push: Pair.new: $obj, ast-value $value;
+                $obj but Red::ColumnMethods
             }
 }

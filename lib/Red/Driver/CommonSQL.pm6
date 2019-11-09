@@ -367,7 +367,7 @@ multi method translate(Red::AST::Function $_, $context?) {
     my @bind;
     "{ .func }({ .args.map({
         my ($s, @b) := do given self.translate: $_ { .key, .value }
-        @bind.push: |@b;
+        @bind.append: @b;
         $s
     }).join: ", " })" => @bind
 }
@@ -719,3 +719,10 @@ multi method is-valid-table-name(Str $str) is default {
     so $str ~~ /^ <[\w_]>+ $/
 }
 method wildcard { "?" }
+
+multi method prepare-json-path-item(@items) {
+    @items.map({ self.prepare-json-path-item: $_ }).join;
+}
+multi method prepare-json-path-item(Red::AST::Value $_) { self.prepare-json-path-item: .value }
+multi method prepare-json-path-item(Int $_) { "[{ $_ }]" }
+multi method prepare-json-path-item(Str $_) { ".{ $_ }"  }

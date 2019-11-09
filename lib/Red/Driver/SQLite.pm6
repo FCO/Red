@@ -10,7 +10,7 @@ use Red::AST::Function;
 use Red::Driver::CommonSQL;
 use Red::AST::LastInsertedRow;
 use Red::AST::TableComment;
-use Red::AST::JsonItemOnKey;
+use Red::AST::JsonItem;
 use X::Red::Exceptions;
 use UUID;
 use Red::SchemaReader;
@@ -93,12 +93,25 @@ multi method translate(Red::AST::TableComment $_, $context?) {
         (" { self.comment-starter } { .msg }" => []) with $_
 }
 
-multi method translate(Red::AST::JsonItemOnKey $_, $context?) {
-    self.translate: Red::AST::Function.new: :func<json_extract>, :args[.left, ast-value "\$.{ .right.value }"]
+multi method translate(Red::AST::JsonItem $_, $context?) {
+    self.translate:
+            Red::AST::Function.new:
+                    :func<json_extract>,
+                    :args[
+                        .left,
+                        ast-value('$' ~ self.prepare-json-path-item: .right.value)
+                    ]
 }
 
-multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~~ Red::AST::JsonItemOnKey}, "update") {
-    my $value = Red::AST::Function.new: :func<json_set>, :args[.value.key.left, ast-value("\$.{ .value.key.right.value }"), .value.value];
+multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~~ Red::AST::JsonItem}, "update") {
+    my $value = Red::AST::Function.new:
+            :func<json_set>,
+            :args[
+                .value.key.left,
+                ast-value('$' ~ self.prepare-json-path-item(.value.key.right.value)),
+                .value.value
+            ]
+    ;
     self.translate: ast-value(.value.key.left => $value), "update"
 }
 
