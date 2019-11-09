@@ -15,6 +15,7 @@ use X::Red::Exceptions;
 use UUID;
 use Red::SchemaReader;
 use Red::Driver::SQLite::SchemaReader;
+use Red::Type::Json;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
 has $.database = q<:memory:>;
@@ -115,17 +116,19 @@ multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~
     self.translate: ast-value(.value.key.left => $value), "update"
 }
 
+multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" => [] }
+
 method comment-on-same-statement { True }
 
 #multi method default-type-for(Red::Column $ where .attr.type ~~ Mu             --> Str:D) {"varchar(255)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool            --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)  --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ UUID            --> Str:D) {"varchar(36)"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Json            --> Str:D) {"json"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Any             --> Str:D) {"varchar(255)"}
 multi method default-type-for(Red::Column $                                     --> Str:D) {"varchar(255)"}
 multi method default-type-for($ --> Str:D) is default {"varchar(255)"}
 
-multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" => [] }
 
 multi method map-exception(Exception $x where { .?code == 19 and .native-message.starts-with: "UNIQUE constraint failed:" }) {
     X::Red::Driver::Mapped::Unique.new:

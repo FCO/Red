@@ -1,2 +1,2 @@
-unit class Json;
+unit class Json is Str;
 

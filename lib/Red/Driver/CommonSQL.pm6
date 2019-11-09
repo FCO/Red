@@ -29,6 +29,7 @@ use Red::AST::Generic::Postfix;
 use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
+use Red::Type::Json;
 
 use UUID;
 unit role Red::Driver::CommonSQL does Red::Driver;
@@ -677,6 +678,7 @@ multi method translate(Red::AST::LastInsertedRow $_, $context?) { "" => [] }
 
 multi method translate(Red::AST:U $_, $context?) { "" => [] }
 
+multi method default-type-for(Red::Column $ where .attr.type ~~ Json        --> Str:D) {"json"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Rat         --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --> Str:D) {"varchar(32)"}
@@ -694,14 +696,16 @@ multi method type-for-sql("interval" --> "Duration") {}
 multi method type-for-sql("integer"  --> "Int"     ) {}
 multi method type-for-sql("serial"   --> "UInt"    ) {}
 multi method type-for-sql("boolean"  --> "Bool"    ) {}
+multi method type-for-sql("json"     --> "Json"    ) {}
 multi method type-for-sql(Str $ where /^ "varchar(" ~ ")" \d+ $/ --> "Str") {}
 
 multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
-multi method inflate(Str $value, DateTime :$to!) { $to.new: $value }
-multi method inflate(Str $value, Date     :$to!) { $to.new: $value }
-multi method inflate(Num $value, Duration :$to!) { $to.new: $value }
-multi method inflate(Int $value, Duration :$to!) { $to.new: $value }
-multi method inflate(Str $value, Version  :$to!) { $to.new: $value }
+multi method inflate(Str $value, DateTime :$to!) { $to.new: $value  }
+multi method inflate(Str $value, Date     :$to!) { $to.new: $value  }
+multi method inflate(Num $value, Duration :$to!) { $to.new: $value  }
+multi method inflate(Int $value, Duration :$to!) { $to.new: $value  }
+multi method inflate(Str $value, Version  :$to!) { $to.new: $value  }
+multi method inflate(Str $value, Json     :$to!) { from-json $value }
 
 multi method deflate(Instant  $value) { +$value }
 multi method deflate(Date     $value) { ~$value }
@@ -709,6 +713,7 @@ multi method deflate(DateTime $value) { ~$value }
 multi method deflate(Duration $value) { +$value }
 multi method deflate(Duration $value) { +$value }
 multi method deflate(Version  $value) { ~$value }
+multi method deflate(Json     $value) { to-json $value }
 
 multi method deflate($value) { $value }
 
