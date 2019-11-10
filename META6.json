@@ -50,6 +50,7 @@
     "Red::AST::Intersect" : "lib/Red/AST/Intersect.pm6",
     "Red::AST::IsDefined" : "lib/Red/AST/IsDefined.pm6",
     "Red::AST::JsonItem" : "lib/Red/AST/JsonItem.pm6",
+    "Red::AST::JsonRemoveItem" : "lib/Red/AST/JsonRemoveItem.pm6",
     "Red::AST::LastInsertedRow" : "lib/Red/AST/LastInsertedRow.pm6",
     "Red::AST::Minus" : "lib/Red/AST/Minus.pm6",
     "Red::AST::MultiSelect" : "lib/Red/AST/MultiSelect.pm6",

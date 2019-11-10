@@ -233,11 +233,13 @@ multi method translate(Red::AST::Union $ast, $context?) {
 }
 
 multi method translate(Red::AST::Intersect $ast, $context?) {
-    $ast.selects.map({ self.translate( $_, "multi-select").key }).join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
+    $ast.selects.map({ self.translate( $_, "multi-select").key })
+            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
 }
 
 multi method translate(Red::AST::Minus $ast, $context?) {
-    $ast.selects.map({ self.translate( $_, "multi-select" ).key }).join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
+    $ast.selects.map({ self.translate( $_, "multi-select" ).key })
+            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
 }
 
 multi method translate(Red::AST::Union $ast, "multi-select-op") { "UNION" => [] }
@@ -367,7 +369,7 @@ multi method translate(Red::AST::DateTimeFunction $_, $context?) {
 multi method translate(Red::AST::Function $_, $context?) {
     my @bind;
     "{ .func }({ .args.map({
-        my ($s, @b) := do given self.translate: $_ { .key, .value }
+        my ($s, @b) := do given self.translate: $_, $context { .key, .value }
         @bind.append: @b;
         $s
     }).join: ", " })" => @bind
@@ -587,19 +589,19 @@ multi method translate(Red::Column $_, "column-pk")             { (.id ?? "prima
 
 multi method translate(Red::Column $_, "column-auto-increment") { (.auto-increment ?? "auto_increment" !! "") => [] }
 
-multi method translate(Red::Column $_, "column-references")     {
+multi method translate(Red::Column $_, "column-references") {
     ("references { .class.^table }({ .name })" with .ref) => []
 }
 
-multi method translate(Red::Column $_, "table-dot-column")     {
+multi method translate(Red::Column $_, "table-dot-column") {
     "{ .class.^table }.{ .name }" => []
 }
 
-multi method translate(Red::Column $_, "column-comment")     {
+multi method translate(Red::Column $_, "column-comment") {
     (" COMMENT '$_'") => [] if .comment
 }
 
-multi method translate(Red::Column $_, "update-lval")     {
+multi method translate(Red::Column $_, "update-lval") {
     .name // "" => []
 }
 

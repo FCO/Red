@@ -11,6 +11,7 @@ use Red::Driver::CommonSQL;
 use Red::AST::LastInsertedRow;
 use Red::AST::TableComment;
 use Red::AST::JsonItem;
+use Red::AST::JsonRemoveItem;
 use X::Red::Exceptions;
 use UUID;
 use Red::SchemaReader;
@@ -56,6 +57,12 @@ multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context? where $
     (.value ?? 1 !! 0) => []
 }
 
+multi method translate(Red::AST::Value $_ where { .type ~~ Json }, $context? where { !.defined || $_ ne "bind" }) {
+    self.translate:
+            Red::AST::Function.new(:func<JSON>, :args[ ast-value .value, :type(Str) ]),
+            $context
+}
+
 multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {
     my ($val, @bind) := do given self.translate: .value, $context { .key, .value }
     "($val == 0 OR $val IS NULL)" => @bind
@@ -94,24 +101,37 @@ multi method translate(Red::AST::TableComment $_, $context?) {
         (" { self.comment-starter } { .msg }" => []) with $_
 }
 
-multi method translate(Red::AST::JsonItem $_, $context?) {
+multi method translate(Red::AST::JsonRemoveItem $_, $context?) {
     self.translate:
             Red::AST::Function.new:
-                    :func<json_extract>,
+                    :func<JSON_REMOVE>,
                     :args[
                         .left,
                         ast-value('$' ~ self.prepare-json-path-item: .right.value)
-                    ]
+                    ],
+                    :returns(Json),
+}
+
+multi method translate(Red::AST::JsonItem $_, $context?) {
+    self.translate:
+            Red::AST::Function.new:
+                    :func<JSON_EXTRACT>,
+                    :args[
+                        .left,
+                        ast-value('$' ~ self.prepare-json-path-item: .right.value)
+                    ],
+                    :returns(Json),
 }
 
 multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~~ Red::AST::JsonItem}, "update") {
     my $value = Red::AST::Function.new:
-            :func<json_set>,
+            :func<JSON_SET>,
             :args[
                 .value.key.left,
                 ast-value('$' ~ self.prepare-json-path-item(.value.key.right.value)),
                 .value.value
-            ]
+            ],
+            :returns(Json),
     ;
     self.translate: ast-value(.value.key.left => $value), "update"
 }

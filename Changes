@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - json type
     - :optional on relationships
     - join types (inner, outer, left, right)
     - Fix Divisable (%%)

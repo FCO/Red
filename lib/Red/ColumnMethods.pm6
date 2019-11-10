@@ -4,6 +4,7 @@ use Red::AST::Value;
 use Red::AST::StringFuncs;
 use Red::AST::DateTimeFuncs;
 use Red::AST::JsonItem;
+use Red::AST::JsonRemoveItem;
 use Red::Type::Json;
 
 =head2 Red::ColumnMethods
@@ -60,14 +61,27 @@ method day($base where { .returns ~~ (Date|DateTime|Instant) }:) {
 }
 
 
-method AT-KEY(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Str or ( $_ ~~ Red::AST and .returns ~~ Str )}) is rw {
+multi method AT-KEY(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Str or ( $_ ~~ Red::AST and .returns ~~ Str )}) is rw {
     my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);
     Proxy.new:
             FETCH => -> $ { $obj but Red::ColumnMethods },
             STORE => -> $, $value {
-                @*UPDATE.push: Pair.new: $obj, ast-value $value;
+                my $val = do given $value {
+                    when Red::AST { $_ }
+                    default {
+                        my &deflator = Json.deflator;
+                        ast-value :type(Json), .&deflator;
+                    }
+                }
+                @*UPDATE.push: Pair.new: $obj, $val;
                 $obj but Red::ColumnMethods
             }
+}
+
+multi method DELETE-KEY(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Str or ( $_ ~~ Red::AST and .returns ~~ Str )}) {
+    my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);
+    @*UPDATE.push: Pair.new: SELF, Red::AST::JsonRemoveItem.new: SELF, ast-value $key;
+    $obj
 }
 
 method AT-POS(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Int or ( $_ ~~ Red::AST and .returns ~~ Int )}) is rw {
@@ -75,7 +89,14 @@ method AT-POS(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Int or ( $_ ~
     Proxy.new:
             FETCH => -> $ { $obj but Red::ColumnMethods },
             STORE => -> $, $value {
-                @*UPDATE.push: Pair.new: $obj, ast-value $value;
+                my $val = do given $value {
+                    when Red::AST { $_ }
+                    default {
+                        my &deflator = Json.deflator;
+                        ast-value .&deflator, :type(Json)
+                    }
+                }
+                @*UPDATE.push: Pair.new: $obj, $val;
                 $obj but Red::ColumnMethods
             }
 }
