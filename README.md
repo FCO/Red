@@ -7,8 +7,8 @@ Take a look at our Wiki: [https://github.com/FCO/Red/wiki](https://github.com/FC
 
 Take a look at our Documentation: [https://fco.github.io/Red/](https://fco.github.io/Red/)
 
-Red - A **WiP** ORM for perl6
------------------------------
+Red - A **WiP** ORM for Raku
+----------------------------
 
 INSTALL
 -------
@@ -20,7 +20,7 @@ Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):
 SYNOPSIS
 --------
 
-```perl6
+```raku
 use Red;
 
 model Person {...}
@@ -62,7 +62,7 @@ CREATE TABLE person(
 )
 ```
 
-```perl6
+```raku
 Post.^create-table;
 ```
 
@@ -80,7 +80,7 @@ CREATE TABLE post(
 )
 ```
 
-```perl6
+```raku
 my Post $post1 = Post.^load: :42id;
 ```
 
@@ -100,7 +100,7 @@ WHERE
     post.id = 42
 ```
 
-```perl6
+```raku
 my Post $post1 = Post.^load: 42;
 ```
 
@@ -120,7 +120,7 @@ WHERE
     post.id = 42
 ```
 
-```perl6
+```raku
 my Post $post1 = Post.^load: :title("my title");
 ```
 
@@ -140,7 +140,7 @@ WHERE
     post.title = ‘my title’
 ```
 
-```perl6
+```raku
 my $person = Person.^create: :name<Fernando>;
 ```
 
@@ -166,12 +166,12 @@ WHERE
 LIMIT 1
 ```
 
-```perl6
+```raku
 RETURNS:
 Person.new(name => "Fernando")
 ```
 
-```perl6
+```raku
 # Using Pg Driver for this block
 {
     my $*RED-DB = database "Pg";
@@ -190,12 +190,12 @@ VALUES(
 -- BIND: ["Fernando"]
 ```
 
-```perl6
+```raku
 RETURNS:
 Person.new(name => "Fernando")
 ```
 
-```perl6
+```raku
 say $person.posts;
 ```
 
@@ -216,7 +216,7 @@ WHERE
 -- BIND: [1]
 ```
 
-```perl6
+```raku
 say Person.new(:2id)
     .active-posts
     .grep: { .created > now }
@@ -246,7 +246,7 @@ WHERE
 -- BIND: [2]
 ```
 
-```perl6
+```raku
 my $now = now;
 say Person.new(:3id)
     .active-posts
@@ -283,7 +283,7 @@ WHERE
 -- ]
 ```
 
-```perl6
+```raku
 Person.^create:
     :name<Fernando>,
     :posts[
@@ -355,7 +355,7 @@ WHERE
 LIMIT 1
 ```
 
-```perl6
+```raku
 my $post = Post.^load: :title("My new post");
 ```
 
@@ -376,7 +376,7 @@ WHERE
 -- BIND: []
 ```
 
-```perl6
+```raku
 RETURNS:
 Post.new(
    title   => "My new post",
@@ -395,25 +395,25 @@ Post.new(
 )
 ```
 
-```perl6
+```raku
 say $post.body;
 ```
 
-```perl6
+```raku
 PRINTS:
 A long post
 ```
 
-```perl6
+```raku
 my $author = $post.author;
 ```
 
-```perl6
+```raku
 RETURNS:
 Person.new(name => "Fernando")
 ```
 
-```perl6
+```raku
 $author.name = "John Doe";
 
 $author.^save;
@@ -426,7 +426,7 @@ UPDATE person SET
 WHERE id = 1
 ```
 
-```perl6
+```raku
 $author.posts.create:
     :title("Second post"),
     :body("Another long post");
@@ -460,7 +460,7 @@ VALUES(
 -- ]
 ```
 
-```perl6
+```raku
 $author.posts.elems;
 ```
 
@@ -475,7 +475,7 @@ WHERE
 -- BIND: [1]
 ```
 
-```perl6
+```raku
 RETURNS:
 2
 ```
@@ -483,7 +483,7 @@ RETURNS:
 DESCRIPTION
 -----------
 
-Red is a *WiP* ORM for perl6. It’s not working yet. My objective publishing is only ask for help validating the APIs.
+Red is a *WiP* ORM for Raku. It’s not working yet. My objective publishing is only ask for help validating the APIs.
 
 ### traits
 
@@ -511,7 +511,7 @@ Red is a *WiP* ORM for perl6. It’s not working yet. My objective publishing is
 
 Red will infer relationship data if you use type constraints on your properties.
 
-```perl6
+```raku
 # Single file e.g. Schema.pm6
 
 model Related { ... }
@@ -532,7 +532,7 @@ model Related {
 
 If you want to put your schema into multiple files, you can create an "indirect" relationship, and Red will look up the related models as necessary.
 
-```perl6
+```raku
 # MyModel.pm6
 model MyModel {
     has Int     $!related-id is referencing{ :model<Related>, :column<id> };
@@ -548,14 +548,14 @@ model Related {
 
 If Red can’t find where your `model` is defined you can override where it looks with `require`:
 
-```perl6
+```raku
     has Int     $!related-id is referencing{ :model<Related>, :column<id>,
                                              :require<MyApp::Schema::Related> };
 ```
 
 #### custom table name
 
-```perl6
+```raku
 model MyModel is table<custom_table_name> {}
 ```
 
@@ -563,7 +563,7 @@ model MyModel is table<custom_table_name> {}
 
 Red, by default, has not nullable columns, to change it:
 
-```perl6
+```raku
 #| This makes this model’s columns nullable by default
 model MyModel is nullable {
     has Int $.col1 is column;               #= this column is nullable
@@ -573,20 +573,20 @@ model MyModel is nullable {
 
 #### load object from database
 
-```perl6
+```raku
 MyModel.^load: 42;
 MyModel.^load: id => 42;
 ```
 
 #### save object on the database
 
-```perl6
+```raku
 $object.^save;
 ```
 
 #### search for a list of object
 
-```perl6
+```raku
 Question.^all.grep: { .answer == 42 }; # returns a result seq
 ```
 
@@ -606,13 +606,13 @@ Question.^all.grep: { .answer == 42 }; # returns a result seq
 
 #### Temporary table
 
-```perl6
+```raku
 model Bla is temp { ... }
 ```
 
 #### Create table
 
-```perl6
+```raku
 Question.^create-table;
 Question.^create-table: :if-not-exists;
 Question.^create-table: :unless-exists;
@@ -620,13 +620,13 @@ Question.^create-table: :unless-exists;
 
 #### IN
 
-```perl6
+```raku
 Question.^all.grep: *.answer ⊂ (3.14, 13, 42)
 ```
 
 #### create
 
-```perl6
+```raku
 Post.^create: :body("bla ble bli blo blu"), :title("qwer");
 
 
@@ -660,7 +660,7 @@ Fernando Correa de Oliveira <fernandocorrea@gmail.com>
 COPYRIGHT AND LICENSE
 ---------------------
 
-Copyright 2018 Fernando Correa de Oliveira
+Copyright 2018, 2019 Fernando Correa de Oliveira
 
 This library is free software; you can redistribute it and/or modify it under the Artistic License 2.0.
 
