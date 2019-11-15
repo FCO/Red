@@ -20,7 +20,7 @@ has Bool        $.nullable         = $!attr.package.HOW.?default-nullable($!attr
 has Str         $.name             = kebab-to-snake-case self.attr.name.substr: 2;
 has Str         $.name-alias       = $!name;
 has Str         $.type;
-has             &.inflate          = $!attr.type.?inflator // *.self;
+has             &.inflate          = $!attr.type.?inflator // { .?"{ $!attr.type.^name }"() // .self };
 has             &.deflate          = $!attr.type.?deflator // *.self;
 has             $.computation;
 has Str         $.model-name;
@@ -28,6 +28,21 @@ has             $.model            = $!attr.package;
 has Str         $.column-name;
 has Str         $.require          = $!model-name;
 has Mu          $.class            = $!attr.package;
+
+#multi method WHICH(::?CLASS:D:) {
+#    ValueObjAt.new: self.^name ~ "|" ~ self.migration-hash.pairs.sort.map(-> (:$key, :$value) {
+#        "$key|$value"
+#    }).join: "|"
+#}
+
+multi method perl(::?CLASS:D:) {
+    "{ self.^name }.new({
+        self.Hash.pairs.sort.map(-> (:$key, :$value) {
+            next if $key eq <inflate deflate>.one;
+            "$key.Str() => $value.perl()"
+        }).join: ", "
+    })"
+}
 
 method Hash(--> Hash()) {
     %(
@@ -48,7 +63,7 @@ method Hash(--> Hash()) {
         |(:model-name($_) with $!model-name),
         |(:column-name($_) with $!column-name),
         |(:require($_) with $!require),
-    )
+            )
 }
 
 method migration-hash(--> Hash()) {
