@@ -7,8 +7,8 @@ Take a look at our Wiki: [https://github.com/FCO/Red/wiki](https://github.com/FC
 
 Take a look at our Documentation: [https://fco.github.io/Red/](https://fco.github.io/Red/)
 
-Red - A **WiP** ORM for perl6
------------------------------
+Red - A **WiP** ORM for Raku
+----------------------------
 
 INSTALL
 -------

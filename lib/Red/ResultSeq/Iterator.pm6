@@ -47,7 +47,7 @@ method pull-one {
                 die "Inflator not defined for column '$k'" without %cols{$c}.inflate;
                 my $inflated = %cols{$c}.inflate.($v);
                 $inflated = $!driver.inflate(
-                    %cols{$c}.inflate.($v),
+                    $inflated,
                     :to($!of.^attributes.first(*.name.substr(2) eq $c).type)
                 ) if \($!driver, $inflated, :to($!of.^attributes.first(*.name.substr(2) eq $c).type)) ~~ $!driver.^lookup("inflate").candidates.any.signature;
                 $c => $inflated
