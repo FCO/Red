@@ -367,7 +367,7 @@ multi method head is hidden-from-sql-commenting {
 }
 
 # TODO: Return a Red::ResultSeq
-multi method head(UInt() $num) is hidden-from-sql-commenting {
+multi method head(UInt(Numeric) $num) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     self.clone: :chain($!chain.clone: :limit(min $num, $.limit))
 }
