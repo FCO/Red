@@ -108,11 +108,15 @@ method transform-item(*%data) is hidden-from-sql-commenting {
 
 #| Adds a new filter on the query (does not run the query)
 method grep(&filter) is hidden-from-sql-commenting {
-#    CATCH {
-#        default {
-#            return self.Seq.grep: &filter
-#        }
-#    }
+    CATCH {
+        default {
+            if $*RED-FALLBACK {
+                note "falling back: { .message }";
+                return self.Seq.grep: &filter
+            }
+            .rethrow
+        }
+    }
     self.create-comment-to-caller;
     my Red::AST $*RED-GREP-FILTER;
     my $filter = do given what-does-it-do(&filter, self.of) {
@@ -294,11 +298,15 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
 #| Change what will be returned (does not run the query)
 method map(\SELF: &filter) is hidden-from-sql-commenting {
     SELF.create-comment-to-caller;
-#    CATCH {
-#        default {
-#            return self.Seq.map: &filter
-#        }
-#    }
+    CATCH {
+        default {
+            if $*RED-FALLBACK {
+                note "falling back: { .message }";
+                return self.Seq.map: &filter
+            }
+            .rethrow
+        }
+    }
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};
     my @*UPDATE := @!update;

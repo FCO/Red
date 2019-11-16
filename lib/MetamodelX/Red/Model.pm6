@@ -427,10 +427,10 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
                     %positionals{$name} = $val
                 } elsif $val ~~ Associative && $val !~~ Red::Model {
                     %pars{$name} = do if attr-model ~~ Red::Model {
-                        attr-model
+                        try { attr-model.^find(|$val) } // attr-model.^create: |$val
                     } else {
-                        attr-type
-                    }.^create: |$val
+                        try { attr-type.^find(|$val)  } // attr-type.^create:  |$val
+                    }
                 } else {
                     %pars{$name} = $val
                 }

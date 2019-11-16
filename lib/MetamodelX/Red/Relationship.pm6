@@ -1,6 +1,7 @@
 use Red::Attr::Relationship;
 use Red::FromRelationship;
 use Red::AST;
+#no precompilation;
 
 =head2 MetamodelX::Red::Relationship
 
@@ -23,6 +24,27 @@ submethod !BUILD_pr(*%data) {
         }
     }
     nextsame
+}
+
+method !sel-scalar($attr, $name) {
+    my method (Mu:U \SELF:) {
+        SELF.^join(
+            $attr.has-lazy-relationship
+                    ?? $attr.relationship-model
+                    !! $attr.type
+            ,
+            :name("{ SELF.^as }_{ $name }"),
+            $attr,
+            |$attr.join-type.Hash,
+        )
+    }
+}
+
+method !sel-positional($attr) {
+    my method (Mu:U \SELF:) {
+        my $ast = $attr.relationship-ast: SELF;
+        $attr.package.^rs.new: :filter($ast)
+    }
 }
 
 method !get-build {
@@ -84,20 +106,7 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
         }
     }
     $self.^add_multi_method: $name, $attr.type ~~ Positional
-        ?? my method (Mu:U \SELF:) {
-            my $ast = $attr.relationship-ast: SELF;
-            $attr.package.^rs.new: :filter($ast)
-        }
-        !! my method (Mu:U \SELF:) {
-            SELF.^join(
-                $attr.has-lazy-relationship
-                    ?? $attr.relationship-model
-                    !! $attr.type
-                ,
-                :name("{ SELF.^as }_{ $name }"),
-                $attr,
-                |$attr.join-type.Hash,
-            )
-        }
+        ?? self!sel-positional($attr)
+        !! self!sel-scalar($attr, $name);
     ;
 }
