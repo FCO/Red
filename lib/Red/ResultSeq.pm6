@@ -110,7 +110,7 @@ method transform-item(*%data) is hidden-from-sql-commenting {
 method grep(&filter) is hidden-from-sql-commenting {
     CATCH {
         default {
-            if $*RED-FALLBACK {
+            if not $*RED-FALLBACK.defined or $*RED-FALLBACK {
                 note "falling back: { .message }";
                 return self.Seq.grep: &filter
             }
@@ -300,7 +300,7 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
     SELF.create-comment-to-caller;
     CATCH {
         default {
-            if $*RED-FALLBACK {
+            if not $*RED-FALLBACK.defined or $*RED-FALLBACK {
                 note "falling back: { .message }";
                 return self.Seq.map: &filter
             }
