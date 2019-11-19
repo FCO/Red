@@ -307,6 +307,7 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
             .rethrow
         }
     }
+    die "Arity bigger than 1" if &filter.arity > 1;
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};
     my @*UPDATE := @!update;
