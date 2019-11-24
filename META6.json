@@ -10,7 +10,7 @@
     "DB::Pg",
     "UUID"
   ],
-  "description" : "A perl6 ORM",
+  "description" : "A Raku ORM",
   "license" : "Artistic-2.0",
   "name" : "Red",
   "perl" : "6.d",

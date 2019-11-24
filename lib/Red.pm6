@@ -81,7 +81,7 @@ Take a look at our Wiki: L<https://github.com/FCO/Red/wiki>
 
 Take a look at our Documentation: L<https://fco.github.io/Red/>
 
-=head2 Red - A **WiP** ORM for perl6
+=head2 Red - A **WiP** ORM for Raku
 
 =head2 INSTALL
 

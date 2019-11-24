@@ -5,10 +5,10 @@ For more in-depth introduction about Red architecture visit [Red architecture](t
 
 ### Models and tables
 
-Red is an Object-Relational Mapping (ORM) tool for Perl 6.
+Red is an Object-Relational Mapping (ORM) tool for Raku
 
 Simply speaking, it allows you to "hide" the layer of interaction
-with your relational database and work with Perl 6 objects instead.
+with your relational database and work with Raku objects instead.
 
 Currently, PostgreSQL and SQLite3 relation databases are supported.
 
@@ -150,7 +150,7 @@ Method `^all` returns an instance of class `Seq` that is a lazy sequence of reco
 SELECT * FROM person WHERE person.name like 'Jo%';
 ```
 
-The query above selects all records where name starts with 'Jo'. In Red, you can use Perl 6 `grep`
+The query above selects all records where name starts with 'Jo'. In Red, you can use Raku `grep`
 method to specify clauses of the select query:
 
 ```perl6
@@ -158,7 +158,7 @@ for Person.^all.grep(*.name.starts-with('Jo')) -> $person { say $person }
 ```
 
 Note that this call chain will result into an equivalent of the SQL code above,
-filtering values happens at the database level, not at Perl 6 level.
+filtering values happens at the database level, not at Raku level.
 
 ```sql
 SELECT * FROM person WHERE person.name like 'Jo%' AND person.id = 2;
