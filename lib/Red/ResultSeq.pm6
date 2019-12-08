@@ -45,7 +45,7 @@ method create-comment-to-caller is hidden-from-sql-commenting {
         .subname and .subname ne "<anon>" and !.code.?is-hidden-from-sql-commenting
     } {
         %data<file>  = .file;
-        %data<block> = .code.name;
+        %data<block> = .code.?name;
         %data<line>  = .line;
     }
     @!comments.push: Red::AST::Comment.new:
@@ -108,6 +108,7 @@ method transform-item(*%data) is hidden-from-sql-commenting {
 
 #| Adds a new filter on the query (does not run the query)
 method grep(&filter) is hidden-from-sql-commenting {
+    self.create-comment-to-caller;
     CATCH {
         default {
             if not $*RED-FALLBACK.defined or $*RED-FALLBACK {
@@ -117,7 +118,6 @@ method grep(&filter) is hidden-from-sql-commenting {
             .rethrow
         }
     }
-    self.create-comment-to-caller;
     my Red::AST $*RED-GREP-FILTER;
     my $filter = do given what-does-it-do(&filter, self.of) {
         do if [eqv] .values {
@@ -237,11 +237,11 @@ sub what-does-it-do(&func, \type --> Hash) {
 }
 
 #multi method create-map($, :&filter)     { self.do-it.map: &filter }
-multi method create-map(\SELF: Red::Model $_, :filter(&)) is hidden-from-sql-commenting {
-    .^where: $.filter
+multi method create-map(\SELF: Red::Model $model is copy, :filter(&)) is hidden-from-sql-commenting {
+    self but role :: { method of { $model } }
 }
 multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden-from-sql-commenting {
-    my \Meta  = SELF.of.HOW.WHAT;
+    my \Meta  = SELF.of.^orig.HOW.WHAT;
     my \model = Meta.new(:table(SELF.of.^table)).new_type: :name(SELF.of.^name);
     model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, SELF.of.^table;
     my $attr-name = 'data_0';
@@ -318,7 +318,9 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
         SELF.where(%next.keys.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n }))
     } else { SELF }
     my \ast = Red::AST::Case.new(:%when);
-    seq.create-map: ast, :&filter;
+    #die "Map returning Red::Model is NYI" if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
+    return seq.create-map: ast.value, :&filter if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
+    seq.create-map: ast, :&filter
 }
 #method flatmap(&filter) {
 #    treat-map :flat, $.filter, filter(self.of), &filter

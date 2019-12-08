@@ -12,20 +12,6 @@ method relationships(|) {
     %!relationships
 }
 
-submethod !BUILD_pr(*%data) {
-    my \instance = self;
-    for self.^relationships.keys -> $rel {
-        $rel.build-relationship: instance
-    }
-    for self.^attributes -> $attr {
-        my $name = $attr.name.substr: 2;
-        with %data{ $name } {
-            $attr.set_value: instance, $_
-        }
-    }
-    nextsame
-}
-
 method !sel-scalar($attr, $name) {
     my method (Mu:U \SELF:) {
         SELF.^join(
@@ -48,7 +34,20 @@ method !sel-positional($attr) {
 }
 
 method !get-build {
-    & //= self.^find_private_method('BUILD_pr')
+    #& //= self.^find_private_method('BUILD_pr')
+    method (*%data) {
+        my \instance = self;
+        for self.^relationships.keys -> $rel {
+            $rel.build-relationship: instance
+        }
+        for self.^attributes -> $attr {
+            my $name = $attr.name.substr: 2;
+            with %data{ $name } {
+                $attr.set_value: instance, $_
+            }
+        }
+        nextsame
+    }
 }
 
 method prepare-relationships(::Type Mu \type) {

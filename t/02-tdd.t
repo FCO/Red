@@ -1,5 +1,5 @@
 use Test;
-
+my $*RED-FALLBACK = False;
 use-ok "Red";
 
 use Red;

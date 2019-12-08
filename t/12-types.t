@@ -21,6 +21,20 @@ subtest {
     isa-ok $row.duration, Duration;
 }, "test Duration";
 
+subtest {
+    model UnknownType {
+        has Str $.unknown is id;
+    }
+
+    UnknownType.^create-table;
+    UnknownType.^create: :unknown<bla>;
+
+    class Bla { has $.value; method Str { ~$!value } }
+
+    lives-ok {
+        is UnknownType.^load(:unknown(Bla.new: :value<bla>)).unknown, "bla"
+    }
+}
 
 done-testing;
 # vim: ft=perl6

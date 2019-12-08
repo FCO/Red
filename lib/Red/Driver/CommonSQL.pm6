@@ -542,13 +542,17 @@ multi method translate(Red::AST::Value $_ where .type ~~ Instant, $context?) {
     self.translate: ast-value(.get-value.?to-posix.head), $context
 }
 
+multi method translate(Red::AST::Value $_ where .type ~~ Numeric, $context?) {
+    ~.get-value => []
+}
+
 multi method translate(Red::AST::Value $_ where .type ~~ Red::FromRelationship, $context?) {
     die "NYI: map returning a relationship";
 }
 
 multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
     return self.translate: ast-value(.get-value), $context if .column.DEFINITE;
-    ~.get-value => []
+    self.translate: ast-value ~.get-value
 }
 
 method comment-on-same-statement { False }

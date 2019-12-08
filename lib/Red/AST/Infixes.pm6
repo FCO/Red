@@ -166,6 +166,7 @@ class Red::AST::AND does Red::AST::Infix {
     }
 
     method should-set(--> Hash()) {
+        [$.left, $.right].flatmap({ .should-set })
     }
 
     method should-validate {}
@@ -193,8 +194,7 @@ class Red::AST::OR does Red::AST::Infix {
         self.WHAT.bless: :$left, :$right
     }
 
-    method should-set(--> Hash()) {
-    }
+    method should-set(--> Hash()) {}
 
     method should-validate {}
 
@@ -276,8 +276,7 @@ class Red::AST::Concat does Red::AST::Infix {
     has $.op = "||";
     has Str $.returns;
 
-    method should-set(--> Hash()) {
-    }
+    method should-set(--> Hash()) {}
 
     method should-validate {}
 
@@ -289,8 +288,7 @@ class Red::AST::Like does Red::AST::Infix {
     has $.op = "like";
     has Str $.returns;
 
-    method should-set(--> Hash()) {
-    }
+    method should-set(--> Hash()) {}
 
     method should-validate {}
 
@@ -301,8 +299,7 @@ class Red::AST::NotIn does Red::AST::Infix {
     has $.op = "NOT IN";
     has Str $.returns;
 
-    method should-set(--> Hash()) {
-    }
+    method should-set(--> Hash()) {}
 
     method should-validate {}
 
@@ -315,8 +312,7 @@ class Red::AST::In does Red::AST::Infix {
     has $.op = "IN";
     has Str $.returns;
 
-    method should-set(--> Hash()) {
-    }
+    method should-set(--> Hash()) {}
 
     method should-validate {}
 

@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - xmas example
+    - accept map's block returning Red::Model
     - json type
     - :optional on relationships
     - join types (inner, outer, left, right)

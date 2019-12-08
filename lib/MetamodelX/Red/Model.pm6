@@ -197,12 +197,14 @@ multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name
 my UInt $alias_num = 1;
 method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type) {
     my \alias = ::?CLASS.new_type(:$name);
-    my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type] {
-        method table(|)     { rtype.^table }
-        method as(|)        { camel-to-snake-case $rname }
-        method orig(|)      { rtype }
-        method join-type(|) { join-type }
-        method join-on(|)   {
+    my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
+        method columns(|)     { @cols }
+        method table(|)       { rtype.^table }
+        method as(|)          { camel-to-snake-case $rname }
+        method orig(|)        { rtype }
+        method join-type(|)   { join-type }
+        method tables(|)      { [ |base.^tables, alias ] }
+        method join-on(|)     {
             do given rel {
                 when Red::AST {
                     $_
@@ -216,11 +218,9 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$ba
                 }
             }
         }
-        method tables(|)    { [ |base.^tables, alias ] }
     }
-    alias.HOW does RAlias[type, $name, alias, $relationship, $base, $join-type];
 #    alias.^add_role: Red::Model;
-    for @!columns -> $col {
+    my @cols = do for @!columns -> $col {
         my $new-col = Attribute.new:
             :name($col.name),
             :package(alias),
@@ -230,8 +230,10 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$ba
         ;
         $new-col does Red::Attr::Column($col.column.Hash);
 #        $new-col.create-column;
-        alias.^add-comparate-methods: $new-col
+        alias.^add-comparate-methods: $new-col;
+        $new-col
     }
+    alias.HOW does RAlias[type, $name, alias, $relationship, $base, $join-type, @cols];
     for self.relationships.keys -> $rel {
         alias.^add-relationship: $rel.transfer: alias
     }
