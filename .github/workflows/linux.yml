@@ -16,4 +16,4 @@ jobs:
       - name: perl6 -v
         run: perl6 -v
       - name: Run Tests
-        run: prove -e 'raku -I.' t
+        run: zef install .
