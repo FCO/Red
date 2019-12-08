@@ -13,7 +13,7 @@ jobs:
 
     steps:
       - uses: actions/checkout@v1
-      - name: perl6 -v
-        run: perl6 -v
+      - name: raku -v
+        run: raku -v
       - name: Run Tests
         run: zef install -v .
