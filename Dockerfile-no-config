@@ -1,4 +1,4 @@
-FROM        jjmerelo/alpine-perl6
+FROM        registry.gitlab.com/tyil/docker-perl6:alpine-2019-12-08
 WORKDIR     /code
 COPY        META6.json .
 RUN         apk add gcc libc-dev libuuid sqlite-libs
