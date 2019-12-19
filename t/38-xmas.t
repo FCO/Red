@@ -17,8 +17,8 @@ for <doll ball car pokemon> -> $name {
     Gift.^create: :$name;
 }
 
-Child.^create: :name<Fernanda>, :address<UK>, :asked-by-year[{:gift{:name<pokemon>}}];
-Child.^create: :name<Sophia>,   :address<UK>, :asked-by-year[{:gift{:name<doll>}}];
+Child.^create: :name<Fernanda>, :country<UK>, :asked-by-year[{:gift{:name<pokemon>}}];
+Child.^create: :name<Sophia>,   :country<UK>, :asked-by-year[{:gift{:name<doll>}}];
 
 my $*RED-FALLBACK = False;
 
@@ -38,7 +38,7 @@ given Gift.^find(:name<ball>) {
 is-deeply ChildAskedOnYear.^all.map(*.gift.name).Bag, bag <pokemon doll ball ball>;
 is-deeply ChildAskedOnYear.^all.map(*.gift.name).Set, set <pokemon doll ball>;
 
-isa-ok Child.^create(:name<Maricota>, :address<Brazil>), Child;
+isa-ok Child.^create(:name<Maricota>, :country<Brazil>), Child;
 is Child.^all.elems, 3;
 is-deeply Child.^all.grep(*.name.starts-with: "M").map(*.name).head, "Maricota";
 is-deeply Gift.^all.grep(*.name.contains: "ll").map(*.name).Seq, <doll ball>.Seq;

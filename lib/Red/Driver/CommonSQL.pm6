@@ -680,6 +680,10 @@ multi method translate(Red::AST::Value $_ where .type ~~ Pair, "update") {
     "{ $c } = { $s }" => [|@c, |@b]
 }
 
+multi method translate(Red::AST::Value $_, "update-rval") {
+    self.wildcard => [.get-value]
+}
+
 multi method translate(Red::AST::LastInsertedRow $_, $context?) { "" => [] }
 
 multi method translate(Red::AST:U $_, $context?) { "" => [] }

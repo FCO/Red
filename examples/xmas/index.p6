@@ -1,6 +1,6 @@
 #!/usr/bin/env perl6
 
-use Red;# <red-do>;
+use Red:api<2>;
 
 use Child;
 use Gift;
@@ -20,8 +20,8 @@ for <doll ball car pokemon> -> $name {
     Gift.^create: :$name;
 }
 
-Child.^create: :name<Fernanda>, :address<there>, :asked-by-year[{:gift{:name<pokemon>}}];
-Child.^create: :name<Sophia>,   :address<there>, :asked-by-year[{:gift{:name<doll>}}];
+Child.^create: :name<Fernanda>, :country<UK>, :asked-by-year[{:gift{:name<pokemon>}}];
+Child.^create: :name<Sophia>,   :country<UK>, :asked-by-year[{:gift{:name<doll>}}];
 
 my $*RED-FALLBACK = False;
 
@@ -35,8 +35,8 @@ multi MAIN("ask", Str $name, Str :$child!) {
     MAIN("asked-by", $child)
 }
 
-multi MAIN("asked-by", Str $child) {
-    .say for Child.^find(:name($child)).asked.map: *.gift
+multi MAIN("asked-by", Str $child, Int :$year) {
+    .say for Child.^find(:name($child)).asked(|($_ with $year)).map: *.gift
 }
 
 multi MAIN("num-child-asked", Str $name) {
@@ -48,19 +48,19 @@ multi MAIN("num-child-asked", Str $name) {
 }
 
 multi MAIN("num-of-gifts") {
-#    my $*RED-DEBUG = True;
     say ChildAskedOnYear.^all.map(*.gift.name).Bag
 }
 
-multi MAIN("add-child", Str $name, Str :$address!) {
-    say Child.^create: :$name, :$address
+multi MAIN("add-child", Str $name, Str :$country!) {
+    say Child.^create: :$name, :$country
 }
 
-multi MAIN("list-children", :$starting-with, :$ending-with, :$containing) {
+multi MAIN("list-children", :$starting-with, :$ending-with, :$containing, :$country) {
     my $rs = Child.^all;
     $rs .= grep: *.name.starts-with: $_ with $starting-with;
     $rs .= grep: *.name.ends-with:   $_ with $ending-with;
     $rs .= grep: *.name.contains:    $_ with $containing;
+    $rs .= grep: *.country eq        $_ with $country;
     .say for $rs.sort: *.name
 }
 

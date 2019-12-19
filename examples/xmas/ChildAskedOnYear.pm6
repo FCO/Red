@@ -1,4 +1,4 @@
-use Red;
+use Red:api<2>;
 
 unit model ChildAskedOnYear;
 
