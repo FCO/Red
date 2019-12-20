@@ -1,0 +1,25 @@
+name: linux
+
+on:
+  - push
+
+jobs:
+  perl6:
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: fernandocorrea/red-tester-no-run
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: raku -v
+        run: raku -v
+      - name: Install Red
+        run: zef install .
+      - name: Install Cro::HTTP::Session::Red
+        run: zef install Cro::HTTP::Session::Red
+      - name: Install RedX::HashedPassword
+        run: RedX::HashedPassword
+      - name: Install Tinky-DB
+        run: zef install https://github.com/jonathanstowe/Tinky-DB.git
