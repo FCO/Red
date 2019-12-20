@@ -17,8 +17,8 @@ jobs:
         run: raku -v
       - name: Install Red
         run: zef install .
-      - name: Install Cro::HTTP::Session::Red
-        run: zef install Cro::HTTP::Session::Red
+      #- name: Install Cro::HTTP::Session::Red
+      #  run: zef install Cro::HTTP::Session::Red
       - name: Install RedX::HashedPassword
         run: RedX::HashedPassword
       - name: Install Tinky-DB
