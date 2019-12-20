@@ -20,6 +20,6 @@ jobs:
       #- name: Install Cro::HTTP::Session::Red
       #  run: zef install Cro::HTTP::Session::Red
       - name: Install RedX::HashedPassword
-        run: RedX::HashedPassword
+        run: zef install RedX::HashedPassword
       - name: Install Tinky-DB
         run: zef install https://github.com/jonathanstowe/Tinky-DB.git
