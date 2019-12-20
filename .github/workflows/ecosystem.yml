@@ -16,7 +16,7 @@ jobs:
       - name: raku -v
         run: raku -v
       - name: Install Red
-        run: zef install .
+        run: zef install --/test .
       #- name: Install Cro::HTTP::Session::Red
       #  run: zef install Cro::HTTP::Session::Red
       - name: Install RedX::HashedPassword
