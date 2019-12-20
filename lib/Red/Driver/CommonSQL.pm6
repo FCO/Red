@@ -530,7 +530,7 @@ multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW,
     self.translate: ast-value(.get-value.Str), $context
 }
 
-multi method translate(Red::AST::Value $_ where .type ~~ Str, $context?) {
+multi method translate(Red::AST::Value $_ where .type ~~ Str, $context? where { not .defined or $_ ne "update-rval" }) {
     qq|'{ .get-value.subst: "'", q"''", :g }'| => []
 }
 
