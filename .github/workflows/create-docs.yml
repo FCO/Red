@@ -1,8 +1,10 @@
 on:
   push
 jobs:
-  build:
+  perl6:
     runs-on: ubuntu-latest
+    container:
+      image: fernandocorrea/red-tester-no-run
     steps:
     - uses: actions/checkout@master
     - name: Create local changes
