@@ -33,5 +33,60 @@ method contains(
 ) returns Mu
 ```
 
-Tests if that column value contains a specific sub-string #| is usually translated for SQL as `column like %'substr%'`
+Tests if that column value contains a specific sub-string is usually translated for SQL as `column like %'substr%'`
+
+### method substr
+
+```perl6
+method substr(
+    $offset = 0,
+    $size?
+) returns Mu
+```
+
+Return a substring of the column value
+
+### method year
+
+```perl6
+method year() returns Mu
+```
+
+Return the year from the date column
+
+### method month
+
+```perl6
+method month() returns Mu
+```
+
+Return the month from the date column
+
+### method day
+
+```perl6
+method day() returns Mu
+```
+
+Return the day from the date column
+
+### method AT-KEY
+
+```perl6
+method AT-KEY(
+    $key where { ... }
+) returns Mu
+```
+
+Return a value from a json hash key
+
+### method DELETE-KEY
+
+```perl6
+method DELETE-KEY(
+    $key where { ... }
+) returns Mu
+```
+
+Delete and return a value from a json hash key
 
