@@ -25,7 +25,7 @@ Checks if a name is a valid table name
 
 ```perl6
 method type-by-name(
-    Str $ where { ... }
+    "string"
 ) returns "text"
 ```
 
@@ -35,7 +35,7 @@ Maps types
 
 ```perl6
 method type-by-name(
-    Str $ where { ... }
+    "int"
 ) returns "integer"
 ```
 
