@@ -180,3 +180,26 @@ method minus(
 
 Removes 1 ResultSeq elements from other ResultSeq
 
+### method join
+
+```perl6
+method join(
+    Red::Model \model,
+    &on,
+    :$name = { ... },
+    *%pars where { ... }
+) returns Mu
+```
+
+Create a custom join
+
+### method ast
+
+```perl6
+method ast(
+    Bool :$sub-select
+) returns Red::AST
+```
+
+Returns the AST that will generate the SQL
+
