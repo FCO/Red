@@ -14,6 +14,7 @@ API Pages
 - [Red::AST](api/Red/AST)
 - [Red::AST::Optimizer::AND](api/Red/AST/Optimizer/AND)
 - [Red::AST::Optimizer::OR](api/Red/AST/Optimizer/OR)
+- [Red::Class](api/Red/Class)
 - [Red::Column](api/Red/Column)
 - [Red::ColumnMethods](api/Red/ColumnMethods)
 - [Red::DB](api/Red/DB)
