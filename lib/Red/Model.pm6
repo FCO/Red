@@ -2,6 +2,7 @@ use Red::AST;
 
 =head2 Red::Model
 
+#| Base role for models
 unit role Red::Model;
 
 has $!filter;
