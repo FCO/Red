@@ -460,11 +460,12 @@ method minus(::?CLASS:D: $other --> Red::ResultSeq) is hidden-from-sql-commentin
     self.clone: :chain($!chain.clone: :$filter)
 }
 
+#| Create a custom join
 method join(Red::Model \model, &on, :$name = "{ self.^name }_{ model.^name }", *%pars where { .elems == 0 || ( .elems == 1 && so .values.head ) }) {
     self.of.^join(model, &on, |%pars).^all.clone: :$!chain
 }
 
-#|Returns the AST that will generate the SQL
+#| Returns the AST that will generate the SQL
 method ast(Bool :$sub-select --> Red::AST) is hidden-from-sql-commenting {
     if $.filter ~~ Red::AST::MultiSelect {
         $.filter
