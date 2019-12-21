@@ -66,6 +66,7 @@ method Hash(--> Hash()) {
             )
 }
 
+#| Returns a Hash that represents the column for migration purposes
 method migration-hash(--> Hash()) {
     |(:name($_)                                 with $!name             ),
     |(:type(.type.^name)                        with $!attr             ),
@@ -124,6 +125,7 @@ class ReferencesProxy does Callable {
 #| Returns the class that column is part of.
 #method class { self.attr.package }
 
+#| Method that returns the comment for the column
 method comment { .Str with self.attr.WHY }
 
 #| Returns a function that will return a column that is referenced by this column
@@ -151,6 +153,7 @@ method ref($model = Nil) {
     .($model) with self.references
 }
 
+#| Required by the Red::AST role
 method returns { $!attr.type }
 
 method transpose(&func) { func self }
@@ -170,6 +173,7 @@ method alias(Str $name) {
     self.clone: name-alias => $name
 }
 
+#| Returns a clone using a different name
 method as(Str $name, :$nullable = True) {
     self.clone: attr-name => $name, :$name, id => False, :$nullable, attr => Attribute
 }
@@ -180,6 +184,7 @@ submethod TWEAK(:$unique) {
     }
 }
 
+#| Do not test definedness, but returns a new Red::AST::IsDefined
 method defined {
     Red::AST::IsDefined.new: self
 }
