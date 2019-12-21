@@ -17,9 +17,7 @@ jobs:
         run: raku -v
       - name: Install Red
         run: zef install --/test .
-#      - name: Install Cro::HTTP::Session::Red
-#        run: zef install Cro::HTTP::Session::Red
-      - name: Install RedX::HashedPassword
-        run: zef install RedX::HashedPassword
-#      - name: Install Tinky-DB
-#        run: zef install https://github.com/jonathanstowe/Tinky-DB.git
+
+      - name: Install rdependencies
+        run: |
+          zef rdepends Red | raku -e '.say for keys lines.classify({ .substr: 0, .index: ":ver<" }).values>>.max (-) ".red-ecosystem-errors".IO.lines' | while read mod; do zef install $mod; done
