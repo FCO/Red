@@ -10,36 +10,43 @@ use Red::AST::RollbackTransaction;
 
 =head2 Red::Driver
 
+#| Base role for a Red::Driver::*
 unit role Red::Driver;
 
 has Supplier $!supplier .= new;
+#| Supply of events of that driver
 has Supply   $.events    = $!supplier.Supply;
 
 method new-connection {
     self.WHAT.new: |self.^attributes.map({ .name.substr(2) => .get_value: self }).Hash
 }
 
+#| Begin transaction
 method begin {
     my $trans = self.new-connection;
     $trans.prepare(Red::AST::BeginTransaction.new).map: *.execute;
     $trans
 }
 
+#| Commit transaction
 method commit {
     self.prepare(Red::AST::CommitTransaction.new).map: *.execute;
     self
 }
 
+#| Rollback transaction
 method rollback {
     self.prepare(Red::AST::RollbackTransaction.new).map: *.execute;
     self
 }
 
+#| Self-register its events on Red.events
 method auto-register(|) {
     Red::Class.instance.register-supply: $!events;
     self
 }
 
+#| Emit events
 multi method emit($data?) {
     self.emit:
             Red::Event.new:
@@ -49,6 +56,7 @@ multi method emit($data?) {
                     |(:metadata($_) with %*RED-METADATA)
 }
 
+#| Emit events
 multi method emit(Red::Event $event) {
     $!supplier.emit:
             $event.clone:
@@ -93,8 +101,10 @@ multi method map-exception($orig-exception) {
 
 multi method prepare("") {class :: { method execute(|) {} }}
 
+#| Default inflator
 multi method inflate(Any $value, Any :$to) { $value }
 
+#| Execute query
 method execute($query, *@bind) {
     my @stt = self.prepare($query);
     (.execute: |@bind.map: { self.deflate: $_ } for @stt).tail
