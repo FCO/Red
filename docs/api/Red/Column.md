@@ -11,10 +11,10 @@ class Red::Column::ReferencesProxy
 
 Subclass used to lazy evaluation of parameter types
 
-### method class
+### method comment
 
 ```perl6
-method class() returns Mu
+method comment() returns Mu
 ```
 
 Returns the class that column is part of.
@@ -30,7 +30,9 @@ Returns a function that will return a column that is referenced by this column
 ### method ref
 
 ```perl6
-method ref() returns Mu
+method ref(
+    $model = Nil
+) returns Mu
 ```
 
 Returns the column that is referenced by this one.

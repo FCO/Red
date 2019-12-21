@@ -19,7 +19,7 @@ SYNOPSIS
 --------
 
 ```perl6
-use Red;
+use Red:api<2>;
 
 model Person {...}
 
@@ -481,7 +481,7 @@ RETURNS:
 DESCRIPTION
 -----------
 
-Red is a *WiP* ORM for Raku. It’s not working yet. My objective publishing is only ask for help validating the APIs.
+Red is a *WiP* ORM for perl6. It’s not working yet. My objective publishing is only ask for help validating the APIs.
 
 ### traits
 

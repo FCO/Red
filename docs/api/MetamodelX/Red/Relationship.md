@@ -9,7 +9,8 @@ method add-relationship(
     Attribute $attr,
     Str :$column!,
     Str :$model!,
-    Str :$require = { ... }
+    Str :$require = { ... },
+    Bool :$optional
 ) returns Mu
 ```
 
@@ -23,7 +24,8 @@ method add-relationship(
     Attribute $attr,
     &reference,
     Str :$model,
-    Str :$require = { ... }
+    Str :$require = { ... },
+    Bool :$optional
 ) returns Mu
 ```
 
@@ -38,7 +40,8 @@ method add-relationship(
     &ref1,
     &ref2,
     Str :$model,
-    Str :$require = { ... }
+    Str :$require = { ... },
+    Bool :$optional
 ) returns Mu
 ```
 

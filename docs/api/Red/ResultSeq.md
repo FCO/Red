@@ -14,7 +14,7 @@ Returns a Seq with the result of the SQL query
 ```perl6
 method grep(
     &filter
-) returns Red::ResultSeq
+) returns Mu
 ```
 
 Adds a new filter on the query (does not run the query)
@@ -34,7 +34,7 @@ Changes the query to return only the first row that matches the condition and ru
 ```perl6
 method map(
     &filter
-) returns Red::ResultSeq
+) returns Mu
 ```
 
 Change what will be returned (does not run the query)
@@ -123,6 +123,16 @@ method create(
 ```
 
 Creates a new element of that set
+
+### method push
+
+```perl6
+method push(
+    *%pars
+) returns Mu
+```
+
+Alias for `create`
 
 ### method delete
 
