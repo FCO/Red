@@ -4,6 +4,8 @@ use Red::AST::Union;
 use Red::AST::Intersect;
 use Red::AST::Minus;
 use Red::AST::Comment;
+
+#| Represents a Select
 unit class Red::AST::Select does Red::AST;
 
 has Mu:U                $.of;
