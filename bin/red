@@ -23,6 +23,7 @@ multi MAIN(
     .say for $schema-reader.tables-names
 }
 
+# Generate stub
 sub gen-stub(:@includes, :@models, :$driver, :%pars) {
     say 'use Red \<red-do>;';
     for @includes.unique {
