@@ -1,6 +1,31 @@
 Red::ResultSeq
 --------------
 
+
+
+Class that represents a Seq of query results
+
+### sub comment-sql
+
+```perl6
+sub comment-sql(
+    :$meth-name,
+    :$file,
+    :$block,
+    :$line
+) returns Mu
+```
+
+Add a comment to SQL query
+
+### method of
+
+```perl6
+method of() returns Mu
+```
+
+The type of the ResultSeq
+
 ### method Seq
 
 ```perl6
@@ -28,6 +53,40 @@ method first(
 ```
 
 Changes the query to return only the first row that matches the condition and run it (.grep(...).head)
+
+### sub hash-to-cond
+
+```perl6
+sub hash-to-cond(
+    %val
+) returns Mu
+```
+
+Transform a hash into filter (Red::AST)
+
+### sub found-bool
+
+```perl6
+sub found-bool(
+    @values,
+    $try-again is rw,
+    %bools,
+    CX::Red::Bool $ex
+) returns Mu
+```
+
+Found a boolean while trying to find what's hapenning inside a block
+
+### sub what-does-it-do
+
+```perl6
+sub what-does-it-do(
+    &func,
+    \type
+) returns Hash
+```
+
+Tries to find what a block do
 
 ### method map
 
@@ -69,6 +128,22 @@ method classify(
 ```
 
 Returns a ResultAssociative classified by the passed code (does not run the query)
+
+### method Bag
+
+```perl6
+method Bag() returns Mu
+```
+
+Runs a query to create a Bag
+
+### method Set
+
+```perl6
+method Set() returns Mu
+```
+
+Runs a query to create a Set
 
 ### method head
 

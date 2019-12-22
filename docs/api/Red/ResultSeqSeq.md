@@ -1,6 +1,11 @@
 Red::ResultSeqSeq
 -----------------
 
+class Red::ResultSeqSeq
+-----------------------
+
+Represents a Seq of ResultSeqs
+
 ### method elems
 
 ```perl6
