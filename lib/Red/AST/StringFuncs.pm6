@@ -2,10 +2,13 @@ use Red::AST;
 use Red::AST::Value;
 use Red::AST::Function;
 
+#| Base role for string functions
 role Red::AST::StringFunction does Red::AST {
     method default-implementation {...}
 
 }
+
+#| Represents a substring call
 class Red::AST::Substring does Red::AST::StringFunction {
     has Red::AST $.base;
     has Int      $.offset = 0;
