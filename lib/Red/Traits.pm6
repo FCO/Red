@@ -64,10 +64,12 @@ multi trait_mod:<is>(Attribute $attr, :&referencing! --> Empty) is export {
     trait_mod:<is>($attr, :column{ :nullable, :references(&referencing) })
 }
 
+#| Trait that defines a reference
 multi trait_mod:<is>(Attribute $attr, :$referencing! (&referencing!, Str :$model!, Str :$require = $model, Bool :$nullable = True ) --> Empty) is export {
     trait_mod:<is>($attr, :column{ :$nullable, :references(&referencing), model-name  => $model, :$require })
 }
 
+#| Trait that defines a reference
 multi trait_mod:<is>(Attribute $attr, :$referencing! (Str :$model!, Str :$column!, Str :$require = $model, Bool :$nullable = True ) --> Empty) is export {
     trait_mod:<is>($attr, :column{ :$nullable, model-name => $model, column-name => $column, :$require })
 }
@@ -83,44 +85,53 @@ multi trait_mod:<is>(Attribute $attr, :&relationship! --> Empty) is export {
     $attr.package.^add-relationship: $attr, &relationship
 }
 
+#| Trait that defines a relationship
 multi trait_mod:<is>(Attribute $attr, :@relationship! where { .all ~~ Callable and .elems == 2 } --> Empty) is export {
     $attr.package.^add-relationship: $attr, |@relationship
 }
 
+#| Trait that defines a relationship
 multi trait_mod:<is>(Attribute $attr, :$relationship! (&relationship, Str :$model!, Str :$require = $model, Bool :$optional) --> Empty) is export {
     $attr.package.^add-relationship: $attr, &relationship, :$model, :$require, :$optional
 }
 
+#| Trait that defines a relationship
 multi trait_mod:<is>(Attribute $attr, :$relationship! (Str :$column!, Str :$model!, Str :$require = $model, Bool :$optional) --> Empty) is export {
     $attr.package.^add-relationship: $attr, :$column, :$model, :$require, :$optional
 }
 
+#| Trait that defines a relationship
 multi trait_mod:<is>(Attribute $attr, Callable :$relationship! ( @relationship! where *.elems == 2, Str :$model!, Str :$require = $model, Bool :$optional) --> Empty) {
     $attr.package.^add-relationship: $attr, |@relationship, :$model, :$require, :$optional
 }
 
 # Traits to define 'phaser' methods
-
+#| Trait to define a phaser to run before create a new record
 multi trait_mod:<is>(Method $m, :$before-create! --> Empty) {
     $m does BeforeCreate;
 }
 
+#| Trait to define a phaser to run after create a new record
 multi trait_mod:<is>(Method $m, :$after-create! --> Empty) {
     $m does AfterCreate;
 }
 
+#| Trait to define a phaser to run before update a record
 multi trait_mod:<is>(Method $m, :$before-update! --> Empty) {
     $m does BeforeUpdate;
 }
 
+#| Trait to define a phaser to run after update record
 multi trait_mod:<is>(Method $m, :$after-update! --> Empty) {
     $m does AfterUpdate;
 }
 
+#| Trait to define a phaser to run before delete a record
 multi trait_mod:<is>(Method $m, :$before-delete! --> Empty) {
     $m does BeforeDelete;
 }
 
+#| Trait to define a phaser to run after delete a record
 multi trait_mod:<is>(Method $m, :$after-delete! --> Empty) {
     $m does AfterDelete;
 }
