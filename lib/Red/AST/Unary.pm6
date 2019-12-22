@@ -2,6 +2,7 @@ use Red::AST::Operator;
 
 class Red::AST::Not { ... }
 
+#| Base role for unary operators
 role Red::AST::Unary does Red::AST::Operator {
     has Bool $.bind = False;
     method value { ... }
@@ -25,6 +26,7 @@ role Red::AST::Unary does Red::AST::Operator {
     }
 }
 
+#| Represents a cast operation
 class Red::AST::Cast does Red::AST::Unary {
     has Str     $.type;
     has         $.value;
@@ -49,6 +51,7 @@ class Red::AST::Cast does Red::AST::Unary {
 
 class Red::AST::So { ... }
 
+#| Represents a not operation
 class Red::AST::Not does Red::AST::Unary {
     has Str     $.type;
     has         $.value;
@@ -62,6 +65,7 @@ class Red::AST::Not does Red::AST::Unary {
     method not { Red::AST::So.new: $!value }
 }
 
+#| Represents a so operation
 class Red::AST::So does Red::AST::Unary {
     has Str     $.type;
     has         $.value;
