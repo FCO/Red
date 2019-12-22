@@ -1,4 +1,6 @@
 use Red::AST;
+
+#| Represents a function call
 unit class Red::AST::Function does Red::AST;
 
 has Mu      @.args;
