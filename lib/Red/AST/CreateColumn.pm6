@@ -1,4 +1,6 @@
 use Red::AST;
+
+#| Represents an alter table add column
 unit class Red::AST::CreateColumn does Red::AST;
 
 has Str  $.table is required;
