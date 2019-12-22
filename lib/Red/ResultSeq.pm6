@@ -25,6 +25,7 @@ use X::Red::Exceptions;
 
 =head2 Red::ResultSeq
 
+#| Class that represents a Seq of query results
 unit role Red::ResultSeq[Mu $of = Any] does Sequence;
 also does Positional;
 
@@ -56,10 +57,12 @@ method create-comment-to-caller is hidden-from-sql-commenting {
         )
 }
 
+#| Add a comment to SQL query
 sub comment-sql(:$meth-name, :$file, :$block, :$line) {
     "method '$meth-name' called at: { $file } #{ $line }"
 }
 
+#| The type of the ResultSeq
 method of is hidden-from-sql-commenting { $of }
 #method is-lazy { True }
 method cache is hidden-from-sql-commenting {
@@ -83,7 +86,7 @@ method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {
     Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post, |(:driver($_) with $!with)
 }
 
-        #| Returns a Seq with the result of the SQL query
+#| Returns a Seq with the result of the SQL query
 method Seq is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     Seq.new: self.iterator
@@ -149,6 +152,7 @@ multi method first(--> Red::Model) is hidden-from-sql-commenting {
     self.head
 }
 
+#| Transform a hash into filter (Red::AST)
 sub hash-to-cond(%val) {
     my Red::AST $ast;
     for %val.kv -> Red::AST $cond, Bool $so {
@@ -162,8 +166,8 @@ sub hash-to-cond(%val) {
     $ast
 }
 
+#| Found a boolean while trying to find what's hapenning inside a block
 sub found-bool(@values, $try-again is rw, %bools, CX::Red::Bool $ex) {
-
     if %bools{$ex.ast}:!exists {
         $try-again = True;
         %bools{ $ex.ast }++;
@@ -194,6 +198,7 @@ sub prepare-response($resp) {
     }
 }
 
+#| Tries to find what a block do
 sub what-does-it-do(&func, \type --> Hash) {
     my Bool $try-again = False;
     my %bools is SetHash;
@@ -361,11 +366,13 @@ method classify(\SELF: &func, :&as = { $_ } --> Red::ResultAssociative) is hidde
     }
 }
 
+#| Runs a query to create a Bag
 multi method Bag {
     nextsame unless self.?last-rs.DEFINITE;
     self.last-rs.classify(self.last-filter, :as{ ast-value True }).Bag
 }
 
+#| Runs a query to create a Set
 multi method Set {
     nextsame unless self.?last-rs.DEFINITE;
     self.last-rs.classify(self.last-filter, :as{ ast-value True }).Set
