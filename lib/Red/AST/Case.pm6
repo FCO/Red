@@ -2,6 +2,8 @@ use Red::AST;
 use Red::AST::Unary;
 use Red::AST::Infixes;
 use Red::AST::Value;
+
+#| Represents a case statement
 unit class Red::AST::Case does Red::AST;
 #also does Red::AST::Optimizer::Case;
 
