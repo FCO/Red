@@ -1,4 +1,5 @@
 use Red::AST;
+#| Represents an alter table alter column
 unit class Red::AST::ChangeColumn does Red::AST;
 
 has Str  $.table is required;
