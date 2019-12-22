@@ -1,4 +1,5 @@
 use Red::AST;
+#| AST to run a rollback
 unit class Red::AST::RollbackTransaction does Red::AST;
 
 method args {}
