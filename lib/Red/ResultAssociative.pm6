@@ -6,6 +6,7 @@ use Red::AST::Function;
 
 =head2 Red::ResultAssociative
 
+#| Lazy Associative class from Red queries (.classify)
 unit role Red::ResultAssociative[$of, Red::AST $key-of] does Associative;
 
 has Red::AST    $!key-of = $key-of;
@@ -23,6 +24,7 @@ method keys {
     $!rs.map({ Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Int)) })
 }
 
+#| Run query to get the number of elements
 method elems {
     $!rs.map({
         Red::AST::Function.new(:func<COUNT> :args[
@@ -44,12 +46,14 @@ method gist {
     "\{{self.map({ "{.key} => {.value.gist}" }).join: ", "}\}"
 }
 
+#| Run query to create a Bag
 method Bag {
     my $rs = $!rs.map({ ($key-of, Red::AST::Function.new(:func<COUNT>, :args[ast-value("*"),], :returns(Int))) });
     $rs.group = $!key-of;
     $rs.Seq.map({ .[0] => .[1] }).Bag
 }
 
+#| Run query to create a Set
 method Set {
     my $rs = $!rs.map({ Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Int)) });
     $rs.Seq.Set
