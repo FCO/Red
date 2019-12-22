@@ -60,10 +60,142 @@ A generic trait used for customizing a column. It accepts a hash of Bool keys. P
 
 ```perl6
 multi sub trait_mod:<is>(
+    Attribute $attr,
+    :$referencing! (&referencing, Str :$model!, Str :$require = { ... }, Bool :$nullable = Bool::True)
+) returns Empty
+```
+
+Trait that defines a reference
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :$referencing! (Str :$model!, Str :$column!, Str :$require = { ... }, Bool :$nullable = Bool::True)
+) returns Empty
+```
+
+Trait that defines a reference
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
     Mu:U $model,
     Str :$table! where { ... }
 ) returns Empty
 ```
 
 This trait allows setting a custom name for a table corresponding to a model. For example, `model MyModel is table<custom_table_name> {}` will use `custom_table_name` as the name of the underlying database table.
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :@relationship! where { ... }
+) returns Empty
+```
+
+Trait that defines a relationship
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :$relationship! (&relationship, Str :$model!, Str :$require = { ... }, Bool :$optional)
+) returns Empty
+```
+
+Trait that defines a relationship
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :$relationship! (Str :$column!, Str :$model!, Str :$require = { ... }, Bool :$optional)
+) returns Empty
+```
+
+Trait that defines a relationship
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    Callable :$relationship! (@relationship where { ... }, Str :$model!, Str :$require = { ... }, Bool :$optional)
+) returns Empty
+```
+
+Trait that defines a relationship
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Method $m,
+    :$before-create!
+) returns Empty
+```
+
+Trait to define a phaser to run before create a new record
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Method $m,
+    :$after-create!
+) returns Empty
+```
+
+Trait to define a phaser to run after create a new record
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Method $m,
+    :$before-update!
+) returns Empty
+```
+
+Trait to define a phaser to run before update a record
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Method $m,
+    :$after-update!
+) returns Empty
+```
+
+Trait to define a phaser to run after update record
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Method $m,
+    :$before-delete!
+) returns Empty
+```
+
+Trait to define a phaser to run before delete a record
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Method $m,
+    :$after-delete!
+) returns Empty
+```
+
+Trait to define a phaser to run after delete a record
 
