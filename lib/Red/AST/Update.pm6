@@ -2,6 +2,8 @@ use Red::AST;
 use Red::AST::Value;
 use Red::Column;
 use Red::Model;
+
+#| Represents an update operation
 unit class Red::AST::Update does Red::AST;
 
 has Str      $.into;
