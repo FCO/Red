@@ -1,5 +1,7 @@
 use Red::AST;
 use Red::Column;
+
+#| Represents a value
 class Red::AST::Value does Red::AST is Any {
     has             $.value is required;
     has Red::Column $.column;
