@@ -1,5 +1,7 @@
 use Red::AST::Operator;
 use Red::AST::Unary;
+
+#| Base role to infix operators
 unit role Red::AST::Infix does Red::AST::Operator;
 
 has Red::AST $.left  is required;
