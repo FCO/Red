@@ -1,6 +1,8 @@
 use Red::AST::Value;
 use Red::AST::Infix;
 use Red::Type::Json;
+
+#| Represents the operation to remove a json item
 unit class Red::AST::JsonRemoveItem does Red::AST::Infix;
 
 has Str $.op = "->";
