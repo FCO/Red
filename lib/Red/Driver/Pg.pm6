@@ -33,6 +33,10 @@ multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined)
     my Int $*bind-counter;
     self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
 }
+multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined) {
+    my Int $*bind-counter;
+    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
+}
 
 multi method translate(Red::AST::In $_, $context?) {
     if .right.value ~~ Positional {

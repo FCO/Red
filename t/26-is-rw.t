@@ -5,7 +5,7 @@ my $*RED-DB = database "SQLite";
 
 model Writable is rw {
     has Int $!id is serial;
-has Str $.value is column;
+    has Str $.value is column;
 }
 
 Writable.^create-table;

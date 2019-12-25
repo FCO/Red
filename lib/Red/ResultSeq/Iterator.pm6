@@ -31,7 +31,7 @@ method pull-one {
     my $data := $!st-handler.row;
     return IterationEnd if $data =:= IterationEnd or not $data;
     my %cols = $!of.^columns.map: { .column.attr-name => .column }
-    my $obj = $!of.new: |(%($data).kv
+    my $obj = $!of.^orig.new: |(%($data).kv
         .map(-> $k, $v {
             do with $v {
                 my $c = $k.split(".").tail;

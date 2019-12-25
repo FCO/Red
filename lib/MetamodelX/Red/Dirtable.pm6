@@ -112,7 +112,67 @@ submethod !TWEAK_pr(\instance: *%data) is rw {
 
 method compose-dirtable(Mu \type) {
     my \meta = self;
-    state &build //= self.^find_private_method("TWEAK_pr");
+    #state &build //= self.^find_private_method("TWEAK_pr");
+    my &build = method (\instance: *%data) is rw {
+    my @columns = instance.^columns;
+
+    my %new = |@columns.map: {
+        my Mu $built := .build;
+        $built := $built.(self.WHAT, Mu) if $built ~~ Method;
+        next if $built =:= Mu;
+        if instance.^is-id: $_ {
+            instance.^set-id: .name => $built
+        }
+        .column.attr-name => $built
+    };
+
+    for %data.kv -> $k, $v { %new{$k} = $v }
+
+    my $col-data-attr         := self.^col-data-attr;
+    my $dirty-old-values-attr := self.^dirty-old-values-attr;
+    $col-data-attr.set_value: instance, %new;
+    for @columns -> \col {
+        my \proxy = Proxy.new:
+            FETCH => method {
+                $col-data-attr.get_value(instance).{ col.column.attr-name }
+            },
+            STORE => method (\value) {
+                die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
+                if instance.^is-id: col {
+                    instance.^set-id: col.name => value
+                }
+                instance.^set-dirty: col;
+                $dirty-old-values-attr.get_value(instance).{ col.column.attr-name } =
+                    $col-data-attr.get_value(instance).{ col.column.attr-name };
+                $col-data-attr.get_value(instance).{ col.column.attr-name } = value
+            }
+        #use nqp;
+        #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
+        col.set_value: instance<>, proxy
+    }
+    for self.^attributes -> $attr {
+        with %data{ $attr.name.substr: 2 } {
+            unless $attr ~~ Red::Attr::Column {
+                if self.^is-id: $attr {
+                    self.^set-id: $attr.name => $_
+                }
+                $attr.set_value: self, $_
+            }
+        }
+        # TODO: this should be on M::R::Relationship
+        if $attr ~~ Red::Attr::Relationship {
+            with %data{ $attr.name.substr: 2 } {
+                $attr.set-data: instance, $_
+            } else {
+                my Mu $built := $attr.build;
+                $built := $built.(self.WHAT, Mu) if $built ~~ Method;
+                $attr.set-data: instance, $_ with $built
+            }
+        }
+    }
+
+    nextsame
+}
 
     if self.declares_method(type, "TWEAK") {
         self.find_method(type, "TWEAK", :no_fallback(1)).wrap: &build;

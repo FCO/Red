@@ -6,18 +6,26 @@ class Red::Column
 
 Represents a database column
 
+### method migration-hash
+
+```perl6
+method migration-hash() returns Hash(Any)
+```
+
+Returns a Hash that represents the column for migration purposes
+
 class Red::Column::ReferencesProxy
 ----------------------------------
 
 Subclass used to lazy evaluation of parameter types
 
-### method class
+### method comment
 
 ```perl6
-method class() returns Mu
+method comment() returns Mu
 ```
 
-Returns the class that column is part of.
+Returns the class that column is part of. Method that returns the comment for the column
 
 ### method references
 
@@ -30,10 +38,20 @@ Returns a function that will return a column that is referenced by this column
 ### method ref
 
 ```perl6
-method ref() returns Mu
+method ref(
+    $model = Nil
+) returns Mu
 ```
 
 Returns the column that is referenced by this one.
+
+### method returns
+
+```perl6
+method returns() returns Mu
+```
+
+Required by the Red::AST role
 
 ### method alias
 
@@ -44,4 +62,23 @@ method alias(
 ```
 
 Returns an alias of that column
+
+### method as
+
+```perl6
+method as(
+    Str $name,
+    :$nullable = Bool::True
+) returns Mu
+```
+
+Returns a clone using a different name
+
+### method defined
+
+```perl6
+method defined() returns Mu
+```
+
+Do not test definedness, but returns a new Red::AST::IsDefined
 

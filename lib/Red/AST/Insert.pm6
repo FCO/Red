@@ -2,6 +2,8 @@ use Red::AST;
 use Red::AST::Value;
 use Red::Column;
 use Red::Model;
+
+#| Represents an insert
 unit class Red::AST::Insert does Red::AST;
 
 has Red::Model  $.into;

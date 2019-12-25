@@ -1,5 +1,7 @@
 use Red::AST;
 use Red::AST::MultiSelect;
+
+#| Represents a intersect between 2 (or more) selects
 unit class Red::AST::Intersect does Red::AST::MultiSelect;
 
 has Red::AST @.selects;

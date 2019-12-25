@@ -1,5 +1,5 @@
 {
-  "api" : "1",
+  "api" : "2",
   "auth" : "Fernando Correa de Oliveira",
   "authors" : [
     "Fernando Correa de Oliveira"
@@ -41,11 +41,16 @@
     "Red::AST::DropColumn" : "lib/Red/AST/DropColumn.pm6",
     "Red::AST::Empty" : "lib/Red/AST/Empty.pm6",
     "Red::AST::Function" : "lib/Red/AST/Function.pm6",
+    "Red::AST::Generic::Infix" : "lib/Red/AST/Generic/Infix.pm6",
+    "Red::AST::Generic::Postfix" : "lib/Red/AST/Generic/Postfix.pm6",
+    "Red::AST::Generic::Prefix" : "lib/Red/AST/Generic/Prefix.pm6",
     "Red::AST::Infix" : "lib/Red/AST/Infix.pm6",
     "Red::AST::Infixes" : "lib/Red/AST/Infixes.pm6",
     "Red::AST::Insert" : "lib/Red/AST/Insert.pm6",
     "Red::AST::Intersect" : "lib/Red/AST/Intersect.pm6",
     "Red::AST::IsDefined" : "lib/Red/AST/IsDefined.pm6",
+    "Red::AST::JsonItem" : "lib/Red/AST/JsonItem.pm6",
+    "Red::AST::JsonRemoveItem" : "lib/Red/AST/JsonRemoveItem.pm6",
     "Red::AST::LastInsertedRow" : "lib/Red/AST/LastInsertedRow.pm6",
     "Red::AST::Minus" : "lib/Red/AST/Minus.pm6",
     "Red::AST::MultiSelect" : "lib/Red/AST/MultiSelect.pm6",
@@ -102,6 +107,7 @@
     "Red::SchemaReader" : "lib/Red/SchemaReader.pm6",
     "Red::Statement" : "lib/Red/Statement.pm6",
     "Red::Traits" : "lib/Red/Traits.pm6",
+    "Red::Type::Json" : "lib/Red/Type/Json.pm6",
     "Red::Utils" : "lib/Red/Utils.pm6",
     "X::Red::Exceptions" : "lib/X/Red/Exceptions.pm6"
   },
@@ -114,5 +120,5 @@
     "relational"
   ],
   "test-depends" : [ ],
-  "version" : "0.0.6"
+  "version" : "0.1.0"
 }

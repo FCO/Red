@@ -5,6 +5,7 @@ use Red::AST::Value;
 
 =head2 Red::ResultSeqSeq
 
+#| Represents a Seq of ResultSeqs
 unit class Red::ResultSeqSeq does Positional;
 
 has     $.rs    is required;

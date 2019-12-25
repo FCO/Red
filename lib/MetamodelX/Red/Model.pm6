@@ -46,6 +46,7 @@ has $.rs-class;
 has @!constraints;
 has $.table;
 has Bool $!temporary;
+has Bool $!default-null;
 
 multi method emit(Mu $model, Red::Event $event) {
     start try get-RED-DB.emit: $event.clone: :model($model.WHAT)
@@ -98,7 +99,7 @@ method id-values(Red::Model:D $model) {
 }
 
 #| Check if the model is nullable by default.
-method default-nullable(|) is rw { $ //= False }
+method default-nullable(|) is rw { $!default-null }
 
 #| Returns all columns with the unique counstraint
 method unique-constraints(\model) {
@@ -181,17 +182,49 @@ multi method add-pk-constraint(Mu:U \type, @columns) {
     @!constraints.push: "pk" => @columns
 }
 
+method tables(\model) { [ model ] }
+
+proto method join($, $, $, :$name, *%pars where { .elems == 0 || ( .elems == 1 && get-RED-DB.join-type(.keys.head) && so .values.head ) }) {*}
+
+multi method join(\model, \to-join, &on, :$name, *%pars) {
+    to-join.^alias: |($_ with $name), :base(model), :relationship(&on.assuming: model), :join-type(%pars.keys.head // "")
+}
+
+multi method join(\model, \to-join, Red::AST $on, :$name, *%pars) {
+    to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type(%pars.keys.head // "")
+}
+
+multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name, *%pars) {
+    to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type(%pars.keys.head // "")
+}
+
 my UInt $alias_num = 1;
-#| Creates a new alias for the model.
-method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
+method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type) {
     my \alias = ::?CLASS.new_type(:$name);
-    my role RAlias[Red::Model:U \rtype, Str $rname] {
-        method table(|) { rtype.^table }
-        method as(|)    { camel-to-snake-case $rname }
-        method orig(|)  { rtype }
+    my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
+        method columns(|)     { @cols }
+        method table(|)       { rtype.^table }
+        method as(|)          { camel-to-snake-case $rname }
+        method orig(|)        { rtype }
+        method join-type(|)   { join-type }
+        method tables(|)      { [ |base.^tables, alias ] }
+        method join-on(|)     {
+            do given rel {
+                when Red::AST {
+                    $_
+                }
+                when Callable {
+                    .(alias)
+                }
+                default {
+                    .relationship-ast(alias)
+
+                }
+            }
+        }
     }
-    alias.HOW does RAlias[type, $name];
-    for @!columns -> $col {
+#    alias.^add_role: Red::Model;
+    my @cols = do for @!columns -> $col {
         my $new-col = Attribute.new:
             :name($col.name),
             :package(alias),
@@ -200,11 +233,13 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
             :build($col.build)
         ;
         $new-col does Red::Attr::Column($col.column.Hash);
-        $new-col.create-column;
-        alias.^add-comparate-methods: $new-col
+#        $new-col.create-column;
+        alias.^add-comparate-methods: $new-col;
+        $new-col
     }
+    alias.HOW does RAlias[type, $name, alias, $relationship, $base, $join-type, @cols];
     for self.relationships.keys -> $rel {
-        alias.^add-relationship: $rel
+        alias.^add-relationship: $rel.transfer: alias
     }
     alias.^compose;
     alias
@@ -212,21 +247,22 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}") {
 
 #| Creates a new column and adds it to the model.
 method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
-    if @!columns ∌ $attr {
+    if $attr.name eq @!columns.none.name {
         @!columns.push: $attr;
-        my $name = $attr.column.attr-name;
-        with $attr.column.references {
+        my $name = $attr.name.substr: 2;
+        with $attr.args{"references" | "model-name"} {
             self.add-reference: $name, $attr.column
         }
         self.add-comparate-methods(T, $attr);
         if $attr.has_accessor {
             if type.^rw or $attr.rw {
-                T.^add_multi_method: $name, method (Red::Model:D:) is rw {
+                $attr does role :: { method rw { True } };
+                T.^add_multi_method: $name, my method (Red::Model:D:) is rw {
                     use nqp;
                     nqp::getattr(self, self.WHAT, $attr.name)
                 }
             } else {
-                T.^add_multi_method: $name, method (Red::Model:D:) {
+                T.^add_multi_method: $name, my method (Red::Model:D:) {
                     $attr.get_value: self
                 }
             }
@@ -236,8 +272,9 @@ method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
 
 method compose-columns(Red::Model:U \type) {
     for self.attributes(type).grep: Red::Attr::Column -> Red::Attr::Column $attr {
-        $attr.create-column;
-        type.^add-column: $attr
+#        $attr.clone;
+#        $attr.create-column;
+        type.^add-column: $attr.clone: :package(type)
     }
 }
 
@@ -280,7 +317,7 @@ multi method create-table(\model, :$with where not .defined) {
     my $data = Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
-            :columns[|model.^columns.map(*.column)],
+            :columns(model.^columns.map(*.column.clone: :class(model))),
             :constraints[
                 |@!constraints.unique.map: {
                     when .key ~~ "unique" {
@@ -388,12 +425,18 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
         my %pars;
         my %positionals;
         for %orig-pars.kv -> $name, $val {
-            my \attr-type = model.^attributes.first(*.name.substr(2) eq $name).type;
+            my \attr = model.^attributes.first(*.name.substr(2) eq $name);
+            my \attr-type = attr.type;
             if %relationships{ $name } {
+                my \attr-model = attr.relationship-model;
                 if $val ~~ Positional && attr-type ~~ Positional {
                     %positionals{$name} = $val
-                } elsif $val !~~ attr-type {
-                    %pars{$name} = attr-type.^create: |$val
+                } elsif $val ~~ Associative && $val !~~ Red::Model {
+                    %pars{$name} = do if attr-model ~~ Red::Model {
+                        try { attr-model.^find(|$val) } // attr-model.^create: |$val
+                    } else {
+                        try { attr-type.^find(|$val)  } // attr-type.^create:  |$val
+                    }
                 } else {
                     %pars{$name} = $val
                 }
@@ -424,8 +467,8 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
                     $ //= do {
                         my $obj;
                         my $*RED-DB = $RED-DB;
-                        with $filter {
-                            $obj = model.^find: $_
+                        if $filter.DEFINITE {
+                            $obj = model.^find: $filter
                         } else {
                             $obj = model.new($data.elems ?? |$data !! %orig-pars);
                             $obj.^saved-on-db;
@@ -551,9 +594,9 @@ multi method set-attr(\instance, Str $name, \value) {
 }
 
 multi method get-attr(\instance, Red::Attr::Column $attr) {
-    samewith instance, $attr.column.attr-name
+    samewith instance, $attr.name.substr: 2
 }
 
 multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
-    samewith instance, $attr.column.attr-name, value
+    samewith instance, $attr.name.substr(2), value
 }

@@ -51,7 +51,7 @@ Sets the default connections to be used. The key is the name of the connection a
 
 ```perl6
 multi sub red-do(
-    &block,
+    *@blocks where { ... },
     Str :$with = "default",
     :$async
 ) returns Mu
@@ -64,7 +64,7 @@ Receives a block and optionally a connection name. Runs the block with the conne
 ```perl6
 multi sub red-do(
     &block,
-    Red::Driver:D :$with = "default",
+    Red::Driver:D :$with,
     :$async where { ... }
 ) returns Mu
 ```
@@ -76,7 +76,7 @@ Receives a block and optionally a connection name. Runs the block with the conne
 ```perl6
 multi sub red-do(
     &block,
-    Red::Driver:D :$with = "default",
+    Str:D :$with = "default",
     :$async! where { ... }
 ) returns Mu
 ```

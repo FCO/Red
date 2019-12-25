@@ -3,8 +3,8 @@ use Test;
 
 model Bla {
     has Int $.id        is serial;
-    has Int $.ble-id    is referencing(:model<Ble>, :column<id>);
-    has     $.ble       is relationship(:column<ble-id>, :model<Ble>) is rw;
+    has Int $.ble-id    is referencing(*.id, :model<Ble>);
+    has     $.ble       is relationship(*.ble-id, :model<Ble>) is rw;
 }
 
 model Ble {

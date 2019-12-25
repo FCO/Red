@@ -25,6 +25,7 @@ use X::Red::Exceptions;
 
 =head2 Red::ResultSeq
 
+#| Class that represents a Seq of query results
 unit role Red::ResultSeq[Mu $of = Any] does Sequence;
 also does Positional;
 
@@ -45,7 +46,7 @@ method create-comment-to-caller is hidden-from-sql-commenting {
         .subname and .subname ne "<anon>" and !.code.?is-hidden-from-sql-commenting
     } {
         %data<file>  = .file;
-        %data<block> = .code.name;
+        %data<block> = .code.?name;
         %data<line>  = .line;
     }
     @!comments.push: Red::AST::Comment.new:
@@ -56,10 +57,12 @@ method create-comment-to-caller is hidden-from-sql-commenting {
         )
 }
 
+#| Add a comment to SQL query
 sub comment-sql(:$meth-name, :$file, :$block, :$line) {
     "method '$meth-name' called at: { $file } #{ $line }"
 }
 
+#| The type of the ResultSeq
 method of is hidden-from-sql-commenting { $of }
 #method is-lazy { True }
 method cache is hidden-from-sql-commenting {
@@ -67,7 +70,7 @@ method cache is hidden-from-sql-commenting {
 }
 
 has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new;
-has Red::AST          %.update;
+has Pair              @.update;
 has Red::AST::Comment @.comments;
 has Red::Driver       $.with;
 
@@ -83,7 +86,7 @@ method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {
     Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post, |(:driver($_) with $!with)
 }
 
-        #| Returns a Seq with the result of the SQL query
+#| Returns a Seq with the result of the SQL query
 method Seq is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     Seq.new: self.iterator
@@ -107,16 +110,19 @@ method transform-item(*%data) is hidden-from-sql-commenting {
 }
 
 #| Adds a new filter on the query (does not run the query)
-method grep(&filter --> Red::ResultSeq) is hidden-from-sql-commenting {
+method grep(&filter) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
+    CATCH {
+        default {
+            if not $*RED-FALLBACK.defined or $*RED-FALLBACK {
+                note "falling back: { .message }";
+                return self.Seq.grep: &filter
+            }
+            .rethrow
+        }
+    }
     my Red::AST $*RED-GREP-FILTER;
-#    for what-does-it-do(&filter, self.of) -> Pair $_ {
-#        (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
-#
-#    }
     my $filter = do given what-does-it-do(&filter, self.of) {
-#        say .key, " => ", .value.perl for .pairs;
-#        say .key, " => ", .value.gist for .pairs;
         do if [eqv] .values {
             .values.head
         } else {
@@ -129,12 +135,9 @@ method grep(&filter --> Red::ResultSeq) is hidden-from-sql-commenting {
             }).reduce: { Red::AST::OR.new: $^agg, $^fil }
         }
     }
-#    my $filter2 = ast-value $_ given filter self.of;
     with $*RED-GREP-FILTER {
         $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
     }
-#    say $filter2;
-#    say $filter;
     self.where: $filter;
 }
 
@@ -149,6 +152,7 @@ multi method first(--> Red::Model) is hidden-from-sql-commenting {
     self.head
 }
 
+#| Transform a hash into filter (Red::AST)
 sub hash-to-cond(%val) {
     my Red::AST $ast;
     for %val.kv -> Red::AST $cond, Bool $so {
@@ -162,8 +166,8 @@ sub hash-to-cond(%val) {
     $ast
 }
 
+#| Found a boolean while trying to find what's hapenning inside a block
 sub found-bool(@values, $try-again is rw, %bools, CX::Red::Bool $ex) {
-
     if %bools{$ex.ast}:!exists {
         $try-again = True;
         %bools{ $ex.ast }++;
@@ -194,6 +198,7 @@ sub prepare-response($resp) {
     }
 }
 
+#| Tries to find what a block do
 sub what-does-it-do(&func, \type --> Hash) {
     my Bool $try-again = False;
     my %bools is SetHash;
@@ -237,15 +242,17 @@ sub what-does-it-do(&func, \type --> Hash) {
 }
 
 #multi method create-map($, :&filter)     { self.do-it.map: &filter }
-multi method create-map(\SELF: Red::Model  $_, :filter(&)) is hidden-from-sql-commenting {
-    .^where: $.filter
+multi method create-map(\SELF: Red::Model $model is copy, :filter(&)) is hidden-from-sql-commenting {
+    self but role :: { method of { $model } }
 }
 multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden-from-sql-commenting {
-    my \Meta  = SELF.of.HOW.WHAT;
+    my \Meta  = SELF.of.^orig.HOW.WHAT;
     my \model = Meta.new(:table(SELF.of.^table)).new_type: :name(SELF.of.^name);
     model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, SELF.of.^table;
     my $attr-name = 'data_0';
+    my @table-list;
     my @attrs = do for @ret {
+        @table-list.push: |.tables;
         my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;
         my $col-name = $_ ~~ Red::Column ?? .attr.name.substr(2) !! $name;
         my $attr  = Attribute.new:
@@ -261,8 +268,9 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
             :attr-name($name),
             :type(.returns.^name),
             :$attr,
+            :model(.tables.head),
             :class(model),
-            |(do if $_ ~~ Red::Column {
+        	|(do if $_ ~~ Red::Column {
                 :inflate(.inflate),
                 :deflate(.deflate),
             } else {
@@ -286,18 +294,28 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
         :chain($!chain.clone:
             :$.filter,
             :post{ my @data = do for @attrs -> $attr { ."{$attr.name.substr: 2}"() }; @data == 1 ?? @data.head !! |@data },
-            :table-list[(|@.table-list, self.of).unique],
+            :table-list[(|@.table-list, self.of, |@table-list).unique],
             |%_
         )
     ) but CMModel[model]
 }
 
 #| Change what will be returned (does not run the query)
-method map(\SELF: &filter --> Red::ResultSeq) is hidden-from-sql-commenting {
+method map(\SELF: &filter) is hidden-from-sql-commenting {
     SELF.create-comment-to-caller;
+    CATCH {
+        default {
+            if not $*RED-FALLBACK.defined or $*RED-FALLBACK {
+                note "falling back: { .message }";
+                return self.Seq.map: &filter
+            }
+            .rethrow
+        }
+    }
+    die "Arity bigger than 1" if &filter.arity > 1;
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};
-    my %*UPDATE := %!update;
+    my @*UPDATE := @!update;
     for what-does-it-do(&filter, SELF.of) -> Pair $_ {
         (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
     }
@@ -305,6 +323,8 @@ method map(\SELF: &filter --> Red::ResultSeq) is hidden-from-sql-commenting {
         SELF.where(%next.keys.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n }))
     } else { SELF }
     my \ast = Red::AST::Case.new(:%when);
+    #die "Map returning Red::Model is NYI" if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
+    return seq.create-map: ast.value, :&filter if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
     seq.create-map: ast, :&filter
 }
 #method flatmap(&filter) {
@@ -346,11 +366,13 @@ method classify(\SELF: &func, :&as = { $_ } --> Red::ResultAssociative) is hidde
     }
 }
 
+#| Runs a query to create a Bag
 multi method Bag {
     nextsame unless self.?last-rs.DEFINITE;
     self.last-rs.classify(self.last-filter, :as{ ast-value True }).Bag
 }
 
+#| Runs a query to create a Set
 multi method Set {
     nextsame unless self.?last-rs.DEFINITE;
     self.last-rs.classify(self.last-filter, :as{ ast-value True }).Set
@@ -363,7 +385,7 @@ multi method head is hidden-from-sql-commenting {
 }
 
 # TODO: Return a Red::ResultSeq
-multi method head(UInt() $num) is hidden-from-sql-commenting {
+multi method head(UInt(Numeric) $num) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     self.clone: :chain($!chain.clone: :limit(min $num, $.limit))
 }
@@ -421,7 +443,7 @@ method delete(::?CLASS:D:) is hidden-from-sql-commenting {
 #| Saves any change on any element of that ResultSet
 method save(::?CLASS:D:) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    get-RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(%!update), :filter($.filter)
+    get-RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(@!update), :filter($.filter)
 }
 
 #| unifies 2 ResultSeqs
@@ -445,7 +467,12 @@ method minus(::?CLASS:D: $other --> Red::ResultSeq) is hidden-from-sql-commentin
     self.clone: :chain($!chain.clone: :$filter)
 }
 
-#|Returns the AST that will generate the SQL
+#| Create a custom join
+method join(Red::Model \model, &on, :$name = "{ self.^name }_{ model.^name }", *%pars where { .elems == 0 || ( .elems == 1 && so .values.head ) }) {
+    self.of.^join(model, &on, |%pars).^all.clone: :$!chain
+}
+
+#| Returns the AST that will generate the SQL
 method ast(Bool :$sub-select --> Red::AST) is hidden-from-sql-commenting {
     if $.filter ~~ Red::AST::MultiSelect {
         $.filter

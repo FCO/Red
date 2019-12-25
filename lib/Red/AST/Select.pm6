@@ -4,6 +4,8 @@ use Red::AST::Union;
 use Red::AST::Intersect;
 use Red::AST::Minus;
 use Red::AST::Comment;
+
+#| Represents a Select
 unit class Red::AST::Select does Red::AST;
 
 has Mu:U                $.of;
@@ -23,14 +25,14 @@ method args { $!sub-select ?? () !! ( $!of, $!filter, |@!order ) }
 
 method gist {
     do if $!sub-select {
-        "{ self.^name }:\n" ~ [$!of, $!filter, |@!order].map(*.gist).join("\n").indent: 4
+        "{ self.^name }:\n" ~ [|@!table-list, $!filter, |@!order].map(*.gist).join("\n").indent: 4
     } else {
         self.Red::AST::gist()
     }
 }
 
 method tables(::?CLASS:D:) {
-    |($!of, |@!table-list, |(.tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique
+    |(|@!table-list, |(.tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique
 }
 method find-column-name {}
 

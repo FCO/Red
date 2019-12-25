@@ -2,6 +2,8 @@ use Red::AST;
 use Red::Column;
 use Red::AST::Constraints;
 use Red::AST::TableComment;
+
+#| Represents a create table
 unit class Red::AST::CreateTable does Red::AST;
 
 has Str                     $.name;

@@ -2,6 +2,19 @@ Revision history for Red
 
 {{$NEXT}}
 
+0.1.0  2019-12-21T01:24:41Z
+    - xmas example
+    - accept map's block returning Red::Model
+    - json type
+    - :optional on relationships
+    - join types (inner, outer, left, right)
+    - Fix Divisable (%%)
+    - ResultSeq.join
+    - custom join
+    - join
+    - red-do isn't experimental anymore
+    - :api<2>
+
 0.0.6  2019-10-18T00:36:18+01:00
     - Fix the flickering test
 

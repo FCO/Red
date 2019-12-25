@@ -2,6 +2,7 @@ use CX::Red::Bool;
 
 =head2 Red::AST
 
+#| Base role for all Red::AST::*
 unit role Red::AST;
 #has Red::AST $.next;
 

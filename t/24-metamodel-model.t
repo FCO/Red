@@ -23,10 +23,10 @@ is model :: { has $.a is column; has $.b is column; has $.c is column<d> }.^colu
 #}.^constraints>>.name, <a b d>;
 
 model Ble:ver<1.2.3> is table<not-ble> is nullable {
-    has $.a is referencing{ ::?CLASS.b }
-    has $.b is referencing{ ::?CLASS.c }
-    has $.c is column{:references{ ::?CLASS.a }, :name<d>}
-    has $.e is referencing{:model<Bla>, :column<column>}
+    has $.a is referencing{ ::?CLASS.b };
+    has $.b is referencing{ ::?CLASS.c };
+    has $.c is column{:references{ ::?CLASS.a }, :name<d>};
+    has $.e is referencing(:model<Bla>, :column<column>);
 }
 
 is-deeply Ble.^references.keys.Set, set < a b c e >;

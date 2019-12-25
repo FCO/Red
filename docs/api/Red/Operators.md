@@ -21,6 +21,50 @@ multi sub prefix:<+>(
 
 +X
 
+### multi sub infix:<+>
+
+```perl6
+multi sub infix:<+>(
+    Red::AST $a,
+    Red::AST $b
+) returns Mu
+```
+
+X + Y
+
+### multi sub infix:<->
+
+```perl6
+multi sub infix:<->(
+    Red::AST $a,
+    Red::AST $b
+) returns Mu
+```
+
+X - Y
+
+### multi sub infix:<*>
+
+```perl6
+multi sub infix:<*>(
+    Red::AST $a,
+    Red::AST $b
+) returns Mu
+```
+
+X * Y
+
+### multi sub infix:</>
+
+```perl6
+multi sub infix:</>(
+    Red::AST $a,
+    Red::AST $b
+) returns Mu
+```
+
+X / Y
+
 ### multi sub infix:<==>
 
 ```perl6
@@ -48,7 +92,7 @@ multi sub infix:<!=>(
 ```perl6
 multi sub infix:<==>(
     Red::AST $a,
-    Red::AST $b
+    Date $b is rw
 ) returns Mu
 ```
 
@@ -218,28 +262,6 @@ multi sub infix:<ge>(
 ```
 
 ge
-
-### multi sub infix:<*>
-
-```perl6
-multi sub infix:<*>(
-    Red::AST $a,
-    Red::AST $b
-) returns Mu
-```
-
-*
-
-### multi sub infix:</>
-
-```perl6
-multi sub infix:</>(
-    Red::AST $a,
-    Red::AST $b
-) returns Mu
-```
-
-/
 
 ### multi sub infix:<%>
 

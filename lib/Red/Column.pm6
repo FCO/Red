@@ -20,12 +20,29 @@ has Bool        $.nullable         = $!attr.package.HOW.?default-nullable($!attr
 has Str         $.name             = kebab-to-snake-case self.attr.name.substr: 2;
 has Str         $.name-alias       = $!name;
 has Str         $.type;
-has             &.inflate          = { .?"{ $!attr.type.^name }"() // .self };
-has             &.deflate          = *.self;
+has             &.inflate          = $!attr.type.?inflator // { .?"{ $!attr.type.^name }"() // .self };
+has             &.deflate          = $!attr.type.?deflator // *.self;
 has             $.computation;
 has Str         $.model-name;
+has             $.model            = $!attr.package;
 has Str         $.column-name;
 has Str         $.require          = $!model-name;
+has Mu          $.class            = $!attr.package;
+
+#multi method WHICH(::?CLASS:D:) {
+#    ValueObjAt.new: self.^name ~ "|" ~ self.migration-hash.pairs.sort.map(-> (:$key, :$value) {
+#        "$key|$value"
+#    }).join: "|"
+#}
+
+multi method perl(::?CLASS:D:) {
+    "{ self.^name }.new({
+        self.Hash.pairs.sort.map(-> (:$key, :$value) {
+            next if $key eq <inflate deflate>.one;
+            "$key.Str() => $value.perl()"
+        }).join: ", "
+    })"
+}
 
 method Hash(--> Hash()) {
     %(
@@ -46,9 +63,10 @@ method Hash(--> Hash()) {
         |(:model-name($_) with $!model-name),
         |(:column-name($_) with $!column-name),
         |(:require($_) with $!require),
-    )
+            )
 }
 
+#| Returns a Hash that represents the column for migration purposes
 method migration-hash(--> Hash()) {
     |(:name($_)                                 with $!name             ),
     |(:type(.type.^name)                        with $!attr             ),
@@ -68,7 +86,7 @@ class ReferencesProxy does Callable {
     has         &.references;
     has Bool    $!tried-model   = False;
 
-    method model( --> Mu:U ) {
+    method model($alias = Nil --> Mu:U) {
         if !$!tried-model {
             my $model = ::($!model-name);
             if !$model && $model ~~ Failure {
@@ -78,22 +96,36 @@ class ReferencesProxy does Callable {
             $!model = $model;
             $!tried-model = True;
         }
-        $!model;
+        do if $alias !=== Nil {
+            do if $alias.^table eq $!model.^table {
+                $alias
+            } else {
+                die "$alias.^name() isn't an alias for the table $!model.^table()"
+            }
+        } else {
+            $!model
+        }
     }
 
-    method CALL-ME {
+    method CALL-ME($alias = Nil) {
         if &!references {
-            &!references.(self.model)
+            my $model = self.model($alias);
+            my $ret = &!references.($model);
+            if $ret ~~ Red::Column && $ret.class.^name eq '$?CLASS' {
+                $ret .= clone: :class($model)
+            }
+            $ret
         }
         else {
-            self.model.^attributes.first(*.name.substr(2) eq $!column-name).column
+            self.model($alias).^columns.first(*.column.attr-name eq $!column-name).column
         }
     }
 }
 
 #| Returns the class that column is part of.
-method class { self.attr.package }
+#method class { self.attr.package }
 
+#| Method that returns the comment for the column
 method comment { .Str with self.attr.WHY }
 
 #| Returns a function that will return a column that is referenced by this column
@@ -117,10 +149,11 @@ method references(--> Callable) is rw {
 }
 
 #| Returns the column that is referenced by this one.
-method ref {
-    $!ref //= .() with self.references
+method ref($model = Nil) {
+    .($model) with self.references
 }
 
+#| Required by the Red::AST role
 method returns { $!attr.type }
 
 method transpose(&func) { func self }
@@ -140,16 +173,18 @@ method alias(Str $name) {
     self.clone: name-alias => $name
 }
 
+#| Returns a clone using a different name
 method as(Str $name, :$nullable = True) {
     self.clone: attr-name => $name, :$name, id => False, :$nullable, attr => Attribute
 }
 
-method TWEAK(:$unique) {
+submethod TWEAK(:$unique) {
     if $unique {
         $!attr.package.^add-unique-constraint: { self }
     }
 }
 
+#| Do not test definedness, but returns a new Red::AST::IsDefined
 method defined {
     Red::AST::IsDefined.new: self
 }

@@ -16,9 +16,15 @@ method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr --> Empty) {
                 Proxy.new:
                 FETCH => -> $ { $attr.column },
                 STORE => -> $, $value {
-                    %*UPDATE{$attr.column.name} = ast-value $value
-                }
-                ;
+                    my &deflator = $attr.column.deflate;
+                    my $val = do given $value {
+                        when Red::AST { $_ }
+                        default {
+                            ast-value .&deflator, :type($attr.type)
+                        }
+                    }
+                    @*UPDATE.push: Pair.new: $attr.column, $val
+                },
             }
         } else {
             type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) {

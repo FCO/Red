@@ -1,5 +1,6 @@
 use Red::AST;
 
+#| Represents a comment
 unit class Red::AST::Comment does Red::AST;
 
 has Str $.msg;

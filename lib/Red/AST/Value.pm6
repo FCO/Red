@@ -1,5 +1,7 @@
 use Red::AST;
 use Red::Column;
+
+#| Represents a value
 class Red::AST::Value does Red::AST is Any {
     has             $.value is required;
     has Red::Column $.column;
@@ -27,7 +29,7 @@ multi ast-value(Red::AST $value) is export {
     $value
 }
 
-multi ast-value($value, :$type) is export {
-    Red::AST::Value.new: :$value, |(:$type with $type)
+multi ast-value($value, :$type = $value.WHAT) is export {
+    Red::AST::Value.new: :$value, :$type
 }
 

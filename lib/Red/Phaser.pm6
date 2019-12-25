@@ -1,3 +1,4 @@
+#| Define Red phasers
 module Red::Phaser {
     # Define these here rather than next to the traits
     # as they will be used in several places

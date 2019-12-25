@@ -1,4 +1,6 @@
 use Red::AST;
+
+#| Represents an alter table drop column
 unit class Red::AST::DropColumn does Red::AST;
 
 has Str  $.table is required;

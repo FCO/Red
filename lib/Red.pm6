@@ -1,4 +1,5 @@
 use v6;
+use Red::Do;
 use Red::Model;
 use Red::Attr::Column;
 use Red::Column;
@@ -19,7 +20,7 @@ use Red::AST::Optimizer::Case;
 use Red::Class;
 use Red::DB;
 
-class Red:ver<0.0.6>:api<1> {
+class Red:ver<0.1.0>:api<2> {
     method events { Red::Class.instance.events }
     method emit(|c) { get-RED-DB.emit: |c }
 }
@@ -40,8 +41,10 @@ my package EXPORTHOW {
     }
 }
 
-multi EXPORT("red-do") {
-    use Red::Do;
+multi EXPORT("experimental migrations") {
+    use MetamodelX::Red::Migration;
+    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
+    MetamodelX::Red::Model.^compose;
 
     Map(
         Red::Do::EXPORT::ALL::,
@@ -51,20 +54,9 @@ multi EXPORT("red-do") {
     )
 }
 
-multi EXPORT("experimental migrations") {
-    use MetamodelX::Red::Migration;
-    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
-    MetamodelX::Red::Model.^compose;
-
-    Map(
-        Red::Traits::EXPORT::ALL::,
-        Red::Operators::EXPORT::ALL::,
-        ‘&database’ => &database,
-    )
-}
-
 multi EXPORT {
     Map(
+        Red::Do::EXPORT::ALL::,
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         ‘&database’ => &database,
@@ -92,7 +84,8 @@ Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):
 =head2 SYNOPSIS
 
 =begin code :lang<perl6>
-use Red;
+
+use Red:api<2>;
 
 model Person {...}
 

@@ -8,19 +8,12 @@ jobs:
 
     runs-on: ubuntu-latest
 
-    strategy:
-      matrix:
-        rakudo-star-version:
-          - 'latest'
-
     container:
-      image: rakudo-star:${{ matrix.rakudo-star-version }}
+      image: fernandocorrea/red-tester-no-run
 
     steps:
       - uses: actions/checkout@v1
-      - name: perl6 -v
-        run: perl6 -v
-      - name: Install Dependencies
-        run: zef install --deps-only --/test .
+      - name: raku -v
+        run: raku -v
       - name: Run Tests
-        run: PERL6LIB=$PWD/lib prove -e perl6 -vr t
+        run: zef install -v .
