@@ -53,24 +53,34 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
     nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:
         FETCH => method () {
             do if type ~~ Positional {
-                my $rel = rel1 rel-model;
-                X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;
-                my $ref = $rel.ref;
-                X::Red::RelationshipNotRelated.new(:relationship(attr), :points-to($rel)).throw without $ref;
-                my $val = do given $ref.attr but role :: { method package { instance.WHAT } } {
-                    instance.^get-attr: .name.substr: 2
-                }
-                my \value = ast-value $val;
-                rel-model.^rs.where: Red::AST::Eq.new: $rel, value, :bind-right
-            } else {
-                my $rel = rel1 instance.WHAT;
-                my $val = $rel.attr.get_value: instance;
-                do with $val {
+                rel-model.^rs.where: rel1(rel-model).map(-> $rel {
+                    X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;
+                    my $ref = $rel.ref;
+                    X::Red::RelationshipNotRelated.new(:relationship(attr), :points-to($rel)).throw without $ref;
+                    my $val = do given $ref.attr but role :: {
+                        method package {
+                            instance.WHAT
+                        }
+                    } {
+                        instance.^get-attr: .name.substr: 2
+                    }
                     my \value = ast-value $val;
-                    rel-model.^rs.where(Red::AST::Eq.new: $rel.ref, value, :bind-right).head
-                } else {
-                    rel-model
+                    Red::AST::Eq.new: $rel, value, :bind-right
+                }).reduce: -> $left, $right {
+                    Red::AST::AND.new: $left, $right
                 }
+            } else {
+                my @models = rel1(instance.WHAT).map(-> $rel {
+                    my $val = $rel.attr.get_value: instance;
+                    do with $val {
+                        my \value = ast-value $val;
+                        Red::AST::Eq.new: $rel.ref, value, :bind-right
+                    }
+                }).grep(*.defined);
+                return rel-model unless @models;
+                rel-model.^rs.where(@models.reduce(-> $left, $right {
+                    Red::AST::AND.new: $left, $right
+                })).head
             }
         },
         STORE => method ($value where type) {
