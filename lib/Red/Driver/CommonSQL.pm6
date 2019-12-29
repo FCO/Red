@@ -266,11 +266,11 @@ multi method join-type("") { self.join-type: "inner" }
 multi method join-type($type) { die "'$type' isn't a valid join type" }
 
 multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
+    my role ColClass [Mu:U \c] { method class { c } };
     my @bind;
     my $sel    = do given $ast.of {
         when Red::Model {
             my $class = $_;
-            my role ColClass [Mu:U \c] { method class { c } };
             .^columns.map({
                 my ($s, @b) := do given self.translate: (.column but ColClass[$class]), "select" { .key, .value }
                 @bind.push: |@b;
@@ -283,7 +283,19 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
             $s
         }
     }
-    my %t{Red::Model} = (|$ast.tables, $ast.of).grep({ not .?no-table }).unique.map({ .^tables }).cache.classify: { .head }, :as{ .tail: *-1 };
+    my @pre-join;
+    my $pre = $ast.prefetch.map: {
+        $ast.of."{.name.substr: 2}"().^columns.map({
+            my $class = .package;
+            @pre-join.push: $class;
+            my $*RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;
+            my ($s, @b) := do given self.translate: (.column but ColClass[$class]), "select" { .key, .value }
+            @bind.push: |@b;
+            $s
+        }).join: ", ";
+    }
+    $sel ~= ", $pre" if $pre;
+    my %t{Red::Model} = (|$ast.tables, $ast.of, |@pre-join).grep({ not .?no-table }).unique.map({ .^tables }).cache.classify: { .head }, :as{ .tail: *-1 };
     my @join-binds;
     my $tables = %t.kv.map(-> $_, @joins {
         [
@@ -464,7 +476,11 @@ multi method translate(Red::Column $col, "select") {
     } else {
         "{ $col.model.^as }.{ $col.name }", []
     }
-    qq[$str {qq<as "{$col.attr-name}"> if $col.computation or $col.name ne $col.attr-name}] => @bind
+    qq[$str {qq<as "{ "{$*RED-OVERRIDE-COLUMN-AS-PREFIX}." if $*RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }"> if
+            $col.computation
+            or $col.name ne $col.attr-name
+            or $*RED-OVERRIDE-COLUMN-AS-PREFIX
+    }] => @bind
 }
 
 multi method translate(Red::AST::Value $_, "bind") {
@@ -582,7 +598,7 @@ multi method translate(Red::Column $_, "column-name")           { .name // "" =>
 multi method translate(Red::Column $_, "column-type")           {
     if .attr.type =:= Mu {
         return self.type-by-name("int")  => [] if .auto-increment;
-        return self.type-by-name("text") => []
+        return self.type-by-name("string") => []
     }
     (.type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_) => []
 }

@@ -12,6 +12,18 @@ method relationships(|) {
     %!relationships
 }
 
+method has-one-relationships(|) {
+    %!relationships.keys.grep: {
+        .type !~~ Positional
+    }
+}
+
+method has-many-relationships(|) {
+    %!relationships.keys.grep: {
+        .type ~~ Positional
+    }
+}
+
 method !sel-scalar($attr, $name) {
     my method (Mu:U \SELF:) {
         SELF.^join(
