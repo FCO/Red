@@ -18,6 +18,7 @@ has Red::AST            @.group;
 has                     @.table-list;
 has Red::AST::Comment   @.comments;
 has Bool                $.sub-select;
+has                     @.prefetch;
 
 method returns { Red::Model }
 
