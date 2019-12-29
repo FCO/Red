@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Accept multi-column relationship
 
 0.1.0  2019-12-21T01:24:41Z
     - xmas example
