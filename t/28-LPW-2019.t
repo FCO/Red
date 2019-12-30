@@ -7,7 +7,7 @@ model Post {
     has UInt     $!id        is serial;
     has Str      $.title     is column{ :unique };
     has Str      $.body      is column;
-    has UInt     $.author-id is referencing{ Person.id };
+    has UInt     $.author-id is referencing( *.id, :model<Person> );
     has Person   $.author    is relationship{ .author-id };
     has DateTime $.created   is column .= now;
     has DateTime $.published is column{ :nullable };

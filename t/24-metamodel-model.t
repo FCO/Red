@@ -23,9 +23,9 @@ is model :: { has $.a is column; has $.b is column; has $.c is column<d> }.^colu
 #}.^constraints>>.name, <a b d>;
 
 model Ble:ver<1.2.3> is table<not-ble> is nullable {
-    has $.a is referencing{ ::?CLASS.b };
-    has $.b is referencing{ ::?CLASS.c };
-    has $.c is column{:references{ ::?CLASS.a }, :name<d>};
+    has $.a is referencing( *.b, :model(::?CLASS.^name) );
+    has $.b is referencing( *.c, :model(::?CLASS.^name) );
+    has $.c is column{:references{ .a }, :model-name(::?CLASS.^name), :name<d>};
     has $.e is referencing(:model<Bla>, :column<column>);
 }
 
@@ -143,7 +143,7 @@ ok $bla.^is-on-db;
 model Tree {
     has UInt   $!id        is id;
     has Str    $.value     is column;
-    has UInt   $!parent-id is referencing{ Tree.id };
+    has UInt   $!parent-id is referencing( *.id, :model<Tree> );
 
     has Tree   $.parent    is relationship{ .parent-id };
     has Tree   @.kids      is relationship{ .parent-id };

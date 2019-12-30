@@ -31,9 +31,9 @@ model Ticket is rw {
     has UInt            $.id        is serial;
     has Str             $.title     is column;
     has Str             $.body      is column;
-    has UInt            $.status-id is referencing{  TicketStatus.id };
+    has UInt            $.status-id is referencing( *.id, :model<TicketStatus> );
     has TicketStatus    $.status    is relationship{ .status-id } = $new;
-    has UInt            $.author-id is referencing{  Person.id }
+    has UInt            $.author-id is referencing( *.id, :model<Person> );
     has Person          $.author    is relationship{ .author-id }
 }
 

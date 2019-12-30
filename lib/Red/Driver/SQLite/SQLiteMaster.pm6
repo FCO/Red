@@ -3,7 +3,7 @@ unit model Red::Driver::SQLite::SQLiteMaster is table<sqlite_master>;
 
 has Str      $.type      is column;
 has Str      $.name      is id;
-has Str      $.table     is column{:name<tbl_name>, :references{ ::?CLASS.name }};
+has Str      $.table     is column{:name<tbl_name>, :references(*.name), :model-name(::?CLASS.^name)};
 has Int      $.root-page is column<rootpage>;
 has Str      $.sql       is column;
 has ::?CLASS @.children  is relationship{ .table }

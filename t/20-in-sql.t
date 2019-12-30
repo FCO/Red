@@ -59,7 +59,7 @@ model MultiBar {
 model MultiFoo {
     has Int $.id is serial;
     has Str $.name is column;
-    has Int $.bar-id is referencing({ MultiBar.id } );
+    has Int $.bar-id is referencing( *.id, :model<MultiBar> );
     has MultiBar $.bar is relationship( { .bar-id });
 }
 

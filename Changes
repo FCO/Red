@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add validation on `is referencing` trait for :api<2>
     - Accept multi-column relationship
 
 0.1.0  2019-12-21T01:24:41Z

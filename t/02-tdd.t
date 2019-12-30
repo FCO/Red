@@ -233,7 +233,7 @@ model Person { ... }
 
 model Post {
     has Int     $.id        is column{ :id };
-    has Int     $.author-id is column{ :references{ Person.id } };
+    has Int     $.author-id is column{ :references{ .id }, :model-name<Person> };
     has Person  $.author    is relationship{ .author-id };
 }
 
@@ -261,7 +261,7 @@ model Person2 { ... }
 
 model Post2 {
     has Int      $.id        is column{ :id };
-    has Int      $.author-id is referencing{ Person2.id };
+    has Int      $.author-id is referencing( *.id, :model<Person2> );
     has Person2  $.author    is relationship{ .author-id };
 }
 
@@ -287,7 +287,7 @@ is Post2,                           Post2.id.class;
 is $alias1.id.attr,                 Post2.id.attr;
 is $alias1.id.attr-name,            Post2.id.attr-name;
 is $alias1.id.id,                   Post2.id.id;
-cmp-ok $alias1.id.references, "===", Post2.id.references;
+is-deeply $alias1.id.references,    Post2.id.references;
 is $alias1.id.nullable,             Post2.id.nullable;
 is $alias1.id.name,                 Post2.id.name;
 
@@ -296,7 +296,7 @@ is Post2,                           Post2.author-id.class;
 
 is $alias1.author-id.attr,          Post2.author-id.attr;
 is $alias1.author-id.attr-name,     Post2.author-id.attr-name;
-cmp-ok $alias1.author-id.references, "===", Post2.author-id.references;
+is-deeply $alias1.author-id.references, Post2.author-id.references;
 is $alias1.author-id.nullable,      Post2.author-id.nullable;
 is $alias1.author-id.name,          Post2.author-id.name;
 
@@ -308,7 +308,7 @@ is Post2,                           Post2.id.class;
 is $alias2.id.attr,                 Post2.id.attr;
 is $alias2.id.attr-name,            Post2.id.attr-name;
 is $alias2.id.id,                   Post2.id.id;
-cmp-ok $alias2.id.references, "===", Post2.id.references;
+is-deeply $alias2.id.references,    Post2.id.references;
 is $alias2.id.nullable,             Post2.id.nullable;
 is $alias2.id.name,                 Post2.id.name;
 
@@ -318,7 +318,7 @@ is Post2,                           Post2.author-id.class;
 is $alias2.author-id.attr,          Post2.author-id.attr;
 is $alias2.author-id.attr-name,     Post2.author-id.attr-name;
 is $alias2.author-id.id,            Post2.author-id.id;
-cmp-ok $alias2.author-id.references, "===", Post2.author-id.references;
+is-deeply $alias2.author-id.references, Post2.author-id.references;
 is $alias2.author-id.nullable,      Post2.author-id.nullable;
 is $alias2.author-id.name,          Post2.author-id.name;
 
