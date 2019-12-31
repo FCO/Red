@@ -2,6 +2,9 @@ Revision history for Red
 
 {{$NEXT}}
 
+0.1.3  2019-12-31T22:17:46Z
+    - fix README example
+
 0.1.2  2019-12-31T21:38:09Z
     - fallback to original map/grep when printing
     - fallback to original map when block has a count higher than 1
