@@ -1,6 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fallback to original map/grep when printing
+    - fallback to original map when block has a count higher than 1
+    - fix bug when not defining column type
 
 0.1.1  2019-12-30T02:10:01Z
     - Add validation on `is referencing` trait for :api<2>

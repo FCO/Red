@@ -115,11 +115,15 @@ method grep(&filter) is hidden-from-sql-commenting {
     CATCH {
         default {
             if not $*RED-FALLBACK.defined or $*RED-FALLBACK {
-                note "falling back: { .message }";
+                note "falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .message }" without $*RED-FALLBACK;
                 return self.Seq.grep: &filter
             }
             .rethrow
         }
+    }
+    my $*OUT = class :: {
+        method put(|)   { die "Trying to print inside the grep's block" }
+        method print(|) { die "Trying to print inside the grep's block" }
     }
     my Red::AST $*RED-GREP-FILTER;
     my $filter = do given what-does-it-do(&filter, self.of) {
@@ -306,13 +310,18 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
     CATCH {
         default {
             if not $*RED-FALLBACK.defined or $*RED-FALLBACK {
-                note "falling back: { .message }";
+                note "falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .message }" without $*RED-FALLBACK;
                 return self.Seq.map: &filter
             }
             .rethrow
         }
     }
-    die "Arity bigger than 1" if &filter.arity > 1;
+    my $*OUT = class :: {
+        method put(|)   { die "Trying to print inside the map's block" }
+        method print(|) { die "Trying to print inside the map's block" }
+    }
+
+    die "Count bigger than 1" if &filter.count > 1;
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};
     my @*UPDATE := @!update;
