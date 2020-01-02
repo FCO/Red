@@ -47,7 +47,7 @@ multi method prepare(Str $query) {
         }
     }
     self.debug: $query;
-    Statement.new: :driver(self), :statement($!dbh.prepare: $query)
+    Statement.new: :driver(self), :statement($!dbh.prepare: $query);
 }
 
 multi method join-type("outer") { die "'OUTER JOIN' is not supported by SQLite" }
@@ -150,14 +150,14 @@ multi method default-type-for(Red::Column $                                     
 multi method default-type-for($ --> Str:D) is default {"varchar(255)"}
 
 
-multi method map-exception(Exception $x where { .?code == 19 and .native-message.starts-with: "UNIQUE constraint failed:" }) {
+multi method map-exception(X::DBDish::DBError $x where { .?code == 19 and .native-message.starts-with: "UNIQUE constraint failed:" }) {
     X::Red::Driver::Mapped::Unique.new:
         :driver<SQLite>,
         :orig-exception($x),
         :fields($x.native-message.substr(26).split: /\s* "," \s*/)
 }
 
-multi method map-exception(Exception $x where { .?code == 1 and .native-message ~~ /^table \s+ $<table>=(\w+) \s+ already \s+ exists/ }) {
+multi method map-exception(X::DBDish::DBError $x where { .?code == 1 and .native-message ~~ m:i/^table \s+ $<table>=(\w+) \s+ already \s+ exists/ }) {
     X::Red::Driver::Mapped::TableExists.new:
             :driver<SQLite>,
             :orig-exception($x),

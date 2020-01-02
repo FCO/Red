@@ -296,17 +296,17 @@ multi method create-table(Red::Driver :$with!, |c) {
 }
 
 #| Creates table unless table already exists
-multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where ? *, *% where .keys.all ne "with") {
+multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where so *, *%pars) {
     CATCH {
         when X::Red::Driver::Mapped::TableExists {
             return False
         }
     }
-    callwith model
+    self.create-table: model, |%pars
 }
 
 #| Creates table
-multi method create-table(\model, :$with where not .defined) {
+multi method create-table(\model, :$with where not .defined, :if-not-exists($unless-exists) where not .defined) {
     die X::Red::InvalidTableName.new: :table(model.^table)
         unless get-RED-DB.is-valid-table-name: model.^table
     ;
