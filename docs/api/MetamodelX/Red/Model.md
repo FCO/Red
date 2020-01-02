@@ -232,7 +232,7 @@ Sets model as a temporary table
 multi method create-table(
     \model,
     Bool :unless-exists(:$if-not-exists) where { ... },
-    *% where { ... }
+    *%pars
 ) returns Mu
 ```
 
@@ -243,7 +243,8 @@ Creates table unless table already exists
 ```perl6
 multi method create-table(
     \model,
-    :$with where { ... }
+    :$with where { ... },
+    :if-not-exists($unless-exists) where { ... }
 ) returns Mu
 ```
 
