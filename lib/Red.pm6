@@ -20,7 +20,7 @@ use Red::AST::Optimizer::Case;
 use Red::Class;
 use Red::DB;
 
-class Red:ver<0.1.3>:api<2> {
+class Red:ver<0.1.4>:api<2> {
     method events { Red::Class.instance.events }
     method emit(|c) { get-RED-DB.emit: |c }
 }

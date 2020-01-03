@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.4  2020-01-02T23:56:28Z
     - fix `.^create-table: :if-not-exists`
 
 0.1.3  2019-12-31T22:17:46Z
