@@ -50,6 +50,12 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh.prepare: $query);
 }
 
+method create-schema(%models where .values.all ~~ Red::Model) {
+    do for %models.kv -> Str() $name, Red::Model $model {
+        $name => $model.^create-table
+    }
+}
+
 multi method join-type("outer") { die "'OUTER JOIN' is not supported by SQLite" }
 multi method join-type("right") { die "'RIGHT JOIN' is not supported by SQLite" }
 

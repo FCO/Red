@@ -15,11 +15,13 @@ model BBB {
     has Int  $.value  is column;
 }
 
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+red-defaults default    => database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-red-defaults default => database "SQLite";
-my $*RED-DEBUG = ?%*ENV<RED_DEBUG>;
-
-AAA.^create-table; BBB.^create-table;
+schema(AAA, BBB).create;
 
 my $a = AAA.^create: :42id1, :13id2;
 $a.many.create: :value($_) for ^10;

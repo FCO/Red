@@ -26,6 +26,7 @@ use Red::AST::CommitTransaction;
 use Red::AST::RollbackTransaction;
 use Red::AST::Generic::Prefix;
 use Red::AST::Generic::Postfix;
+use Red::AST::AddForeignKeyOnTable;
 use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
@@ -165,82 +166,134 @@ multi method diff-to-ast(@diff) {
     @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(|*.key, :as{ |.value }).sort.map: *.value
 }
 
+method create-schema(%models where .values.all ~~ Red::Model) {
+    for %models.kv -> Str() $name, Red::Model \model {
+        self.execute: Red::AST::CreateTable.new:
+                :name(model.^table),
+                :temp(model.^temp),
+                :columns(model.^columns.map(*.column.clone: :references(Callable), :class(model))),
+                |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
+    }
+
+    for %models.kv -> Str() $name, Red::Model \model {
+        my @fks = model.^columns>>.column.grep({ .ref.defined });
+        self.execute: Red::AST::AddForeignKeyOnTable.new:
+                :table(model.^table),
+                :foreigns[@fks.map: {
+                    %(
+                            :name("{
+                                .class.^table
+                            }_{
+                                .name
+                            }_{
+                                .ref.class.^table
+                            }_{
+                                .ref.name
+                            }_fkey"),
+                            :from($_),
+                            :to(.ref),
+                    )
+                }]
+        if @fks
+    }
+    %models.keys Z=> True xx *
+}
+
 proto method translate(Red::AST, $? --> Pair) {*}
 
 multi method translate(Red::AST::BeginTransaction, $context?) {
-    "BEGIN" => []
-}
+                                    "BEGIN" => []
+                                }
 
 multi method translate(Red::AST::CommitTransaction, $context?) {
-    "COMMIT" => []
-}
+                                    "COMMIT" => []
+                                }
 
 multi method translate(Red::AST::RollbackTransaction, $context?) {
-    "ROLLBACK" => []
-}
+                                    "ROLLBACK" => []
+                                }
 
 multi method translate(Red::AST::DropColumn $_, $context?) {
-    "ALTER TABLE {
-        .table
-    } DROP COLUMN {
-        .name
-    }" => []
-}
+                                    "ALTER TABLE {
+                                        .table
+                                    } DROP COLUMN {
+                                        .name
+                                    }" => []
+                                }
 
 multi method translate(Red::AST::ChangeColumn $_, $context?) {
-    "ALTER TABLE {
-        .table
-    } ALTER COLUMN {
-        .name
-    } {
-        .type // ""
-    }{
-        " NOT NULL" unless .nullable
-    }{
-        " UNIQUE" if .unique
-    }{
-        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
-    }{
-        " PRIMARY KEY" if .pk
-    }" => []
-}
+                                    "ALTER TABLE {
+                                        .table
+                                    } ALTER COLUMN {
+                                        .name
+                                    } {
+                                        .type // ""
+                                    }{
+                                        " NOT NULL" unless .nullable
+                                    }{
+                                        " UNIQUE" if .unique
+                                    }{
+                                        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
+                                    }{
+                                        " PRIMARY KEY" if .pk
+                                    }" => []
+                                }
 
 multi method translate(Red::AST::CreateColumn $_, $context?) {
-    "ALTER TABLE {
-        .table
-    } ADD {
-        .name
-    } {
-        .type
-    }{
-        " NOT NULL" unless .nullable
-    }{
-        " UNIQUE" if .unique
-    }{
-        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
-    }{
-        " PRIMARY KEY" if .pk
-    }" => []
-}
+                                    "ALTER TABLE {
+                                        .table
+                                    } ADD {
+                                        .name
+                                    } {
+                                        .type
+                                    }{
+                                        " NOT NULL" unless .nullable
+                                    }{
+                                        " UNIQUE" if .unique
+                                    }{
+                                        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
+                                    }{
+                                        " PRIMARY KEY" if .pk
+                                    }" => []
+                                }
+
+multi method translate(Red::AST::AddForeignKeyOnTable $_, $context?) {
+                                    "ALTER TABLE {
+                                        .table
+                                    } {
+                                        .foreigns.map({
+                                            "ADD CONSTRAINT {
+                                                $_ with .name
+                                            } FOREIGN KEY ({
+                                                .from.name
+                                            }) REFERENCES {
+                                                .to.class.^table
+                                            }({
+                                                .to.name
+                                            })"
+                                        }).join(" ")
+                                    }" => []
+
+                                }
 
 multi method translate(Red::AST::Union $ast, $context?) {
-    $ast.selects.map({
-        self.translate( $_, "multi-select" ).key
-    })
-    .join("\n{
-        self.translate($ast, "multi-select-op").key
-    }\n") => []
-}
+                                    $ast.selects.map({
+                                        self.translate( $_, "multi-select" ).key
+                                    })
+                                            .join("\n{
+                                        self.translate($ast, "multi-select-op").key
+                                    }\n") => []
+                                }
 
 multi method translate(Red::AST::Intersect $ast, $context?) {
-    $ast.selects.map({ self.translate( $_, "multi-select").key })
-            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
-}
+                                    $ast.selects.map({ self.translate( $_, "multi-select").key })
+                                            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
+                                }
 
 multi method translate(Red::AST::Minus $ast, $context?) {
-    $ast.selects.map({ self.translate( $_, "multi-select" ).key })
-            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
-}
+                                    $ast.selects.map({ self.translate( $_, "multi-select" ).key })
+                                            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
+                                }
 
 multi method translate(Red::AST::Union $ast, "multi-select-op") { "UNION" => [] }
 multi method translate(Red::AST::Intersect $ast, "multi-select-op") { "INTERSECT" => [] }

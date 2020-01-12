@@ -5,12 +5,12 @@ model Bla { has $.id is serial; has Int $.bla is column }
 model Ble { has $.id is serial; has Int $.ble is column }
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
-my $*RED-DEBUG-AST      = $_ with %*ENV<RED_DEBUG_AST>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
-my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-Bla.^create-table;
-Ble.^create-table;
+schema(Bla, Ble).create;
 
 Bla.^create: :bla($_) for ^50;
 Ble.^create: :ble($_) for ^50;

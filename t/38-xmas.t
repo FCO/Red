@@ -7,11 +7,13 @@ use Child;
 use Gift;
 use ChildAskedOnYear;
 
-red-defaults default => database "SQLite";
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+red-defaults default    => database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-Child.^create-table: :unless-exists;
-Gift.^create-table: :unless-exists;
-ChildAskedOnYear.^create-table: :unless-exists;
+schema(Child, Gift, ChildAskedOnYear).create;
 
 for <doll ball car pokemon> -> $name {
     Gift.^create: :$name;

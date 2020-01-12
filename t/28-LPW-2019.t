@@ -32,11 +32,11 @@ model Person {
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
-my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-
-Post.^create-table;
-Person.^create-table;
+schema(Post, Person).create;
 
 my $a1 = Post.^create: :title<Bla>, :body<Ble>, :published(DateTime.now);
 my $a2 = Post.^create: :title<Bli>, :body<Blo>;

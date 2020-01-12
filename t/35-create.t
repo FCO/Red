@@ -16,11 +16,11 @@ model Ble {
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
-my $*RED-DEBUG-AST      = $_ with %*ENV<RED_DEBUG_AST>;
-my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-Bla.^create-table;
-Ble.^create-table;
+schema(Bla, Ble).create;
 
 subtest "Simple create and fk id", {
     my $bla = Bla.^create: :value<test1>;

@@ -22,10 +22,13 @@ model Bli {
     has Int  $.value is column;
 }
 
-my $*RED-DEBUG = $_ with %*ENV<RED_DEBUG>;
-my $*RED-DB    = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-Bla.^create-table; Ble.^create-table; Bli.^create-table;
+schema(Bla, Ble, Bli).create;
 
 Bla.^create: :ble{ :bli{ :1value } };
 Bla.^create: :ble{ :bli{ :2value } };

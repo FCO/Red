@@ -138,7 +138,6 @@ multi red-do(
     KEEP get-RED-DB.commit;
     UNDO get-RED-DB.rollback;
     red-do |@blocks, :$async, |%pars, :with(get-RED-DB.begin);
-    True
 }
 
 #| Receives list of pairs with connection name and block

@@ -5,8 +5,10 @@ use Red::AST::Generic::Prefix;
 use Red::AST::Generic::Postfix;
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
-my $*RED-DEBUG-AST      = $_ with %*ENV<RED_DEBUG_AST>;
-my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
 model Bla { has $!id is serial; has Int $.val is column }
 
