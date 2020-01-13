@@ -2,6 +2,10 @@ Revision history for Red
 
 {{$NEXT}}
 
+0.1.5  2020-01-13T00:05:12Z
+    - create Red::Schema class
+    - change tests to use Red::Schema class where needed
+
 0.1.4  2020-01-02T23:56:28Z
     - fix `.^create-table: :if-not-exists`
 
