@@ -451,12 +451,12 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
         my $filter = model.^id-filter: |do if $data.defined and not $data.elems {
             $*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row{|@ids}:kv
         } else {
-            for model.^id>>.column -> $column {
-                if $data{$column.name}:exists {
-                    $data{$column.attr-name} = $data{$column.name}:delete;
-                }
-            }
-            $data{|@ids}:kv
+            my %data-copy = model.^id>>.column.map({
+                $data{.name}:exists
+                    ?? (.attr-name => $data{.name})
+                    !! (.attr-name => $data{.attr-name})
+            });
+            %data-copy{|@ids}:kv
         }.Hash if @ids;
 
         for %positionals.kv -> $name, @val {
