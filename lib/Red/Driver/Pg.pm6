@@ -38,22 +38,6 @@ multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined)
     self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
 }
 
-multi method translate(Red::AST::In $_, $context?) {
-    if .right.value ~~ Positional {
-        my ($lstr, @lbind) := do given self.translate: .left,  $context { .key, .value }
-
-        if .right.value.elems == 0 {
-            return "$lstr { .op } (SELECT 0 WHERE false)" => @lbind;
-        }
-
-        my $in-placeholder = '(' ~ (self.wildcard xx .right.value.elems).join(',') ~ ')';
-
-        return "$lstr { .op } $in-placeholder" => [|@lbind, |.right.value];
-    } else {
-        nextsame;
-    }
-}
-
 multi method translate(Red::AST::RowId $_, $context?) { "OID" => [] }
 
 multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined) {
