@@ -257,24 +257,22 @@ multi method translate(Red::AST::CreateColumn $_, $context?) {
                                     }" => []
                                 }
 
-multi method translate(Red::AST::AddForeignKeyOnTable $_, $context?) {
-                                    "ALTER TABLE {
-                                        .table
-                                    } {
-                                        .foreigns.map({
-                                            "ADD CONSTRAINT {
-                                                $_ with .name
-                                            } FOREIGN KEY ({
-                                                .from.name
-                                            }) REFERENCES {
-                                                .to.class.^table
-                                            }({
-                                                .to.name
-                                            })"
-                                        }).join(" ")
-                                    }" => []
-
-                                }
+multi method translate(Red::AST::AddForeignKeyOnTable $ast, $context?) {
+    |$ast.foreigns.map: -> $fk {
+        "ALTER TABLE {
+            $ast.table
+        }
+        ADD CONSTRAINT {
+            $fk.name
+        } FOREIGN KEY ({
+            $fk.from.name
+        }) REFERENCES {
+            $fk.to.class.^table
+        }({
+            $fk.to.name
+        })" => []
+    }
+}
 
 multi method translate(Red::AST::Union $ast, $context?) {
                                     $ast.selects.map({

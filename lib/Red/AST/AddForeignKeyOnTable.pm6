@@ -2,7 +2,7 @@ use Red::Column;
 unit class Red::AST::AddForeignKeyOnTable does Red::AST;
 
 class Fk {
-    has Str         $.name;
+    has Str         $.name is required;
     has Red::Column $.from is required;
     has Red::Column $.to   is required;
 }
