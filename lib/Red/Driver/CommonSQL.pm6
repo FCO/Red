@@ -319,11 +319,12 @@ multi method join-type($type) { die "'$type' isn't a valid join type" }
 multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     my role ColClass [Mu:U \c] { method class { c } };
     my @bind;
-    my $sel    = do given $ast.of {
+    my $sel = do given $ast.of {
         when Red::Model {
             my $class = $_;
             .^columns.map({
-                my ($s, @b) := do given self.translate: (.column but ColClass[$class]), "select" { .key, .value }
+                my ($s, @b) := do given self.translate:
+                        (.column but ColClass[$class]), "select" { .key, .value }
                 @bind.push: |@b;
                 $s
             }).join: ", ";
@@ -335,16 +336,16 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
         }
     }
     my @pre-join;
-    my $pre = $ast.prefetch.map: {
-        $ast.of."{.name.substr: 2}"().^columns.map({
+    my $pre = $ast.prefetch.map({
+        |$ast.of."{.name.substr: 2}"().^columns.map: {
             my $class = .package;
             @pre-join.push: $class;
             my $*RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;
             my ($s, @b) := do given self.translate: (.column but ColClass[$class]), "select" { .key, .value }
             @bind.push: |@b;
             $s
-        }).join: ", ";
-    }
+        }
+    }).join: ", ";
     $sel ~= ", $pre" if $pre;
     my %t{Red::Model} = (|$ast.tables, $ast.of, |@pre-join).grep({ not .?no-table }).unique.map({ .^tables }).cache.classify: { .head }, :as{ .tail: *-1 };
     my @join-binds;
@@ -363,17 +364,15 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                 " { self.join-type: .^join-type } JOIN {
                     .^table
                 }{
-                    do if .^table ne .^as {
-                        " as {
-                            .^as
-                        }{
-                            do with .HOW.^can("join-on") && .^join-on {
-                                my ($str, @b) := do given self.translate: $_, "where" { .key, .value }
-                                @join-binds.push: |@b;
-                                " ON { $str }"
-                            }
-                        }"
-                    }
+                    " as {
+                        .^as
+                    }{
+                        do with .HOW.^can("join-on") && .^join-on {
+                            my ($str, @b) := do given self.translate: $_, "where" { .key, .value }
+                            @join-binds.push: |@b;
+                            " ON { $str }"
+                        }
+                    }"
                 }"
             })
         ].join: "\n"
