@@ -94,18 +94,18 @@ multi trait_mod:<is>(Attribute $attr, :@relationship! where { .all ~~ Callable a
 }
 
 #| Trait that defines a relationship
-multi trait_mod:<is>(Attribute $attr, :$relationship! (&relationship, Str :$model!, Str :$require = $model, Bool :$optional) --> Empty) is export {
-    $attr.package.^add-relationship: $attr, &relationship, :$model, :$require, :$optional
+multi trait_mod:<is>(Attribute $attr, :$relationship! (&relationship, Str :$model, Str :$require = $model, Bool :$optional, Bool :$no-prefetch) --> Empty) is export {
+    $attr.package.^add-relationship: $attr, &relationship, |(:$model with $model), |(:$require with $require), :$optional, :$no-prefetch
 }
 
 #| Trait that defines a relationship
-multi trait_mod:<is>(Attribute $attr, :$relationship! (Str :$column!, Str :$model!, Str :$require = $model, Bool :$optional) --> Empty) is export {
-    $attr.package.^add-relationship: $attr, :$column, :$model, :$require, :$optional
+multi trait_mod:<is>(Attribute $attr, :$relationship! (Str :$column!, Str :$model!, Str :$require = $model, Bool :$optional, Bool :$no-prefetch) --> Empty) is export {
+    $attr.package.^add-relationship: $attr, :$column, :$model, :$require, :$optional, :$no-prefetch
 }
 
 #| Trait that defines a relationship
-multi trait_mod:<is>(Attribute $attr, Callable :$relationship! ( @relationship! where *.elems == 2, Str :$model!, Str :$require = $model, Bool :$optional) --> Empty) {
-    $attr.package.^add-relationship: $attr, |@relationship, :$model, :$require, :$optional
+multi trait_mod:<is>(Attribute $attr, Callable :$relationship! ( @relationship! where *.elems == 2, Str :$model!, Str :$require = $model, Bool :$optional, Bool :$no-prefetch) --> Empty) {
+    $attr.package.^add-relationship: $attr, |@relationship, :$model, :$require, :$optional, :$no-prefetch
 }
 
 # Traits to define 'phaser' methods

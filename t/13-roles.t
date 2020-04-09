@@ -2,7 +2,7 @@ use Test;
 use Red;
 use Red::Column;
 
-my $*RED-DB = database "Mock";
+my $*RED-DB             = database "Mock";
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my $*RED-COMMENT-SQL    = $_ with %*ENV<RED_COMMENT_SQL>;
@@ -42,7 +42,7 @@ model Blu  { ... }
 
 model Blo does SerialId {
     has UInt $!blu-id is referencing( *.id, :model<Blu> );
-    has Blu  $.blu    is relationship{ .blu-id };
+    has Blu  $.blu    is relationship( *.blu-id, :no-prefetch );
 }
 
 model Blu does SerialId {

@@ -3,7 +3,7 @@ use Red::AST::Value;
 use Red::HiddenFromSQLCommenting;
 use X::Red::Exceptions;
 
-unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model, Str :$require = $model, Bool :$optional];
+unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model, Str :$require = $model, Bool :$optional, Bool :$no-prefetch];
 has Mu:U $!type;
 
 has Bool $.has-lazy-relationship = ?$model;
@@ -13,6 +13,8 @@ has Mu:U $!relationship-model;
 has Bool $!loaded-model = False;
 
 has Bool $!optional = $optional;
+
+has Bool $.no-prefetch = $no-prefetch;
 
 has Str $.rel-name is rw;
 

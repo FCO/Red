@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add option `:no-prefetch` to relationship
 
 0.1.5  2020-01-13T00:05:12Z
     - create Red::Schema class

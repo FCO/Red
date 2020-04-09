@@ -14,7 +14,7 @@ method relationships(|) {
 
 method has-one-relationships(|) {
     %!relationships.keys.grep: {
-        .type !~~ Positional
+        .type !~~ Positional && !.no-prefetch
     }
 }
 
@@ -76,19 +76,44 @@ method prepare-relationships(::Type Mu \type) {
 }
 
 #| Adds a new relationship by column.
-multi method add-relationship(Mu:U $self, Attribute $attr, Str :$column!, Str :$model!, Str :$require = $model, Bool :$optional ) {
-    self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require, :$optional
+multi method add-relationship(
+        Mu:U $self,
+        Attribute $attr,
+        Str  :$column!,
+        Str  :$model!,
+        Str  :$require = $model,
+        Bool :$optional,
+        Bool :$no-prefetch,
+        ) {
+    self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require, :$optional, :$no-prefetch
 }
 
 #| Adds a new relationship by reference.
-multi method add-relationship(Mu:U $self, Attribute $attr, &reference, Str :$model, Str :$require = $model, Bool :$optional ) {
-    $attr does Red::Attr::Relationship[&reference, :$model, :$require, :$optional];
+multi method add-relationship(
+        Mu:U $self,
+        Attribute $attr,
+        &reference,
+        Str  :$model,
+        Str  :$require = $model,
+        Bool :$optional,
+        Bool :$no-prefetch,
+        ) {
+    $attr does Red::Attr::Relationship[&reference, :$model, :$require, :$optional, :$no-prefetch];
     self.add-relationship: $self, $attr
 }
 
 #| Adds a new relationship by two references.
-multi method add-relationship(Mu:U $self, Attribute $attr, &ref1, &ref2, Str :$model, Str :$require = $model, Bool :$optional ) {
-    $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require, :$optional];
+multi method add-relationship(
+        Mu:U $self,
+        Attribute $attr,
+        &ref1,
+        &ref2,
+        Str  :$model,
+        Str  :$require = $model,
+        Bool :$optional,
+        Bool :$no-prefetch,
+        ) {
+    $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require, :$optional, :$no-prefetch];
     self.add-relationship: $self, $attr
 }
 
