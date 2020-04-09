@@ -107,9 +107,12 @@ method relationship-type {
 
 method relationship-ast($type = Nil) is hidden-from-sql-commenting {
     my \type = self.relationship-type;
-    my $col1 = rel1 type;
-    my $col2 = $col1.ref($type);
-    Red::AST::Eq.new: $col1, $col2
+    my @col1 = |rel1 type;
+    @col1.map({
+        Red::AST::Eq.new: $_, .ref: $type
+    }).reduce: -> $agg, $i {
+        Red::AST::AND.new: $agg, $i
+    }
 }
 
 method join-type {
@@ -119,7 +122,7 @@ method join-type {
                 !! :inner
     }
     do given rel1 self.relationship-type {
-        when .nullable {
+        when .?nullable {
             :left
         }
         default {
