@@ -596,3 +596,41 @@ multi method get-attr(\instance, Red::Attr::Column $attr) {
 multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
     samewith instance, $attr.name.substr(2), value
 }
+
+method new-from-data(\of, $data) {
+    my %cols = of.^columns.map: { .column.attr-name => .column }
+    my $obj = of.^orig.new: |(%($data).kv
+            .map(-> $k, $v {
+        do with $v {
+            my $c = $k.split(".").tail;
+            CATCH {
+                dd $data;
+                dd %cols;
+                dd $c;
+                dd %cols{$c};
+                dd get-RED-DB.^lookup("inflate").candidates>>.signature;
+                .rethrow
+            }
+            die "Column '$k' not found" without %cols{$c};
+            die "Inflator not defined for column '$k'" without %cols{$c}.inflate;
+            my $inflated = %cols{$c}.inflate.($v);
+            $inflated = get-RED-DB.inflate(
+                    $inflated,
+                    :to(of.^attributes.first(*.name.substr(2) eq $c).type)
+                    ) if \(get-RED-DB, $inflated, :to(of.^attributes.first(*.name.substr(2) eq $c).type)) ~~ get-RED-DB.^lookup("inflate").candidates.any.signature;
+            $c => $inflated
+        } else { Empty }
+    }).Hash)
+    ;
+    my %pre = (%(), |$data.keys).reduce: -> %ag, $key {
+        my ($first, *@rest) := $key.split(".");
+        %ag{ $first }{ @rest.join(".")} = $data{ $key } if @rest;
+        %ag
+    }
+    for |$obj.^has-one-relationships -> $rel {
+        with %pre{ $rel.rel-name } {
+            $rel.set_value: $obj, $rel.relationship-type.^new-from-data: $_<>
+        }
+    }
+    $obj
+}

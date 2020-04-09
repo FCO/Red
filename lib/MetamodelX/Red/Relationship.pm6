@@ -24,6 +24,8 @@ method has-many-relationships(|) {
     }
 }
 
+method create-rel-name(Mu \instance, $name) { "{ instance.^as }_{ $name }" }
+
 method !sel-scalar($attr, $name) {
     my method (Mu:U \SELF:) {
         SELF.^join(
@@ -31,7 +33,7 @@ method !sel-scalar($attr, $name) {
                     ?? $attr.relationship-model
                     !! $attr.type
             ,
-            :name("{ SELF.^as }_{ $name }"),
+            :name(SELF.^create-rel-name($name)),
             $attr,
             |$attr.join-type.Hash,
         )
@@ -116,6 +118,7 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
             }
         }
     }
+    $attr.rel-name = self.create-rel-name($self, $name);
     $self.^add_multi_method: $name, $attr.type ~~ Positional
         ?? self!sel-positional($attr)
         !! self!sel-scalar($attr, $name);

@@ -30,30 +30,7 @@ method pull-one {
     if $*RED-DRY-RUN { return $!of.bless }
     my $data := $!st-handler.row;
     return IterationEnd if $data =:= IterationEnd or not $data;
-    my %cols = $!of.^columns.map: { .column.attr-name => .column }
-    my $obj = $!of.^orig.new: |(%($data).kv
-        .map(-> $k, $v {
-            do with $v {
-                my $c = $k.split(".").tail;
-                CATCH {
-                    dd $data;
-                    dd %cols;
-                    dd $c;
-                    dd %cols{$c};
-                    dd $!driver.^lookup("inflate").candidates>>.signature;
-                    .rethrow
-                }
-                die "Column '$k' not found" without %cols{$c};
-                die "Inflator not defined for column '$k'" without %cols{$c}.inflate;
-                my $inflated = %cols{$c}.inflate.($v);
-                $inflated = $!driver.inflate(
-                    $inflated,
-                    :to($!of.^attributes.first(*.name.substr(2) eq $c).type)
-                ) if \($!driver, $inflated, :to($!of.^attributes.first(*.name.substr(2) eq $c).type)) ~~ $!driver.^lookup("inflate").candidates.any.signature;
-                $c => $inflated
-            } else { Empty }
-        }).Hash)
-    ;
+    my $obj = $!of.^new-from-data($data);
     $obj.^clean-up;
     $obj.^saved-on-db;
     return .($obj) with &!post;

@@ -31,6 +31,7 @@ for ^10 -> $value {
     }
 }
 
+$*RED-DEBUG-RESPONSE = $*RED-DEBUG = True;
 .bla.say for Ble.^all;
 
 done-testing;

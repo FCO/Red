@@ -14,6 +14,8 @@ has Bool $!loaded-model = False;
 
 has Bool $!optional = $optional;
 
+has Str $.rel-name is rw;
+
 method transfer(Mu:U $package) {
     my $attr = Attribute.new: :$package, :$.name, :$.type;
     $attr but Red::Attr::Relationship[&rel1, &rel2, :$model, :$require]
