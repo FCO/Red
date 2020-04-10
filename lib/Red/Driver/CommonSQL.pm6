@@ -341,7 +341,8 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
             my $class = .package;
             @pre-join.push: $class;
             my $*RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;
-            my ($s, @b) := do given self.translate: (.column but ColClass[$class]), "select" { .key, .value }
+            my ($s, @b) := do given self.translate:
+                    (.column but ColClass[$class]), "select" { .key, .value }
             @bind.push: |@b;
             $s
         }

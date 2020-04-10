@@ -12,7 +12,7 @@ model Transition is rw {
     has Int $.from-id       is referencing(model => 'State', column => 'id');
     has     $.from          is relationship(*.from-id, model => 'State');
     has Int $.to-id         is referencing(model => 'State', column => 'id');
-    has     $.to            is relationship(*.to-id, model => 'State');
+    has     $.to            is relationship(*.to-id, model => 'State', :no-prefetch);
 }
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;

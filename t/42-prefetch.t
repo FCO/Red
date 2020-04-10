@@ -31,7 +31,11 @@ for ^10 -> $value {
     }
 }
 
-$*RED-DEBUG-RESPONSE = $*RED-DEBUG = True;
+start react whenever Red.events {
+    flunk "Did not prefetch" if $++
+}
 .bla.say for Ble.^all;
+
+pass "Prefetched";
 
 done-testing;
