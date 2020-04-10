@@ -54,8 +54,8 @@ lives-ok {
 }
 
 todo "NYI", @todo.elems;
-lives-ok {
-        is-deeply .(Bla.^all).Seq, .(@bla).Seq for @todo;
-}
+#lives-ok {
+        #is-deeply .(Bla.^all).Seq, .(@bla).Seq for @todo;
+#}
 
 done-testing;
