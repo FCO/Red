@@ -632,7 +632,7 @@ method new-from-data(\of, $data) {
     }
     for |$obj.^has-one-relationships -> $rel {
         with %pre{ $rel.rel-name } {
-#            my $new = $rel.relationship-type.^new-from-data: $_<>;
+#            my $new = $rel.relationship-model.^new-from-data: $_<>;
 #            $rel.set_value: $obj, $_ with $new
         }
     }

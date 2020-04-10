@@ -34,7 +34,7 @@ for ^10 -> $value {
 start react whenever Red.events {
     flunk "Did not prefetch" if $++
 }
-.bla.say for Ble.^all;
+isa-ok .bla, Bla for Ble.^all;
 
 pass "Prefetched";
 

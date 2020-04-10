@@ -99,7 +99,7 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
     return
 }
 
-method relationship-type {
+method relationship-argument-type {
     do if self.type ~~ Positional {
         $model ?? self.relationship-model !! self.type.of
     } else {
@@ -108,7 +108,7 @@ method relationship-type {
 }
 
 method relationship-ast($type = Nil) is hidden-from-sql-commenting {
-    my \type = self.relationship-type;
+    my \type = self.relationship-argument-type;
     my @col1 = |rel1 type;
     @col1.map({
         Red::AST::Eq.new: $_, .ref: $type
@@ -123,7 +123,7 @@ method join-type {
                 ?? :left
                 !! :inner
     }
-    do given rel1 self.relationship-type {
+    do given rel1 self.relationship-argument-type {
         when .?nullable {
             :left
         }
