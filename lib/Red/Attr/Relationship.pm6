@@ -28,7 +28,8 @@ method rel {
 }
 
 method relationship-model(--> Mu:U)  is hidden-from-sql-commenting {
-    if $model.defined && !$!loaded-model {
+    return self.type without $model;
+    unless $!loaded-model {
         my $t = ::($model);
         if !$t && $t ~~ Failure {
             require ::($require);
@@ -37,7 +38,7 @@ method relationship-model(--> Mu:U)  is hidden-from-sql-commenting {
         $!relationship-model = $t;
         $!loaded-model = True;
     }
-    $!relationship-model;
+    $!relationship-model
 }
 
 method set-data(\instance, Mu $value) is hidden-from-sql-commenting {

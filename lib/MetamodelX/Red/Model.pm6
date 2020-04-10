@@ -626,14 +626,18 @@ method new-from-data(\of, $data) {
         }).Hash
     );
     my %pre = (%(), |$data.keys).reduce: -> %ag, $key {
-        my ($first, *@rest) := $key.split(".");
-        %ag{ $first }{ @rest.join(".")} = $data{ $key } if @rest;
+        if $data{ $key }:exists && $data{ $key }.defined {
+            my ($first, *@rest) := $key.split(".");
+            %ag{ $first }{ @rest.join(".") } = $data{ $key } if @rest;
+        }
         %ag
     }
-    for |$obj.^has-one-relationships -> $rel {
-        with %pre{ $rel.rel-name } {
-#            my $new = $rel.relationship-model.^new-from-data: $_<>;
-#            $rel.set_value: $obj, $_ with $new
+    if %pre {
+        for |$obj.^has-one-relationships -> $rel {
+            with %pre{ $rel.rel-name } {
+                $rel.set_value: $obj, $_
+                        with $rel.relationship-model.^new-from-data: $_
+            }
         }
     }
     $obj
