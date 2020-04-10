@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.6  2020-04-10T19:25:12+01:00
     - Add option `:no-prefetch` to relationship
     - Auto prefetches to-one relationships
 
