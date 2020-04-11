@@ -5,4 +5,4 @@ before_install:
   - docker pull fernandocorrea/red-tester-no-config
 script:
   - docker run -v $PWD:/code fernandocorrea/red-tester
-  - docker run -v $PWD:/code fernandocorrea/red-tester-no-config
+  #- docker run -v $PWD:/code fernandocorrea/red-tester-no-config
