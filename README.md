@@ -26,7 +26,7 @@ use Red:api<2>;
 model Person {...}
 
 model Post is rw {
-    has Int         $.id        is serial;
+    has Int         $.id        is serial; # an id field is mandatory
     has Int         $!author-id is referencing{ Person.id };
     has Str         $.title     is column{ :unique };
     has Str         $.body      is column;
@@ -42,7 +42,7 @@ model Post is rw {
 }
 
 model Person is rw {
-    has Int  $.id            is serial;
+    has Int  $.id            is serial; # an id field is mandatory
     has Str  $.name          is column;
     has Post @.posts         is relationship{ .author-id };
     method active-posts { @!posts.grep: not *.deleted }
