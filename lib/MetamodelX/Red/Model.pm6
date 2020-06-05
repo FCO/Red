@@ -420,6 +420,7 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
         my %relationships := set %.relationships.keys>>.name>>.substr: 2;
         my %pars;
         my %positionals;
+
         for %orig-pars.kv -> $name, $val {
             my \attr = model.^attributes.first(*.name.substr(2) eq $name);
             my \attr-type = attr.type;
@@ -466,7 +467,7 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
                         if $filter.DEFINITE {
                             $obj = model.^find: $filter
                         } else {
-                            $obj = model.new($data.elems ?? |$data !! %orig-pars);
+                            $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);
                             $obj.^saved-on-db;
                             $obj.^clean-up;
                             $obj.^populate-ids;
