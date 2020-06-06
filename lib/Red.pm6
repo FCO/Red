@@ -42,27 +42,38 @@ my package EXPORTHOW {
     }
 }
 
-multi EXPORT("experimental migrations") {
+proto experimental(Str) {*}
+
+multi experimental($ where "experimental migrations" | "migrations") {
     use MetamodelX::Red::Migration;
     MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
     MetamodelX::Red::Model.^compose;
 
+    Empty
+}
+
+multi experimental("is-handling") {
+    multi trait_mod:<is>(Mu:U $model, :$handling) {
+        for $handling<> {
+            my ($orig, $new) = $_ ~~ Pair ?? [.key, .value] !! [$_, $_];
+            $model.^add_method: $new, method (|c) { self.^all."$orig"(|c) }
+        }
+    }
     Map(
-        Red::Do::EXPORT::ALL::,
-        Red::Traits::EXPORT::ALL::,
-        Red::Operators::EXPORT::ALL::,
-        Red::Schema::EXPORT::ALL::,
-        ‘&database’ => &database,
+            '&trait_mod:<is>' => &trait_mod:<is>
     )
 }
 
-multi EXPORT {
+multi experimental($feature) { die "Experimental feature '{ $feature }' not recognized." }
+
+multi EXPORT(+@experimentals) {
     Map(
         Red::Do::EXPORT::ALL::,
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         Red::Schema::EXPORT::ALL::,
         ‘&database’ => &database,
+        |@experimentals.map(-> $feature { |experimental( $feature ) })
     )
 }
 
