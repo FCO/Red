@@ -3,7 +3,9 @@ use Red;
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
-my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
 model TicketStatus {
     has UInt $.id       is serial;
@@ -12,11 +14,11 @@ model TicketStatus {
 
 TicketStatus.^create-table;
 
-my \new     = TicketStatus.^create: :name<new>;
-my \opened  = TicketStatus.^create: :name<opened>;
-my \closed  = TicketStatus.^create: :name<closed>;
-my \blocked = TicketStatus.^create: :name<blocked>;
-my \paused  = TicketStatus.^create: :name<paused>;
+my $new     = TicketStatus.^create: :name<new>;
+my $opened  = TicketStatus.^create: :name<opened>;
+my $closed  = TicketStatus.^create: :name<closed>;
+my $blocked = TicketStatus.^create: :name<blocked>;
+my $paused  = TicketStatus.^create: :name<paused>;
 
 model Ticket { ... }
 
@@ -31,14 +33,13 @@ model Ticket is rw {
     has UInt            $.id        is serial;
     has Str             $.title     is column;
     has Str             $.body      is column;
-    has UInt            $.status-id is referencing{  TicketStatus.id };
-    has TicketStatus    $.status    is relationship{ .status-id } is rw = new;
-    has UInt            $.author-id is referencing{  Person.id }
+    has UInt            $.status-id is referencing( *.id, :model<TicketStatus> );
+    has TicketStatus    $.status    is relationship{ .status-id } = $new;
+    has UInt            $.author-id is referencing( *.id, :model<Person> );
     has Person          $.author    is relationship{ .author-id }
 }
 
-Ticket.^create-table;
-Person.^create-table;
+schema(Ticket, Person).create;
 
 my \me = Person.^create: :name<Me>;
 isa-ok me, Person;
@@ -69,10 +70,12 @@ for me.tickets -> $t {
     is $t.status.name, "new"
 }
 
-given me.tickets.head {
-    say "closing ticket { .title }";
-    .status = closed;
-    .^save;
+todo 1;
+lives-ok {
+    given me.tickets.head {
+        .status = $closed;
+        .^save;
+    }
 }
 
 todo "Its repeting the last results";

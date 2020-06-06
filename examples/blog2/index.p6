@@ -33,3 +33,5 @@ say "✓ Available post id(s) → ", $p.active-posts.map: *.id;
 say "✓ Date Inflated → ", $p.posts.head.created.^name;
 
 say "✓ Data with custom inflator → ", $p.posts.map: *.tags;
+
+.say for Post.^all.map: *.author.name

@@ -1,5 +1,7 @@
 use Red::AST;
 use Red::AST::MultiSelect;
+
+#| Represents a select minus other select
 unit class Red::AST::Minus does Red::AST::MultiSelect;
 
 has Red::AST @.selects;

@@ -1,5 +1,5 @@
 use Test;
-
+my $*RED-FALLBACK = False;
 use-ok "Red";
 
 use Red;
@@ -9,7 +9,7 @@ use Red::AST::Infixes;
 my $*RED-DB = database "Mock";
 
 my $*RED-DRY-RUN = True;
-my $*RED-DEBUG = True;
+my $*RED-DEBUG = so %*ENV<RED_DEBUG>;
 
 #isa-ok model {}.HOW, MetamodelX::Red::Model;
 
@@ -64,6 +64,23 @@ given model { has $.a is rw is column; has $.b is rw is column }.new {
     is .b, 13;
     is .^dirty-columns.keys.sort, < $!a $!b >;
     .^clean-up;
+    ok not .^is-dirty;
+}
+
+
+given model :: { has UInt $.a is rw is id; has Int $.b is rw is column }.new {
+    ok .^is-dirty;
+    is .^dirty-columns.keys.sort, < $!a $!b >;
+    .^save;
+    ok not .^is-dirty;
+    .a = 42;
+    is .a, 42;
+    ok .^is-dirty;
+    is .^dirty-columns.keys.sort, < $!a >;
+    .b = 13;
+    is .b, 13;
+    is .^dirty-columns.keys.sort, < $!a $!b >;
+    .^save;
     ok not .^is-dirty;
 }
 
@@ -216,7 +233,7 @@ model Person { ... }
 
 model Post {
     has Int     $.id        is column{ :id };
-    has Int     $.author-id is column{ :references{ Person.id } };
+    has Int     $.author-id is column{ :references{ .id }, :model-name<Person> };
     has Person  $.author    is relationship{ .author-id };
 }
 
@@ -228,6 +245,7 @@ model Person {
 
 is Post.^id>>.name, < $!id >;
 is Post.new(:42id).^id-values, < 42 >;
+is Post.^new-with-id(42).id, < 42 >;
 
 isa-ok Person.new(:42id).posts, Post::ResultSeq;
 isa-ok Post.new(:123author-id).author, Person;
@@ -236,14 +254,14 @@ is-deeply Post.author-id.ref, Person.id;
 
 lives-ok { Post.^all.grep: *.author.name eq "Bla" }
 
-is-deeply Post.author, Person;
+is-deeply Post.author.^table, Person.^table;
 
 
 model Person2 { ... }
 
 model Post2 {
     has Int      $.id        is column{ :id };
-    has Int      $.author-id is referencing{ Person2.id };
+    has Int      $.author-id is referencing( *.id, :model<Person2> );
     has Person2  $.author    is relationship{ .author-id };
 }
 
@@ -257,7 +275,8 @@ is-deeply Post2.author-id.ref, Person2.id;
 
 lives-ok { Post2.^all.grep: *.author.name eq "Bla" }
 
-is-deeply Post2.author, Person2;
+is Post2.author.^table, Person2.^table;
+is Post2.author.^name, "post2_author";
 
 my $alias1 = Post2.^alias;
 is $alias1.^name,                   "Post2_1";
@@ -268,7 +287,7 @@ is Post2,                           Post2.id.class;
 is $alias1.id.attr,                 Post2.id.attr;
 is $alias1.id.attr-name,            Post2.id.attr-name;
 is $alias1.id.id,                   Post2.id.id;
-cmp-ok $alias1.id.references, "===", Post2.id.references;
+is-deeply $alias1.id.references,    Post2.id.references;
 is $alias1.id.nullable,             Post2.id.nullable;
 is $alias1.id.name,                 Post2.id.name;
 
@@ -277,7 +296,7 @@ is Post2,                           Post2.author-id.class;
 
 is $alias1.author-id.attr,          Post2.author-id.attr;
 is $alias1.author-id.attr-name,     Post2.author-id.attr-name;
-cmp-ok $alias1.author-id.references, "===", Post2.author-id.references;
+is-deeply $alias1.author-id.references, Post2.author-id.references;
 is $alias1.author-id.nullable,      Post2.author-id.nullable;
 is $alias1.author-id.name,          Post2.author-id.name;
 
@@ -289,7 +308,7 @@ is Post2,                           Post2.id.class;
 is $alias2.id.attr,                 Post2.id.attr;
 is $alias2.id.attr-name,            Post2.id.attr-name;
 is $alias2.id.id,                   Post2.id.id;
-cmp-ok $alias2.id.references, "===", Post2.id.references;
+is-deeply $alias2.id.references,    Post2.id.references;
 is $alias2.id.nullable,             Post2.id.nullable;
 is $alias2.id.name,                 Post2.id.name;
 
@@ -299,7 +318,7 @@ is Post2,                           Post2.author-id.class;
 is $alias2.author-id.attr,          Post2.author-id.attr;
 is $alias2.author-id.attr-name,     Post2.author-id.attr-name;
 is $alias2.author-id.id,            Post2.author-id.id;
-cmp-ok $alias2.author-id.references, "===", Post2.author-id.references;
+is-deeply $alias2.author-id.references, Post2.author-id.references;
 is $alias2.author-id.nullable,      Post2.author-id.nullable;
 is $alias2.author-id.name,          Post2.author-id.name;
 
@@ -381,8 +400,8 @@ is-deeply Post3_2.author-id.ref, Post3_1.author-id.ref;
 
 lives-ok { Post3_2.^all.grep: *.author.name eq "Bla" }
 
-is-deeply Post3_1.author, Person3;
-is-deeply Post3_2.author, Person3;
-is-deeply Post3_1.author, Post3_2.author;
+is-deeply Post3_1.author.^table, Person3.^table;
+is-deeply Post3_2.author.^table, Person3.^table;
+is-deeply Post3_1.author.^table, Post3_2.author.^table;
 
 done-testing

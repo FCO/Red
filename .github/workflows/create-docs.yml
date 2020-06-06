@@ -1,0 +1,23 @@
+name: create-docs
+on:
+  push
+jobs:
+  perl6:
+    runs-on: ubuntu-latest
+    container:
+      image: fernandocorrea/red-tester-no-run
+    steps:
+    - uses: actions/checkout@v2
+    - name: Create local changes
+      run: |
+        raku tools/make-docs.pl6
+    - name: Commit files
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+        git add .
+        git commit -m "Create docs" -a || true
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}

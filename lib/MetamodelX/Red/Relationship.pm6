@@ -1,6 +1,9 @@
 use Red::Attr::Relationship;
 use Red::FromRelationship;
 use Red::AST;
+#no precompilation;
+
+=head2 MetamodelX::Red::Relationship
 
 unit role MetamodelX::Red::Relationship;
 has %!relationships{Attribute};
@@ -9,22 +12,56 @@ method relationships(|) {
     %!relationships
 }
 
-submethod !BUILD_pr(*%data) {
-    my \instance = self;
-    for self.^relationships.keys -> $rel {
-        $rel.build-relationship: instance
+method has-one-relationships(|) {
+    %!relationships.keys.grep: {
+        .type !~~ Positional && !.no-prefetch
     }
-    for self.^attributes -> $attr {
-        my $name = $attr.name.substr: 2;
-        with %data{ $name } {
-            $attr.set_value: instance, $_
-        }
+}
+
+method has-many-relationships(|) {
+    %!relationships.keys.grep: {
+        .type ~~ Positional
     }
-    nextsame
+}
+
+method create-rel-name(Mu \instance, $name) { "{ instance.^as }_{ $name }" }
+
+method !sel-scalar($attr, $name) {
+    my method (Mu:U \SELF:) {
+        SELF.^join(
+            $attr.has-lazy-relationship
+                    ?? $attr.relationship-model
+                    !! $attr.type
+            ,
+            :name(SELF.^create-rel-name($name)),
+            $attr,
+            |$attr.join-type.Hash,
+        )
+    }
+}
+
+method !sel-positional($attr) {
+    my method (Mu:U \SELF:) {
+        my $ast = $attr.relationship-ast: SELF;
+        $attr.package.^rs.new: :filter($ast)
+    }
 }
 
 method !get-build {
-    & //= self.^find_private_method('BUILD_pr')
+    #& //= self.^find_private_method('BUILD_pr')
+    method (*%data) {
+        my \instance = self;
+        for self.^relationships.keys -> $rel {
+            $rel.build-relationship: instance
+        }
+        for self.^attributes -> $attr {
+            my $name = $attr.name.substr: 2;
+            with %data{ $name } {
+                $attr.set_value: instance, $_
+            }
+        }
+        nextsame
+    }
 }
 
 method prepare-relationships(::Type Mu \type) {
@@ -38,20 +75,49 @@ method prepare-relationships(::Type Mu \type) {
     }
 }
 
-multi method add-relationship(Mu:U $self, Attribute $attr, Str :$column!, Str :$model!, Str :$require = $model ) {
-    self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require
+#| Adds a new relationship by column.
+multi method add-relationship(
+        Mu:U $self,
+        Attribute $attr,
+        Str  :$column!,
+        Str  :$model!,
+        Str  :$require = $model,
+        Bool :$optional,
+        Bool :$no-prefetch,
+        ) {
+    self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require, :$optional, :$no-prefetch
 }
 
-multi method add-relationship(Mu:U $self, Attribute $attr, &reference, Str :$model, Str :$require = $model) {
-    $attr does Red::Attr::Relationship[&reference, :$model, :$require];
+#| Adds a new relationship by reference.
+multi method add-relationship(
+        Mu:U $self,
+        Attribute $attr,
+        &reference,
+        Str  :$model,
+        Str  :$require = $model,
+        Bool :$optional,
+        Bool :$no-prefetch,
+        ) {
+    $attr does Red::Attr::Relationship[&reference, :$model, :$require, :$optional, :$no-prefetch];
     self.add-relationship: $self, $attr
 }
 
-multi method add-relationship(Mu:U $self, Attribute $attr, &ref1, &ref2, Str :$model, Str :$require  = $model) {
-    $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require];
+#| Adds a new relationship by two references.
+multi method add-relationship(
+        Mu:U $self,
+        Attribute $attr,
+        &ref1,
+        &ref2,
+        Str  :$model,
+        Str  :$require = $model,
+        Bool :$optional,
+        Bool :$no-prefetch,
+        ) {
+    $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require, :$optional, :$no-prefetch];
     self.add-relationship: $self, $attr
 }
 
+#| Adds a new relationship using an attribute of type `Red::Attr::Relationship`.
 multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) {
     %!relationships ∪= $attr;
     my $name = $attr.name.substr: 2;
@@ -77,21 +143,9 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
             }
         }
     }
+    $attr.rel-name = self.create-rel-name($self, $name);
     $self.^add_multi_method: $name, $attr.type ~~ Positional
-        ?? my method (Mu:U:) {
-            my $ast = $attr.relationship-ast;
-            $attr.package.^rs.new: :filter($ast)
-        }
-        !! my method (Mu:U:) {
-            (my $grep-filter := $*RED-GREP-FILTER).Bool;
-            if $grep-filter ~~ Red::AST {
-                $grep-filter = $attr.relationship-ast
-            }
-            #Red::FromRelationship.new:
-            #    :from-relationship($name),
-            #    :model($attr.has-lazy-relationship ?? $attr.relationship-model !! $attr.type)
-            #;
-            $attr.has-lazy-relationship ?? $attr.relationship-model !! $attr.type
-        }
+        ?? self!sel-positional($attr)
+        !! self!sel-scalar($attr, $name);
     ;
 }

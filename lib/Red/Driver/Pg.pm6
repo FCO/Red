@@ -17,6 +17,7 @@ has Str $!dbname;
 has DB::Pg $!dbh;
 
 
+method schema-reader {}
 submethod BUILD(DB::Pg :$!dbh, Str :$!user, Str :$!password, Str :$!host = "127.0.0.1", Int :$!port = 5432, Str :$!dbname) {
 }
 
@@ -24,18 +25,24 @@ submethod TWEAK() {
     $!dbh //= DB::Pg.new: conninfo => "{ "user=$_" with $!user } { "password=$_" with $!password } { "host=$_" with $!host } { "port=$_" with $!port } { "dbname=$_" with $!dbname }";
 }
 
-multi method translate(Red::Column $_, "column-auto-increment") { "" => [] }
-
 method wildcard { "\${ ++$*bind-counter }" }
 
-multi method translate(Red::AST::Select $_, $context?) {
+multi method translate(Red::Column $_, "column-auto-increment") {}
+
+multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined) {
     my Int $*bind-counter;
-    nextsame
+    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
+}
+multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined) {
+    my Int $*bind-counter;
+    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
 }
 
-multi method translate(Red::AST::Delete $_, $context?) {
+multi method translate(Red::AST::RowId $_, $context?) { "OID" => [] }
+
+multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined) {
     my Int $*bind-counter;
-    nextsame
+    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
 }
 
 multi method translate(Red::AST::Insert $_, $context?) {
@@ -48,13 +55,13 @@ multi method translate(Red::AST::Insert $_, $context?) {
         @values>>.key.join(",\n").indent: 3
     }\n)\nVALUES(\n{
         (self.wildcard xx @values).join(",\n").indent: 3
-    }\n) RETURNING *", @bind
+    }\n) RETURNING *" => @bind
 }
 
 multi method translate(Red::AST::Mod $_, $context?) {
     my ($ls, @lb) := self.translate: .left,  $context;
     my ($rs, @rb) := self.translate: .right, $context;
-    "mod($ls, $rs)", [|@lb, |@rb]
+    "mod($ls, $rs)" => [|@lb, |@rb]
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
@@ -66,7 +73,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {
 }
 
 multi method translate(Red::Column $_, "column-comment") {
-    "COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'" => []
+    (.comment ?? "COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'" !! "") => []
 }
 
 multi method translate(Red::AST::TableComment $_, $context?) {
@@ -76,7 +83,11 @@ multi method translate(Red::AST::TableComment $_, $context?) {
 class Statement does Red::Statement {
     has Str $.query;
     method stt-exec($stt, *@bind) {
-        my $s = $stt.query($!query, |(@bind or @!binds));
+        $!driver.debug: $!query, @bind || @!binds;
+        my $db = $stt.db;
+        my $sth = $db.prepare($!query);
+        my $s = $sth.execute(|(@bind or @!binds));
+        $db.finish;
         do if $s ~~ DB::Pg::Results {
             $s.hashes
         } else {
@@ -84,19 +95,6 @@ class Statement does Red::Statement {
         }.iterator
     }
     method stt-row($stt) { $stt.pull-one }
-}
-
-multi method prepare(Red::AST $query) {
-    do for |self.translate: self.optimize: $query -> Pair \data {
-        my ($sql, @bind) := do given data { .key, .value }
-        next unless $sql;
-        do unless $*RED-DRY-RUN {
-            my $stt = self.prepare: $sql;
-            $stt.predefined-bind;
-            $stt.binds = @bind.map: { self.deflate: $_ };
-            $stt
-        }
-    }
 }
 
 method comment-on-same-statement { False }
@@ -107,7 +105,6 @@ multi method prepare(Str $query) {
             self.map-exception($_).throw
         }
     }
-    self.debug: $query;
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
 
@@ -120,15 +117,31 @@ multi method default-type-for(Red::Column $                                     
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
 
+multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /"duplicate key value violates unique constraint " \"$<field>=(\w+)\"/) {
+    X::Red::Driver::Mapped::Unique.new:
+            :driver<Pg>,
+            :orig-exception($x),
+            :fields($<field>.Str)
+}
+
 multi method map-exception(DB::Pg::Error::FatalError $x where /"duplicate key value violates unique constraint"/) {
-    $x.message ~~ /"DETAIL:  Key (" \s* (\w+)+ % [\s* "," \s*] \s* ")=(" .*? ") already exists."/;
+    $x.?message-detail ~~ /"Key (" \s* (\w+)+ % [\s* "," \s*] \s* ")=(" .*? ") already exists."/;
+    my @fields = $0 ?? $0>>.Str !! "";
+    X::Red::Driver::Mapped::Unique.new:
+        :driver<Pg>,
+        :orig-exception($x),
+        :@fields,
+}
+
+multi method map-exception(DB::Pg::Error::FatalError $x where /"duplicate key value violates unique constraint"/) {
+    $x.?message ~~ /"DETAIL:  Key (" \s* (\w+)+ % [\s* "," \s*] \s* ")=(" .*? ") already exists."/;
     X::Red::Driver::Mapped::Unique.new:
         :driver<Pg>,
         :orig-exception($x),
         :fields($0>>.Str)
 }
 
-multi method map-exception(DB::Pg::Error::FatalError $x where /"ERROR:"\s+ relation \s+ \"$<table>=(\w+)\" \s+ already \s+ exists\n/) {
+multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /relation \s+ \"$<table>=(\w+)\" \s+ already \s+ exists/) {
     X::Red::Driver::Mapped::TableExists.new:
             :driver<Pg>,
             :orig-exception($x),

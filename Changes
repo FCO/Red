@@ -1,6 +1,64 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.6  2020-04-10T19:25:12+01:00
+    - Add option `:no-prefetch` to relationship
+    - Auto prefetches to-one relationships
+
+0.1.5  2020-01-13T00:05:12Z
+    - create Red::Schema class
+    - change tests to use Red::Schema class where needed
+
+0.1.4  2020-01-02T23:56:28Z
+    - fix `.^create-table: :if-not-exists`
+
+0.1.3  2019-12-31T22:17:46Z
+    - fix README example
+
+0.1.2  2019-12-31T21:38:09Z
+    - fallback to original map/grep when printing
+    - fallback to original map when block has a count higher than 1
+    - fix bug when not defining column type
+
+0.1.1  2019-12-30T02:10:01Z
+    - Add validation on `is referencing` trait for :api<2>
+    - Accept multi-column relationship
+
+0.1.0  2019-12-21T01:24:41Z
+    - xmas example
+    - accept map's block returning Red::Model
+    - json type
+    - :optional on relationships
+    - join types (inner, outer, left, right)
+    - Fix Divisable (%%)
+    - ResultSeq.join
+    - custom join
+    - join
+    - red-do isn't experimental anymore
+    - :api<2>
+
+0.0.6  2019-10-18T00:36:18+01:00
+    - Fix the flickering test
+
+0.0.5  2019-10-18T00:00:57+01:00
+    - ResultSeq.classify(...).Bag
+    - ResultSeq.classify(...).Set
+    - ResultSeq.map(...).classify
+    - ResultSeq.map(...).Bag
+    - ResultSeq.map(...).Set
+    - Create ResultSeq.push
+    - Red::ResultSeq does Positional
+    - Fix .head
+    - Lots of documentation
+
+0.0.4  2019-08-19T18:39:45+01:00
+    - accept && and ||
+    - Fix optimizations
+    - Red CLI
+    - Fix id edition
+    - Fix id-map
+    - Track if the object is on DB and use it to decide between insert and update
     - Allow creation of Red::Driver::* from an existing DB object
     - ResultSeq.Bool should return count(*) > 0
     - ResultSeq.elems should return something that is comparable to an Int

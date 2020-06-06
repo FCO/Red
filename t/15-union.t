@@ -5,8 +5,11 @@ model M is table<mmm> {
     has Int $.a is column
 }
 
-my $*RED-DB = database "SQLite";
-my $*RED-DEBUG = True if %*ENV<RED_DEBUG>;
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
 M.^create-table;
 

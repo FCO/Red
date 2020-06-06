@@ -7,7 +7,7 @@ model Person {...}
 
 model Post is rw {
     has Int         $.id        is serial;
-    has Int         $.author-id is referencing{ Person.id };
+    has Int         $.author-id is referencing( *.id, :model<Person> );
     has Str         $.title     is column{ :unique };
     has Str         $.body      is column;
     has Person      $.author    is relationship{ .author-id };
@@ -30,10 +30,11 @@ model Person is rw {
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
-my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-lives-ok { Person.^create-table }
-lives-ok { Post.^create-table }
+lives-ok { schema(Person, Post).create }
 
 my $p;
 lives-ok { $p = Person.^create: :name<Fernando> }
@@ -54,7 +55,6 @@ lives-ok { $post2 = $p.posts.create: :title("Another commit"), :body("Blablabla"
 is $post2.author-id, $p.id;
 is $post2.title, "Another commit";
 is $post2.body, "Blablabla";
-todo "NYI: use the custom inflator creating the user";
 ok $post2.tags ~~ set <bla ble>;
 
 lives-ok { $post.^delete }

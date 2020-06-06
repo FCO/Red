@@ -7,7 +7,10 @@ model Foo is rw {
 }
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
-my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
 Foo.^create-table;
 
@@ -58,7 +61,7 @@ model MultiBar {
 model MultiFoo {
     has Int $.id is serial;
     has Str $.name is column;
-    has Int $.bar-id is referencing({ MultiBar.id } );
+    has Int $.bar-id is referencing( *.id, :model<MultiBar> );
     has MultiBar $.bar is relationship( { .bar-id });
 }
 

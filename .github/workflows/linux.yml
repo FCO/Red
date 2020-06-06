@@ -1,0 +1,19 @@
+name: linux
+
+on:
+  - push
+
+jobs:
+  perl6:
+
+    runs-on: ubuntu-latest
+
+    container:
+      image: fernandocorrea/red-tester-no-run
+
+    steps:
+      - uses: actions/checkout@v1
+      - name: raku -v
+        run: raku -v
+      - name: Run Tests
+        run: zef install -v .

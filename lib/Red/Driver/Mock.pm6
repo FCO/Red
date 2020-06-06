@@ -6,6 +6,7 @@ use Red::Driver::SQLite;
 use Red::Driver::CommonSQL;
 unit class Red::Driver::Mock does Red::Driver;
 
+method schema-reader {}
 multi prepare-sql(Str:U $_) { Str }
 multi prepare-sql(Str:D $_) {
     .lc
@@ -31,6 +32,7 @@ multi method is-valid-table-name(|c)                    { $!driver-obj.is-valid-
 multi method type-by-name(|c)                           { $!driver-obj.type-by-name(|c)         }
 multi method inflate(|c)                                { $!driver-obj.inflate(|c)              }
 method translate(|c)                                    { $!driver-obj.translate(|c)            }
+multi method join-type(|c)                              { $!driver-obj.join-type(|c)            }
 
 class Statement does Red::Statement {
     has Iterator $.iterator;

@@ -1,0 +1,16 @@
+{
+    "bla": {
+        "default": true,
+        "red-driver": "SQLite",
+        "named": {
+            "database": "./bla.db"
+        },
+        "positional": []
+    },
+    "ble": {
+        "red-driver": "SQLite",
+        "named": {
+            "database": "./ble.db"
+        }
+    }
+}

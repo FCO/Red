@@ -1,5 +1,8 @@
 use Red::AST;
 use Red::AST::Unary;
+#| Represents "is defined" operation
+#| usualy defined as:
+#| type IS NULL
 unit class Red::AST::IsDefined does Red::AST;
 
 has $.col is required;
@@ -23,3 +26,5 @@ method find-column-name {
 method find-value {
     $!col
 }
+
+method gist { "{$!col.gist}.defined" }

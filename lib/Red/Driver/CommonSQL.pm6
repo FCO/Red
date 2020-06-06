@@ -11,12 +11,26 @@ use Red::AST::Update;
 use Red::AST::Delete;
 use Red::AST::Infixes;
 use Red::AST::Function;
+use Red::AST::Divisable;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::LastInsertedRow;
+use Red::AST::CreateColumn;
+use Red::AST::ChangeColumn;
+use Red::AST::DropColumn;
 use Red::AST::TableComment;
+use Red::AST::StringFuncs;
+use Red::AST::DateTimeFuncs;
+use Red::AST::BeginTransaction;
+use Red::AST::CommitTransaction;
+use Red::AST::RollbackTransaction;
+use Red::AST::Generic::Prefix;
+use Red::AST::Generic::Postfix;
+use Red::AST::AddForeignKeyOnTable;
+use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
+use Red::Type::Json;
 
 use UUID;
 unit role Red::Driver::CommonSQL does Red::Driver;
@@ -89,24 +103,195 @@ method reserved-words {<
     ZEROFILL ZONE
 >}
 
+multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
+    1 => Red::AST::CreateColumn.new(
+        :$table,
+        :name(.name),
+        :type(.type),
+        :nullable,
+        :!pk,
+        :!unique,
+        :ref-table(Str),
+        :ref-col(Str),
+    ),
+    8 => Red::AST::ChangeColumn.new(
+        :$table,
+        :name(.name),
+        :type(.type),
+        :nullable(.nullable),
+        :pk(.pk),
+        :unique(.unique),
+        :ref-table(.references.<table> // Str),
+        :ref-col(.references.<column> // Str),
+    ),
+}
+multi method diff-to-ast(Str, Str, "-", Str, $) {}
+
+#multi method diff-to-ast(Str:D, Str:D, "-", Str:D, Bool:D) {}
+multi method diff-to-ast($table, Str $column, "+", "nullable", Bool $nullable --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$nullable,
+    ),
+}
+multi method diff-to-ast($table, Str $column, "+", "type", Str $type --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$type,
+    ),
+}
+multi method diff-to-ast($table, Str $column, "+", "pk", Bool $pk --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$pk,
+    ),
+}
+multi method diff-to-ast($table, Str $column, "+", "unique", Bool $unique --> Hash()) {
+    8 => Red::AST::ChangeColumn.new(
+            :$table,
+            :name($column),
+            :$unique,
+    ),
+}
+multi method diff-to-ast($table, "-", "col", Red::Cli::Column $_ --> Hash()) {
+    9 => Red::AST::DropColumn.new:
+        :table(.table.name),
+        :name(.name),
+    ;
+}
+multi method diff-to-ast(@diff) {
+    @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(|*.key, :as{ |.value }).sort.map: *.value
+}
+
+method create-schema(%models where .values.all ~~ Red::Model) {
+    for %models.kv -> Str() $name, Red::Model \model {
+        self.execute: Red::AST::CreateTable.new:
+                :name(model.^table),
+                :temp(model.^temp),
+                :columns(model.^columns.map(*.column.clone: :references(Callable), :class(model))),
+                |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
+    }
+
+    for %models.kv -> Str() $name, Red::Model \model {
+        my @fks = model.^columns>>.column.grep({ .ref.defined });
+        self.execute: Red::AST::AddForeignKeyOnTable.new:
+                :table(model.^table),
+                :foreigns[@fks.map: {
+                    %(
+                            :name("{
+                                .class.^table
+                            }_{
+                                .name
+                            }_{
+                                .ref.class.^table
+                            }_{
+                                .ref.name
+                            }_fkey"),
+                            :from($_),
+                            :to(.ref),
+                    )
+                }]
+        if @fks
+    }
+    %models.keys Z=> True xx *
+}
+
 proto method translate(Red::AST, $? --> Pair) {*}
 
-multi method translate(Red::AST::Union $ast, $context?) {
-    $ast.selects.map({
-        self.translate( $_, "multi-select" ).key
-    })
-    .join("\n{
-        self.translate($ast, "multi-select-op").key
-    }\n") => []
+multi method translate(Red::AST::BeginTransaction, $context?) {
+                                    "BEGIN" => []
+                                }
+
+multi method translate(Red::AST::CommitTransaction, $context?) {
+                                    "COMMIT" => []
+                                }
+
+multi method translate(Red::AST::RollbackTransaction, $context?) {
+                                    "ROLLBACK" => []
+                                }
+
+multi method translate(Red::AST::DropColumn $_, $context?) {
+                                    "ALTER TABLE {
+                                        .table
+                                    } DROP COLUMN {
+                                        .name
+                                    }" => []
+                                }
+
+multi method translate(Red::AST::ChangeColumn $_, $context?) {
+                                    "ALTER TABLE {
+                                        .table
+                                    } ALTER COLUMN {
+                                        .name
+                                    } {
+                                        .type // ""
+                                    }{
+                                        " NOT NULL" unless .nullable
+                                    }{
+                                        " UNIQUE" if .unique
+                                    }{
+                                        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
+                                    }{
+                                        " PRIMARY KEY" if .pk
+                                    }" => []
+                                }
+
+multi method translate(Red::AST::CreateColumn $_, $context?) {
+                                    "ALTER TABLE {
+                                        .table
+                                    } ADD {
+                                        .name
+                                    } {
+                                        .type
+                                    }{
+                                        " NOT NULL" unless .nullable
+                                    }{
+                                        " UNIQUE" if .unique
+                                    }{
+                                        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
+                                    }{
+                                        " PRIMARY KEY" if .pk
+                                    }" => []
+                                }
+
+multi method translate(Red::AST::AddForeignKeyOnTable $ast, $context?) {
+    |$ast.foreigns.map: -> $fk {
+        "ALTER TABLE {
+            $ast.table
+        }
+        ADD CONSTRAINT {
+            $fk.name
+        } FOREIGN KEY ({
+            $fk.from.name
+        }) REFERENCES {
+            $fk.to.class.^table
+        }({
+            $fk.to.name
+        })" => []
+    }
 }
+
+multi method translate(Red::AST::Union $ast, $context?) {
+                                    $ast.selects.map({
+                                        self.translate( $_, "multi-select" ).key
+                                    })
+                                            .join("\n{
+                                        self.translate($ast, "multi-select-op").key
+                                    }\n") => []
+                                }
 
 multi method translate(Red::AST::Intersect $ast, $context?) {
-    $ast.selects.map({ self.translate( $_, "multi-select").key }).join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
-}
+                                    $ast.selects.map({ self.translate( $_, "multi-select").key })
+                                            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
+                                }
 
 multi method translate(Red::AST::Minus $ast, $context?) {
-    $ast.selects.map({ self.translate( $_, "multi-select" ).key }).join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
-}
+                                    $ast.selects.map({ self.translate( $_, "multi-select" ).key })
+                                            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
+                                }
 
 multi method translate(Red::AST::Union $ast, "multi-select-op") { "UNION" => [] }
 multi method translate(Red::AST::Intersect $ast, "multi-select-op") { "INTERSECT" => [] }
@@ -124,13 +309,22 @@ multi method translate(Red::AST::Select $ast, 'where') {
     '( ' ~ $key ~ ' )' => $value // [];
 }
 
-multi method translate(Red::AST::Select $ast, $context?) {
+multi method join-type("inner" --> "INNER") {}
+multi method join-type("outer" --> "OUTER") {}
+multi method join-type("left"  --> "LEFT" ) {}
+multi method join-type("right" --> "RIGHT") {}
+multi method join-type("") { self.join-type: "inner" }
+multi method join-type($type) { die "'$type' isn't a valid join type" }
+
+multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
+    my role ColClass [Mu:U \c] { method class { c } };
     my @bind;
-    my $sel    = do given $ast.of {
+    my $sel = do given $ast.of {
         when Red::Model {
             my $class = $_;
             .^columns.map({
-                my ($s, @b) := do given self.translate: (.column but role :: { method class { $class } }), "select" { .key, .value }
+                my ($s, @b) := do given self.translate:
+                        (.column but ColClass[$class]), "select" { .key, .value }
                 @bind.push: |@b;
                 $s
             }).join: ", ";
@@ -141,14 +335,50 @@ multi method translate(Red::AST::Select $ast, $context?) {
             $s
         }
     }
-    my $tables = $ast.tables.grep({ not .?no-table }).unique
-        .map({
+    my @pre-join;
+    my $pre = $ast.prefetch.map({
+        |$ast.of."{.name.substr: 2}"().^columns.map: {
+            my $class = .package;
+            @pre-join.push: $class;
+            my $*RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;
+            my ($s, @b) := do given self.translate:
+                    (.column but ColClass[$class]), "select" { .key, .value }
+            @bind.push: |@b;
+            $s
+        }
+    }).join: ", ";
+    $sel ~= ", $pre" if $pre;
+    my %t{Red::Model} = (|$ast.tables, $ast.of, |@pre-join).grep({ not .?no-table }).unique.map({ .^tables }).cache.classify: { .head }, :as{ .tail: *-1 };
+    my @join-binds;
+    my $tables = %t.kv.map(-> $_, @joins {
+        [
             "{
                 .^table
             }{
-                " as { .^as }" if .^table ne .^as
-            }"
-        }).join: ",\n"                                                                  if $ast.^can: "tables";
+                do if .^table ne .^as {
+                    " as {
+                        .^as
+                    }"
+                }
+            }",
+            |@joins.reduce({ |$^a, |$^b }).unique(:as{ .^table }).map({
+                " { self.join-type: .^join-type } JOIN {
+                    .^table
+                }{
+                    " as {
+                        .^as
+                    }{
+                        do with .HOW.^can("join-on") && .^join-on {
+                            my ($str, @b) := do given self.translate: $_, "where" { .key, .value }
+                            @join-binds.push: |@b;
+                            " ON { $str }"
+                        }
+                    }"
+                }"
+            })
+        ].join: "\n"
+    }).join: ",\n"                                                                   if $ast.^can: "tables";
+    @bind.push: |@join-binds;
     my ($where, @wb) := do given self.translate: $ast.filter, "where" { .key, .value }  if $ast.?filter;
     @bind.push: |@wb;
     my $order = $ast.order.map({
@@ -156,7 +386,8 @@ multi method translate(Red::AST::Select $ast, $context?) {
         @bind.push: |@b;
         $s
     }).join: ",\n"   if $ast.?order;
-    my $limit = $ast.limit;
+    my $limit  = $ast.limit;
+    my $offset = $ast.offset;
     my $group;
     if $ast.?group -> $g {
         when Red::Column {
@@ -185,14 +416,24 @@ multi method translate(Red::AST::Select $ast, $context?) {
         "\nGROUP BY\n{ .indent: 3 }" with $group
     }{
         "\nLIMIT $_" with $limit
+    }{
+        "\nOFFSET $_" with $offset
     }" => @bind
+}
+
+multi method translate(Red::AST::StringFunction $_, $context?) {
+    self.translate: .default-implementation, $context
+}
+
+multi method translate(Red::AST::DateTimeFunction $_, $context?) {
+    self.translate: .default-implementation, $context
 }
 
 multi method translate(Red::AST::Function $_, $context?) {
     my @bind;
     "{ .func }({ .args.map({
-        my ($s, @b) := do given self.translate: $_ { .key, .value }
-        @bind.push: |@b;
+        my ($s, @b) := do given self.translate: $_, $context { .key, .value }
+        @bind.append: @b;
         $s
     }).join: ", " })" => @bind
 }
@@ -238,22 +479,10 @@ multi method translate(Red::AST::Case $_, $context?) {
 }
 
 multi method translate(Red::AST::Infix $_, $context?) {
-    my ($lstr, @lbind) := do given self.translate: .left,  $context { .key, .value }
-    my ($rstr, @rbind) := do given self.translate: .right, $context { .key, .value }
+    my ($lstr, @lbind) := do given self.translate: .left,  .bind-left  ?? "bind" !! $context { .key, .value }
+    my ($rstr, @rbind) := do given self.translate: .right, .bind-right ?? "bind" !! $context { .key, .value }
 
     "$lstr { .op } $rstr" => [|@lbind, |@rbind]
-}
-
-multi method translate(Red::AST::Infix $_ where .bind-left, $context?) {
-    my ($rstr, @rbind) := do given self.translate: .right, $context { .key, .value }
-
-    "{self.wildcard} { .op } $rstr" => [.left.get-value, |@rbind]
-}
-
-multi method translate(Red::AST::Infix $_ where .bind-right, $context?) {
-    my ($lstr, @lbind) := do given self.translate: .left, $context { .key, .value }
-
-    "$lstr { .op } {self.wildcard}" => [|@lbind, .right.get-value]
 }
 
 multi method translate(Red::AST::OR $_, $context?) {
@@ -268,39 +497,54 @@ multi method translate(Red::AST::AND $_, $context?) {
     "{ .left ~~ Red::AST::AND|Red::AST::OR??"($l)"!!$l } AND { .right ~~ Red::AST::AND|Red::AST::OR??"($r)"!!$r }" => [|@lbind, |@rbind]
 }
 
+multi method translate(Red::AST::Generic::Postfix $_ , $context?) {
+    my ($str, @bind) := do given self.translate: .value, .bind ?? "bind" !! $context { .key, .value }
+    "$str { .op }" => @bind
+}
+
+multi method translate(Red::AST::Generic::Prefix $_ , $context?) {
+    my ($str, @bind) := do given self.translate: .value, .bind ?? "bind" !! $context { .key, .value }
+    "{ .op } $str" => @bind
+}
+
 multi method translate(Red::AST::Not $_ where .value ~~ Red::AST::IsDefined, $context?) {
     my ($str, @bind) := do given self.translate: .value.col, "is defined" { .key, .value }
     "$str IS NULL" => @bind
 }
 
 multi method translate(Red::AST::Not $_, $context?) {
-    my ($str, @bind) := do given self.translate: .value, $context { .key, .value }
+    my ($str, @bind) := do given self.translate: .value, .bind ?? "bind" !! $context { .key, .value }
     "NOT ($str)" => @bind
 }
 
 multi method translate(Red::AST::So $_, $context?) {
-    self.translate: .value, $context;
-}
-
-multi method translate(Red::AST::Concat $_, $context?) {
-    my ($l, @lb) := do given self.translate: .left,  $context { .key, .value }
-    my ($r, @rb) := do given self.translate: .right, $context { .key, .value }
-    "{ $l } || { $r }" => [|@lb, |@rb]
-}
-
-multi method translate(Red::AST::Like $_, $context?) {
-    my ($l, @lbind) := do given self.translate: .left, $context  { .key, .value }
-    my ($r, @rbind) := do given self.translate: .right, $context { .key, .value }
-    "{ $l } like { $r }" => [|@lbind, |@rbind]
+    self.translate: .value, .bind ?? "bind" !! $context;
 }
 
 multi method translate(Red::Column $col, "select") {
     my ($str, @bind) := do with $col.computation {
         do given self.translate: $_ { .key, .value }
     } else {
-        "{ $col.class.^as }.{ $col.name }", []
+        "{ $col.model.^as }.{ $col.name }", []
     }
-    qq[$str {qq<as "{$col.attr-name}"> if $col.computation or $col.name ne $col.attr-name}] => @bind
+    qq[$str {qq<as "{ "{$*RED-OVERRIDE-COLUMN-AS-PREFIX}." if $*RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }"> if
+            $col.computation
+            or $col.name ne $col.attr-name
+            or $*RED-OVERRIDE-COLUMN-AS-PREFIX
+    }] => @bind
+}
+
+multi method translate(Red::AST::Value $_, "bind") {
+    self.wildcard => [ .value ]
+}
+
+multi method translate(Red::AST::Divisable $_, $context?) {
+    return self.translate:
+            Red::AST::Eq.new(
+                Red::AST::Mod.new(.left, .right),
+                ast-value(0),
+            ),
+            $context
 }
 
 multi method translate(Red::AST::Mul $_ where .left.?value == -1, "order") {
@@ -312,16 +556,32 @@ multi method translate(Red::Column $_, "where") {
 }
 
 multi method translate(Red::Column $_, $context?) {
+    "{.model.^as}.{.name}" => []
+}
+
+multi method translate(Red::Column $_, "create-table-column-name") {
+    .name => []
+}
+
+multi method translate(Red::Column $_, "unique") {
+    .name => []
+}
+
+multi method translate(Red::Column $_, "pk") {
     .name => []
 }
 
 multi method translate(Red::AST::Cast $_, $context?) {
     when Red::AST::Value {
-        qq|'{ .value }'| => []
+        .bind ?? self.translate(.value, "bind") !! qq|'{ .value }'| => []
     }
     default {
-        self.translate: .value, $context
+        self.translate: .value, .bind ?? "bind" !! $context
     }
+}
+
+multi method translate(Red::AST::Value $_ where not .value.defined, "update" ) {
+    "NULL" => []
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $context? ) {
@@ -337,7 +597,7 @@ multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW,
     self.translate: ast-value(.get-value.Str), $context
 }
 
-multi method translate(Red::AST::Value $_ where .type ~~ Str, $context?) {
+multi method translate(Red::AST::Value $_ where .type ~~ Str, $context? where { not .defined or $_ ne "update-rval" }) {
     qq|'{ .get-value.subst: "'", q"''", :g }'| => []
 }
 
@@ -349,20 +609,24 @@ multi method translate(Red::AST::Value $_ where .type ~~ Instant, $context?) {
     self.translate: ast-value(.get-value.?to-posix.head), $context
 }
 
+multi method translate(Red::AST::Value $_ where .type ~~ Numeric, $context?) {
+    ~.get-value => []
+}
+
 multi method translate(Red::AST::Value $_ where .type ~~ Red::FromRelationship, $context?) {
     die "NYI: map returning a relationship";
 }
 
 multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
     return self.translate: ast-value(.get-value), $context if .column.DEFINITE;
-    ~.get-value => []
+    self.translate: ast-value ~.get-value
 }
 
 method comment-on-same-statement { False }
 
 multi method translate(Red::Column $_, "create-table") {
     (
-        "column-name",
+        "create-table-column-name",
         "column-type",
         "nullable-column",
         (|(
@@ -383,6 +647,10 @@ multi method translate(Red::Column $_, "create-table") {
 multi method translate(Red::Column $_, "column-name")           { .name // "" => [] }
 
 multi method translate(Red::Column $_, "column-type")           {
+    if .attr.type =:= Mu {
+        return self.type-by-name("int")  => [] if .auto-increment;
+        return self.type-by-name("string") => []
+    }
     (.type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_) => []
 }
 
@@ -392,16 +660,20 @@ multi method translate(Red::Column $_, "column-pk")             { (.id ?? "prima
 
 multi method translate(Red::Column $_, "column-auto-increment") { (.auto-increment ?? "auto_increment" !! "") => [] }
 
-multi method translate(Red::Column $_, "column-references")     {
+multi method translate(Red::Column $_, "column-references") {
     ("references { .class.^table }({ .name })" with .ref) => []
 }
 
-multi method translate(Red::Column $_, "table-dot-column")     {
+multi method translate(Red::Column $_, "table-dot-column") {
     "{ .class.^table }.{ .name }" => []
 }
 
-multi method translate(Red::Column $_, "column-comment")     {
-    (" COMMENT '$_'") => [] with .comment
+multi method translate(Red::Column $_, "column-comment") {
+    (" COMMENT '$_'") => [] if .comment
+}
+
+multi method translate(Red::Column $_, "update-lval") {
+    .name // "" => []
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
@@ -445,30 +717,45 @@ multi method translate(Red::AST::Insert $_, $context?) {
 }
 
 multi method translate(Red::AST::Delete $_, $context?) {
-    "DELETE FROM { .from }\n{ "WHERE { self.translate($_).key }" with .filter }" => []
+    my ($key, @binds) := do given self.translate(.filter) { .key, .value }
+    "DELETE FROM { .from }\n{ "WHERE { $key }" }" => @binds
 }
 
 multi method translate(Red::AST::Update $_, $context?) {
-    my ($wstr, @wbind) := do given self.translate(.filter) { .key, .value }
+    my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };
     my @bind;
-    my $str = .values.kv.map(-> $col, $val {
-        my ($s, @b) := do given self.translate: $val, 'update' { .key, .value }
-        @bind.push: |@b;
-        $col ~ ' = ' ~ $s
+    my $str = .values.map({
+        my ($c, @c) := do given self.translate: .&ast-value, "update" { .key, .value }
+        @bind.append: @c;
+        $c
     }).join(",\n").indent: 3;
     qq:to/END/ => [|@bind, |@wbind];
     UPDATE {
         .into
     } SET
     $str
-    WHERE $wstr
+    {
+        "WHERE $wstr" with .filter
+    }
     END
+
+}
+
+multi method translate(Red::AST::Value $_ where .type ~~ Pair, "update") {
+    my ($c, @c) := do given self.translate: .value.key, 'update-lval' { .key, .value }
+    my ($s, @b) := do given self.translate: .value.value, 'update-rval' { .key, .value }
+    "{ $c } = { $s }" => [|@c, |@b]
+}
+
+multi method translate(Red::AST::Value $_, "update-rval") {
+    self.wildcard => [.get-value]
 }
 
 multi method translate(Red::AST::LastInsertedRow $_, $context?) { "" => [] }
 
 multi method translate(Red::AST:U $_, $context?) { "" => [] }
 
+multi method default-type-for(Red::Column $ where .attr.type ~~ Json        --> Str:D) {"json"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Rat         --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --> Str:D) {"varchar(32)"}
@@ -480,14 +767,24 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> 
 multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> Str:D) {"varchar(36)"}
 multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
 
+multi method type-for-sql("real"     --> "Num"     ) {}
+multi method type-for-sql("varchar"  --> "Str"     ) {}
+multi method type-for-sql("interval" --> "Duration") {}
+multi method type-for-sql("integer"  --> "Int"     ) {}
+multi method type-for-sql("serial"   --> "UInt"    ) {}
+multi method type-for-sql("boolean"  --> "Bool"    ) {}
+multi method type-for-sql("json"     --> "Json"    ) {}
+multi method type-for-sql(Str $ where /^ "varchar(" ~ ")" \d+ $/ --> "Str") {}
 
 multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
-multi method inflate(Str $value, DateTime :$to!) { $to.new: $value }
-multi method inflate(Num $value, Duration :$to!) { $to.new: $value }
-multi method inflate(Int $value, Duration :$to!) { $to.new: $value }
-multi method inflate(Str $value, Version :$to!) { $to.new: $value }
+multi method inflate(Str $value, DateTime :$to!) { $to.new: $value  }
+multi method inflate(Str $value, Date     :$to!) { $to.new: $value  }
+multi method inflate(Num $value, Duration :$to!) { $to.new: $value  }
+multi method inflate(Int $value, Duration :$to!) { $to.new: $value  }
+multi method inflate(Str $value, Version  :$to!) { $to.new: $value  }
 
 multi method deflate(Instant  $value) { +$value }
+multi method deflate(Date     $value) { ~$value }
 multi method deflate(DateTime $value) { ~$value }
 multi method deflate(Duration $value) { +$value }
 multi method deflate(Duration $value) { +$value }
@@ -502,3 +799,10 @@ multi method is-valid-table-name(Str $str) is default {
     so $str ~~ /^ <[\w_]>+ $/
 }
 method wildcard { "?" }
+
+multi method prepare-json-path-item(@items) {
+    @items.map({ self.prepare-json-path-item: $_ }).join;
+}
+multi method prepare-json-path-item(Red::AST::Value $_) { self.prepare-json-path-item: .value }
+multi method prepare-json-path-item(Int $_) { "[{ $_ }]" }
+multi method prepare-json-path-item(Str $_) { ".{ $_ }"  }

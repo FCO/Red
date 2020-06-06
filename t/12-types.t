@@ -3,10 +3,11 @@ use Test;
 
 use Red;
 
-
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
-my $*RED-DB             = database "SQLite", |(:database($_) with %*ENV<RED_DATABASE>);
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
 subtest {
     model TestDuration {
@@ -21,6 +22,20 @@ subtest {
     isa-ok $row.duration, Duration;
 }, "test Duration";
 
+subtest {
+    model UnknownType {
+        has Str $.unknown is id;
+    }
+
+    UnknownType.^create-table;
+    UnknownType.^create: :unknown<bla>;
+
+    class Bla { has $.value; method Str { ~$!value } }
+
+    lives-ok {
+        is UnknownType.^load(:unknown(Bla.new: :value<bla>)).unknown, "bla"
+    }
+}
 
 done-testing;
 # vim: ft=perl6

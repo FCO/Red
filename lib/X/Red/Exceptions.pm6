@@ -2,6 +2,27 @@ use Red::Column;
 
 class X::Red is Exception {}
 
+class X::Red::RedDbNotDefined is X::Red {
+    method message { Q[$*RED-DB wasn't defined] }
+}
+
+class X::Red::Defaults::FromConfNotFound is X::Red {
+    has Str $.file = "./.red.json";
+    method message { "Red configuration file ($!file) not found" }
+}
+
+class X::Red::Do is X::Red {
+    has Str $.driver = "default"
+}
+
+class X::Red::Do::DriverNotDefined is X::Red::Do {
+    method message { "Driver $.driver not specified" }
+}
+
+class X::Red::Do::DriverDefinedMoreThanOnce is X::Red::Do {
+    method message { "Driver $.driver defined mor than once" }
+}
+
 class X::Red::Driver is X::Red {
     has Str $.driver = $*RED-DB.^name;
 }

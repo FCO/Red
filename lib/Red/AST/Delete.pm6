@@ -2,6 +2,8 @@ use Red::AST;
 use Red::AST::Value;
 use Red::Column;
 use Red::Model;
+
+#| Represents a delete
 unit class Red::AST::Delete does Red::AST;
 
 has Str         $.from;
