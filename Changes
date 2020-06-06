@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.7  2020-06-06T22:00:32+01:00
     - Fix #424
     - Add is-handling experimental feature
 
