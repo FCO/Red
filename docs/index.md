@@ -11,6 +11,7 @@ If you are looking for tutorials, you can visit:
 * Red CLI
 * Working with PostgreSQL
 * Working with SQLite
+* [Special Variables](tutorials/vars)
 * Red Cookbook
 
 #### API documentation
