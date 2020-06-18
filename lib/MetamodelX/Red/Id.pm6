@@ -81,7 +81,7 @@ multi method id-map(Red::Model $model, $id --> Hash()) {
 
 #| Returns a filter using the id
 multi method id-filter(Red::Model:D $model) {
-    $model.^general-ids.flat.map({
+    my @a = $model.^general-ids.flat.map({
         Red::AST::Eq.new:
             .column,
             ast-value
@@ -89,8 +89,10 @@ multi method id-filter(Red::Model:D $model) {
                 $!id-values-attr.get_value($model).{ .name }
                     // self.get-old-attr($model, $_)
                     // self.get-attr: $model, $_
-    })
-        .reduce: { Red::AST::AND.new: $^a, $^b }
+    });
+    @a.elems >= 2
+        ?? @a.reduce: { Red::AST::AND.new: $^a, $^b }
+        !! @a[0]
 }
 
 #| Returns a filter using the id

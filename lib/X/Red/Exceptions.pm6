@@ -51,6 +51,10 @@ class X::Red::InvalidTableName is X::Red::Driver {
     method message { "'$!table' is an invalid table name for driver { $.driver }" }
 }
 
+class X::Red::UpdateNoId is X::Red::Driver {
+    method message { "Update on a model without id isn't allowed" }
+}
+
 class X::Red::Driver::Mapped is X::Red::Driver {
     has Exception   $.orig-exception is required;
     has Str         $!orig-message   = $!orig-exception.message;

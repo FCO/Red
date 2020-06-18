@@ -33,3 +33,7 @@ multi ast-value($value, :$type = $value.WHAT) is export {
     Red::AST::Value.new: :$value, :$type
 }
 
+multi ast-value($value, Mu :$type!) is export {
+    Red::AST::Value.new: :$value, :type(Any)
+}
+
