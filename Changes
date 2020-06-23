@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - SQLite error changing number
 
 0.1.8  2020-06-19T00:26:56+01:00
     - Fix update
