@@ -42,7 +42,7 @@ model Post is rw {
 }
 
 model Person is rw {
-    has Int  $.id            is serial;
+    has Int  $.id            is serial; # an id field is not mandatory, but convenient
     has Str  $.name          is column;
     has Post @.posts         is relationship{ .author-id };
     method active-posts { @!posts.grep: not *.deleted }
