@@ -29,5 +29,5 @@ red-defaults "SQLite", :database("example.db");
 .say for Person.^all;
 ```
 
-- ~migration-plan~ - WiP
-- ~generate-code~ - WiP
+- migration-plan - WiP
+- generate-code - WiP
