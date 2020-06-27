@@ -8,7 +8,7 @@ If you are looking for tutorials, you can visit:
 
 * [Beginner tutorial](tutorials/start)
 * [Relationships tutorial](tutorials/relationship.md)
-* Red CLI
+* [Red CLI](tutorials/cli.md)
 * Working with PostgreSQL
 * Working with SQLite
 * [Special Variables](tutorials/vars)
