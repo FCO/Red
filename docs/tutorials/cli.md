@@ -5,6 +5,7 @@ Red CLI is a tool to give easy access to some of Red features. Currently it has 
 - list-tables
 
   list tables on a given db connection
+  
 ```
 $ red list-tables --driver=SQLite --database=example.db     
 post
@@ -15,6 +16,7 @@ person
 - print-stub
 
   prints a stub code to use the given database
+  
 ```
 $ red print-stub --driver=SQLite --schema-class=Blog --database=example.db
 use Red \<red-do>;
