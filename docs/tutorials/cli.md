@@ -19,7 +19,7 @@ person
   
 ```
 $ red print-stub --driver=SQLite --schema-class=Blog --database=example.db
-use Red \<red-do>;
+use Red:api<2>;
 use Blog;
 
 red-defaults "SQLite", :database("example.db");
