@@ -25,7 +25,7 @@ multi MAIN(
 
 # Generate stub
 sub gen-stub(:@includes, :@models, :$driver, :%pars) {
-    say 'use Red \<red-do>;';
+    say 'use Red:api<2>;';
     for @includes.unique {
         say "use $_;"
     }
@@ -86,7 +86,7 @@ multi MAIN(
 #| Generates models' code from database schema
 multi MAIN(
     "generate-code",
-    Str  :$path     where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
+    Str  :$path!    where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
     Str  :$from-sql where { not .defined or .IO.f or $_ eq "-" or fail "SQL $_ do not exist." },
     Str  :$schema-class,
     Bool :$print-stub       = False,
