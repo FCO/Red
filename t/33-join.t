@@ -22,6 +22,6 @@ is Bla.^join(Ble, *.ble == *.bla).^all.map(*.bla), ^10;
 
 is Bla.^join(:name<test>, Ble, *.ble == *.bla).^all.map(*.bla), ^10;
 
-is Bla.^all.grep(*.ble %% 2).join(Ble, *.ble / 2 == *.bla).map(*.bla), ^5;
+is Bla.^all.grep(*.ble %% 2).join-model(Ble, *.ble / 2 == *.bla).map(*.bla), ^5;
 
 done-testing;

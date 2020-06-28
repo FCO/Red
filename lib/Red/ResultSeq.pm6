@@ -476,8 +476,13 @@ method minus(::?CLASS:D: $other --> Red::ResultSeq) is hidden-from-sql-commentin
     self.clone: :chain($!chain.clone: :$filter)
 }
 
-#| Create a custom join
-method join(Red::Model \model, &on, :$name = "{ self.^name }_{ model.^name }", *%pars where { .elems == 0 || ( .elems == 1 && so .values.head ) }) {
+#| Join (Positional join)
+multi method join(Str() $sep) {
+    self.Seq.join: $sep
+}
+
+#| Create a custom join (SQL join)
+method join-model(Red::Model \model, &on, :$name = "{ self.^name }_{ model.^name }", *%pars where { .elems == 0 || ( .elems == 1 && so .values.head ) }) {
     self.of.^join(model, &on, |%pars).^all.clone: :$!chain
 }
 

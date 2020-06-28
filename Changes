@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - rename ResultSeq.join to ResultSeq.join-model
+    - create ResultSeq.join to mimic Positional.join
 
 0.1.9  2020-06-23T15:38:43+01:00
     - SQLite error changing number
