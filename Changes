@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.11  2020-06-29T02:24:29+01:00
     - Add prepare-database do red CLI
     - Add .^populate to Metaclass
 
