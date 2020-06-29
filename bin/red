@@ -146,3 +146,17 @@ multi MAIN(
     $schema.close if $schema.defined and $path ne "-";
     gen-stub :@includes, :@models, :$driver, :%pars if $print-stub
 }
+
+#| Prepare database
+multi MAIN(
+        "prepare-database",
+        Bool :$populate,
+        Str  :$models!,
+        Str  :$driver!,
+        *%pars
+) {
+    my $*RED-DB = database($driver, |%pars);
+
+    my @m = schema($models.split: ",").create.models.values;
+    @m.map: { .^populate } if $populate
+}

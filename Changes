@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add prepare-database do red CLI
+    - Add .^populate to Metaclass
 
 0.1.10  2020-06-28T14:47:41+01:00
     - rename ResultSeq.join to ResultSeq.join-model

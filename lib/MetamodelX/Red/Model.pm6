@@ -24,6 +24,7 @@ use MetamodelX::Red::Relationship;
 use MetamodelX::Red::Describable;
 use MetamodelX::Red::OnDB;
 use MetamodelX::Red::Id;
+use MetamodelX::Red::Populatable;
 use X::Red::Exceptions;
 use Red::Phaser;
 use Red::Event;
@@ -38,6 +39,7 @@ also does MetamodelX::Red::Relationship;
 also does MetamodelX::Red::Describable;
 also does MetamodelX::Red::OnDB;
 also does MetamodelX::Red::Id;
+also does MetamodelX::Red::Populatable;
 
 has Attribute @!columns;
 has Red::Column %!references;

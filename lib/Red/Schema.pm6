@@ -25,4 +25,5 @@ method create(:$where) {
     red-do (:$where with $where), :transaction, {
         %( |.create-schema(%!models) )
     }
+    self
 }
