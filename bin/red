@@ -155,7 +155,7 @@ multi MAIN(
         Str  :$driver!,
         *%pars
 ) {
-    my $*RED-DB = database($driver, |%pars);
+    red-defaults default => database $driver, |%pars;
 
     my @m = schema($models.split: ",").create.models.values;
     @m.map: { .^populate } if $populate
