@@ -259,6 +259,16 @@ Removes 1 ResultSeq elements from other ResultSeq
 
 ```perl6
 method join(
+    $sep
+) returns Mu
+```
+
+Join (Positional join)
+
+### method join-model
+
+```perl6
+method join-model(
     Red::Model \model,
     &on,
     :$name = { ... },
@@ -266,7 +276,7 @@ method join(
 ) returns Mu
 ```
 
-Create a custom join
+Create a custom join (SQL join)
 
 ### method ast
 
