@@ -455,5 +455,77 @@
         </SOURCES>
       </library>
     </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Red" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://1901695453:Red!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="NativeHelpers::Blob" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://1901695453:NativeHelpers::Blob!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="DB::Pg" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://1901695453:DB::Pg!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="LibUUID" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://1901695453:LibUUID!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="NativeCall" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://1901695453:NativeCall!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="NativeLibs:auth&lt;github:salortiz&gt;" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://1901695453:NativeLibs:auth&lt;github:salortiz&gt;!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="UUID" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://1901695453:UUID!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="DBIish" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://1901695453:DBIish!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="JSON::Fast" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://1901695453:JSON::Fast!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
   </component>
 </module>
