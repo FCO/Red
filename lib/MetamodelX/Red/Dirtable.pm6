@@ -38,15 +38,22 @@ sub dirty-old-values-attr-build(|) {
 }
 
 method set-helper-attrs(Mu \type) {
-    $!col-data-attr = Attribute.new: :name<%!___COLUMNS_DATA___>, :package(type), :type(Any), :!has_accessor;
-    $!col-data-attr.set_build: &col-data-attr-build;
-    type.^add_attribute: $!col-data-attr;
-    $!dirty-cols-attr = Attribute.new: :name<%!___DIRTY_COLS_DATA___>, :package(type), :type(Any), :!has_accessor;
-    $!dirty-cols-attr.set_build: &dirty-cols-attr-build;
-    type.^add_attribute: $!dirty-cols-attr;
-    $!dirty-old-values-attr = Attribute.new: :name<%!___DIRTY_OLD_DATA___>, :package(type), :type(Any), :!has_accessor;
-    $!dirty-old-values-attr.set_build: &dirty-old-values-attr-build;
-    type.^add_attribute: $!dirty-old-values-attr;
+    my %attr is Set = type.^attributes>>.name;
+    unless %attr<%!___COLUMNS_DATA___> {
+            $!col-data-attr = Attribute.new: :name<%!___COLUMNS_DATA___>, :package(type), :type(Any), :!has_accessor;
+            $!col-data-attr.set_build: &col-data-attr-build;
+            type.^add_attribute: $!col-data-attr;
+    }
+    unless %attr<%!___DIRTY_COLS_DATA___> {
+            $!dirty-cols-attr = Attribute.new: :name<%!___DIRTY_COLS_DATA___>, :package(type), :type(Any), :!has_accessor;
+            $!dirty-cols-attr.set_build: &dirty-cols-attr-build;
+            type.^add_attribute: $!dirty-cols-attr;
+    }
+    unless %attr<%!___DIRTY_OLD_DATA___> {
+            $!dirty-old-values-attr = Attribute.new: :name<%!___DIRTY_OLD_DATA___>, :package(type), :type(Any), :!has_accessor;
+            $!dirty-old-values-attr.set_build: &dirty-old-values-attr-build;
+            type.^add_attribute: $!dirty-old-values-attr;
+    }
 }
 
 submethod !TWEAK_pr(\instance: *%data) is rw {

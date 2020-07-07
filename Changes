@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fix time tracker example
 
 0.1.13  2020-06-30T01:04:41+01:00
     - Create Red::Cli
