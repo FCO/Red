@@ -64,7 +64,15 @@ Person.new:
 If you want to use a custom type on your model and istores it on the database.
 
 ```raku
-class CustomType { has @.a; method new(@a) { self.bless: :@a }; method Str { @!a.join: "," } }
+class CustomType {
+  has @.a;
+  method new(@a) {
+    self.bless: :@a
+  }
+  method Str {
+    @!a.join: ","
+  }
+}
 
 sub inflate(Str $varchar     --> CustomType) { CustomType.new: $varchar.split: "," }
 sub deflate(CustomType $data --> Str       ) { $data.Str }
@@ -75,7 +83,6 @@ model Bla {
 }
 
 red-defaults "SQLite";
-
 
 Bla.^create-table;
 
