@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add varchar as possible type
 
 0.1.14  2020-07-07T22:33:33+01:00
     - fix time tracker example
