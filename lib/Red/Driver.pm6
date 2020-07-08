@@ -90,6 +90,8 @@ multi method prepare(Red::AST $query) {
 multi method is-valid-table-name(Str --> Bool)          { True }
 
 #| Maps types
+multi method type-by-name("varchar" --> "varchar(255)") {}
+#| Maps types
 multi method type-by-name("string" --> "text")          {}
 #| Maps types
 multi method type-by-name("int"    --> "integer")       {}

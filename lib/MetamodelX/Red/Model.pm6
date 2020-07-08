@@ -612,6 +612,7 @@ method new-from-data(\of, $data) {
                     dd $c;
                     dd $v;
                     dd %cols{$c};
+		    dd %cols{$c}.inflate.($v).candidates>>.signature;
                     dd get-RED-DB.^lookup("inflate").candidates>>.signature;
                     .rethrow
                 }
