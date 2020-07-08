@@ -1,4 +1,4 @@
-# [Red ORM](https://github.com/FCO/Red)
+# [Red ORM](https://github.com/FCO/Red) Architechture
 
 [Red](https://github.com/FCO/Red) is an ORM for [Raku](https://raku.org) that tries to mimic [Raku](https://raku.org)'s [`Seq`](https://docs.raku.org/type/Seq)'s API but for querying databases.
 [Red](https://github.com/FCO/Red) implements a custom Metamodel based on [Metamodel::ClassHOW](https://docs.raku.org/type/Metamodel::ClassHOW).
