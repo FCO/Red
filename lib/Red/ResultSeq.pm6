@@ -250,7 +250,7 @@ multi method create-map(\SELF: Red::Model $model is copy, :filter(&)) is hidden-
     self but role :: { method of { $model } }
 }
 multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden-from-sql-commenting {
-    my \Meta  = SELF.of.^orig.HOW.WHAT;
+    my \Meta  = $of.^orig.HOW.WHAT;
     my \model = Meta.new(:table(SELF.of.^table)).new_type: :name(SELF.of.^name);
     model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, SELF.of.^table;
     my $attr-name = 'data_0';

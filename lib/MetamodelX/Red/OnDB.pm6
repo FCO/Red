@@ -16,9 +16,12 @@ sub is-on-db-attr-build(|){
 }
 
 method set-helper-attrs(Mu \type) {
-    $!is-on-db-attr = Attribute.new: :name<%!___IS_ON_DB___>, :package(type), :type(Bool), :!has_accessor;
-    $!is-on-db-attr.set_build: &is-on-db-attr-build;
-    type.^add_attribute: $!is-on-db-attr;
+    my %attr is Set = type.^attributes>>.name;
+    unless %attr<%!___IS_ON_DB___> {
+            $!is-on-db-attr = Attribute.new: :name<%!___IS_ON_DB___>, :package(type), :type(Bool), :!has_accessor;
+            $!is-on-db-attr.set_build: &is-on-db-attr-build;
+            type.^add_attribute: $!is-on-db-attr;
+    }
 }
 
 #| Checks if the instance of model has a record in the database or not.

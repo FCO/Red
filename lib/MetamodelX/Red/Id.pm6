@@ -22,9 +22,12 @@ sub id-values-attr-build(\type, | --> Hash){
 }
 
 method set-helper-attrs(Mu \type) {
-    $!id-values-attr = Attribute.new: :name<%!___ID_VALUES___>, :package(type), :type(Hash), :!has_accessor;
-    $!id-values-attr.set_build: &id-values-attr-build;
-    type.^add_attribute: $!id-values-attr;
+    my %attr is Set = type.^attributes>>.name;
+    unless %attr<%!___ID_VALUES___> {
+            $!id-values-attr = Attribute.new: :name<%!___ID_VALUES___>, :package(type), :type(Hash), :!has_accessor;
+            $!id-values-attr.set_build: &id-values-attr-build;
+            type.^add_attribute: $!id-values-attr;
+    }
 }
 
 #| Checks if the given attribute is a primary key of the model.
