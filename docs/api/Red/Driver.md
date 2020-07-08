@@ -87,6 +87,16 @@ Checks if a name is a valid table name
 
 ```perl6
 method type-by-name(
+    "varchar"
+) returns "varchar(255)"
+```
+
+Maps types
+
+### method type-by-name
+
+```perl6
+method type-by-name(
     "string"
 ) returns "text"
 ```
