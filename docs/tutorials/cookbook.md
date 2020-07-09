@@ -2,7 +2,7 @@
 
 ## Pagination
 
-I have a model `ListOfStuff` with too many rows on that and I want to paginate it.
+I have a model `ListOfStuff` with too many rows and I want to paginate it.
 
 ```raku
 my @a := ListOfStuff.^all.batch(10); # Returns a ResultSeqSeq (no SQL is run)
@@ -14,7 +14,7 @@ my @a := ListOfStuff.^all.batch(10); # Returns a ResultSeqSeq (no SQL is run)
 ## Relationship
 
 I have two models `Post` and `Person` and I'd like to from a Post object get its author (a Person object)
-and from a Person object get all Posts that person has writtenn.
+and from a Person object get all Posts that person has written.
 
 ```raku
 model Post is rw {
@@ -38,7 +38,7 @@ And you can access the Post's author just using:
 $post.author
 ```
 
-it's pre-fetched when the `$post` is gotten from database.
+it's pre-fetched when the `$post` is gotten from the database.
 
 And to list all posts from a given Person:
 
@@ -61,7 +61,7 @@ Person.new:
 
 ## Inflators/Deflators
 
-If you want to use a custom type on your model and istores it on the database.
+If you want to use a custom type on your model and store it in the database.
 
 ```raku
 class CustomType {
