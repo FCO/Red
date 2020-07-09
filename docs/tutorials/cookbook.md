@@ -46,7 +46,9 @@ And to list all posts from a given Person:
 .name.say for $person.posts
 ```
 
-And if you want to create a Person with several Posts, it's easy to do:
+## Create with childs
+
+If you want to create a Person with several Posts (the model is defined on the previous example):
 
 ```raku
 Person.new:
@@ -57,6 +59,14 @@ Person.new:
     { :title("Third post title") , :body("A very long body to the third blog post")  },
   ]
 ;
+```
+
+## Create related
+
+If you have a Person and want to create a post it authored:
+
+```raku
+$person.posts.create: :title("New post from { $person.name }"), :body("Lorem ipsum");
 ```
 
 ## Inflators/Deflators
@@ -89,4 +99,84 @@ Bla.^create-table;
 my $a = Bla.^create: :bla(CustomType.new: <bla ble>);
 
 say $a.bla;
+```
+
+## Seq
+
+If I want to run a grep on database and a map on process.
+
+```raku
+.say for Bla.^all.grep(*.ble > 10).Seq.map: *.bli
+```
+
+## Multi column primary key
+
+How should I create a multi-column primary key?
+
+```raku
+model BankAccount {
+    has Str $.sort-number is id;    
+    has Str $.acc-number  is id;    
+}
+```
+
+## Multi column unique constraints
+
+How should I create a multi-column unique counstraint?
+
+```raku
+model BankAccount {
+    has Str $.sort-number is column;
+    has Str $.acc-number  is column;
+
+    ::?CLASS.^add-unique-constraint: { .sort-number, .acc-number }
+}
+```
+
+in the future it will probably be possible to do:
+
+```raku
+model BankAccount {
+    has Str $.sort-number is unique<sort-acc>;
+    has Str $.acc-number  is unique<sort-acc>;
+}
+```
+
+## Create inter dependent table
+
+How to create a table that depends of another table that depends on the first one?
+
+```raku
+model Bla {
+   has UInt $.id     is serial;
+   has UInt $.ble-id is referencing(*.id, :model<Ble>);
+}
+
+model Ble {
+   has UInt $.id     is serial;
+   has UInt $.bla-id is referencing(*.id, :model<Bla>);
+}
+
+red-defaults "Pg";
+
+schema(Bla, Ble).create
+```
+
+and it will run this SQL:
+
+```sql
+BEGIN;
+CREATE TABLE bla(
+   id serial NOT NULL primary key,
+   ble_id integer NULL 
+);
+CREATE TABLE ble(
+   id serial NOT NULL primary key,
+   bla_id integer NULL 
+);
+ALTER TABLE bla
+   ADD CONSTRAINT bla_ble_id_ble_id_fkey FOREIGN KEY (ble_id) REFERENCES ble(id);
+ALTER TABLE ble
+   ADD CONSTRAINT ble_bla_id_bla_id_fkey FOREIGN KEY (bla_id) REFERENCES bla(id);
+COMMIT;
 ```
