@@ -619,7 +619,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ Red::FromRelationship, 
 
 multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {
     return self.translate: ast-value(.get-value), $context if .column.DEFINITE;
-    self.translate: ast-value ~.get-value
+    self.translate: ast-value ~(.get-value // "")
 }
 
 method comment-on-same-statement { False }
