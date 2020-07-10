@@ -180,3 +180,40 @@ ALTER TABLE ble
    ADD CONSTRAINT ble_bla_id_bla_id_fkey FOREIGN KEY (bla_id) REFERENCES bla(id);
 COMMIT;
 ```
+
+## Phasers
+
+If I want to run some code every time before I save an obj on database.
+
+```raku
+model MyModel {
+   has $!id   is serial;
+   has $.text is column is rw;
+
+   method !log is before-create is before-update { say "saving: $!text" }
+}
+
+MyModel.^create-table;
+
+my $a = MyModel.^create: :text("just testing");
+
+$a.text = "Changing the text";
+
+$a.^save
+```
+
+That prints:
+
+```
+saving: just testing
+saving: Changing the text
+```
+
+and the existing phasers are:
+
+1. `is before-create`
+1. `is after-create`
+1. `is before-update`
+1. `is after-update`
+1. `is before-delete`
+1. `is after-delete`
