@@ -8,7 +8,7 @@ model Sentence {
     has Int  @.links-from  is relationship(*.id-from, :model<Link>);
 
     multi method translate(::CLASS:D: :to($lang)) {
-        $.links-from.map(*.to-sentence.first(*.lang eq $lang).sentence).Seq.first: so *
+        $.links-from.first(*.to-sentence.lang eq $lang).to-sentence
     }
     multi method translate(::CLASS:U: $sentence, :from($lang) = "eng", :$to) {
         self.^all.first({ .sentence eq $sentence && .lang eq $lang }).translate: :$to

@@ -17,8 +17,8 @@ schema(Sentence, Link).create;
 Sentence.^populate;
 Link.^populate;
 
-is Sentence.translate("Hello", :to<pt>), "Ola";
-is Sentence.translate("Hello", :to<esp>), "Hola";
-is Sentence.translate("Ola", :from<pt>, :to<esp>), "Hola";
+is Sentence.translate("Hello", :to<pt>)          .sentence, "Ola";
+is Sentence.translate("Hello", :to<esp>)         .sentence, "Hola";
+is Sentence.translate("Ola", :from<pt>, :to<esp>).sentence, "Hola";
 
 done-testing;
