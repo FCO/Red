@@ -2,6 +2,7 @@ Revision history for Red
 
 {{$NEXT}}
     - Add sentences test
+    - Fix undefined model .^rs bug
 
 0.1.15  2020-07-09T17:23:42+01:00
     - Add varchar as possible type

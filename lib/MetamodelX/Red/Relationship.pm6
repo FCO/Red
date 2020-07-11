@@ -43,7 +43,10 @@ method !sel-scalar($attr, $name) {
 method !sel-positional($attr) {
     my method (Mu:U \SELF:) {
         my $ast = $attr.relationship-ast: SELF;
-        $attr.package.^rs.new: :filter($ast)
+        ($attr.relationship-model ~~ Positional
+            ?? $attr.relationship-model.of
+            !! $attr.relationship-model
+        ).^rs.new: :filter($ast)
     }
 }
 

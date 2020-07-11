@@ -183,19 +183,18 @@ given model A {} {
 #    ok .^rs.works;
 #}
 
-#todo "Fix 'no precompilation'";
-#lives-ok {
-#    class MyResultSet does Red::ResultSeq {has $.is-it-custom = True}
-#    given model C is rs-class(MyResultSet) {} {
-#        isa-ok .^rs, MyResultSet;
-#        ok .^rs.is-it-custom
-#    }
-#}
-#
-#given model D is rs-class<MyResultSet> {} {
-#    isa-ok .^rs, MyResultSet;
-#    ok .^rs.is-it-custom
-#}
+lives-ok {
+    class MyResultSet does Red::ResultSeq {has $.is-it-custom = True}
+    given model C is rs-class(MyResultSet) {} {
+        isa-ok .^rs, MyResultSet;
+        ok .^rs.is-it-custom
+    }
+}
+
+given model D is rs-class<MyResultSet> {} {
+    isa-ok .^rs, MyResultSet;
+    ok .^rs.is-it-custom
+}
 
 #`{{{
 eval-lives-ok q[
@@ -222,12 +221,6 @@ given model BlaBleBli {} {
 given model BlaBleBli2 is table<not_that> {} {
     is .^table, "not_that";
 }
-
-#model TestDate {
-#    has $.date is query('select now()');
-#}
-#
-#ok now < TestDate.new.date < now;
 
 model Person { ... }
 
@@ -325,18 +318,14 @@ is $alias2.author-id.name,          Post2.author-id.name;
 is $alias1.^name,                   "Post2_1";
 is Post2.^name,                     "Post2";
 
-#is Post2.where({ .id == 42 }).query.perl, 42;
-
 is Post2.author-id.as("bla").name, "bla";
 is Post2.author-id.as("bla").attr-name, "bla";
 ok not Post2.author-id.as("bla").id;
 ok Post2.author-id.as("bla").nullable;
 ok not Post2.author-id.as("bla", :!nullable).nullable;
 
-#say (Post2.id == 42).tables;
-#say (Post2.author-id == Person2.id).tables;
-#is (Post2.id == 42).tables.elems, 1;
-#is (Post2.author-id == Person2.id).tables.elems, 2;
+is (Post2.id == 42).tables.elems, 1;
+is (Post2.author-id == Person2.id).tables.elems, 2;
 
 given model { has $.a is column{ :unique }; has $.b is column; ::?CLASS.^add-unique-constraint: { .a, .b } } {
     is .^constraints<unique>.elems, 2;
@@ -344,14 +333,14 @@ given model { has $.a is column{ :unique }; has $.b is column; ::?CLASS.^add-uni
 
 isa-ok Person2.new.posts, Post2::ResultSeq;
 
-isa-ok Person2.posts, Person2::ResultSeq;
+isa-ok Person2.posts, Post2::ResultSeq;
 
 isa-ok Person2.posts.do-it, Seq;
 
-isa-ok Person2.posts.do-it.head, Person2;
+isa-ok Person2.posts.do-it.head, Post2;
 
 my $seq = Person2.posts.map: *.id;
-isa-ok $seq, Person2::ResultSeq;
+isa-ok $seq, Post2::ResultSeq;
 #isa-ok $seq.head, Int;
 is $seq.filter.perl, Person2.posts.filter.perl;
 
