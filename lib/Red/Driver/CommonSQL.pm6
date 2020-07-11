@@ -348,7 +348,8 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
         }
     }).join: ", ";
     $sel ~= ", $pre" if $pre;
-    my %t{Red::Model} = (|$ast.tables, $ast.of, |@pre-join).grep({ not .?no-table }).unique.map({ .^tables }).cache.classify: { .head }, :as{ .tail: *-1 };
+    my @t = (|$ast.tables, $ast.of, |@pre-join).grep({ not .?no-table }).unique.map({ .^tables });
+    my %t{Red::Model} = @t.classify: { .head }, :as{ .tail: *-1 };
     my @join-binds;
     my $tables = %t.kv.map(-> $_, @joins {
         [
@@ -361,7 +362,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                     }"
                 }
             }",
-            |@joins.reduce({ |$^a, |$^b }).unique(:as{ .^table }).map({
+            |@joins.reduce({ |$^a, |$^b }).unique(:as{ .^as }).map({
                 " { self.join-type: .^join-type } JOIN {
                     .^table
                 }{
