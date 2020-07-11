@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.16  2020-07-11T17:54:39+01:00
     - Add sentences test
     - Fix undefined model .^rs bug
     - Fix 2 joins same table bug
