@@ -21,4 +21,7 @@ is Sentence.translate("Hello", :to<pt>)          .sentence, "Ola";
 is Sentence.translate("Hello", :to<esp>)         .sentence, "Hola";
 is Sentence.translate("Ola", :from<pt>, :to<esp>).sentence, "Hola";
 
+my @portuguese = Sentence.^all.grep: *.lang eq "pt";
+is @portuguese.first(*.sentence eq "Ola").translate(:to<eng>).sentence, "Hello";
+
 done-testing;

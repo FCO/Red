@@ -27,7 +27,7 @@ method rel {
     rel1 self.package
 }
 
-method relationship-model(--> Mu:U)  is hidden-from-sql-commenting {
+method relationship-model(--> Mu:U) is hidden-from-sql-commenting {
     return self.type without $model;
     unless $!loaded-model {
         my $t = ::($model);
