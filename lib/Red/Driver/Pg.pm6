@@ -115,6 +115,10 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ Bool            
 multi method default-type-for(Red::Column $ where .attr.type ~~ UUID                        --> Str:D) {"uuid"}
 multi method default-type-for(Red::Column $                                                 --> Str:D) {"varchar(255)"}
 
+multi method type-by-name("text" --> "text") {}
+multi method type-by-name("json" --> "json") {}
+multi method type-by-name("jsonb" --> "jsonb") {}
+
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /"duplicate key value violates unique constraint " \"$<field>=(\w+)\"/) {

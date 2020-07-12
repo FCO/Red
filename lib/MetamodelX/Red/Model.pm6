@@ -84,6 +84,10 @@ method columns(|) is rw {
     @!columns
 }
 
+method column-values (\model --> Hash) {
+    %(@!columns.map: { %!attr-to-column{.name} => .get_value(model) });
+}
+
 #| Returns a hash with the migration hash
 method migration-hash(\model --> Hash()) {
     columns => @!columns>>.column>>.migration-hash,
@@ -450,7 +454,12 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
         my $filter = model.^id-filter: |do if $data.defined and not $data.elems {
             $*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row{|@ids}:kv
         } else {
-            $data{|@ids}:kv
+            my %data-copy = model.^id>>.column.map({
+                $data{.name}:exists
+                    ?? (.attr-name => $data{.name})
+                    !! (.attr-name => $data{.attr-name})
+            });
+            %data-copy{|@ids}:kv
         }.Hash if @ids;
 
         for %positionals.kv -> $name, @val {

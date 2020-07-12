@@ -591,7 +591,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $cont
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Positional, $context?) {
-    '( ' ~ .get-value.map( -> $v { '?' } ).join(', ') ~ ' )' => .get-value;
+    '( ' ~ .get-value.map( -> $v { self.wildcard } ).join(', ') ~ ' )' => .get-value;
 }
 
 multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW, $context?) {
