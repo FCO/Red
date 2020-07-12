@@ -22,6 +22,10 @@ is Sentence.translate("Hello", :to<esp>)         .sentence, "Hola";
 is Sentence.translate("Ola", :from<pt>, :to<esp>).sentence, "Hola";
 
 my @portuguese = Sentence.^all.grep: *.lang eq "pt";
-is @portuguese.first(*.sentence eq "Ola").translate(:to<eng>).sentence, "Hello";
+my $ola = @portuguese.first(*.sentence eq "Ola");
+is $ola.translate(:to<eng>).sentence, "Hello";
+
+$ola.links-from.create: :to-sentence{ :lang<esperanto>, :sentence<Saluton> };
+is Sentence.translate("Ola", :from<pt>, :to<esperanto>).sentence, "Saluton";
 
 done-testing;
