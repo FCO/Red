@@ -46,7 +46,7 @@ And to list all posts from a given Person:
 .name.say for $person.posts
 ```
 
-## Create with childs
+### Create with childs
 
 If you want to create a Person with several Posts (the model is defined on the previous example):
 
@@ -61,7 +61,7 @@ Person.new:
 ;
 ```
 
-## Create related
+### Create related
 
 If you have a Person and want to create a post it authored:
 
@@ -217,3 +217,50 @@ and the existing phasers are:
 1. `is after-update`
 1. `is before-delete`
 1. `is after-delete`
+
+## N-M Relationship
+
+If I have a table of sentences in different languages and another table linking each sentence in a language to another sentence in a different language and 
+want to find the translations.
+
+```raku
+model Sentence {
+    has UInt $.id          is id;
+    has Str  $.lang        is column;
+    has Str  $.sentence    is column;
+    has      @.links-to    is relationship(*.id-to, :model<Link>);
+    has      @.links-from  is relationship(*.id-from, :model<Link>);
+
+    multi method translate(::CLASS:D: :to($lang)) {
+        $.links-from.first(*.to-sentence.lang eq $lang).to-sentence
+    }
+    multi method translate(::CLASS:U: $sentence, :from($lang) = "eng", :$to) {
+        Link.^all.first({
+            .from-sentence.sentence eq $sentence
+                    && .from-sentence.lang eq $lang
+                    && .to-sentence.lang eq $to
+        })
+                .to-sentence
+    }
+}
+
+model Link {
+    has UInt $.id-from       is column{:id, :references(*.id), :model-name<Sentence>};
+    has UInt $.id-to         is column{:id, :references(*.id), :model-name<Sentence>};
+    has      $.to-sentence   is relationship(*.id-to  , :model<Sentence>);
+    has      $.from-sentence is relationship(*.id-from, :model<Sentence>);
+}
+
+say Sentence.translate("hi", :from<english>, :to<portuguese>).sentence;
+my @portuguese := Sentence.^all.grep: *.lang eq "portuguese";
+my $oi = @portuguese.first(*.sentence eq "oi");
+$oi.translate(:to<spanish>).sentence;
+```
+
+### Create Related
+
+To add a new translation
+
+```raku
+$oi.links-from.create: :to-sentence{ :lang<esperanto>, :sentence<Saluton> };
+```
