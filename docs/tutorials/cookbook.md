@@ -231,10 +231,10 @@ model Sentence {
     has      @.links-to    is relationship(*.id-to, :model<Link>);
     has      @.links-from  is relationship(*.id-from, :model<Link>);
 
-    multi method translate(::CLASS:D: :to($lang)) {
+    multi method translate(::?CLASS:D: :to($lang)) {
         $.links-from.first(*.to-sentence.lang eq $lang).to-sentence
     }
-    multi method translate(::CLASS:U: $sentence, :from($lang) = "eng", :$to) {
+    multi method translate(::?CLASS:U: $sentence, :from($lang) = "eng", :$to) {
         Link.^all.first({
             .from-sentence.sentence eq $sentence
                     && .from-sentence.lang eq $lang
