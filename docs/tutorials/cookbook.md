@@ -264,3 +264,45 @@ To add a new translation
 ```raku
 $oi.links-from.create: :to-sentence{ :lang<esperanto>, :sentence<Saluton> };
 ```
+
+## Custom join
+
+If there is something you'd like to relationate but that's not a relationship. Something you'll probably do only once but that's not a relationship from the model.
+You can use a custom join with `ResultSeq.join-model`.
+
+```raku
+use Red:api<2>;
+
+model A is table<AAA> { has $.id is serial; has $.A1 is column; has $.A2 is column }
+model B is table<BBB> { has $.id is serial; has $.B1 is column; has $.B2 is column }
+
+red-defaults "SQLite" ;
+
+schema(A, B).create;
+
+A.^create: :A1(^10 .pick), :A2(^10 .pick) for ^10;
+B.^create: :B1(^10 .pick), :B2(^10 .pick) for ^10;
+
+my $*RED-DEBUG = True;
+.say for A.^all.grep(*.A2 > 3).join-model(B, *.A1 == *.B1).map({ "{ A.A2 } -> { .B2 }" })
+```
+
+That would run:
+
+```
+SQL : SELECT
+   AAA.A2 || ' -> ' || b_1.B2 as "data_1"
+FROM
+   AAA
+    INNER JOIN BBB as b_1 ON AAA.A1 = b_1.B1
+WHERE
+   AAA.A2 > 3
+BIND: []
+8 -> 1
+8 -> 3
+6 -> 9
+9 -> 1
+9 -> 3
+9 -> 7
+9 -> 9
+```
