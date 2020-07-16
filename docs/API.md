@@ -60,6 +60,7 @@ API Pages
 - [Red::Model](api/Red/Model)
 - [Red::Operators](api/Red/Operators)
 - [Red::Phaser](api/Red/Phaser)
+- [Red::PrepareCode](api/Red/PrepareCode)
 - [Red::ResultAssociative](api/Red/ResultAssociative)
 - [Red::ResultSeq](api/Red/ResultSeq)
 - [Red::ResultSeqSeq](api/Red/ResultSeqSeq)

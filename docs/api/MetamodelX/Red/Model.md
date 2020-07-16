@@ -200,7 +200,7 @@ Creates a new column and adds it to the model.
 
 ```perl6
 multi method rs(
-    $
+    Mu:U $
 ) returns Red::ResultSeq
 ```
 
