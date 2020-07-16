@@ -399,3 +399,65 @@ WHERE
    student.class = ?
 BIND: ["1a"]
 ```
+
+## events
+
+If you want to run something every time a query is made by Red.
+
+```raku
+Red.events.tap: &dd
+```
+
+and it will print `Red::Event`s like:
+
+```raku
+Red::Event.new(
+  bind        => [],
+  model       => MyModel,
+  origin      => Red::Model,
+  error       => Exception,
+  metadata    => {},
+  db-name     => "Red::Driver::SQLite",
+  driver-name => Str,
+  name        => Str,
+  db          => Red::Driver::SQLite.new(
+    database => ":memory:",
+    events   => Supply.new,
+  ),
+  data        => Red::AST::CreateTable.new(
+    name    => "my_model",
+    temp    => Bool,
+    columns => Array[Red::Column].new(
+      Red::Column.new(
+        attr           => my_model.id,
+        attr-name      => "id",
+        auto-increment => Bool::True,
+        id             => Bool::True,
+        name           => "id",
+        name-alias     => "id",
+        nullable       => Bool::False,
+      ),
+      Red::Column.new(
+        attr           => my_model.text,
+        attr-name      => "text",
+        auto-increment => Bool::False,
+        id             => Bool::False,
+        name           => "text",
+        name-alias     => "text",
+        nullable       => Bool::False,
+      )
+    ),
+    constraints => Array[Red::AST::Constraint].new(),
+    comment     => Red::AST::TableComment,
+  ),
+)
+```
+
+And if you want to get events only from the driver you are using, you can use red-tap function.
+and to emit your custom events, you can just:
+
+```raku
+Red.emit: "my data";
+```
+
+or use `red-emit` to emit for the current driver.
