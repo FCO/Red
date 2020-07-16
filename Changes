@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.17  2020-07-16T01:15:11+01:00
     - custom join ,create
     - custom join from defined model
 

@@ -104,6 +104,7 @@
     "Red::Model" : "lib/Red/Model.pm6",
     "Red::Operators" : "lib/Red/Operators.pm6",
     "Red::Phaser" : "lib/Red/Phaser.pm6",
+    "Red::PrepareCode" : "lib/Red/PrepareCode.pm6",
     "Red::ResultAssociative" : "lib/Red/ResultAssociative.pm6",
     "Red::ResultSeq" : "lib/Red/ResultSeq.pm6",
     "Red::ResultSeq::Iterator" : "lib/Red/ResultSeq/Iterator.pm6",
@@ -125,5 +126,5 @@
     "relational"
   ],
   "test-depends" : [ ],
-  "version" : "0.1.16"
+  "version" : "0.1.17"
 }
