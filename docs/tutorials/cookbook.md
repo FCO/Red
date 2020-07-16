@@ -355,3 +355,19 @@ If you need the union, intersection or subtraction of two (or more) `ResultSeq`s
 .say for MyModel.^all.grep(*.text.starts-with: "a") ∩ MyModel.^all.grep(*.text.ends-with: "s");
 .say for MyModel.^all.grep(*.text.starts-with: "a") ⊖ MyModel.^all.grep(*.text.ends-with: "s");
 ```
+
+## in
+
+If you want to filter rows where a column can be one of multiple values.
+
+```raku
+.say for MyModel.^all.grep: *.text ⊂ <bla ble bli>
+```
+
+### in ResultSeq
+
+But if the options are on the database.
+
+```raku
+.say for MyModel.^all.grep: *.text ⊂ TextOptions.^all.grep: *.id > 15
+```
