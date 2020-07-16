@@ -345,3 +345,13 @@ $vendedor.login.create;
 .say for $comprador.login;
 .say for $vendedor.login;
 ```
+
+## union/intersect/minus
+
+If you need the union, intersection or subtraction of two (or more) `ResultSeq`s
+
+```raku
+.say for MyModel.^all.grep(*.text.starts-with: "a") ∪ MyModel.^all.grep(*.text.starts-with: "b");
+.say for MyModel.^all.grep(*.text.starts-with: "a") ∩ MyModel.^all.grep(*.text.ends-with: "s");
+.say for MyModel.^all.grep(*.text.starts-with: "a") ⊖ MyModel.^all.grep(*.text.ends-with: "s");
+```
