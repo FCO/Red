@@ -22,6 +22,7 @@ use Red::ResultAssociative;
 use Red::ResultSeq::Iterator;
 use Red::HiddenFromSQLCommenting;
 use X::Red::Exceptions;
+use Red::PrepareCode;
 
 =head2 Red::ResultSeq
 
@@ -73,6 +74,7 @@ has Red::AST::Chained $.chain handles <filter limit offset post order group tabl
 has Pair              @.update;
 has Red::AST::Comment @.comments;
 has Red::Driver       $.with;
+has                   $.obj;
 
 multi method with(Red::Driver $with) {
     self.clone: :$with
@@ -154,95 +156,6 @@ multi method first(&filter --> Red::Model) is hidden-from-sql-commenting {
 multi method first(--> Red::Model) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     self.head
-}
-
-#| Transform a hash into filter (Red::AST)
-sub hash-to-cond(%val) {
-    my Red::AST $ast;
-    for %val.kv -> Red::AST $cond, Bool $so {
-        my Red::AST $filter = $so ?? Red::AST::So.new($cond) !! $cond.not;
-        with $ast {
-            $ast = Red::AST::AND.new: $ast, $filter
-        } else {
-            $ast = $filter
-        }
-    }
-    $ast
-}
-
-#| Found a boolean while trying to find what's hapenning inside a block
-sub found-bool(@values, $try-again is rw, %bools, CX::Red::Bool $ex) {
-    if %bools{$ex.ast}:!exists {
-        $try-again = True;
-        %bools{ $ex.ast }++;
-        if not @values {
-            @values.push: [ :{ $ex.ast => $ex.value }, Red::AST ];
-        } else {
-            my @new-keys = @values.map: -> $item { my %key{Red::AST} = $item.[0].clone; %key{$ex.ast} = $ex.value.succ; %key };
-            for @values {
-                .[0].{$ex.ast} = $ex.value
-            }
-            @values.push: |@new-keys.map: -> %key { [ %key, Red::AST ] };
-        }
-    }
-    $ex.resume
-}
-
-sub prepare-response($resp) {
-    do given $resp {
-        when Empty {
-            Red::AST::Empty.new
-        }
-        when Red::AST {
-            $_
-        }
-        default {
-            ast-value $_
-        }
-    }
-}
-
-#| Tries to find what a block do
-sub what-does-it-do(&func, \type --> Hash) {
-    my Bool $try-again = False;
-    my %bools is SetHash;
-    my @values;
-    my %*VALS := :{};
-
-    my $ret = func type;
-    return :{ Red::AST => prepare-response $ret } unless $try-again;
-    @values.head.[1] = $ret;
-    my %first-key := :{ @values.head.[0].keys.head.clone => @values.head.[0].values.head.clone };
-    %first-key{ %first-key.keys.head } = True;
-    @values.push: [%first-key, Red::AST];
-
-    for @values -> @data (%values, $response is rw) {
-        $try-again = False;
-        %*VALS := %values;
-        $response = func type;
-        CONTROL {
-            when CX::Next {
-                $response = Red::AST::Next.new;
-            }
-            when CX::Red::Bool {                # Will work when we can create real custom CX
-                found-bool @values, $try-again, %bools, $_
-            }
-        }
-    }
-    CONTROL {
-        when CX::Red::Bool {                # Will work when we can create real custom CX
-            found-bool @values, $try-again, %bools, $_
-        }
-        when CX::Next {
-            die
-        }
-    }
-
-    my Red::AST %values{Red::AST};
-    for @values {
-        %values{hash-to-cond(.[0])} = prepare-response .[1]
-    }
-    %values
 }
 
 #multi method create-map($, :&filter)     { self.do-it.map: &filter }
@@ -434,13 +347,12 @@ method batch(Int $size --> Red::ResultSeqSeq) {
 #| Creates a new element of that set
 method create(::?CLASS:D: *%pars) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    $.of.^create: |%pars, |(.should-set with $.filter);
+    $.of.^orig.^create: |%pars, |%(|(.should-set with $.filter), |(.should-set with $.of.HOW.?join-on: $.of));
 }
 
 #| Alias for `create`
 method push(::?CLASS:D: *%pars) is hidden-from-sql-commenting {
-    self.create-comment-to-caller;
-    $.of.^create: |%pars, |(.should-set with $.filter);
+    $.create(|%pars)
 }
 
 #| Deletes every row on that ResultSeq
@@ -483,7 +395,27 @@ multi method join(Str() $sep) {
 
 #| Create a custom join (SQL join)
 method join-model(Red::Model \model, &on, :$name = "{ self.^name }_{ model.^name }", *%pars where { .elems == 0 || ( .elems == 1 && so .values.head ) }) {
-    self.of.^join(model, &on, |%pars).^all.clone: :$!chain
+    do with self.obj {
+        my $filter = do given what-does-it-do(&on.assuming($_), model) {
+            do if [eqv] .values {
+                .values.head
+            } else {
+                .kv.map(-> $test, $ret {
+                    do with $test {
+                        Red::AST::AND.new: $test, ast-value $ret
+                    } else {
+                        $ret
+                    }
+                }).reduce: { Red::AST::OR.new: $^agg, $^fil }
+            }
+        }
+        with $*RED-GREP-FILTER {
+            $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
+        }
+        model.^all.where: $filter
+    } else {
+        self.of.^join(model, &on, |%pars).^all.clone: :$!chain
+    }
 }
 
 #| Returns the AST that will generate the SQL

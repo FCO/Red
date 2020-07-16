@@ -28,6 +28,7 @@ use MetamodelX::Red::Populatable;
 use X::Red::Exceptions;
 use Red::Phaser;
 use Red::Event;
+use Red::PrepareCode;
 
 =head2 MetamodelX::Red::Model
 
@@ -212,7 +213,23 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$ba
                     $_
                 }
                 when Callable {
-                    .(alias)
+                    my $filter = do given what-does-it-do($_, alias) {
+                        do if [eqv] .values {
+                            .values.head
+                        } else {
+                            .kv.map(-> $test, $ret {
+                                do with $test {
+                                    Red::AST::AND.new: $test, ast-value $ret
+                                } else {
+                                    $ret
+                                }
+                            }).reduce: { Red::AST::OR.new: $^agg, $^fil }
+                        }
+                    }
+                    with $*RED-GREP-FILTER {
+                        $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
+                    }
+                    $filter
                 }
                 default {
                     .relationship-ast(alias)
@@ -277,8 +294,10 @@ method compose-columns(Red::Model:U \type) {
 }
 
 #| Returns the ResultSeq
-multi method rs($ --> Red::ResultSeq)          { $.rs-class.new }
-multi method rs($, :$with! --> Red::ResultSeq) { $.rs-class.new.with: $with }
+multi method rs(Mu:U --> Red::ResultSeq)          { $.rs-class.new }
+multi method rs(Mu:U, :$with! --> Red::ResultSeq) { $.rs-class.new.with: $with }
+multi method rs(Mu:D $obj --> Red::ResultSeq)          { $.rs-class.new: :$obj }
+multi method rs(Mu:D $obj, :$with! --> Red::ResultSeq) { $.rs-class.new(:$obj).with($with) }
 #| Alias for C<.rs()>
 multi method all($obj --> Red::ResultSeq)          { $obj.^rs }
 multi method all($obj, :$with! --> Red::ResultSeq) { $obj.^rs(:$with) }

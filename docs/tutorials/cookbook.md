@@ -306,3 +306,42 @@ BIND: []
 9 -> 7
 9 -> 9
 ```
+
+### Source and Source-id
+
+Another reason to use custom joins is to create one single connection to multiple tables (source/source_id).
+That's not a good pattern, but you can do it if you want.
+
+```raku
+model Login is table<logged_user> {
+    has         $.id        is serial;
+    has         $.source    is column;
+    has UInt    $.source-id is referencing(*.id, :model<Buyer>);
+    has Instant $.created   is column = now;
+}
+
+model Buyer {
+    has $.id    is serial;
+    has $.name  is column;
+    method login {
+        self.^rs.join-model: :name<logged_buyer>, Login, -> $b, $l { $b.id == $l.source-id && $l.source eq "buyer" }
+    }
+}
+
+model Seller {
+    has $.id    is serial;
+    has $.name  is column;
+    method login {
+        self.^rs.join-model: :name<logged_seller>, Login, -> $b, $l { $b.id == $l.source-id && $l.source eq "seller" }
+    }
+}
+
+my $comprador = Buyer.^create:  :name<Comprador>;
+my $vendedor  = Seller.^create: :name<Vendedor>;
+
+$comprador.login.create;
+$vendedor.login.create;
+
+.say for $comprador.login;
+.say for $vendedor.login;
+```
