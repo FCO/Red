@@ -371,3 +371,31 @@ But if the options are on the database.
 ```raku
 .say for MyModel.^all.grep: *.text ⊂ TextOptions.^all.grep: *.id > 15
 ```
+
+## classify
+
+If you need to classify your rows based in something and only get one category by time.
+
+```raku
+my %classes := Student.^all.classify: *.class;
+say %classes.keys;
+.say for %classes<1a>;
+```
+
+that would run:
+
+```
+SQL : SELECT
+   DISTINCT(student.class) as "data_1"
+FROM
+   student
+BIND: []
+
+SQL : SELECT
+   student.id , student.name , student.class 
+FROM
+   student
+WHERE
+   student.class = ?
+BIND: ["1a"]
+```
