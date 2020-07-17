@@ -28,6 +28,17 @@ This trait configures all model attributes (columns) to be NULLABLE by default, 
 ```perl6
 multi sub trait_mod:<is>(
     Attribute $attr,
+    Bool :$unique! where { ... }
+) returns Empty
+```
+
+This trait marks an attribute (column) as UNIQUE.
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
     Bool :$id! where { ... }
 ) returns Empty
 ```
