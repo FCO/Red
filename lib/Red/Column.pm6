@@ -28,6 +28,7 @@ has             $.model            = $!attr.package;
 has Str         $.column-name;
 has Str         $.require          = $!model-name;
 has Mu          $.class            = $!attr.package;
+has             @.unique-groups;
 
 #multi method WHICH(::?CLASS:D:) {
 #    ValueObjAt.new: self.^name ~ "|" ~ self.migration-hash.pairs.sort.map(-> (:$key, :$value) {
@@ -179,8 +180,16 @@ method as(Str $name, :$nullable = True) {
 }
 
 submethod TWEAK(:$unique) {
-    if $unique {
-        $!attr.package.^add-unique-constraint: { self }
+    with $unique {
+        when Bool {
+            $!attr.package.^add-unique-constraint: { self }
+        }
+        when Positional {
+            self.unique-groups.append: |$unique
+        }
+        default {
+            self.unique-groups.push: $unique
+        }
     }
 }
 

@@ -156,6 +156,10 @@ method compose(Mu \type) {
 
     self.compose-dirtable: type;
 
+    for type.^columns.grep(*.column.unique-groups.elems > 0).categorize(*.column.unique-groups).values -> @grp {
+        type.^add-unique-constraint: -> | { @grp }
+    }
+
     if type.^constraints<pk>:!exists {
         type.^add-pk-constraint: type.^id>>.column if type.^id > 1
     }
@@ -287,8 +291,8 @@ method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
 
 method compose-columns(Red::Model:U \type) {
     for self.attributes(type).grep: Red::Attr::Column -> Red::Attr::Column $attr {
-#        $attr.clone;
-#        $attr.create-column;
+        #        $attr.clone;
+        #        $attr.create-column;
         type.^add-column: $attr.clone: :package(type)
     }
 }

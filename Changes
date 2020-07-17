@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Set unique fields by group
 
 0.1.17  2020-07-16T01:15:11+01:00
     - custom join ,create

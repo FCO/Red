@@ -39,6 +39,15 @@ multi trait_mod:<is>(Attribute $attr, Str :$column! --> Empty) is export {
     trait_mod:<is>($attr, :column{:name($column)}) if $column
 }
 
+#| This trait marks an attribute (column) as UNIQUE.
+multi trait_mod:<is>(Attribute $attr, Bool :$unique! where $_ == True --> Empty) is export {
+    trait_mod:<is>($attr, :column{:unique})
+}
+
+multi trait_mod:<is>(Attribute $attr, :$unique! --> Empty) is export {
+    trait_mod:<is>($attr, :column{:$unique})
+}
+
 #| This trait marks an attribute (column) as SQL PRIMARY KEY.
 multi trait_mod:<is>(Attribute $attr, Bool :$id! where $_ == True --> Empty) is export {
     trait_mod:<is>($attr, :column{:id, :!nullable})

@@ -19,7 +19,7 @@ and from a Person object get all Posts that person has written.
 ```raku
 model Post is rw {
     has Int         $.id        is serial;
-    has Str         $.title     is column{ :unique };
+    has Str         $.title     is unique;
     has Str         $.body      is column;
     has Int         $!author-id is referencing{ :model<Person>, :column<id> };
     has             $.author    is relationship( *.author-id, :model<Person> );
@@ -123,17 +123,6 @@ model BankAccount {
 ## Multi column unique constraints
 
 How should I create a multi-column unique counstraint?
-
-```raku
-model BankAccount {
-    has Str $.sort-number is column;
-    has Str $.acc-number  is column;
-
-    ::?CLASS.^add-unique-constraint: { .sort-number, .acc-number }
-}
-```
-
-in the future it will probably be possible to do:
 
 ```raku
 model BankAccount {

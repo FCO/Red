@@ -327,7 +327,10 @@ ok not Post2.author-id.as("bla", :!nullable).nullable;
 is (Post2.id == 42).tables.elems, 1;
 is (Post2.author-id == Person2.id).tables.elems, 2;
 
-given model { has $.a is column{ :unique }; has $.b is column; ::?CLASS.^add-unique-constraint: { .a, .b } } {
+given model {
+    has $.a is unique<a-and-b aonly-a>;
+    has $.b is unique<a-and-b>;
+} {
     is .^constraints<unique>.elems, 2;
 }
 
