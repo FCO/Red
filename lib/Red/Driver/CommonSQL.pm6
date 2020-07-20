@@ -794,6 +794,7 @@ multi method deflate(Version  $value) { ~$value }
 multi method deflate($value) { $value }
 
 multi method type-by-name("string" --> "varchar(255)") {}
+multi method type-by-name(Str $type) { $type }
 
 multi method is-valid-table-name(Str $ where .fc ~~ self.reserved-words.any.fc) { False }
 multi method is-valid-table-name(Str $str) is default {

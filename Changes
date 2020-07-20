@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix bug on setting type of a column
 
 0.1.18  2020-07-17T20:25:01+01:00
     - Set unique fields by group
