@@ -21,7 +21,7 @@ use Red::Class;
 use Red::DB;
 use Red::Schema;
 
-class Red:ver<0.1.18>:api<2> {
+class Red:ver<0.1.19>:api<2> {
     method events { Red::Class.instance.events }
     method emit(|c) { get-RED-DB.emit: |c }
 }
