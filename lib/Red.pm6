@@ -20,10 +20,11 @@ use Red::AST::Optimizer::Case;
 use Red::Class;
 use Red::DB;
 use Red::Schema;
+use Red::Formater;
 
 class Red:ver<0.1.19>:api<2> {
-    method events { Red::Class.instance.events }
-    method emit(|c) { get-RED-DB.emit: |c }
+    method events   { Red::Class.instance.events }
+    method emit(|c) { get-RED-DB.emit: |c        }
 }
 
 BEGIN {
@@ -43,6 +44,12 @@ my package EXPORTHOW {
 }
 
 proto experimental(Str) {*}
+
+multi experimental($ where "formaters") {
+    MetamodelX::Red::Model.^add_method: "experimental-formater", method { True }
+    Red::Column.^add_method: "experimental-formater", method { True }
+    Empty
+}
 
 multi experimental($ where "experimental migrations" | "migrations") {
     use MetamodelX::Red::Migration;

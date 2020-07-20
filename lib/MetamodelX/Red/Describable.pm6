@@ -9,7 +9,7 @@ unit role MetamodelX::Red::Describable;
 
 method !create-column($_ --> Red::Cli::Column) {
     Red::Cli::Column.new:
-        :name(.column-name // kebab-to-snake-case .attr-name),
+        :name(.column-name // self.column-formater: .attr-name),
         :formated-name(.attr-name),
         :type(get-RED-DB.default-type-for($_)),
         :perl-type(.type),

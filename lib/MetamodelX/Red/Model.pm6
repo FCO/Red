@@ -25,6 +25,7 @@ use MetamodelX::Red::Describable;
 use MetamodelX::Red::OnDB;
 use MetamodelX::Red::Id;
 use MetamodelX::Red::Populatable;
+use Red::Formater;
 use X::Red::Exceptions;
 use Red::Phaser;
 use Red::Event;
@@ -41,6 +42,7 @@ also does MetamodelX::Red::Describable;
 also does MetamodelX::Red::OnDB;
 also does MetamodelX::Red::Id;
 also does MetamodelX::Red::Populatable;
+also does Red::Formater;
 
 has Attribute @!columns;
 has Red::Column %!references;
@@ -69,7 +71,9 @@ method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
 method references(|) { %!references }
 
 #| Returns the table name for the model.
-method table(Mu \type) is rw { $!table //= camel-to-snake-case type.^name }
+method table(Mu \type) is rw {
+    $!table //= self.table-formater: type.^name
+}
 
 #| Returns the table alias
 method as(Mu \type) { self.table: type }
@@ -207,7 +211,7 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$ba
     my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
         method columns(|)     { @cols }
         method table(|)       { rtype.^table }
-        method as(|)          { camel-to-snake-case $rname }
+        method as(|)          { self.table-formater: $rname }
         method orig(|)        { rtype }
         method join-type(|)   { join-type }
         method tables(|)      { [ |base.^tables, alias ] }
