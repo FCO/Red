@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add experimental feature for format table name
 
 0.1.19  2020-07-20T18:01:10+01:00
     - Fix bug on setting type of a column
