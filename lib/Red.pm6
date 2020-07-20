@@ -48,6 +48,8 @@ proto experimental(Str) {*}
 multi experimental($ where "formaters") {
     MetamodelX::Red::Model.^add_method: "experimental-formater", method { True }
     Red::Column.^add_method: "experimental-formater", method { True }
+    MetamodelX::Red::Model.^compose;
+    Red::Column.^compose;
     Empty
 }
 
