@@ -13,6 +13,7 @@ If you are looking for tutorials, you can visit:
 * Working with SQLite
 * [Special Variables](tutorials/vars)
 * [Red Cookbook](tutorials/cookbook)
+* [Experimental](tutorials/experimental)
 
 #### API documentation
 
