@@ -6,13 +6,14 @@ Welcome to Red ORM documentation.
 
 If you are looking for tutorials, you can visit:
 
-* [Beginner tutorial](tutorials/start)
+* [Beginner tutorial](tutorials/start.md)
 * [Relationships tutorial](tutorials/relationship.md)
 * [Red CLI](tutorials/cli.md)
 * Working with PostgreSQL
 * Working with SQLite
-* [Special Variables](tutorials/vars)
-* [Red Cookbook](tutorials/cookbook)
+* [Special Variables](tutorials/vars.md)
+* [Red Cookbook](tutorials/cookbook.md)
+* [Experimental](tutorials/experimental.md)
 
 #### API documentation
 
