@@ -1,18 +1,18 @@
 # Experimental features
 
-* `is-handling`:
+* `is-handling`
 
   make it possible to use the traint `is handling` that "exports" the given `ResultSeq`'s methods to the model itself
   
-* `migrations`:
+* `migrations`
 
   make it possible to test the prototype of the migration feature
   
-* `formaters`:
+* `formaters`
 
   make it possible to change the rule of creation of the names of tables and columns
   
-* `shortname`:
+* `shortname`
 
   make Red use the `shortname` of the model to create the table's name instead of the full name
 
