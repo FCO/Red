@@ -45,6 +45,12 @@ my package EXPORTHOW {
 
 proto experimental(Str) {*}
 
+multi experimental($ where "shortname") {
+    MetamodelX::Red::Model.^add_method: "experimental-name", method (\model) { model.^shortname }
+    MetamodelX::Red::Model.^compose;
+    Empty
+}
+
 multi experimental($ where "formaters") {
     MetamodelX::Red::Model.^add_method: "experimental-formater", method { True }
     Red::Column.^add_method: "experimental-formater", method { True }

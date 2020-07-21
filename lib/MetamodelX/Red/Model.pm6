@@ -72,7 +72,7 @@ method references(|) { %!references }
 
 #| Returns the table name for the model.
 method table(Mu \type) is rw {
-    $!table //= self.table-formater: type.^name
+    $!table //= self.table-formater: type.HOW.?experimental-name(type) // type.^name
 }
 
 #| Returns the table alias
