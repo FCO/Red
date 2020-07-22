@@ -8,6 +8,31 @@ use Red::ResultSeq;
 
 unit module Red::Operators;
 
+# TODO: Diferenciate prefix and postfix
+#| --X
+multi prefix:<-->(Red::Column $a) is export {
+    @*UPDATE.push: $a => Red::AST::Sub.new: $a, ast-value 1;
+    $a
+}
+
+#| ++X
+multi prefix:<++>(Red::Column $a) is export {
+    @*UPDATE.push: $a => Red::AST::Sum.new: $a, ast-value 1;
+    $a
+}
+
+#| X--
+multi postfix:<-->(Red::Column $a) is export {
+    @*UPDATE.push: $a => Red::AST::Sub.new: $a, ast-value 1;
+    $a
+}
+
+#| X++
+multi postfix:<++>(Red::AST $a) is export {
+    @*UPDATE.push: $a => Red::AST::Sum.new: $a, ast-value 1;
+    $a
+}
+
 #| -X
 multi prefix:<->(Red::AST $a) is export {
     Red::AST::Mul.new: ast-value(-1), $a

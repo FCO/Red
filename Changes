@@ -1,6 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix created obj's Poxy
+    - fix new-from-data from retuning data
+    - Add -- and ++ prefix and postfix
 
 0.1.21  2020-07-21T01:15:24+01:00
     - Add experimental short name for tables

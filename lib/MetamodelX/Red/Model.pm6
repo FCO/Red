@@ -474,11 +474,22 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
         self.apply-row-phasers($obj, BeforeCreate);
         my $data := $obj.^save(:insert, :from-create).row;
         my @ids = model.^id>>.column>>.attr-name;
-        my $filter = model.^id-filter: |do if $data.defined and not $data.elems {
-            $*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row{|@ids}:kv
+        my @ids-col = model.^id>>.column>>.name;
+        my %cols = model.^columns.map: { .column.attr-name => .column };
+        my $filter = do if @ids {
+            model.^id-filter: |do if $data.defined and not $data.elems {
+                $*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row{|@ids}:kv
+            } else {
+                do for @ids-col.kv -> $i, $k {
+                    @ids[$i] => $data{$k}
+                }
+            }.Hash
         } else {
-            $data{|@ids}:kv
-        }.Hash if @ids;
+            %pars.kv.map(-> $key, $value {
+                Red::AST::Eq.new: %cols{$key}, ast-value $value
+            })
+                .reduce: { Red::AST::AND.new: $^a, $^b }
+        }
 
         for %positionals.kv -> $name, @val {
             FIRST my $no = model.^find($filter);
@@ -493,7 +504,7 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
                     $ //= do {
                         my $obj;
                         my $*RED-DB = $RED-DB;
-                        if $filter.DEFINITE {
+                        if !$data.elems {
                             $obj = model.^find: $filter
                         } else {
                             $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);
@@ -611,6 +622,8 @@ multi method find(Str :$with!, |c) {
 #| Finds a specific row
 multi method find(|c) { self.search(|c).head }
 
+multi method find(Red::Model:U, Any:U) { die "Could not use find without data" }
+
 multi method get-attr(\instance, Str $name) {
     $!col-data-attr.get_value(instance).{ $name }
 }
@@ -628,21 +641,10 @@ multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
 }
 
 method new-from-data(\of, $data) {
-    my %cols = of.^columns.map: { .column.attr-name => .column }
+    my %cols = of.^columns.map: { |( .column.attr-name => .column, .column.name => .column ) }
     my $obj = of.^orig.new: |(%($data).kv
         .map(-> $c, $v {
             do with $v {
-                CATCH {
-                    dd of;
-                    dd $data;
-                    dd %cols;
-                    dd $c;
-                    dd $v;
-                    dd %cols{$c};
-		    dd %cols{$c}.inflate.($v).candidates>>.signature;
-                    dd get-RED-DB.^lookup("inflate").candidates>>.signature;
-                    .rethrow
-                }
                 unless $c.contains: "." {
                     die "Column '$c' not found" without %cols{$c};
                     die "Inflator not defined for column '$c'" without %cols{$c}.inflate;
