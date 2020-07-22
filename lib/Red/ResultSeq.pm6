@@ -23,6 +23,7 @@ use Red::ResultSeq::Iterator;
 use Red::HiddenFromSQLCommenting;
 use X::Red::Exceptions;
 use Red::PrepareCode;
+use Red::Phaser;
 
 =head2 Red::ResultSeq
 
@@ -200,6 +201,7 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
         $attr
     }
     model.^add_method: "no-table", my method no-table { True }
+    model.^add_method: "orig-result-seq", my method orig-result-seq { SELF }
     model.^compose;
     model.^add-column: $_ for @attrs;
     my role CMModel [Mu:U \m] {
@@ -364,7 +366,10 @@ method delete(::?CLASS:D:) is hidden-from-sql-commenting {
 #| Saves any change on any element of that ResultSet
 method save(::?CLASS:D:) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    get-RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values(@!update), :filter($.filter)
+    my @*UPDATE;
+    die "You should use a map updating value(s) before saving" unless $.of.^can: "orig-result-seq";
+    $.of.orig-result-seq.of.^apply-row-phasers(BeforeUpdate);
+    get-RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values[|@!update, |@*UPDATE], :filter($.filter)
 }
 
 #| unifies 2 ResultSeqs

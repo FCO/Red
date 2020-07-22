@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Make before-update phaser work on updating ResultSeq
 
 0.1.23  2020-07-22T21:20:24+01:00
     - Fix bind order on update
