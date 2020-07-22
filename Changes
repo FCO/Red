@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.22  2020-07-22T17:49:46+01:00
     - Fix created obj's Poxy
     - fix new-from-data from retuning data
     - Add -- and ++ prefix and postfix
