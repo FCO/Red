@@ -1,6 +1,46 @@
 Red::Operators
 --------------
 
+### multi sub prefix:<-->
+
+```perl6
+multi sub prefix:<-->(
+    Red::Column $a
+) returns Mu
+```
+
+--X
+
+### multi sub prefix:<++>
+
+```perl6
+multi sub prefix:<++>(
+    Red::Column $a
+) returns Mu
+```
+
+++X
+
+### multi sub postfix:<-->
+
+```perl6
+multi sub postfix:<-->(
+    Red::Column $a
+) returns Mu
+```
+
+X--
+
+### multi sub postfix:<++>
+
+```perl6
+multi sub postfix:<++>(
+    Red::AST $a
+) returns Mu
+```
+
+X++
+
 ### multi sub prefix:<->
 
 ```perl6
