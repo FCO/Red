@@ -723,13 +723,13 @@ multi method translate(Red::AST::Delete $_, $context?) {
 }
 
 multi method translate(Red::AST::Update $_, $context?) {
-    my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };
     my @bind;
     my $str = .values.map({
         my ($c, @c) := do given self.translate: .&ast-value, "update" { .key, .value }
         @bind.append: @c;
         $c
     }).join(",\n").indent: 3;
+    my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };
     qq:to/END/ => [|@bind, |@wbind];
     UPDATE {
         .into
