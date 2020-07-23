@@ -58,6 +58,11 @@ class Red::AST::Div
 
 Represents a division operation
 
+class Red::AST::IDiv
+--------------------
+
+Represents a division operation
+
 class Red::AST::Mod
 -------------------
 
