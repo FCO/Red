@@ -103,6 +103,28 @@ multi infix:</>(Numeric() $a is rw, Red::AST $b) is export {
     Red::AST::Div.new: ast-value($a), $b, :bind-left
 }
 
+
+#| X div Y
+multi infix:<div>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::IDiv.new: $a, $b
+}
+
+multi infix:<div>(Red::AST $a, Numeric() $b is readonly) is export {
+    Red::AST::IDiv.new: $a, ast-value $b
+}
+
+multi infix:<div>(Numeric() $a is readonly, Red::AST $b) is export {
+    Red::AST::IDiv.new: ast-value($a), $b
+}
+
+multi infix:<div>(Red::AST $a, Numeric() $b is rw) is export {
+    Red::AST::IDiv.new: $a, ast-value($b), :bind-right
+}
+
+multi infix:<div>(Numeric() $a is rw, Red::AST $b) is export {
+    Red::AST::IDiv.new: ast-value($a), $b, :bind-left
+}
+
 #| ==
 multi infix:<==>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Eq.new: $a, $b, :cast<num>

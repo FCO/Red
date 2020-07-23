@@ -652,7 +652,11 @@ method new-from-data(\of, $data) {
                     $inflated = get-RED-DB.inflate(
                             $inflated,
                             :to(of.^attributes.first(*.name.substr(2) eq $c).type)
-                            ) if \(get-RED-DB, $inflated, :to(of.^attributes.first(*.name.substr(2) eq $c).type)) ~~ get-RED-DB.^lookup("inflate").candidates.any.signature;
+                    ) if \(
+                        get-RED-DB,
+                        $inflated,
+                        :to(of.^attributes.first(*.name.substr(2) eq $c).type)
+                    ) ~~ get-RED-DB.^lookup("inflate").candidates.any.signature;
                     $c => $inflated
                 }
             } else { Empty }

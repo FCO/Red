@@ -18,7 +18,6 @@ subtest {
     lives-ok { TestDuration.^create-table }, "create table with Duration column";
     my TestDuration $row;
     lives-ok { $row = TestDuration.^create(duration => Duration.new(10)) }, "create row with Duration";
-    todo "Not yet coercing values from DB";
     isa-ok $row.duration, Duration;
 }, "test Duration";
 

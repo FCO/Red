@@ -28,6 +28,7 @@ my @tests =
         *.grep(*.bla > 5),
         *.grep(*.id > 5).map(*.bla),
         *.grep(*.id  %% 2).map(*.bla ~ "bla"),
+        *.grep(*.bla %% 2).map(*.bla div 2),
         *.first,
         *.first(*.bla %% 5),
         *.sort(*.bla),
@@ -37,13 +38,16 @@ my @tests =
         *.map({ .bla > 10 ?? "bla" !! "ble" }),
         *.map({ .bla > 10 ?? .id !! .bla }),
         *.map({ .bla > 10 ?? .id ~ "id" !! .bla ~ "bla" }),
-;
-
-my @todo =
-        *.grep(*.bla %% 2).map(*.bla / 2),
         *.grep(*.bla %% 2).map(*.bla * 2),
         *.grep(*.id  %% 2).map(*.bla * 2),
         *.grep(*.id  %% 2).map(*.bla + 5),
+        *.grep(*.id  %% 2).map(*.bla - 5),
+;
+
+my @todo =
+        *.grep(*.id  %% 2).map(*.bla * 2.1),
+        *.grep(*.id  %% 2).map(*.bla + 5.1),
+        *.grep(*.id  %% 2).map(*.bla - 5.1),
         *.map({ "bla" if .bla > 45 }),
         *.map({ next unless .bla < 5; "bla" }),
 ;
@@ -53,9 +57,9 @@ lives-ok {
         is-deeply .(Bla.^all).Seq, .(@bla).Seq for @tests;
 }
 
-todo "NYI", @todo.elems;
 #lives-ok {
-        #is-deeply .(Bla.^all).Seq, .(@bla).Seq for @todo;
+#        todo "NYI";
+#        is-deeply .(Bla.^all).Seq, .(@bla).Seq for @todo;
 #}
 
 done-testing;

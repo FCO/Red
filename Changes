@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add inflation to Str -> Duration
+    - Fix some comparisons between Seq and ResultSeq
 
 0.1.25  2020-07-23T21:01:46+01:00
     - Adds now and today to columnMethods

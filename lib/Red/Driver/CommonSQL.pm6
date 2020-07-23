@@ -777,12 +777,14 @@ multi method type-for-sql("boolean"  --> "Bool"    ) {}
 multi method type-for-sql("json"     --> "Json"    ) {}
 multi method type-for-sql(Str $ where /^ "varchar(" ~ ")" \d+ $/ --> "Str") {}
 
+multi method inflate(Num $value, Int      :$to!) { $to.new:        $value }
 multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }
-multi method inflate(Str $value, DateTime :$to!) { $to.new: $value  }
-multi method inflate(Str $value, Date     :$to!) { $to.new: $value  }
-multi method inflate(Num $value, Duration :$to!) { $to.new: $value  }
-multi method inflate(Int $value, Duration :$to!) { $to.new: $value  }
-multi method inflate(Str $value, Version  :$to!) { $to.new: $value  }
+multi method inflate(Str $value, DateTime :$to!) { $to.new:        $value }
+multi method inflate(Str $value, Date     :$to!) { $to.new:        $value }
+multi method inflate(Num $value, Duration :$to!) { $to.new:        $value }
+multi method inflate(Int $value, Duration :$to!) { $to.new:        $value }
+multi method inflate(Str $value, Duration :$to!) { $to.new:        $value }
+multi method inflate(Str $value, Version  :$to!) { $to.new:        $value }
 
 multi method deflate(Instant  $value) { +$value }
 multi method deflate(Date     $value) { ~$value }

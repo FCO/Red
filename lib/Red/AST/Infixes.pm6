@@ -11,6 +11,7 @@ class Red::AST::AND     { ... }
 class Red::AST::OR      { ... }
 class Red::AST::Mul     { ... }
 class Red::AST::Div     { ... }
+class Red::AST::IDiv    { ... }
 class Red::AST::Mod     { ... }
 class Red::AST::Concat  { ... }
 class Red::AST::Like    { ... }
@@ -19,7 +20,7 @@ class Red::AST::In      { ... }
 #| Represents a sum operation
 class Red::AST::Sum does Red::AST::Infix {
     has $.op = "+";
-    has Num $.returns;
+    has $.returns = (self.left | self.right) ~~ Num ?? Num !! Int;
 
     method should-set(--> Hash()) {
         self.find-column-name => self.find-value
@@ -43,7 +44,7 @@ class Red::AST::Sum does Red::AST::Infix {
 #| Represents a subtraction operation
 class Red::AST::Sub does Red::AST::Infix {
     has $.op = "-";
-    has Num $.returns;
+    has $.returns = (self.left | self.right) ~~ Num ?? Num !! Int;
 
     method should-set(--> Hash()) {
         self.find-column-name => self.find-value
@@ -216,7 +217,7 @@ class Red::AST::OR does Red::AST::Infix {
 #| Represents a multiplication operation
 class Red::AST::Mul does Red::AST::Infix {
     has $.op = "*";
-    has Num $.returns;
+    has $.returns = (self.left | self.right) ~~ Num ?? Num !! Int;
 
     method should-set(--> Hash()) {
         self.find-column-name => self.find-value
@@ -241,6 +242,31 @@ class Red::AST::Mul does Red::AST::Infix {
 class Red::AST::Div does Red::AST::Infix {
     has $.op = "/";
     has Num $.returns;
+
+    method should-set(--> Hash()) {
+        self.find-column-name => self.find-value
+    }
+
+    method should-validate {}
+
+    method find-column-name {
+        gather for self.args {
+            .take for .?find-column-name
+        }
+    }
+
+    method find-value {
+        for self.args {
+            .return with .?find-value
+        }
+    }
+}
+
+
+#| Represents a division operation
+class Red::AST::IDiv does Red::AST::Infix {
+    has $.op = "/";
+    has Int $.returns;
 
     method should-set(--> Hash()) {
         self.find-column-name => self.find-value
