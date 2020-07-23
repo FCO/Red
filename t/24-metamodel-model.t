@@ -68,7 +68,6 @@ is-deeply model :: {}.new.^id-values, ();
 is-deeply model :: { has $.id is id }.new(:42id).^id-values, (42,);
 is-deeply model :: { has $.id1 is id; has $!id2 is id = 13 }.new(:42id1).^id-values, (42, 13);
 
-todo "default-nullable returning false by default";
 ok not Bla.^default-nullable;
 ok Ble.^default-nullable;
 

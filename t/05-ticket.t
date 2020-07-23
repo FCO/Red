@@ -70,7 +70,6 @@ for me.tickets -> $t {
     is $t.status.name, "new"
 }
 
-todo 1;
 lives-ok {
     given me.tickets.head {
         .status = $closed;
@@ -78,7 +77,6 @@ lives-ok {
     }
 }
 
-todo "Its repeting the last results";
 for me.tickets -> $t {
     is $t.status.name, ["closed", |("new" xx *)].[$++]
 }
