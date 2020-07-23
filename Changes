@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.25  2020-07-23T21:01:46+01:00
     - Adds now and today to columnMethods
 
 0.1.24  2020-07-22T23:22:30+01:00
