@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Adds now and today to columnMethods
 
 0.1.24  2020-07-22T23:22:30+01:00
     - Make before-update phaser work on updating ResultSeq
