@@ -105,6 +105,17 @@ multi sub infix:</>(
 
 X / Y
 
+### multi sub infix:<div>
+
+```perl6
+multi sub infix:<div>(
+    Red::AST $a,
+    Red::AST $b
+) returns Mu
+```
+
+X div Y
+
 ### multi sub infix:<==>
 
 ```perl6
