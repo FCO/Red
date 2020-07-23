@@ -62,6 +62,9 @@ method day($base where { .returns ~~ (Date|DateTime|Instant) }:) {
     Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::day)) but Red::ColumnMethods
 }
 
+method now   { self.attr.type.now   }
+method today { self.attr.type.today }
+
 #| Return a value from a json hash key
 multi method AT-KEY(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Str or ( $_ ~~ Red::AST and .returns ~~ Str )}) is rw {
     my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);
