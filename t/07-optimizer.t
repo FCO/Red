@@ -2,6 +2,8 @@ use Test;
 use Red::AST::Value;
 use Red;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 model C {
     has Int $.a is column;
     has Int $.b is column;

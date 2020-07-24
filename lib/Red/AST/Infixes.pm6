@@ -20,7 +20,7 @@ class Red::AST::In      { ... }
 #| Represents a sum operation
 class Red::AST::Sum does Red::AST::Infix {
     has $.op = "+";
-    has $.returns = (self.left | self.right) ~~ Num ?? Num !! Int;
+    has $.returns = (self.left | self.right).returns ~~ Num ?? Num !! Int;
 
     method should-set(--> Hash()) {
         self.find-column-name => self.find-value
@@ -44,7 +44,7 @@ class Red::AST::Sum does Red::AST::Infix {
 #| Represents a subtraction operation
 class Red::AST::Sub does Red::AST::Infix {
     has $.op = "-";
-    has $.returns = (self.left | self.right) ~~ Num ?? Num !! Int;
+    has $.returns = (self.left | self.right).returns ~~ Num ?? Num !! Int;
 
     method should-set(--> Hash()) {
         self.find-column-name => self.find-value
@@ -217,7 +217,7 @@ class Red::AST::OR does Red::AST::Infix {
 #| Represents a multiplication operation
 class Red::AST::Mul does Red::AST::Infix {
     has $.op = "*";
-    has $.returns = (self.left | self.right) ~~ Num ?? Num !! Int;
+    has $.returns = (self.left | self.right).returns ~~ Num ?? Num !! Int;
 
     method should-set(--> Hash()) {
         self.find-column-name => self.find-value

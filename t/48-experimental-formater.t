@@ -2,6 +2,8 @@ use Test;
 use Red <formaters>;
 use Red::Formater;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 class Bla does Red::Formater {
     method experimental-formater { True }
 }

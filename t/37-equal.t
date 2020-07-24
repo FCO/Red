@@ -15,8 +15,8 @@ schema(Bla, Ble).create;
 Bla.^create: :bla($_) for ^50;
 Ble.^create: :ble($_) for ^50;
 
-my @bla = Bla.^all; # running the query now, use := to not ru the query
-my @ble = Ble.^all; # running the query now, use := to not ru the query
+my @bla = Bla.^all; # running the query now, use := to not run the query
+my @ble = Ble.^all; # running the query now, use := to not run the query
 
 my @tests =
         *.head,

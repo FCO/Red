@@ -1,8 +1,9 @@
 use Test;
 use Red;
 
-plan 1;
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
+skip-rest "Different driver setted" if %*ENV<RED_DATABASE>:exists;
 my $*RED-DB = database "Mock";
 
 model M is table<mmm> {
@@ -34,3 +35,5 @@ M.^all.map({ .a, .b, .a }).Seq.head;
 ##M.^all.map({ next unless .b; .a }).Seq; # TODO: review next
 
 $*RED-DB.verify;
+
+done-testing

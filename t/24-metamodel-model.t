@@ -1,4 +1,7 @@
 use Test;
+
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 my $*RED-DB = database "SQLite";
 
 use-ok "Red";

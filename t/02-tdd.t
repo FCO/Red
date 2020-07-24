@@ -1,4 +1,7 @@
 use Test;
+
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 my $*RED-FALLBACK = False;
 use-ok "Red";
 
@@ -396,4 +399,4 @@ is-deeply Post3_1.author.^table, Person3.^table;
 is-deeply Post3_2.author.^table, Person3.^table;
 is-deeply Post3_1.author.^table, Post3_2.author.^table;
 
-done-testing
+done-testing;

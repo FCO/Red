@@ -1,7 +1,7 @@
 use Test;
 use Red;
 
-plan 2;
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
 my $*RED-DB = database "Mock";
 my $*RED-DEBUG = True if %*ENV<RED_DEBUG>;
@@ -24,3 +24,5 @@ $*RED-DB.when: "CREATE TABLE example2_model(col INTEGER NULL)", :once, :return[]
 Example2Model.^create-table;
 
 $*RED-DB.verify;
+
+done-testing;
