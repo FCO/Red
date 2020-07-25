@@ -36,7 +36,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(Post, Person).create;
+schema(Post, Person).drop.create;
 
 my $a1 = Post.^create: :title<Bla>, :body<Ble>, :published(DateTime.now);
 my $a2 = Post.^create: :title<Bli>, :body<Blo>;

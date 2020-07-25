@@ -11,6 +11,8 @@ model M is table<mmm> {
     has Int $.a is column is rw
 }
 
+schema(M).drop;
+
 M.^create-table;
 
 M.^create: :1a;

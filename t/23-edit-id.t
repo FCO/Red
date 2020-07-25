@@ -11,6 +11,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
+schema(MyModel).drop;
 MyModel.^create-table: :if-not-exists;
 
 my $m = MyModel.^create: name => "a name";

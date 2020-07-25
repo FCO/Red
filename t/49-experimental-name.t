@@ -1,6 +1,8 @@
 use Test;
 use Red <shortname>;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 model A::B::C::D::EFG {
     has $!id is serial
 }

@@ -4,14 +4,17 @@ use Red::AST::Generic::Infix;
 use Red::AST::Generic::Prefix;
 use Red::AST::Generic::Postfix;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-model Bla { has $!id is serial; has Int $.val is column }
+model Bla { has UInt $!id is serial; has Int $.val is column }
 
+schema(Bla).drop;
 Bla.^create-table;
 Bla.^create: :1val;
 

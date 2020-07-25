@@ -591,7 +591,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $cont
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Positional, $context?) {
-    '( ' ~ .get-value.map( -> $v { '?' } ).join(', ') ~ ' )' => .get-value;
+    '( ' ~ .get-value.map( -> $v { self.wildcard } ).join(', ') ~ ' )' => .get-value;
 }
 
 multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW, $context?) {
@@ -783,8 +783,8 @@ multi method inflate(Str $value, DateTime :$to!) { $to.new:        $value }
 multi method inflate(Str $value, Date     :$to!) { $to.new:        $value }
 multi method inflate(Num $value, Duration :$to!) { $to.new:        $value }
 multi method inflate(Int $value, Duration :$to!) { $to.new:        $value }
-multi method inflate(Str $value, Duration :$to!) { $to.new:        $value }
 multi method inflate(Str $value, Version  :$to!) { $to.new:        $value }
+multi method inflate(Str $value, Duration :$to!) { $to.new: [+] $value.comb(/\d+/).reverse Z[*] (1, 10, 100 ... *) }
 
 multi method deflate(Instant  $value) { +$value }
 multi method deflate(Date     $value) { ~$value }

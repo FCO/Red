@@ -1,5 +1,7 @@
 use Test;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 use Red:api<2>;
 
 use lib <t/lib>;
@@ -12,7 +14,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(Sentence, Link).create;
+schema(Sentence, Link).drop.create;
 
 Sentence.^populate;
 Link.^populate;

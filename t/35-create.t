@@ -1,6 +1,8 @@
 use Test;
 use Red;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 model Bla {
     has UInt $.id     is serial;
     has Str  $.value  is column;
@@ -20,7 +22,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(Bla, Ble).create;
+schema(Bla, Ble).drop.create;
 
 subtest "Simple create and fk id", {
     my $bla = Bla.^create: :value<test1>;

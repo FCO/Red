@@ -1,6 +1,8 @@
 use Test;
 use Red;
 
+plan :skip-all("Pg do not accept minus") with %*ENV<RED_DATABASE>;
+
 model State is rw is table('foo') {
     has Int $.id            is serial;
     has Str $.name          is column{ :unique };
@@ -21,7 +23,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(State, Transition).create;
+schema(State, Transition).drop.create;
 
 my $one = State.^create: name => "one";
 my $two = State.^create: name => "two";

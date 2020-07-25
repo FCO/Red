@@ -13,6 +13,7 @@ my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=
 isa-ok Red.events, Supply;
 
 model Bla { has UInt $.id is serial; has Str $.name is column }
+schema(Bla).drop;
 
 my $s = start react whenever Red.events -> $event {
     given ++$ {
@@ -20,25 +21,41 @@ my $s = start react whenever Red.events -> $event {
             is $event.data, 42;
             is-deeply $event.metadata, {};
             is-deeply $event.db, $*RED-DB;
-            is $event.db-name, "Red::Driver::SQLite";
+            with %*ENV<RED_DATABASE> {
+                skip "It's not using SQLite"
+            } else {
+                is $event.db-name, "Red::Driver::SQLite";
+            }
         }
         when 2 {
             is $event.data, 42;
             is-deeply $event.metadata, {:bla<ble>}
             is-deeply $event.db, $*RED-DB;
-            is $event.db-name, "Red::Driver::SQLite";
+            with %*ENV<RED_DATABASE> {
+                skip "It's not using SQLite"
+            } else {
+                is $event.db-name, "Red::Driver::SQLite";
+            }
         }
         when 3 {
             isa-ok $event.data, Red::AST::CreateTable;
             is-deeply $event.metadata, {:bla<ble>}
             is-deeply $event.db, $*RED-DB;
-            is $event.db-name, "Red::Driver::SQLite";
+            with %*ENV<RED_DATABASE> {
+                skip "It's not using SQLite"
+            } else {
+                is $event.db-name, "Red::Driver::SQLite";
+            }
         }
         when 4 {
             isa-ok $event.data, Red::AST::Insert;
             is-deeply $event.metadata, {:bla<ble>}
             is-deeply $event.db, $*RED-DB;
-            is $event.db-name, "Red::Driver::SQLite";
+            with %*ENV<RED_DATABASE> {
+                skip "It's not using SQLite"
+            } else {
+                is $event.db-name, "Red::Driver::SQLite";
+            }
         }
         default {
             is-deeply $event.metadata, {:bli<blo>}

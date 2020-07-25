@@ -15,6 +15,7 @@ subtest {
         has Duration    $.duration is column;
     }
 
+    schema(TestDuration).drop;
     lives-ok { TestDuration.^create-table }, "create table with Duration column";
     my TestDuration $row;
     lives-ok { $row = TestDuration.^create(duration => Duration.new(10)) }, "create row with Duration";
@@ -25,6 +26,8 @@ subtest {
     model UnknownType {
         has Str $.unknown is id;
     }
+
+    schema(UnknownType).drop;
 
     UnknownType.^create-table;
     UnknownType.^create: :unknown<bla>;

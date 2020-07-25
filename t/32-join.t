@@ -28,7 +28,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(Bla, Ble, Bli).create;
+schema(Bla, Ble, Bli).drop.create;
 
 Bla.^create: :ble{ :bli{ :1value } };
 Bla.^create: :ble{ :bli{ :2value } };

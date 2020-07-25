@@ -1,5 +1,7 @@
 use Test;
 
+plan :skip-all("Pg do not accept minus") with %*ENV<RED_DATABASE>;
+
 use lib "t/lib";
 use TestRed;
 
@@ -11,7 +13,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(Zub, Foo).create;
+schema(Zub, Foo).drop.create;
 
 my $zub = Zub.^create;
 my $one = $zub.foos.create( bar => "one" );

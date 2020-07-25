@@ -2,7 +2,7 @@ use Red:api<2>;
 
 unit model Child;
 
-has UInt $!id              is id;
+has UInt $!id              is serial;
 has Str  $.name            is column;
 has Str  $.country         is column;
 

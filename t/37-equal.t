@@ -1,8 +1,10 @@
 use Test;
 use Red;
 
-model Bla { has $.id is serial; has Int $.bla is column }
-model Ble { has $.id is serial; has Int $.ble is column }
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
+model Bla { has UInt $.id is serial; has Int $.bla is column }
+model Ble { has UInt $.id is serial; has Int $.ble is column }
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
@@ -10,7 +12,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(Bla, Ble).create;
+schema(Bla, Ble).drop.create;
 
 Bla.^create: :bla($_) for ^50;
 Ble.^create: :ble($_) for ^50;

@@ -1,6 +1,8 @@
 use Test;
 use Red:api<2>;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 model AAA {
     has UInt $!id1 is id;
     has UInt $!id2 is id;
@@ -21,7 +23,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 red-defaults default    => database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(AAA, BBB).create;
+schema(AAA, BBB).drop.create;
 
 my $a = AAA.^create: :42id1, :13id2;
 $a.many.create: :value($_) for ^10;

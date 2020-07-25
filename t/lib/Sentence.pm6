@@ -2,7 +2,7 @@ use Link;
 use Red:api<2>;
 
 model Sentence {
-    has UInt $.id          is id;
+    has UInt $.id          is serial;
     has Str  $.lang        is column;
     has Str  $.sentence    is column;
     has      @.links-to    is relationship(*.id-to,   :model<Link>);

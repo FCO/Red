@@ -8,7 +8,7 @@ model Bla {
 }
 
 model Ble {
-    has Int $.id    is id;
+    has Int $.id    is serial;
     has     @.bla   is relationship({ .ble-id }, :model<Bla>);
     has Int $.b     is column
 }
@@ -19,7 +19,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(Bla, Ble).create;
+schema(Bla, Ble).drop.create;
 
 Ble.^create(:1b).bla.create;
 Ble.^create(:1b).bla.create;

@@ -2,7 +2,7 @@ use Test;
 use Red:api<2>;
 
 model Bla {
-    has $.id    is serial;
+    has UInt $.id    is serial;
     has $.value is column;
 }
 
@@ -12,6 +12,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 red-defaults default    => database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
+schema(Bla).drop;
 Bla.^create-table;
 
 Bla.^create(:value("value-{$_}")) for ^5;

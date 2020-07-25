@@ -13,6 +13,8 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
+schema(Transaction).drop;
+
 Transaction.^create-table;
 
 Transaction.^create;

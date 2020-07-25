@@ -107,6 +107,8 @@ sub call-count-ok (Str:D $phaser, Int:D $expected = 1, Str :$msg?) {
     }
 }
 
+schema(TestPhasers).drop;
+
 TestPhasers.^create-table;
 
 my $test-row = TestPhasers.^create(name => "test");

@@ -12,6 +12,8 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 red-defaults default    => database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
+schema(Mmm).drop;
+
 lives-ok { Mmm.^create-table }
 dies-ok  { Mmm.^create-table }
 lives-ok { Mmm.^create-table: :if-not-exists }

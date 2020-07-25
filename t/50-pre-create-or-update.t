@@ -18,7 +18,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(Reputation).create;
+schema(Reputation).drop.create;
 
 .elems ?? .map(*.reputation++).save !! .create: :1reputation with Reputation.^all.grep({ .guild-id == 1 && .user-id == 1 });
 my $time = Reputation.^load(:1guild-id, :1user-id).last-updated;

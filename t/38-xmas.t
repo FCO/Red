@@ -13,7 +13,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 red-defaults default    => database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
 
-schema(Child, Gift, ChildAskedOnYear).create;
+schema(Child, Gift, ChildAskedOnYear).drop.create;
 
 for <doll ball car pokemon> -> $name {
     Gift.^create: :$name;

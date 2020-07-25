@@ -12,6 +12,7 @@ model Writable is rw {
     has Str $.value is column;
 }
 
+schema(Writable).drop;
 Writable.^create-table;
 
 my $a = Writable.^create: :value<bla>;
