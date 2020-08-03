@@ -21,7 +21,13 @@ method new(@models) {
     self.bless: :%models
 }
 
-method FALLBACK(Str $name) { %!models{ $name } }
+method FALLBACK(Str $name) {
+    do if %!models{ $name }:exists {
+        %!models{ $name }
+    } else {
+        fail "Model '$name' not found on schema"
+    }
+}
 
 # TODO: For tests only, please make it right
 method drop {

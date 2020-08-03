@@ -73,6 +73,6 @@ multi MAIN(
         Str  :$driver!,
         *%pars
 ) {
-    red-defaults default => database $driver, |%pars;
+    $GLOBAL::RED-DB = database $driver, |%pars;
     prepare-database :$populate, :$models, :$driver, |%pars
 }
