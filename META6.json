@@ -8,8 +8,7 @@
   "depends" : [
     "DBIish",
     "DB::Pg",
-    "UUID",
-    "Red"
+    "UUID"
   ],
   "description" : "A Raku ORM",
   "license" : "Artistic-2.0",
