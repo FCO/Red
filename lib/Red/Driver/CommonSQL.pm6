@@ -792,7 +792,6 @@ multi method deflate(Instant  $value) { +$value }
 multi method deflate(Date     $value) { ~$value }
 multi method deflate(DateTime $value) { ~$value }
 multi method deflate(Duration $value) { +$value }
-multi method deflate(Duration $value) { +$value }
 multi method deflate(Version  $value) { ~$value }
 
 multi method deflate($value) { $value }
