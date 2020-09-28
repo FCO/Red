@@ -769,6 +769,8 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> 
 multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
 
 multi method type-for-sql("real"     --> "Num"     ) {}
+multi method type-for-sql("blob"     --> "Blob"    ) {}
+multi method type-for-sql("text"     --> "Str"     ) {}
 multi method type-for-sql("varchar"  --> "Str"     ) {}
 multi method type-for-sql("interval" --> "Duration") {}
 multi method type-for-sql("integer"  --> "Int"     ) {}
