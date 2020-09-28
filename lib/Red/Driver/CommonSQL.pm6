@@ -769,6 +769,8 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> 
 multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
 
 multi method type-for-sql("real"     --> "Num"     ) {}
+multi method type-for-sql("blob"     --> "Blob"    ) {}
+multi method type-for-sql("text"     --> "Str"     ) {}
 multi method type-for-sql("varchar"  --> "Str"     ) {}
 multi method type-for-sql("interval" --> "Duration") {}
 multi method type-for-sql("integer"  --> "Int"     ) {}
@@ -789,7 +791,6 @@ multi method inflate(Str $value, Duration :$to!) { $to.new: [+] $value.comb(/\d+
 multi method deflate(Instant  $value) { +$value }
 multi method deflate(Date     $value) { ~$value }
 multi method deflate(DateTime $value) { ~$value }
-multi method deflate(Duration $value) { +$value }
 multi method deflate(Duration $value) { +$value }
 multi method deflate(Version  $value) { ~$value }
 

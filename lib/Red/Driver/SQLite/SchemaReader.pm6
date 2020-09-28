@@ -43,7 +43,7 @@ class SQL::CreateTable::Action {
             |$<index-mod>.made<pk unique references>
         )
     }
-    method autp-increment          { make ( :auto-increment ) }
+    method auto-increment          { make ( :auto-increment ) }
     method modifier:<null>($/)     { make ( :nullable ) }
     method modifier:<not-null>($/) { make ( :!nullable ) }
     method index-mod:<pk>($/)      { make ( :pk ) }

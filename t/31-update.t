@@ -27,6 +27,7 @@ is Bla.^all.head.num1, 13;
 Bla.^all.grep(*.num2 == 13).map({ .num1 /= .num2 }).save;
 is Bla.^all.head.num1, 1;
 
+# Next line causes `Use of Nil in numeric context\n  in block  at <precomp-path> line 1`
 Bla.^all.map({ .num1 *= .num2; .num2 = 42 }).save;
 is Bla.^all.head.num1, 13;
 is Bla.^all.head.num2, 42;

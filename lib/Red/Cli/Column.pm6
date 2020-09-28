@@ -6,7 +6,7 @@ has      $.table      is rw;
 has Str  $.name       is required;
 has Str  $.formated-name = snake-to-kebab-case $!name;
 has Str  $.type       is required;
-has Str  $.perl-type  = get-RED-DB.type-for-sql: $!type;
+has Str  $.perl-type  = get-RED-DB.type-for-sql: $!type.lc;
 has Bool $.nullable   = True;
 has Bool $.pk         = False;
 has Bool $.unique     = False;
