@@ -19,7 +19,7 @@ multi sub gen-stub-code(
 ) returns Mu
 ```
 
-Generates models' code from database schema
+Generates stub code to access models from database schema
 
 ### multi sub migration-plan
 
@@ -32,7 +32,7 @@ multi sub migration-plan(
 ) returns Mu
 ```
 
-Generates models' code from database schema
+Generates migration plan to upgrade database schema
 
 ### multi sub generate-code
 
