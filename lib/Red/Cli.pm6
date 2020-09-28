@@ -32,7 +32,7 @@ sub gen-stub(:@includes, :@models, :$driver, :%pars) {
     @stub
 }
 
-#| Generates models' code from database schema
+#| Generates stub code to access models from database schema
 multi gen-stub-code(
         Str  :$schema-class,
         Str  :$driver!,
@@ -56,7 +56,7 @@ multi gen-stub-code(
 }
 
 
-        #| Generates models' code from database schema
+#| Generates migration plan to upgrade database schema
 multi migration-plan(
         Str :$model!,
         Str :$require = $model,

@@ -8,7 +8,7 @@ my %*SUB-MAIN-OPTS =
   :named-anywhere,
 ;
 
-#| Lists tables from database schema
+#| List tables in database
 multi MAIN(
     "list-tables",
     Str  :$driver!,
@@ -18,7 +18,7 @@ multi MAIN(
     .say for list-tables :$driver, |%pars
 }
 
-#| Generates models' code from database schema
+#| Generate stub code to access models from database schema
 multi MAIN(
     "print-stub",
     Str  :$schema-class,
@@ -30,7 +30,7 @@ multi MAIN(
 }
 
 
-#| Generates models' code from database schema
+#| Generates migration plan to upgrade database schema
 multi MAIN(
     "migration-plan",
     Str :$model!,
