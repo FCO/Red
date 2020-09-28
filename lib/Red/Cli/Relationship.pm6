@@ -9,7 +9,7 @@ method to-code(:$schema-class) {
     qq:to/END/.chomp;
     has \$.{ snake-to-kebab-case &!transform-name( $!id.name ) } is relationship({[
             "\n\{ .{ $!id.formated-name } \}",
-            "\n:model<{ $!id.table.model-name }>",
+            "\n:model<{ snake-to-camel-case $!id.references<table> }>",
             ("\n:require<$schema-class>" if $schema-class),
         ].join(",").indent: 4}
     );
