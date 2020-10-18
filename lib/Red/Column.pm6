@@ -197,11 +197,7 @@ submethod TWEAK(:$unique) {
 
 #| Do not test definedness, but returns a new Red::AST::IsDefined.
 #| It's used to test `IS NULL` on the given column. It's also used
-#| by any construction that naturally uses .defined, for example:
-
-=begin code
-MyModel.map: { .col1 // "null" }
-=end code
+#| by any construction that naturally uses `.defined`.
 
 method defined {
     Red::AST::IsDefined.new: self
