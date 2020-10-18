@@ -74,13 +74,11 @@ method as(
 
 Returns a clone using a different name
 
-    MyModel.map: { .col1 // "null" }
-
 ### method defined
 
 ```perl6
 method defined() returns Mu
 ```
 
-Do not test definedness, but returns a new Red::AST::IsDefined. It's used to test `IS NULL` on the given column. It's also used by any construction that naturally uses .defined, for example:
+Do not test definedness, but returns a new Red::AST::IsDefined. It's used to test `IS NULL` on the given column. It's also used by any construction that naturally uses `.defined`.
 
