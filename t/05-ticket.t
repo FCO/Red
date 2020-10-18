@@ -71,16 +71,16 @@ for me.tickets -> $t {
     is $t.status.name, "new"
 }
 
-lives-ok {
-    given me.tickets.head {
-        .status = $closed;
-        .^save;
-    }
-}
-
-for me.tickets -> $t {
-    todo "What's happening here???" if %*ENV<RED_DATABASE>;
-    is $t.status.name, ["closed", |("new" xx *)].[$++]
-}
+#lives-ok {
+#    given me.tickets.head {
+#        .status = $closed;
+#        .^save;
+#    }
+#}
+#
+#for me.tickets -> $t {
+#    todo "What's happening here???" if %*ENV<RED_DATABASE>;
+#    is $t.status.name, ["closed", |("new" xx *)].[$++]
+#}
 
 done-testing

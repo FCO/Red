@@ -6,7 +6,7 @@ model Reputation is table<reputation> is rw {
     has Int      $.guild-id     is id;
     has Int      $.user-id      is id;
     has Int      $.reputation   is column;
-    has DateTime $.last-updated is column .= now;
+    has DateTime $.last-updated is column is rw .= now;
     method !update-time is before-update { self.last-updated .= now }
 }
 
