@@ -38,6 +38,10 @@ has             @.unique-groups;
 #    }).join: "|"
 #}
 
+multi method WHICH(::?CLASS:D:) {
+    ValueObjAt.new: self.gist
+}
+
 multi method perl(::?CLASS:D:) {
     "{ self.^name }.new({
         self.Hash.pairs.sort.map(-> (:$key, :$value) {
