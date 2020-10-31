@@ -389,6 +389,36 @@ WHERE
 BIND: ["1a"]
 ```
 
+## when foreign key and pk use the same column.
+
+```
+use Red:api<2>;
+
+model B { ... }
+
+model A is table<aa> {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+
+model B is table<bb> {
+    # Here, we can use this syntax to make bb.a_id column references aa.id
+    has Int $.a-id is column{ :id, :references{.id}, :model-name<A>, };
+    has A $.a is relationship{ .a-id };
+    has Str $.name is column;
+}
+
+red-defaults default => database 'SQLite';
+
+schema(A, B).create;
+
+my $a = A.^create: :name('A');
+B.^create: :a-id($a.id), :name('b');
+my $b = B.^load: :a-id($a.id);
+$b.raku.say;
+$b.a.raku.say
+```
+
 ## events
 
 If you want to run something every time a query is made by Red.
