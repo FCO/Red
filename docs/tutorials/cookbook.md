@@ -403,7 +403,7 @@ model A is table<aa> {
 
 model B is table<bb> {
     # Here, we can use this syntax to make bb.a_id column references aa.id
-    has Int $.a-id is column{ :id, :references{.id}, :model-name<A>, };
+    has Int $.a-id is column{ :id, :references{.id}, :model-name<A> };
     has A $.a is relationship{ .a-id };
     has Str $.name is column;
 }
@@ -413,7 +413,7 @@ red-defaults default => database 'SQLite';
 schema(A, B).create;
 
 my $a = A.^create: :name('A');
-B.^create: :a-id($a.id), :name('b');
+B.^create: :$a, :name('b');
 my $b = B.^load: :a-id($a.id);
 $b.raku.say;
 $b.a.raku.say
