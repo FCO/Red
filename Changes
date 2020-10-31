@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.27  2020-10-31T21:28:57Z
     - Unique constraint fixes
 
 0.1.26  2020-07-24T00:25:06+01:00
