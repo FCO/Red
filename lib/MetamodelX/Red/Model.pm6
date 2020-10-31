@@ -106,7 +106,7 @@ method default-nullable(|) is rw { $!default-null }
 
 #| Returns all columns with the unique counstraint
 method unique-constraints(\model) {
-    @!constraints.unique.grep(*.key eq "unique").map: *.value>>.attr
+    @!constraints.unique.grep(*.key eq "unique").unique.map: *.value.map: *.attr
 }
 
 #| A map from attr to column
@@ -161,7 +161,7 @@ method compose(Mu \type) {
     self.compose-dirtable: type;
 
     for type.^columns.grep(*.column.unique-groups.elems > 0).categorize(*.column.unique-groups).values -> @grp {
-        type.^add-unique-constraint: -> | { @grp }
+        type.^add-unique-constraint: -> | { @grp>>.column }
     }
 
     if type.^constraints<pk>:!exists {
