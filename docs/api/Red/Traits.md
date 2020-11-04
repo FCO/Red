@@ -116,7 +116,7 @@ Trait that defines a relationship
 ```perl6
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$relationship! (&relationship, Str :$model, Str :$require = { ... }, Bool :$optional, Bool :$no-prefetch)
+    :$relationship! (&relationship, Str :$model, Str :$require = { ... }, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
 ) returns Empty
 ```
 
@@ -127,7 +127,7 @@ Trait that defines a relationship
 ```perl6
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$relationship! (Str :$column!, Str :$model!, Str :$require = { ... }, Bool :$optional, Bool :$no-prefetch)
+    :$relationship! (Str :$column!, Str :$model!, Str :$require = { ... }, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
 ) returns Empty
 ```
 
@@ -138,7 +138,7 @@ Trait that defines a relationship
 ```perl6
 multi sub trait_mod:<is>(
     Attribute $attr,
-    Callable :$relationship! (@relationship where { ... }, Str :$model!, Str :$require = { ... }, Bool :$optional, Bool :$no-prefetch)
+    Callable :$relationship! (@relationship where { ... }, Str :$model!, Str :$require = { ... }, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
 ) returns Empty
 ```
 

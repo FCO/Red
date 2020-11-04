@@ -11,7 +11,8 @@ method add-relationship(
     Str :$model!,
     Str :$require = { ... },
     Bool :$optional,
-    Bool :$no-prefetch
+    Bool :$no-prefetch,
+    Bool :$has-one
 ) returns Mu
 ```
 
@@ -27,7 +28,8 @@ method add-relationship(
     Str :$model,
     Str :$require = { ... },
     Bool :$optional,
-    Bool :$no-prefetch
+    Bool :$no-prefetch,
+    Bool :$has-one
 ) returns Mu
 ```
 
@@ -44,7 +46,8 @@ method add-relationship(
     Str :$model,
     Str :$require = { ... },
     Bool :$optional,
-    Bool :$no-prefetch
+    Bool :$no-prefetch,
+    Bool :$has-one
 ) returns Mu
 ```
 
