@@ -23,8 +23,10 @@ use Red::Schema;
 use Red::Formater;
 
 class Red:ver<0.1.27>:api<2> {
+    our %experimentals;
     method events   { Red::Class.instance.events }
     method emit(|c) { get-RED-DB.emit: |c        }
+    method experimentals { %experimentals }
 }
 
 BEGIN {
@@ -79,9 +81,14 @@ multi experimental("is-handling") {
     )
 }
 
+multi experimental("has-one") {
+    Empty
+}
+
 multi experimental($feature) { die "Experimental feature '{ $feature }' not recognized." }
 
 multi EXPORT(+@experimentals) {
+    %Red::experimentals{$_} = True for @experimentals;
     Map(
         Red::Do::EXPORT::ALL::,
         Red::Traits::EXPORT::ALL::,

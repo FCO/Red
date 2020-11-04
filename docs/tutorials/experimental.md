@@ -16,11 +16,14 @@
 
   make Red use the `shortname` of the model to create the table's name instead of the full name
 
+* `has-one`
+
+  creeates a new option to relationship: `has-one`. For more details: https://github.com/FCO/Red/issues/452
 
 ## How to use experimental feartures?
 
 when `use`ing Red, pass a list of wanted experimental features, For example:
 
 ```raku
-use Red <is-handling migrations formaters shortname>;
+use Red <is-handling migrations formaters shortname has-one>;
 ```

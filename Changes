@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - create experimental `has-one`
 
 0.1.27  2020-10-31T21:28:57Z
     - Unique constraint fixes

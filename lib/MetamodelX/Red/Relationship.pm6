@@ -87,8 +87,9 @@ multi method add-relationship(
         Str  :$require = $model,
         Bool :$optional,
         Bool :$no-prefetch,
+	Bool :$has-one,
         ) {
-    self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require, :$optional, :$no-prefetch
+    self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require, :$optional, :$no-prefetch, :$has-one
 }
 
 #| Adds a new relationship by reference.
@@ -100,8 +101,9 @@ multi method add-relationship(
         Str  :$require = $model,
         Bool :$optional,
         Bool :$no-prefetch,
+	Bool :$has-one,
         ) {
-    $attr does Red::Attr::Relationship[&reference, :$model, :$require, :$optional, :$no-prefetch];
+    $attr does Red::Attr::Relationship[&reference, :$model, :$require, :$optional, :$no-prefetch, :$has-one];
     self.add-relationship: $self, $attr
 }
 
@@ -115,13 +117,16 @@ multi method add-relationship(
         Str  :$require = $model,
         Bool :$optional,
         Bool :$no-prefetch,
+	Bool :$has-one,
         ) {
-    $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require, :$optional, :$no-prefetch];
+    $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require, :$optional, :$no-prefetch, :$has-one];
     self.add-relationship: $self, $attr
 }
 
 #| Adds a new relationship using an attribute of type `Red::Attr::Relationship`.
 multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) {
+    die ":has-one isn't accepted on relationship without its experimental feature (use Red <has-one>)"
+    	if $attr.has-one and not %Red::experimentals<has-one>;
     %!relationships ∪= $attr;
     my $name = $attr.name.substr: 2;
     if $attr.has_accessor {
@@ -147,7 +152,7 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
         }
     }
     $attr.rel-name = self.create-rel-name($self, $name);
-    $self.^add_multi_method: $name, $attr.type ~~ Positional
+    $self.^add_multi_method: $name, $attr.type ~~ Positional || $attr.has-one
         ?? self!sel-positional($attr)
         !! self!sel-scalar($attr, $name);
     ;

@@ -3,7 +3,15 @@ use Red::AST::Value;
 use Red::HiddenFromSQLCommenting;
 use X::Red::Exceptions;
 
-unit role Red::Attr::Relationship[&rel1, &rel2?, Str :$model, Str :$require = $model, Bool :$optional, Bool :$no-prefetch];
+unit role Red::Attr::Relationship[
+	&rel1,
+	&rel2?,
+	Str  :$model,
+	Str  :$require = $model,
+	Bool :$optional,
+	Bool :$no-prefetch,
+	Bool :$has-one,
+];
 has Mu:U $!type;
 
 has Bool $.has-lazy-relationship = ?$model;
@@ -14,9 +22,12 @@ has Bool $!loaded-model = False;
 
 has Bool $!optional = $optional;
 
-has Bool $.no-prefetch = $no-prefetch;
+has Bool $.has-one = $has-one;
+
+has Bool $.no-prefetch = $!has-one // $no-prefetch;
 
 has Str $.rel-name is rw;
+
 
 method transfer(Mu:U $package) {
     my $attr = Attribute.new: :$package, :$.name, :$.type;
@@ -57,7 +68,7 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
     use nqp;
     nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:
         FETCH => method () {
-            do if type ~~ Positional {
+            my \ret = do if type ~~ Positional || attr.has-one {
                 rel-model.^rs.where: rel1(rel-model).map(-> $rel {
                     X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;
                     my $ref = $rel.ref;
@@ -85,8 +96,10 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
                 return rel-model unless @models;
                 rel-model.^rs.where(@models.reduce(-> $left, $right {
                     Red::AST::AND.new: $left, $right
-                })).head
+                }))
             }
+	    return ret.head if type !~~ Positional || attr.has-one;
+	    ret
         },
         STORE => method ($value where type) {
             die X::Assignment::RO.new(value => attr.type) unless attr.rw;
@@ -101,8 +114,8 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
 }
 
 method relationship-argument-type {
-    do if self.type ~~ Positional {
-        $model ?? self.relationship-model !! self.type.of
+    do if self.type ~~ Positional || self.has-one {
+        $model ?? self.relationship-model !! self.type ~~ Positional ?? self.type.of !! self.type
     } else {
         self.package
     }
