@@ -22,7 +22,7 @@ use Red::DB;
 use Red::Schema;
 use Red::Formater;
 
-class Red:ver<0.1.27>:api<2> {
+class Red:ver<0.1.28>:api<2> {
     our %experimentals;
     method events   { Red::Class.instance.events }
     method emit(|c) { get-RED-DB.emit: |c        }

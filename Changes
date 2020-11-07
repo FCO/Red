@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.28  2020-11-07T18:25:01Z
     - create experimental `has-one`
 
 0.1.27  2020-10-31T21:28:57Z
