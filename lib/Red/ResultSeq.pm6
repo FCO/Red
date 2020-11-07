@@ -232,8 +232,8 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
         }
     }
     my $*OUT = class :: {
-        method put(|)   { die "Trying to print inside the map's block" }
-        method print(|) { die "Trying to print inside the map's block" }
+        method put(|c)   { die "Trying to print inside the map's block: { c }" }
+        method print(|c) { die "Trying to print inside the map's block: { c }" }
     }
 
     die "Count bigger than 1" if &filter.count > 1;

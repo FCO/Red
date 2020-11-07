@@ -295,8 +295,6 @@ method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
 
 method compose-columns(Red::Model:U \type) {
     for self.attributes(type).grep: Red::Attr::Column -> Red::Attr::Column $attr {
-        #        $attr.clone;
-        #        $attr.create-column;
         type.^add-column: $attr.clone: :package(type)
     }
 }

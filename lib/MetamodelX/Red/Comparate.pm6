@@ -9,10 +9,17 @@ has SetHash $!added-method .= new;
 
 #| An internal method that generates Red getters and setters for an
 #| attribute $attr of a type.
-method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr --> Empty) {
+method add-comparate-methods(::Type Mu:U \type, Red::Attr::Column $attr is copy --> Empty) {
+    $attr .= clone: :package(type);
     unless $!added-method{"{ type.^name }|$attr"} {
+	#say type.^name, " - ", $attr.package.^name;
+	use MONKEY-SEE-NO-EVAL;
+	my $proto = EVAL "my proto method { $attr.name.substr(2) }( Red::Model: ) \{*}";
+	no MONKEY-SEE-NO-EVAL;
+	#dd $proto;
+	type.^add_method: $attr.name.substr(2), $proto;
         if $attr.rw {
-            type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) is rw {
+            type.^add_multi_method: $attr.name.substr(2), my method (Mu:U:) is rw {
                 Proxy.new:
                 FETCH => -> $ { $attr.column },
                 STORE => -> $, $value {
@@ -27,7 +34,8 @@ method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr --> Empty) {
                 },
             }
         } else {
-            type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) {
+            type.^add_multi_method: $attr.name.substr(2), my method (Mu:U:) {
+		#say type.^name, " - ", $attr.package.^name;
                 $attr.column
             }
         }
