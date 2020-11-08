@@ -3,11 +3,13 @@
 Relationships in [Red](https://github.com/FCO/Red) are defined by the `is relationship` trait. It should receive (at least) a Str named parameter called `:model`
 that represents the related model, a Callable positional parameter that will return one (or more) referencing columns, and it must have a sigil. The sigil can be:
 
-- `$` - Represents a `to 1` relationship that "stores" only 1 element. [Red](https://github.com/FCO/Red) will run the callable passing the model itself as the only parameter.
+- `$` - Represents a `belongs to` relationship that "stores" only 1 element. [Red](https://github.com/FCO/Red) will run the callable passing the model itself as the only parameter.
 
-- `@` - Represents a `to N` relationship that "stores" a `ResultSeq` of elements. [Red](https://github.com/FCO/Red) will run the callable passing the model
+- `@` - Represents a `has many` relationship that "stores" a `ResultSeq` of elements. [Red](https://github.com/FCO/Red) will run the callable passing the model
   defined by the `:model` named parameter.
-  
+
+(for the experimental `has-one`, please take a look at [experimental doc](experimental.html))
+
 ## So, for example:
 
 ```raku
@@ -36,7 +38,7 @@ model Book {
 Book has a foreign key ($!author-id) that references `Person.id` (this is defined by the `is referencing` trait). And it also has a relationship ($.author)
 that's auto pre-fetched using a `join` based on `book.author_id = person.id`.
 
-Person has no foreign key but it does have a relationship (@.books) that isn't pre-fetched because it's a `to N` relationship. So when its value is accessed
+Person has no foreign key but it does have a relationship (`@.books`) that isn't pre-fetched because it's a `has many` relationship. So when its value is accessed
 a new query is run.
 
 On that example, to create a new book related to (written by) a given person, one could do something like:
@@ -45,3 +47,11 @@ On that example, to create a new book related to (written by) a given person, on
 my $author = Person.^all.first: *.name eq "Chico Buarque";
 $author.books.create: :name<Benjamin>;
 ```
+
+As mentioned, `@.books` is a `ResultSeq`, so it accepts any of its methods, eg:
+
+```raku
+$author.books.grep(*.starts-with: "Ben").elems
+```
+
+For getting the number of books written by "Chico Buarque" that starts with "Ben".
