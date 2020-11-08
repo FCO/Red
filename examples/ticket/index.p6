@@ -49,7 +49,7 @@ me.tickets.create: :title("new ticket 04"), :body("Creating the last ticket just
 say "Tickets from { me.name }:";
 say "{ .status.name } - { .title }" for me.tickets;
 
-given me.tickets.head {
+given me.tickets.pick {
     say "closing ticket { .title }";
     .status = closed;
     .^save;
