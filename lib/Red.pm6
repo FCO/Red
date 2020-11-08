@@ -105,8 +105,6 @@ multi EXPORT(+@experimentals) {
 Red
 =end head1
 
-Take a look at our Wiki: L<https://github.com/FCO/Red/wiki>
-
 Take a look at our Documentation: L<https://fco.github.io/Red/>
 
 =head2 Red - A **WiP** ORM for Raku
