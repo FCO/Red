@@ -5,8 +5,8 @@ model Person  {...}
 
 model Chat {
     has Str     $.id      is column;
-    has Log     @.logs    is relationship{ .chat-id };
-    has Person  @.people  is relationship{ .chat-id };
+    has Log     @.logs    is relationship( *.chat-id, :model<Log> );
+    has Person  @.people  is relationship( *.chat-id, :model<Person> );
 
     method alive(--> Sequence) {
         @!people.grep: { .is-alive }
@@ -33,10 +33,10 @@ model Chat {
 
 model Log {
     has Str     $.msg           is column;
-    has Str     $.chat-id       is referencing{  Chat.id        };
-    has Str     $.impacted-id   is referencing{  Person.id      };
-    has Chat    $.chat          is relationship{ .chat-id       };
-    has Person  $.impacted      is relationship{ .impacted-id   };
+    has Str     $.chat-id       is referencing(  *.id, :model<Chat>   );
+    has Str     $.impacted-id   is referencing(  *.id, :model<Person> );
+    has Chat    $.chat          is relationship( *.chat-id    , :model<Chat>   );
+    has Person  $.impacted      is relationship( *.impacted-id, :model<Person> );
 
     method print { note "{ $!impacted.nick } was $!msg" }
 }
@@ -45,8 +45,8 @@ model Person {
     has Int     $.id        is id;
     has Str     $.nick      is column;
     has Bool    $.is-alive  is column is rw = True;
-    has Str     $.chat-id   is referencing{  Chat.id };
-    has Chat    $.chat      is relationship{ .chat-id };
+    has Str     $.chat-id   is referencing( *.id, :model<Chat> );
+    has Chat    $.chat      is relationship( *.chat-id, :model<Chat> );
 
     method die {
         $!is-alive = False;

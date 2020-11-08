@@ -38,3 +38,10 @@ that's auto pre-fetched using a `join` based on `book.author_id = person.id`.
 
 Person has no foreign key but it does have a relationship (@.books) that isn't pre-fetched because it's a `to N` relationship. So when its value is accessed
 a new query is run.
+
+On that example, to create a new book related to (written by) a given person, one could do something like:
+
+```raku
+my $author = Person.^all.first: *.name eq "Chico Buarque";
+$author.books.create: :name<Benjamin>;
+```

@@ -1,4 +1,4 @@
-use Telegram;
+#use Telegram;
 use Red;
 use Schema;
 
@@ -40,52 +40,52 @@ my $*RED-DB = database "SQLite", :database<./alive.db>;
 
 .^create-table for Chat, Person, Log;
 
-my $bot = Telegram::Bot.new: "<the botfather token>";
-$bot.start(interval => 1);
+#my $bot = Telegram::Bot.new: "<the botfather token>";
+#$bot.start(interval => 1);
 
-my $msgTap = $bot.messagesTap;
+#my $msgTap = $bot.messagesTap;
 
-react {
-        whenever $msgTap.map(-> $msg { Msg.new: :$bot, :$msg }).grep: *.is-cmd -> $msg {
-            my $nick    = $msg.sender.username;
-            if $msg.command eq "start" {
-                    say "started";
-                    Chat.^create: :id($msg.chat.id);
-                    $msg.answer: "Started";
-            } else {
-                    my $chat = Chat.^find: id => $msg.chat.id;
-
-                    given $msg.command {
-                        when "give-birth" {
-                                say "give-birth";
-                                $chat.give-birth: $msg.sender.id, $nick;
-                                $msg.answer: "$nick was born."
-                        }
-                        when "kill" {
-                                say "kill";
-                                $chat.kill: $msg.args;
-                                $msg.answer: "{ $msg.args } was killed."
-                        }
-                        when "resurrect" {
-                                say "resurrect";
-                                $chat.resurrect: $msg.args;
-                                $msg.answer: "{ $msg.args } is alive again."
-                        }
-                        when "alive" {
-                                say "alive";
-                                for $chat.alive.map: *.nick -> $user {
-                                        $msg.answer: $user, :!prefix
-                                }
-                        }
-                        default {
-                                $msg.answer: "command '{ $_ }' not recognized"
-                        }
-                    }
-
-                }
-        }
-        whenever signal(SIGINT) {
-                $bot.stop;
-                exit;
-        }
-}
+#react {
+#        whenever $msgTap.map(-> $msg { Msg.new: :$bot, :$msg }).grep: *.is-cmd -> $msg {
+#            my $nick    = $msg.sender.username;
+#            if $msg.command eq "start" {
+#                    say "started";
+#                    Chat.^create: :id($msg.chat.id);
+#                    $msg.answer: "Started";
+#            } else {
+#                    my $chat = Chat.^find: id => $msg.chat.id;
+#
+#                    given $msg.command {
+#                        when "give-birth" {
+#                                say "give-birth";
+#                                $chat.give-birth: $msg.sender.id, $nick;
+#                                $msg.answer: "$nick was born."
+#                        }
+#                        when "kill" {
+#                                say "kill";
+#                                $chat.kill: $msg.args;
+#                                $msg.answer: "{ $msg.args } was killed."
+#                        }
+#                        when "resurrect" {
+#                                say "resurrect";
+#                                $chat.resurrect: $msg.args;
+#                                $msg.answer: "{ $msg.args } is alive again."
+#                        }
+#                        when "alive" {
+#                                say "alive";
+#                                for $chat.alive.map: *.nick -> $user {
+#                                        $msg.answer: $user, :!prefix
+#                                }
+#                        }
+#                        default {
+#                                $msg.answer: "command '{ $_ }' not recognized"
+#                        }
+#                    }
+#
+#                }
+#        }
+#        whenever signal(SIGINT) {
+#                $bot.stop;
+#                exit;
+#        }
+#}

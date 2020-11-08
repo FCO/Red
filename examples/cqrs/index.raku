@@ -31,7 +31,7 @@ model Event is nullable {
     has Str         $.event-type    is column{:!nullable};
     has Str         $.name          is column;
     has Str         $.title         is column;
-    has Str         $.status        is column = "opened";
+    has Str         $.status        is column = "new";
 
     method event-supplier {
         $ //= Supplier.new
@@ -75,9 +75,7 @@ my $*RED-DB = database "SQLite";
 start react whenever Event.event-supplier.Supply -> $event {
     CATCH { default { .say } }
     with Ticket.^load: $event.ticket-id {
-        my @events = Event.load-events(.id).Seq;
-        my Ticket $ticket .= apply-event: @events;
-        $ticket.^save
+        .apply-event($event).^save
     } else {
         Ticket.apply-event($event).^save: :insert;
     }
