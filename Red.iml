@@ -6,5 +6,158 @@
       <sourceFolder url="file://$MODULE_DIR$/bin" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/t" isTestSource="true" />
     </content>
+    <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="module-library">
+      <library name="NativeHelpers::Blob" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:NativeHelpers::Blob!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="NativeCall" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:NativeCall!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="JSON::Class:ver&lt;0.0.5+&gt;" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:JSON::Class:ver&lt;0.0.5+&gt;!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="META6" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:META6!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="URI" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:URI!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="JSON::Name" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:JSON::Name!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="License::SPDX" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:License::SPDX!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="JSON::Class:ver&lt;0.0.14+&gt;" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:JSON::Class:ver&lt;0.0.14+&gt;!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="NativeLibs" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:NativeLibs!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="DB::Pg" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:DB::Pg!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="LibUUID" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:LibUUID!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Test" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:Test!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="Test::META" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:Test::META!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="NativeLibs:auth&lt;github:salortiz&gt;" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:NativeLibs:auth&lt;github:salortiz&gt;!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="JSON::Unmarshal:ver&lt;0.08+&gt;" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:JSON::Unmarshal:ver&lt;0.08+&gt;!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="JSON::Marshal:ver&lt;0.0.18+&gt;" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:JSON::Marshal:ver&lt;0.0.18+&gt;!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="UUID" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:UUID!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="JSON::Fast" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:JSON::Fast!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
+    <orderEntry type="module-library">
+      <library name="DBIish" type="perl6">
+        <CLASSES />
+        <SOURCES>
+          <root url="raku://-420213367:DBIish!/" />
+        </SOURCES>
+      </library>
+    </orderEntry>
   </component>
 </module>

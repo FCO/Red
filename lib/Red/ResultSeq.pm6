@@ -117,9 +117,11 @@ method grep(&filter) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     CATCH {
         default {
-            if not $*RED-FALLBACK.defined or $*RED-FALLBACK {
-                note "falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .message }" without $*RED-FALLBACK;
-                return self.Seq.grep: &filter
+            if !$*RED-FALLBACK.defined || $*RED-FALLBACK {
+                if !$*RED-FALLBACK.defined {
+                    note "falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .?message }";
+                }
+                return self.Seq.map: &filter
             }
             .rethrow
         }
@@ -172,7 +174,7 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
     my @attrs = do for @ret {
         @table-list.push: |.tables;
         my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;
-        my $col-name = $_ ~~ Red::Column ?? .attr.name.substr(2) !! $name;
+        my $col-name = $_ ~~ Red::Column ?? .name !! $name;
         my $attr  = Attribute.new:
             :name("\$!$name"),
             :package(model),
@@ -224,8 +226,10 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
     SELF.create-comment-to-caller;
     CATCH {
         default {
-            if not $*RED-FALLBACK.defined or $*RED-FALLBACK {
-                note "falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .message }" without $*RED-FALLBACK;
+            if !$*RED-FALLBACK.defined || $*RED-FALLBACK {
+                if !$*RED-FALLBACK.defined {
+                    note "falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .?message }";
+                }
                 return self.Seq.map: &filter
             }
             .rethrow

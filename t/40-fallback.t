@@ -40,7 +40,9 @@ subtest {
         my $*RED-FALLBACK = True;
         my $*OUT = class :: { method print(|) {} }
 
-        is-deeply code(Bla.^all).Seq, @expected.Seq;
+        lives-ok {
+            is-deeply code(Bla.^all).Seq, @expected.Seq;
+        }
     }
 }
 

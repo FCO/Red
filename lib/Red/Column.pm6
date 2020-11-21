@@ -53,24 +53,24 @@ multi method perl(::?CLASS:D:) {
 
 method Hash(--> Hash()) {
     %(
-        |(:attr($_) with $!attr),
-        |(:attr-name($_) with $!attr-name),
-        |(:id($_) with $!id),
-        |(:auto-increment($_) with $!auto-increment),
-        |(:references($_) with &!references),
-        |(:actual-references($_) with &!actual-references),
-        |(:ref($_) with $!ref),
-        |(:nullable($_) with $!nullable),
-        |(:name($_) with $!name),
-        |(:name-alias($_) with $!name-alias),
-        |(:type($_) with $!type),
-        |(:inflate($_) with &!inflate),
-        |(:deflate($_) with &!deflate),
-        |(:computation($_) with $!computation),
-        |(:model-name($_) with $!model-name),
-        |(:column-name($_) with $!column-name),
-        |(:require($_) with $!require),
-            )
+        |(:attr($_)                 with $!attr             ),
+        |(:attr-name($_)            with $!attr-name        ),
+        |(:id($_)                   with $!id               ),
+        |(:auto-increment($_)       with $!auto-increment   ),
+        |(:references($_)           with &!references       ),
+        |(:actual-references($_)    with &!actual-references),
+        |(:ref($_)                  with $!ref              ),
+        |(:nullable($_)             with $!nullable         ),
+        |(:name($_)                 with $!name             ),
+        |(:name-alias($_)           with $!name-alias       ),
+        |(:type($_)                 with $!type             ),
+        |(:inflate($_)              with &!inflate          ),
+        |(:deflate($_)              with &!deflate          ),
+        |(:computation($_)          with $!computation      ),
+        |(:model-name($_)           with $!model-name       ),
+        |(:column-name($_)          with $!column-name      ),
+        |(:require($_)              with $!require          ),
+    )
 }
 
 #| Returns a Hash that represents the column for migration purposes

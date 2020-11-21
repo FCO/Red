@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fix .join-model's column
+    - fix fallback
 
 0.1.28  2020-11-07T18:25:01Z
     - create experimental `has-one`

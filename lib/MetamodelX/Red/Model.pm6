@@ -256,7 +256,6 @@ method alias(Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$ba
             :build($col.build)
         ;
         $new-col does Red::Attr::Column($col.column.Hash);
-#        $new-col.create-column;
         alias.^add-comparate-methods: $new-col;
         $new-col
     }
