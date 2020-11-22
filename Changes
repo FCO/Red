@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.29  2020-11-22T00:11:21Z
     - fix in translation
     - fix .join-model's column
     - fix fallback
