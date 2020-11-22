@@ -50,9 +50,9 @@ AABB.^create: :aa-id($aa1.aa-id), :bb-id($bb1.bb-id);
 lives-ok {
     is $aa1.bb1.map(*.bb-name).Seq, < bb1 >;
 }
-#lives-ok {
-#    is $aa1.bb2.map(*.bb-name).Seq, < bb1 >;
-#}
+lives-ok {
+    is $aa1.bb2.map(*.bb-name).Seq, < bb1 >;
+}
 #.say for $aa1.bb1.map: *.bb-name;
 
 done-testing;

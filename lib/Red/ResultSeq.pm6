@@ -121,7 +121,7 @@ method grep(&filter) is hidden-from-sql-commenting {
                 if !$*RED-FALLBACK.defined {
                     note "falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .?message }";
                 }
-                return self.Seq.map: &filter
+                return self.Seq.grep: &filter
             }
             .rethrow
         }

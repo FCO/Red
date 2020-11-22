@@ -72,7 +72,7 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
                 rel-model.^rs.where: rel1(rel-model).map(-> $rel {
                     X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;
                     my $ref = $rel.ref;
-                    X::Red::RelationshipNotRelated.new(:relationship(attr), :points-to($rel)).throw without $ref;
+                    X::Red::RelationshipNotRelated.new(:relationship(attr), :points-to($rel)).throw unless $ref.DEFINITE;
                     my $val = do given $ref.attr but role :: {
                         method package {
                             instance.WHAT

@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fix in translation
     - fix .join-model's column
     - fix fallback
 

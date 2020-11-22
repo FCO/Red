@@ -305,7 +305,7 @@ multi method translate(Red::AST::Comment $_, $context?) {
 method comment-starter { "--" }
 
 multi method translate(Red::AST::Select $ast, 'where') {
-    my ( :$key, :$value ) = self.translate($ast);
+    my ( $key, $value ) = do given self.translate($ast) { .key, .value };
     '( ' ~ $key ~ ' )' => $value // [];
 }
 
