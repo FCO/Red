@@ -89,7 +89,7 @@ multi trait_mod:<is>(Attribute $attr, :$referencing! (Str :$model!, Str :$column
 #| This trait allows setting a custom name for a table corresponding to a model.
 #| For example, `model MyModel is table<custom_table_name> {}` will use `custom_table_name`
 #| as the name of the underlying database table.
-multi trait_mod:<is>(Mu:U $model, Str :$table! where .chars > 0 --> Empty) {
+multi trait_mod:<is>(Mu:U $model, Str :$table! is copy where .chars > 0 --> Empty) {
     $model.HOW.^attributes.first({ .name eq '$!table' }).set_value($model.HOW, $table)
 }
 
