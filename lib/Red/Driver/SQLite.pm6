@@ -151,7 +151,7 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ Bool            
 multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)  --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ UUID            --> Str:D) {"varchar(36)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Json            --> Str:D) {"json"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Any             --> Str:D) {"varchar(255)"}
+#multi method default-type-for(Red::Column $ where .attr.type ~~ Any             --> Str:D) {"varchar(255)"}
 multi method default-type-for(Red::Column $                                     --> Str:D) {"varchar(255)"}
 multi method default-type-for($ --> Str:D) is default {"varchar(255)"}
 

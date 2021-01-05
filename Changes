@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix column type bug
 
 0.1.29  2020-11-22T00:11:21Z
     - fix in translation

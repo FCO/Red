@@ -648,7 +648,7 @@ multi method translate(Red::Column $_, "create-table") {
 multi method translate(Red::Column $_, "column-name")           { .name // "" => [] }
 
 multi method translate(Red::Column $_, "column-type")           {
-    if .attr.type =:= Mu {
+    if .attr.type =:= Mu && ! .type.defined {
         return self.type-by-name("int")  => [] if .auto-increment;
         return self.type-by-name("string") => []
     }
@@ -758,6 +758,8 @@ multi method translate(Red::AST:U $_, $context?) { "" => [] }
 
 multi method default-type-for(Red::Column $ where .attr.type ~~ Json        --> Str:D) {"json"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Rat         --> Str:D) {"real"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Num         --> Str:D) {"real"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Numeric     --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> Str:D) {"real"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --> Str:D) {"varchar(32)"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Duration    --> Str:D) {"interval"}
@@ -766,7 +768,7 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ Str         --> 
 multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --> Str:D) {"integer"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> Str:D) {"boolean"}
 multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> Str:D) {"varchar(36)"}
-multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
+#multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
 
 multi method type-for-sql("real"     --> "Num"     ) {}
 multi method type-for-sql("blob"     --> "Blob"    ) {}
