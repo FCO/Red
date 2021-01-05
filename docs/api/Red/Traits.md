@@ -94,7 +94,7 @@ Trait that defines a reference
 ```perl6
 multi sub trait_mod:<is>(
     Mu:U $model,
-    Str :$table! where { ... }
+    Str :$table! is copy where { ... }
 ) returns Empty
 ```
 
