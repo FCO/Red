@@ -32,6 +32,10 @@ multi method is-on-db(\instance) {
     $!is-on-db-attr.get_value(instance)
 }
 
+multi method not-on-db(\instance) {
+    $!is-on-db-attr.get_value(instance) = False
+}
+
 #| Sets that that object is on DB
 multi method saved-on-db(\instance) {
     $!is-on-db-attr.get_value(instance) = True

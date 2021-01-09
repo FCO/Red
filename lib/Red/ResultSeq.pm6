@@ -71,11 +71,11 @@ method cache is hidden-from-sql-commenting {
     List.from-iterator: self.iterator
 }
 
-has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new;
 has Pair              @.update;
 has Red::AST::Comment @.comments;
 has Red::Driver       $.with;
 has                   $.obj;
+has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new: |(:filter(.^id-filter) with $!obj);
 
 multi method with(Red::Driver $with) {
     self.clone: :$with

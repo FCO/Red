@@ -86,6 +86,7 @@ multi method id-map(Red::Model $model, $id --> Hash()) {
 multi method id-filter(Red::Model:D $model) {
     my @a = $model.^general-ids.flat.map({
         Red::AST::Eq.new:
+	    :bind-right,
             .column,
             ast-value
                 :type(.type),

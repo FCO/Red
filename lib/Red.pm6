@@ -69,6 +69,14 @@ multi experimental($ where "experimental migrations" | "migrations") {
     Empty
 }
 
+multi experimental($ where "supply") {
+    use MetamodelX::Red::Supply;
+    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Supply;
+    MetamodelX::Red::Model.^compose;
+
+    Empty
+}
+
 multi experimental("is-handling") {
     multi trait_mod:<is>(Mu:U $model, :$handling) {
         for $handling<> {

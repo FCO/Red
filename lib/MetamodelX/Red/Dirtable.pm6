@@ -194,6 +194,10 @@ multi method set-dirty(\obj, Set() $attr) {
     $!dirty-cols-attr.get_value(obj).{$_}++ for $attr.keys
 }
 
+multi method clean-up-columns(\obj, Set() $attr) {
+    $!dirty-cols-attr.get_value(obj).{$_}-- for $attr.keys
+}
+
 #| Returns `True` if any of the object attributes were changed
 #| from original database record values.
 method is-dirty(Any:D \obj --> Bool) { so $!dirty-cols-attr.get_value(obj) }
