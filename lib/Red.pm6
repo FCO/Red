@@ -13,7 +13,6 @@ use MetamodelX::Red::Model;
 use Red::Traits;
 use Red::Operators;
 use Red::Database;
-use Red::AST::Infixes;
 use Red::AST::Optimizer::AND;
 use Red::AST::Optimizer::OR;
 use Red::AST::Optimizer::Case;
@@ -33,10 +32,6 @@ BEGIN {
     Red::Column.^add_role: Red::ColumnMethods;
     Red::Column.^compose;
 
-    for <AND OR Case> -> $infix {
-        ::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
-        ::("Red::AST::$infix").^compose;
-    }
 }
 
 my package EXPORTHOW {
@@ -96,6 +91,16 @@ multi experimental("has-one") {
 multi experimental($feature) { die "Experimental feature '{ $feature }' not recognized." }
 
 multi EXPORT(+@experimentals) {
+    my $no = "no-optimization";
+    if @experimentals.none eq $no {
+            require ::("Red::AST::Infixes");
+	    for <AND OR Case> -> $infix {
+		::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
+		::("Red::AST::$infix").^compose;
+	    }
+    } else {
+	    @experimentals .= grep: { $_ ne $no }
+    }
     %Red::experimentals{$_} = True for @experimentals;
     Map(
         Red::Do::EXPORT::ALL::,
