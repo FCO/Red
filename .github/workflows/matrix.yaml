@@ -13,7 +13,7 @@ jobs:
         os:
           - ubuntu-latest
           - macOS-latest
-          - windows-latest
+          #- windows-latest
         raku-version:
           - "2020.12"
           - "2020.11"
