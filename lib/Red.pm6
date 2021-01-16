@@ -20,6 +20,7 @@ use Red::Class;
 use Red::DB;
 use Red::Schema;
 use Red::Formater;
+use Red::AST::Infixes;
 
 class Red:ver<0.1.29>:api<2> {
     our %experimentals;
@@ -32,6 +33,10 @@ BEGIN {
     Red::Column.^add_role: Red::ColumnMethods;
     Red::Column.^compose;
 
+    for <AND OR Case> -> $infix {
+        ::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
+        ::("Red::AST::$infix").^compose;
+    }
 }
 
 my package EXPORTHOW {
@@ -91,16 +96,16 @@ multi experimental("has-one") {
 multi experimental($feature) { die "Experimental feature '{ $feature }' not recognized." }
 
 multi EXPORT(+@experimentals) {
-    my $no = "no-optimization";
-    if @experimentals.none eq $no {
-            require ::("Red::AST::Infixes");
-	    for <AND OR Case> -> $infix {
-		::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
-		::("Red::AST::$infix").^compose;
-	    }
-    } else {
-	    @experimentals .= grep: { $_ ne $no }
-    }
+	#my $no = "no-optimization";
+    	#if @experimentals.none eq $no {
+    	#        require ::("Red::AST::Infixes");
+    	#        for <AND OR Case> -> $infix {
+    	#    	::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
+    	#    	::("Red::AST::$infix").^compose;
+    	#        }
+    	#} else {
+    	#        @experimentals .= grep: { $_ ne $no }
+    	#}
     %Red::experimentals{$_} = True for @experimentals;
     Map(
         Red::Do::EXPORT::ALL::,
