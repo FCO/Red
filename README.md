@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.org/FCO/Red.svg?branch=master)](https://travis-ci.org/FCO/Red)
+![Build Status](https://github.com/FCO/Red/workflows/test/badge.svg)
 
 Red
 ===
