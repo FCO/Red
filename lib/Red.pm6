@@ -69,7 +69,7 @@ multi experimental($ where "experimental migrations" | "migrations") {
     Empty
 }
 
-multi experimental($ where "supply") {
+multi experimental("supply") {
     use MetamodelX::Red::Supply;
     MetamodelX::Red::Model.^add_role: MetamodelX::Red::Supply;
     MetamodelX::Red::Model.^compose;
@@ -93,15 +93,23 @@ multi experimental("has-one") {
     Empty
 }
 
+multi experimental("refreshable") {
+    use MetamodelX::Red::Refreshable;
+    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Refreshable;
+    MetamodelX::Red::Model.^compose;
+
+    Empty
+}
+
 multi experimental($feature) { die "Experimental feature '{ $feature }' not recognized." }
 
 multi EXPORT(+@experimentals) {
 	#my $no = "no-optimization";
     	#if @experimentals.none eq $no {
-    	#        require ::("Red::AST::Infixes");
+	#        require ::("Red::AST::Infixes");
     	#        for <AND OR Case> -> $infix {
-    	#    	::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
-    	#    	::("Red::AST::$infix").^compose;
+	#		::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
+	#		::("Red::AST::$infix").^compose;
     	#        }
     	#} else {
     	#        @experimentals .= grep: { $_ ne $no }
