@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.30  2021-02-14T20:53:39Z
     - Fix column type bug
     - Add experimental update-/aggregate-supply
     - Add no-optimization use's option
