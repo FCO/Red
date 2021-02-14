@@ -127,6 +127,10 @@ multi EXPORT(+@experimentals) {
 
 =begin pod
 
+[![Build Status](https://github.com/FCO/Red/workflows/test/badge.svg)](https://github.com/FCO/Red/actions)
+
+[![Build Status](https://github.com/FCO/Red/workflows/ecosystem/badge.svg)](https://github.com/FCO/Red/actions)
+
 =begin head1
 Red
 =end head1
