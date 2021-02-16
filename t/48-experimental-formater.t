@@ -1,15 +1,15 @@
 use Test;
-use Red <formaters>;
-use Red::Formater;
+use Red <formatters>;
+use Red::Formatter;
 
 plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
-class Bla does Red::Formater {
-    method experimental-formater { True }
+class Bla does Red::Formatter {
+    method experimental-formatter { True }
 }
 
-is Bla.column-formater("bla-ble-bli"), "bla_ble_bli";
-is Bla.table-formater("BlaBleBli"), "bla_ble_bli";
+is Bla.column-formatter("bla-ble-bli"), "bla_ble_bli";
+is Bla.table-formatter("BlaBleBli"), "bla_ble_bli";
 
 model BleBli {
     has $.a-e-i-o-u is column
@@ -18,11 +18,11 @@ model BleBli {
 is BleBli.^table, "ble_bli";
 is BleBli.^attributes.head.column.name, "a_e_i_o_u";
 
-my &*RED-TABLE-FORMATER  = -> $name { "RED_TABLE_$name" }
-my &*RED-COLUMN-FORMATER = -> $name { "`$name`" }
+my &*RED-TABLE-FORMATTER  = -> $name { "RED_TABLE_$name" }
+my &*RED-COLUMN-FORMATTER = -> $name { "`$name`" }
 
-is Bla.column-formater("bla-ble-bli"), "`bla-ble-bli`";
-is Bla.table-formater("BlaBleBli"), "RED_TABLE_BlaBleBli";
+is Bla.column-formatter("bla-ble-bli"), "`bla-ble-bli`";
+is Bla.table-formatter("BlaBleBli"), "RED_TABLE_BlaBleBli";
 
 model BloBlu {
     has $.a-e-i-o-u is column

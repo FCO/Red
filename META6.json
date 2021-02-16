@@ -98,7 +98,7 @@
     "Red::Driver::SQLite::SQLiteMaster": "lib/Red/Driver/SQLite/SQLiteMaster.pm6",
     "Red::Driver::SQLite::SchemaReader": "lib/Red/Driver/SQLite/SchemaReader.pm6",
     "Red::Event": "lib/Red/Event.pm6",
-    "Red::Formater": "lib/Red/Formater.pm6",
+    "Red::Formatter": "lib/Red/Formatter.pm6",
     "Red::FromRelationship": "lib/Red/FromRelationship.pm6",
     "Red::HiddenFromSQLCommenting": "lib/Red/HiddenFromSQLCommenting.pm6",
     "Red::Migration::Column": "lib/Red/Migration/Column.pm6",

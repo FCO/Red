@@ -3,13 +3,13 @@ use Red::Model;
 use Red::AST;
 use Red::AST::Unary;
 use Red::AST::IsDefined;
-use Red::Formater;
+use Red::Formatter;
 
 =head2 Red::Column
 
 #| Represents a database column
 unit class Red::Column does Red::AST;
-also does Red::Formater;
+also does Red::Formatter;
 
 has Attribute   $.attr is required;
 has             $.model            = $!attr.package;
@@ -20,7 +20,7 @@ has             &.references;
 has             &!actual-references;
 has             $!ref;
 has Bool        $.nullable         = $!attr.package.HOW.?default-nullable($!attr.package) // False;
-has Str         $.name             = ::?CLASS.column-formater: self.attr.name.substr: 2;
+has Str         $.name             = ::?CLASS.column-formatter: self.attr.name.substr: 2;
 has Str         $.name-alias       = $!name;
 has Str         $.type;
 has             &.inflate          = $!attr.type.?inflator // { .?"{ $!attr.type.^name }"() // .self };

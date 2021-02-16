@@ -8,7 +8,7 @@
 
   make it possible to test the prototype of the migration feature
   
-* `formaters`
+* `formatters`
 
   make it possible to change the rule of creation of the names of tables and columns
   
@@ -29,5 +29,5 @@
 when `use`ing Red, pass a list of wanted experimental features, For example:
 
 ```raku
-use Red <is-handling migrations formaters shortname has-one refreshable>;
+use Red <is-handling migrations formatters shortname has-one refreshable>;
 ```

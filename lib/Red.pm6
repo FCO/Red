@@ -19,7 +19,7 @@ use Red::AST::Optimizer::Case;
 use Red::Class;
 use Red::DB;
 use Red::Schema;
-use Red::Formater;
+use Red::Formatter;
 use Red::AST::Infixes;
 
 class Red:ver<0.1.31>:api<2> {
@@ -54,9 +54,9 @@ multi experimental("shortname") {
     Empty
 }
 
-multi experimental("formaters") {
-    MetamodelX::Red::Model.^add_method: "experimental-formater", method { True }
-    Red::Column.^add_method: "experimental-formater", method { True }
+multi experimental("formatters") {
+    MetamodelX::Red::Model.^add_method: "experimental-formatter", method { True }
+    Red::Column.^add_method: "experimental-formatter", method { True }
     MetamodelX::Red::Model.^compose;
     Red::Column.^compose;
     Empty

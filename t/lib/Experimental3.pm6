@@ -1,1 +1,1 @@
-use Red <shortname formater>;
+use Red <shortname formatter>;
