@@ -2,7 +2,7 @@ use Red::Model;
 unit role MetamodelX::Red::Refreshable;
 
 multi method refresh(Red::Model:D \model) {
-	nextwith model, |model.^column-names
+	nextwith model, |model.^columns>>.column>>.attr-name
 }
 
 multi method refresh(Red::Model:D \model, +@attrs) {
