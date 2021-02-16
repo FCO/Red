@@ -24,6 +24,7 @@ use Red::AST::Infixes;
 
 class Red:ver<0.1.31>:api<2> {
     our %experimentals;
+    our @experimental-roles;
     method events   { Red::Class.instance.events }
     method emit(|c) { get-RED-DB.emit: |c        }
     method experimentals { %experimentals }
@@ -70,9 +71,8 @@ multi experimental($ where "experimental migrations" | "migrations") {
 }
 
 multi experimental("supply") {
-    use MetamodelX::Red::Supply;
-    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Supply;
-    MetamodelX::Red::Model.^compose;
+    require ::('MetamodelX::Red::Supply');
+    @Red::experimental-roles.push: ::('MetamodelX::Red::Supply');
 
     Empty
 }
@@ -94,9 +94,8 @@ multi experimental("has-one") {
 }
 
 multi experimental("refreshable") {
-    use MetamodelX::Red::Refreshable;
-    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Refreshable;
-    MetamodelX::Red::Model.^compose;
+    require ::('MetamodelX::Red::Refreshable');
+    @Red::experimental-roles.push: ::('MetamodelX::Red::Refreshable');
 
     Empty
 }
