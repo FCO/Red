@@ -20,6 +20,7 @@
     "MetamodelX::Red::Comparate": "lib/MetamodelX/Red/Comparate.pm6",
     "MetamodelX::Red::Describable": "lib/MetamodelX/Red/Describable.pm6",
     "MetamodelX::Red::Dirtable": "lib/MetamodelX/Red/Dirtable.pm6",
+    "MetamodelX::Red::Experimental": "lib/MetamodelX/Red/Experimental.pm6",
     "MetamodelX::Red::Id": "lib/MetamodelX/Red/Id.pm6",
     "MetamodelX::Red::Migration": "lib/MetamodelX/Red/Migration.pm6",
     "MetamodelX::Red::Model": "lib/MetamodelX/Red/Model.pm6",

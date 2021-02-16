@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fix precompiled experimental features
 
 0.1.31  2021-02-14T21:04:28Z
     - Add experimental refreshable

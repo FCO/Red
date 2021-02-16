@@ -47,36 +47,12 @@ my package EXPORTHOW {
 
 proto experimental(Str) {*}
 
-multi experimental($ where "shortname") {
-    MetamodelX::Red::Model.^add_method: "experimental-name", method (\model) { model.^shortname }
-    MetamodelX::Red::Model.^compose;
-    Empty
-}
-
-multi experimental($ where "formaters") {
-    MetamodelX::Red::Model.^add_method: "experimental-formater", method { True }
-    Red::Column.^add_method: "experimental-formater", method { True }
-    MetamodelX::Red::Model.^compose;
-    Red::Column.^compose;
-    Empty
-}
-
-multi experimental($ where "experimental migrations" | "migrations") {
-    use MetamodelX::Red::Migration;
-    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Migration;
-    MetamodelX::Red::Model.^compose;
-
-    Empty
-}
-
-multi experimental("supply") {
-    use MetamodelX::Red::Supply;
-    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Supply;
-    MetamodelX::Red::Model.^compose;
-
-    Empty
-}
-
+multi experimental("shortname") { Empty }
+multi experimental("formaters") { Empty }
+multi experimental($ where "experimental migrations" | "migrations") { Empty }
+multi experimental("supply") { Empty }
+multi experimental("has-one") { Empty }
+multi experimental("refreshable") { Empty }
 multi experimental("is-handling") {
     multi trait_mod:<is>(Mu:U $model, :$handling) {
         for $handling<> {
@@ -88,32 +64,9 @@ multi experimental("is-handling") {
             '&trait_mod:<is>' => &trait_mod:<is>
     )
 }
-
-multi experimental("has-one") {
-    Empty
-}
-
-multi experimental("refreshable") {
-    use MetamodelX::Red::Refreshable;
-    MetamodelX::Red::Model.^add_role: MetamodelX::Red::Refreshable;
-    MetamodelX::Red::Model.^compose;
-
-    Empty
-}
-
 multi experimental($feature) { die "Experimental feature '{ $feature }' not recognized." }
 
 multi EXPORT(+@experimentals) {
-	#my $no = "no-optimization";
-    	#if @experimentals.none eq $no {
-	#        require ::("Red::AST::Infixes");
-    	#        for <AND OR Case> -> $infix {
-	#		::("Red::AST::$infix").^add_role: ::("Red::AST::Optimizer::$infix");
-	#		::("Red::AST::$infix").^compose;
-    	#        }
-    	#} else {
-    	#        @experimentals .= grep: { $_ ne $no }
-    	#}
     %Red::experimentals{$_} = True for @experimentals;
     Map(
         Red::Do::EXPORT::ALL::,

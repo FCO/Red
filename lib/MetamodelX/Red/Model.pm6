@@ -25,6 +25,7 @@ use MetamodelX::Red::Describable;
 use MetamodelX::Red::OnDB;
 use MetamodelX::Red::Id;
 use MetamodelX::Red::Populatable;
+use MetamodelX::Red::Experimental;
 use Red::Formater;
 use X::Red::Exceptions;
 use Red::Phaser;
@@ -42,6 +43,7 @@ also does MetamodelX::Red::Describable;
 also does MetamodelX::Red::OnDB;
 also does MetamodelX::Red::Id;
 also does MetamodelX::Red::Populatable;
+also does MetamodelX::Red::Experimental;
 also does Red::Formater;
 
 has Attribute @!columns;
@@ -122,6 +124,7 @@ method set-helper-attrs(Mu \type) {
 
 #| Compose
 method compose(Mu \type) {
+    self.experimental: %Red::experimentals;
     self.set-helper-attrs: type;
 
     type.^prepare-relationships;
