@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.32  2021-02-16T01:55:55Z
     - Fix pre-compiled experimental features
     - Fix formatter spelling
 
