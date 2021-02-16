@@ -120,6 +120,14 @@ method set-helper-attrs(Mu \type) {
     self.MetamodelX::Red::Id::set-helper-attrs(type);
 }
 
+method new(|c) {
+    my @eroles = @Red::experimental-roles.grep(self !~~ *).sort({ $^a.^name cmp $^b.^name});
+    if +@eroles {
+        return (self.^mixin: |@eroles).new(|c)
+    }
+    nextsame
+}
+
 #| Compose
 method compose(Mu \type) {
     self.set-helper-attrs: type;
