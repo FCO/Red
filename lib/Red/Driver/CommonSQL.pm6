@@ -31,6 +31,7 @@ use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
 use Red::Type::Json;
+use Red::Utils;
 
 use UUID;
 unit role Red::Driver::CommonSQL does Red::Driver;
@@ -164,6 +165,10 @@ multi method diff-to-ast($table, "-", "col", Red::Cli::Column $_ --> Hash()) {
 }
 multi method diff-to-ast(@diff) {
     @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(|*.key, :as{ |.value }).sort.map: *.value
+}
+
+method table-name-formatter($data) {
+    camel-to-snake-case $data
 }
 
 method create-schema(%models where .values.all ~~ Red::Model) {

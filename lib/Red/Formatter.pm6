@@ -2,8 +2,13 @@ use Red::Utils;
 unit role Red::Formatter;
 
 method table-formatter($data)  {
-    do if self.?experimental-formatter {
-        &*RED-TABLE-FORMATTER  andthen .($data) orelse camel-to-snake-case $data
+    do if self.?experimental-formatter && &*RED-TABLE-FORMATTER.defined {
+	CATCH {
+		return &*RED-TABLE-FORMATTER.($data)
+	}
+	&*RED-TABLE-FORMATTER.($data, $*RED-DB)
+    } elsif try $*RED-DB.^can("table-name-formatter") {
+        $*RED-DB.table-name-formatter: $data
     } else {
         camel-to-snake-case $data
     }
