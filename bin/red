@@ -1,5 +1,4 @@
 #!env perl6
-use lib "lib";
 use Red::Cli;
 use Red::Do;
 use Red::Database;
@@ -7,6 +6,14 @@ use Red::Database;
 my %*SUB-MAIN-OPTS =
   :named-anywhere,
 ;
+
+my $*RED-DEBUG = False;
+
+proto MAIN(Str :$I, Bool :$debug, |) {
+    dyn-lib .split: "," with $I;
+    $*RED-DEBUG = $debug;
+    {*}
+}
 
 #| List tables in database
 multi MAIN(
@@ -75,4 +82,8 @@ multi MAIN(
 ) {
     $GLOBAL::RED-DB = database $driver, |%pars;
     prepare-database :$populate, :$models, :$driver, |%pars
+}
+
+sub dyn-lib(@libs) {
+	qq[use lib "{ $_ }"].EVAL for @libs
 }

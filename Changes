@@ -1,6 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Remove use lib from CLI
+    - add -I option to CLI
+    - add --debug option to CLI
 
 0.1.34  2021-02-18T01:53:05Z
     - Use DB's table formatter
