@@ -2,6 +2,9 @@ Revision history for Red
 
 {{$NEXT}}
 
+0.1.34  2021-02-18T01:53:05Z
+    - Use DB's table formatter
+
 0.1.33  2021-02-16T19:31:56Z
     - Fix refresh
 
