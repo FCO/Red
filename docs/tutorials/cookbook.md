@@ -254,6 +254,44 @@ To add a new translation
 $oi.links-from.create: :to-sentence{ :lang<esperanto>, :sentence<Saluton> };
 ```
 
+### If there is a blog where a post has one or more tags and tags can have multiple tags.
+
+```raku
+use Red;
+
+model PostTag {...}
+
+model Post {
+	has UInt    $.id        is serial;
+	has Str     $.title     is unique;
+	has PostTag @.post-tags is relationship{ .post-id };
+	method tags { @.post-tags>>.tag }
+}
+
+model Tag {
+	has Str $.name          is id;
+	has PostTag @.post-tags is relationship{ .tag-id };
+	method posts { @.post-tags>>.post }
+}
+
+model PostTag {
+	has UInt $.post-id is column{ :id, :references{ .id },   :model-name<Post> };
+	has Str  $.tag-id  is column{ :id, :references{ .name }, :model-name<Tag>  };
+	has Post $.post    is relationship{ .post-id };
+	has Tag  $.tag     is relationship{ .tag-id  };
+}
+
+red-defaults "SQLite";
+
+schema(PostTag, Post, Tag).create;
+
+my $a = Post.^create: :title<bla>, :post-tags[{ :tag{ :name<a> } }];
+
+.say for $a.tags;
+.say for Tag.^all.head.posts;
+.say for Post.tags;
+```
+
 ## Custom join
 
 If there is something you'd like to relationate but that's not a relationship. Something you'll probably do only once but that's not a relationship from the model.
