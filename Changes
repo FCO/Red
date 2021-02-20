@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - NM relationship sample and test
 
 0.1.35  2021-02-18T23:12:51Z
     - Remove use lib from CLI
