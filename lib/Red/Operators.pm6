@@ -194,7 +194,7 @@ multi infix:<!=>(Date $a is readonly, Red::AST $b) is export {
 }
 
 #| eq
-multi infix:<eq>(Red::AST $a, Str() $b is rw) is export {
+multi infix:<eq>(Red::AST $a where .returns ~~ Str, Str() $b is rw) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<str>, :bind-right
 }
 multi infix:<eq>(Red::AST $a, Str() $b is readonly) is export {
@@ -208,7 +208,7 @@ multi infix:<eq>(Str() $a is readonly, Red::AST $b) is export {
 }
 
 #| ne
-multi infix:<ne>(Red::AST $a, Str() $b is rw) is export {
+multi infix:<ne>(Red::AST $a where .returns ~~ Str, Str() $b is rw) is export {
     Red::AST::Ne.new: $a, ast-value($b), :cast<str>, :bind-right
 }
 multi infix:<ne>(Red::AST $a, Str() $b is readonly) is export {
@@ -222,7 +222,7 @@ multi infix:<ne>(Str() $a is readonly, Red::AST $b) is export {
 }
 
 #| <
-multi infix:<< < >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< < >>(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export {
     Red::AST::Lt.new: $a, $b, :cast<num>
 }
 multi infix:<< < >>(Red::AST $a, Numeric() $b is rw) is export {
@@ -239,7 +239,7 @@ multi infix:<< < >>(Numeric() $a is readonly, Red::AST $b) is export {
 }
 
 #| >
-multi infix:<< > >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< > >>(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export {
     Red::AST::Gt.new: $a, $b, :cast<num>
 }
 multi infix:<< > >>(Red::AST $a, Numeric() $b is rw) is export {
@@ -256,7 +256,7 @@ multi infix:<< > >>(Numeric() $a is readonly, Red::AST $b) is export {
 }
 
 #| <=
-multi infix:<< <= >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< <= >>(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export {
     Red::AST::Le.new: $a, $b, :cast<num>
 }
 multi infix:<< <= >>(Red::AST $a, Numeric() $b is rw) is export {
@@ -273,7 +273,7 @@ multi infix:<< <= >>(Numeric() $a is readonly, Red::AST $b) is export {
 }
 
 #| >=
-multi infix:<< >= >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< >= >>(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export {
     Red::AST::Ge.new: $a, $b, :cast<num>
 }
 multi infix:<< >= >>(Red::AST $a, Numeric() $b is rw) is export {
@@ -291,7 +291,7 @@ multi infix:<< >= >>(Numeric() $a is readonly, Red::AST $b) is export {
 
 ############################
 #| <
-multi infix:<< < >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< < >>(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is export {
     Red::AST::Lt.new: $a, $b, :cast<num>
 }
 multi infix:<< < >>(Red::AST $a, DateTime $b is rw) is export {
@@ -308,7 +308,7 @@ multi infix:<< < >>(DateTime $a is readonly, Red::AST $b) is export {
 }
 
 #| >
-multi infix:<< > >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< > >>(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is export {
     Red::AST::Gt.new: $a, $b, :cast<num>
 }
 multi infix:<< > >>(Red::AST $a, DateTime $b is rw) is export {
@@ -325,7 +325,7 @@ multi infix:<< > >>(DateTime $a is readonly, Red::AST $b) is export {
 }
 
 #| <=
-multi infix:<< <= >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< <= >>(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is export {
     Red::AST::Le.new: $a, $b, :cast<num>
 }
 multi infix:<< <= >>(Red::AST $a, DateTime $b is rw) is export {
@@ -342,7 +342,7 @@ multi infix:<< <= >>(DateTime $a is readonly, Red::AST $b) is export {
 }
 
 #| >=
-multi infix:<< >= >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< >= >>(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is export {
     Red::AST::Ge.new: $a, $b, :cast<num>
 }
 multi infix:<< >= >>(Red::AST $a, DateTime $b is rw) is export {
@@ -360,7 +360,7 @@ multi infix:<< >= >>(DateTime $a is readonly, Red::AST $b) is export {
 ############################
 
 #| <
-multi infix:<< < >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< < >>(Red::AST $a where .returns ~~ Date, Red::AST $b) is export {
     Red::AST::Lt.new: $a, $b, :cast<num>
 }
 multi infix:<< < >>(Red::AST $a, Date $b is rw) is export {
@@ -377,7 +377,7 @@ multi infix:<< < >>(Date $a is readonly, Red::AST $b) is export {
 }
 
 #| >
-multi infix:<< > >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< > >>(Red::AST $a where .returns ~~ Date, Red::AST $b) is export {
     Red::AST::Gt.new: $a, $b, :cast<num>
 }
 multi infix:<< > >>(Red::AST $a, Date $b is rw) is export {
@@ -394,7 +394,7 @@ multi infix:<< > >>(Date $a is readonly, Red::AST $b) is export {
 }
 
 #| <=
-multi infix:<< <= >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< <= >>(Red::AST $a where .returns ~~ Date, Red::AST $b) is export {
     Red::AST::Le.new: $a, $b, :cast<num>
 }
 multi infix:<< <= >>(Red::AST $a, Date $b is rw) is export {
@@ -411,7 +411,7 @@ multi infix:<< <= >>(Date $a is readonly, Red::AST $b) is export {
 }
 
 #| >=
-multi infix:<< >= >>(Red::AST $a, Red::AST $b) is export {
+multi infix:<< >= >>(Red::AST $a where .returns ~~ Date, Red::AST $b) is export {
     Red::AST::Ge.new: $a, $b, :cast<num>
 }
 multi infix:<< >= >>(Red::AST $a, Date $b is rw) is export {
