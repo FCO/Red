@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.38  2021-02-22T19:41:38Z
     - Fix multi comparators conflict
 
 0.1.37  2021-02-22T19:08:09Z
