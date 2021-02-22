@@ -194,7 +194,7 @@ multi infix:<!=>(Date $a is readonly, Red::AST $b) is export {
 }
 
 #| eq
-multi infix:<eq>(Red::AST $a where .returns ~~ Str, Str() $b is rw) is export {
+multi infix:<eq>(Red::AST $a, Str() $b is rw) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<str>, :bind-right
 }
 multi infix:<eq>(Red::AST $a, Str() $b is readonly) is export {
@@ -208,7 +208,7 @@ multi infix:<eq>(Str() $a is readonly, Red::AST $b) is export {
 }
 
 #| ne
-multi infix:<ne>(Red::AST $a where .returns ~~ Str, Str() $b is rw) is export {
+multi infix:<ne>(Red::AST $a, Str() $b is rw) is export {
     Red::AST::Ne.new: $a, ast-value($b), :cast<str>, :bind-right
 }
 multi infix:<ne>(Red::AST $a, Str() $b is readonly) is export {
