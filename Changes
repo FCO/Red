@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix multi comparators conflict
 
 0.1.37  2021-02-22T19:08:09Z
     - Add comparison to DateTime
