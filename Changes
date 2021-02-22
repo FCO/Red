@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add comparison to DateTime
 
 0.1.36  2021-02-20T23:44:52Z
     - NM relationship sample and test
