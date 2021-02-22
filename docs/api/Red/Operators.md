@@ -186,7 +186,7 @@ ne
 
 ```perl6
 multi sub infix:«<»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -197,7 +197,7 @@ multi sub infix:«<»(
 
 ```perl6
 multi sub infix:«>»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -208,7 +208,7 @@ multi sub infix:«>»(
 
 ```perl6
 multi sub infix:«<=»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -219,7 +219,7 @@ multi sub infix:«<=»(
 
 ```perl6
 multi sub infix:«>=»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -230,7 +230,7 @@ multi sub infix:«>=»(
 
 ```perl6
 multi sub infix:«<»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -241,7 +241,7 @@ multi sub infix:«<»(
 
 ```perl6
 multi sub infix:«>»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -252,7 +252,7 @@ multi sub infix:«>»(
 
 ```perl6
 multi sub infix:«<=»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -263,7 +263,7 @@ multi sub infix:«<=»(
 
 ```perl6
 multi sub infix:«>=»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -274,7 +274,7 @@ multi sub infix:«>=»(
 
 ```perl6
 multi sub infix:«<»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -285,7 +285,7 @@ multi sub infix:«<»(
 
 ```perl6
 multi sub infix:«>»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -296,7 +296,7 @@ multi sub infix:«>»(
 
 ```perl6
 multi sub infix:«<=»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
@@ -307,7 +307,7 @@ multi sub infix:«<=»(
 
 ```perl6
 multi sub infix:«>=»(
-    Red::AST $a,
+    Red::AST $a where { ... },
     Red::AST $b
 ) returns Mu
 ```
