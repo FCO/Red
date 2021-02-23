@@ -501,8 +501,9 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
                 .reduce: { Red::AST::AND.new: $^a, $^b }
         }
 
+        my $no;
         for %positionals.kv -> $name, @val {
-            FIRST my $no = model.^find($filter);
+            FIRST $no = model.^find($filter);
             $no."$name"().create: |$_ for @val
         }
         self.apply-row-phasers($obj, AfterCreate);
