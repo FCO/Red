@@ -10,7 +10,7 @@ use Test;
 
 use Red;
 
-use lib <t/lib>;
+use lib $?FILE.IO.parent(1).add('lib');
 
 use Person;
 use Post;

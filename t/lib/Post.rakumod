@@ -1,3 +1,4 @@
+use v6;
 use Red;
 
 model Post is rw {
@@ -7,4 +8,3 @@ model Post is rw {
     has Str         $.body      is column;
     has             $.author    is relationship({ .author-id }, model => 'Person');
 }
-
