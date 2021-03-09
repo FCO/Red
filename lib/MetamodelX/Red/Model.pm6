@@ -456,17 +456,25 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
     my $RED-DB = get-RED-DB;
     {
         my $*RED-DB = $RED-DB;
-        my %relationships := set %.relationships.keys>>.name>>.substr: 2;
+        my %relationships = %.relationships.keys.map: {
+            .name.substr(2) => $_
+        }
         my %pars;
         my %positionals;
+        my %has-one{Mu};
 
         for %orig-pars.kv -> $name, $val {
             my \attr = model.^attributes.first(*.name.substr(2) eq $name);
             my \attr-type = attr.type;
-            if %relationships{ $name } {
+            with %relationships{ $name } {
                 my \attr-model = attr.relationship-model;
                 if $val ~~ Positional && attr-type ~~ Positional {
                     %positionals{$name} = $val
+                } elsif .has-one {
+                    die "Value of '$name' should be Associative" unless $val ~~ Associative;
+#                    my $type = attr.relationship-model;
+#                    try { attr-type.^find(|$val) } // attr-type.^create: |$val
+                    %has-one{$val} = attr
                 } elsif $val ~~ Associative && $val !~~ Red::Model {
                     %pars{$name} = do if attr-model ~~ Red::Model {
                         try { attr-model.^find(|$val) } // attr-model.^create: |$val
@@ -505,6 +513,14 @@ multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
         for %positionals.kv -> $name, @val {
             FIRST $no = model.^find($filter);
             $no."$name"().create: |$_ for @val
+        }
+
+        for %has-one.kv -> %val, \attr {
+            FIRST $no //= model.^find($filter);
+            my $type = attr.relationship-model;
+            my $id-name = attr.rel.attr-name;
+            # What to do when there is moe than one id???
+            $type.^create: |%( |%val, $id-name => $no.^id-values.head )
         }
         self.apply-row-phasers($obj, AfterCreate);
         return-rw Proxy.new:

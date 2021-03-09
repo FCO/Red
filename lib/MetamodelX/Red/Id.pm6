@@ -82,6 +82,13 @@ multi method id-map(Red::Model $model, $id --> Hash()) {
     $model.^id.head.name.substr(2) => $id
 }
 
+multi method id-hash(Red::Model $model --> Hash()) {
+    $model.^id.map({
+        my $name = .name.substr(2);
+        $name => $model."$name"()
+    })
+}
+
 #| Returns a filter using the id
 multi method id-filter(Red::Model:D $model) {
     my @a = $model.^general-ids.flat.map({
