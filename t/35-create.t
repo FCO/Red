@@ -1,12 +1,13 @@
 use Test;
-use Red;
+use Red <has-one>;
 
 plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
 model Bla {
-    has UInt $.id     is serial;
-    has Str  $.value  is column;
-    has      @.bles   is relationship(*.bla-id, :model<Ble>);
+    has UInt $.id      is serial;
+    has Str  $.value   is column;
+    has      @.bles    is relationship(*.bla-id, :model<Ble>);
+    has      $.one-ble is relationship(*.bla-id, :model<Ble>, :has-one);
 }
 
 model Ble {
@@ -87,6 +88,16 @@ subtest "Simple create and creating by array", {
     does-ok   $bla.bles,                    Red::ResultSeq;
     isa-ok    $bla.bles,                    Ble::ResultSeq;
     is        $bla.bles.map(*.value),       <test3 test4>;
+};
+
+subtest "Create with has-one", {
+    my $bla = Bla.^create: :value<test1>, :one-ble{:value<test42>};
+
+    isa-ok    $bla,                         Bla;
+    is-deeply $bla,                         Bla.^load: $bla.id;
+
+    isa-ok    $bla.one-ble,                 Ble;
+    is        $bla.one-ble.value,           "test42";
 };
 
 done-testing;
