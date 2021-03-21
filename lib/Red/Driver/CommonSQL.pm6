@@ -174,10 +174,22 @@ method table-name-formatter($data) {
 method create-schema(%models where .values.all ~~ Red::Model) {
     for %models.kv -> Str() $name, Red::Model \model {
         self.execute: Red::AST::CreateTable.new:
-                :name(model.^table),
-                :temp(model.^temp),
-                :columns(model.^columns.map(*.column.clone: :references(Callable), :class(model))),
-                |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
+            :name(model.^table),
+            :temp(model.^temp),
+            :columns(model.^columns.map(*.column.clone: :references(Callable), :class(model))),
+            |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY),
+            :constraints[
+                |do given model.^constraints {
+                    |do for .kv -> $k, @v {
+                        my @columns = Array[Red::Column].new: flat |@v;
+                        do if $k eq "unique" {
+                            Red::AST::Unique.new: :@columns
+                        } elsif $k eq "pk" {
+                            Red::AST::Pk.new: :@columns
+                        }
+                    }
+                }
+            ],
     }
 
     for %models.kv -> Str() $name, Red::Model \model {

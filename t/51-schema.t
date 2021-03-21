@@ -44,4 +44,11 @@ dies-ok {
     is $s1.Post.^all.Seq, ();
 }
 
+$s1.create;
+$s1.Person.^create: :name<bla>;
+dies-ok {
+    $s1.Person.^create: :name<bla>;
+}
+
+
 done-testing;
