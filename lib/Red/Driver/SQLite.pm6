@@ -156,7 +156,7 @@ multi method default-type-for(Red::Column $                                     
 multi method default-type-for($ --> Str:D) is default {"varchar(255)"}
 
 
-multi method map-exception(X::DBDish::DBError $x where { (.?code == 19 or .?code == 1555) and .native-message.starts-with: "UNIQUE constraint failed:" }) {
+multi method map-exception(X::DBDish::DBError $x where { (.?code == 19 or .?code == 1555 or .?code == 2067) and .native-message.starts-with: "UNIQUE constraint failed:" }) {
     X::Red::Driver::Mapped::Unique.new:
         :driver<SQLite>,
         :orig-exception($x),

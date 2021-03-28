@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Map new UNIQUE SQLite error
 
 0.1.39  2021-03-28T21:28:42+01:00
     - Add table-name-wrapper
