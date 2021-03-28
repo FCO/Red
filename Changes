@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.40  2021-03-28T22:23:09+01:00
     - Map new UNIQUE SQLite error
 
 0.1.39  2021-03-28T21:28:42+01:00
