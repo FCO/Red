@@ -169,3 +169,10 @@ multi method map-exception(X::DBDish::DBError $x where { .?code == 1 and .native
             :orig-exception($x),
             :table($<table>.Str)
 }
+
+multi method map-exception(X::DBDish::DBError $x where { .?code == 1 and .native-message ~~ m:i/^table \s+ \"$<table>=(\w+)\" \s+ already \s+ exists/ }) {
+    X::Red::Driver::Mapped::TableExists.new:
+            :driver<SQLite>,
+            :orig-exception($x),
+            :table($<table>.Str)
+}

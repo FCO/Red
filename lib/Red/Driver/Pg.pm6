@@ -50,7 +50,7 @@ multi method translate(Red::AST::Insert $_, $context?) {
     my @values = .values.grep({ .value.value.defined });
     my @bind = @values.map: *.value.get-value;
     "INSERT INTO {
-        .into.^table
+        self.table-name-wrapper: .into.^table
     }(\n{
         @values>>.key.join(",\n").indent: 3
     }\n)\nVALUES(\n{

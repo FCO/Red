@@ -104,6 +104,8 @@ method reserved-words {<
     ZEROFILL ZONE
 >}
 
+method table-name-wrapper($name) { qq["$name"] }
+
 multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
     1 => Red::AST::CreateColumn.new(
         :$table,
@@ -250,7 +252,7 @@ multi method translate(Red::AST::ChangeColumn $_, $context?) {
                                     }{
                                         " UNIQUE" if .unique
                                     }{
-                                        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
+                                        " REFERENCES { self.table-name-wrapper: .ref-table } ({ .ref-col })" if .ref-table and .ref-col
                                     }{
                                         " PRIMARY KEY" if .pk
                                     }" => []
@@ -268,7 +270,7 @@ multi method translate(Red::AST::CreateColumn $_, $context?) {
                                     }{
                                         " UNIQUE" if .unique
                                     }{
-                                        " REFERENCES { .ref-table }({ .ref-col })" if .ref-table and .ref-col
+                                        " REFERENCES { self.table-name-wrapper: .ref-table } ({ .ref-col })" if .ref-table and .ref-col
                                     }{
                                         " PRIMARY KEY" if .pk
                                     }" => []
@@ -284,8 +286,8 @@ multi method translate(Red::AST::AddForeignKeyOnTable $ast, $context?) {
         } FOREIGN KEY ({
             $fk.from.name
         }) REFERENCES {
-            $fk.to.class.^table
-        }({
+            self.table-name-wrapper: $fk.to.class.^table
+        } ({
             $fk.to.name
         })" => []
     }
@@ -371,7 +373,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     my $tables = %t.kv.map(-> $_, @joins {
         [
             "{
-                .^table
+                self.table-name-wrapper: .^table
             }{
                 do if .^table ne .^as {
                     " as {
@@ -381,7 +383,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
             }",
             |@joins.reduce({ |$^a, |$^b }).unique(:as{ .^as }).map({
                 " { self.join-type: .^join-type } JOIN {
-                    .^table
+                    self.table-name-wrapper: .^table
                 }{
                     " as {
                         .^as
@@ -543,7 +545,7 @@ multi method translate(Red::Column $col, "select") {
     my ($str, @bind) := do with $col.computation {
         do given self.translate: $_ { .key, .value }
     } else {
-        "{ $col.model.^as }.{ $col.name }", []
+        "{ self.table-name-wrapper: $col.model.^as }.{ $col.name }", []
     }
     qq[$str {qq<as "{ "{$*RED-OVERRIDE-COLUMN-AS-PREFIX}." if $*RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }"> if
             $col.computation
@@ -570,11 +572,11 @@ multi method translate(Red::AST::Mul $_ where .left.?value == -1, "order") {
 }
 
 multi method translate(Red::Column $_, "where") {
-    "{ { .class.^as } }.{ .name }" => []
+    "{ { self.table-name-wrapper: .class.^as } }.{ .name }" => []
 }
 
 multi method translate(Red::Column $_, $context?) {
-    "{.model.^as}.{.name}" => []
+    "{ self.table-name-wrapper: .model.^as }.{.name}" => []
 }
 
 multi method translate(Red::Column $_, "create-table-column-name") {
@@ -696,8 +698,8 @@ multi method translate(Red::Column $_, "update-lval") {
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
     "CREATE{ " TEMPORARY" if .temp } TABLE {
-        .name
-    }(\n{
+        self.table-name-wrapper: .name
+    } (\n{
         (
             |.columns.map({ self.translate($_, "create-table").key }),
             |.constraints.map({ self.translate($_, "create-table").key })
@@ -723,10 +725,10 @@ multi method translate(Red::AST::Unique $_, $context?) {
 
 multi method translate(Red::AST::Insert $_, $context?) {
     my @values = .values.grep({ .value.value.defined });
-    return "INSERT INTO { .into.^table } DEFAULT VALUES" => [] unless @values;
+    return "INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES" => [] unless @values;
     my @bind = @values.map: *.value.get-value;
     "INSERT INTO {
-        .into.^table
+        self.table-name-wrapper: .into.^table
     }(\n{
         @values>>.key.join(",\n").indent: 3
     }\n)\nVALUES(\n{
@@ -818,7 +820,7 @@ multi method deflate($value) { $value }
 multi method type-by-name("string" --> "varchar(255)") {}
 multi method type-by-name(Str $type) { $type }
 
-multi method is-valid-table-name(Str $ where .fc ~~ self.reserved-words.any.fc) { False }
+#multi method is-valid-table-name(Str $ where .fc ~~ self.reserved-words.any.fc) { False }
 multi method is-valid-table-name(Str $str) is default {
     so $str ~~ /^ <[\w_]>+ $/
 }
