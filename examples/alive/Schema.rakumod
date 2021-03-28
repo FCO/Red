@@ -5,8 +5,8 @@ model Person  {...}
 
 model Chat {
     has Str     $.id      is column;
-    has Log     @.logs    is relationship( *.chat-id, :model<Log> );
-    has Person  @.people  is relationship( *.chat-id, :model<Person> );
+    has Log     @.logs    is relationship( *.chat-id, :model<Log>   , :require<Schema> );
+    has Person  @.people  is relationship( *.chat-id, :model<Person>, :require<Schema> );
 
     method alive(--> Sequence) {
         @!people.grep: { .is-alive }
@@ -33,10 +33,10 @@ model Chat {
 
 model Log {
     has Str     $.msg           is column;
-    has Str     $.chat-id       is referencing(  *.id, :model<Chat>   );
-    has Str     $.impacted-id   is referencing(  *.id, :model<Person> );
-    has Chat    $.chat          is relationship( *.chat-id    , :model<Chat>   );
-    has Person  $.impacted      is relationship( *.impacted-id, :model<Person> );
+    has Str     $.chat-id       is referencing(  *.id, :model<Chat>  , :require<Schema> );
+    has Str     $.impacted-id   is referencing(  *.id, :model<Person>, :require<Schema> );
+    has Chat    $.chat          is relationship( *.chat-id    , :model<Chat>  , :require<Schema> );
+    has Person  $.impacted      is relationship( *.impacted-id, :model<Person>, :require<Schema> );
 
     method print { note "{ $!impacted.nick } was $!msg" }
 }
@@ -45,8 +45,8 @@ model Person {
     has Int     $.id        is id;
     has Str     $.nick      is column;
     has Bool    $.is-alive  is column is rw = True;
-    has Str     $.chat-id   is referencing( *.id, :model<Chat> );
-    has Chat    $.chat      is relationship( *.chat-id, :model<Chat> );
+    has Str     $.chat-id   is referencing( *.id, :model<Chat>, :require<Schema> );
+    has Chat    $.chat      is relationship( *.chat-id, :model<Chat>, :require<Schema> );
 
     method die {
         $!is-alive = False;
@@ -58,3 +58,5 @@ model Person {
         self.^save
     }
 }
+
+sub alive-schema is export { $ = schema(Chat, Log, Person) }
