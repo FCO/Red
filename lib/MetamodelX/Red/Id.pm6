@@ -22,11 +22,14 @@ sub id-values-attr-build(\type, | --> Hash){
 }
 
 method set-helper-attrs(Mu \type) {
-    my %attr is Set = type.^attributes>>.name;
-    unless %attr<%!___ID_VALUES___> {
-            $!id-values-attr = Attribute.new: :name<%!___ID_VALUES___>, :package(type), :type(Hash), :!has_accessor;
-            $!id-values-attr.set_build: &id-values-attr-build;
-            type.^add_attribute: $!id-values-attr;
+    my %attr = type.^attributes.map( -> $a { $a.name => $a }).Hash;
+    if %attr<%!___ID_VALUES___> -> $a {
+        $!id-values-attr //= $a;
+    }
+    else {
+        $!id-values-attr = Attribute.new: :name<%!___ID_VALUES___>, :package(type), :type(Hash), :!has_accessor;
+        $!id-values-attr.set_build: &id-values-attr-build;
+        type.^add_attribute: $!id-values-attr;
     }
 }
 
