@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.41  2021-04-27T00:39:46+01:00
     - Fix dynamicaly `does` and `^mixin` on models (thanks Jonathan Stowe)
 
 0.1.40  2021-03-28T22:23:09+01:00
