@@ -131,6 +131,7 @@ method new(|c) {
 
 #| Compose
 method compose(Mu \type) {
+
     self.set-helper-attrs: type;
 
     type.^prepare-relationships;
@@ -287,7 +288,7 @@ method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
             self.add-reference: $name, $attr.column
         }
         self.add-comparate-methods(T, $attr);
-        if $attr.has_accessor {
+        if $attr.has_accessor && !T.^can($name) {
             if type.^rw or $attr.rw {
                 $attr does role :: { method rw { True } };
                 T.^add_multi_method: $name, my method (Red::Model:D:) is rw {

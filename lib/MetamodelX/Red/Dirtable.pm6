@@ -38,21 +38,30 @@ sub dirty-old-values-attr-build(|) {
 }
 
 method set-helper-attrs(Mu \type) {
-    my %attr is Set = type.^attributes>>.name;
-    unless %attr<%!___COLUMNS_DATA___> {
-            $!col-data-attr = Attribute.new: :name<%!___COLUMNS_DATA___>, :package(type), :type(Any), :!has_accessor;
-            $!col-data-attr.set_build: &col-data-attr-build;
-            type.^add_attribute: $!col-data-attr;
+    my %attr = type.^attributes.map( -> $a { $a.name => $a }).Hash;
+    if %attr<%!___COLUMNS_DATA___>  -> $a {
+        $!col-data-attr //= $a;
     }
-    unless %attr<%!___DIRTY_COLS_DATA___> {
-            $!dirty-cols-attr = Attribute.new: :name<%!___DIRTY_COLS_DATA___>, :package(type), :type(Any), :!has_accessor;
-            $!dirty-cols-attr.set_build: &dirty-cols-attr-build;
-            type.^add_attribute: $!dirty-cols-attr;
+    else {
+        $!col-data-attr = Attribute.new: :name<%!___COLUMNS_DATA___>, :package(type), :type(Any), :!has_accessor;
+        $!col-data-attr.set_build: &col-data-attr-build;
+        type.^add_attribute: $!col-data-attr;
     }
-    unless %attr<%!___DIRTY_OLD_DATA___> {
-            $!dirty-old-values-attr = Attribute.new: :name<%!___DIRTY_OLD_DATA___>, :package(type), :type(Any), :!has_accessor;
-            $!dirty-old-values-attr.set_build: &dirty-old-values-attr-build;
-            type.^add_attribute: $!dirty-old-values-attr;
+    if %attr<%!___DIRTY_COLS_DATA___> -> $a {
+        $!dirty-cols-attr //= $a;
+    }
+    else {
+        $!dirty-cols-attr = Attribute.new: :name<%!___DIRTY_COLS_DATA___>, :package(type), :type(Any), :!has_accessor;
+        $!dirty-cols-attr.set_build: &dirty-cols-attr-build;
+        type.^add_attribute: $!dirty-cols-attr;
+    }
+    if %attr<%!___DIRTY_OLD_DATA___> -> $a {
+        $!dirty-old-values-attr //= $a;
+    }
+    else {
+        $!dirty-old-values-attr = Attribute.new: :name<%!___DIRTY_OLD_DATA___>, :package(type), :type(Any), :!has_accessor;
+        $!dirty-old-values-attr.set_build: &dirty-old-values-attr-build;
+        type.^add_attribute: $!dirty-old-values-attr;
     }
 }
 
@@ -121,68 +130,77 @@ method compose-dirtable(Mu \type) {
     my \meta = self;
     #state &build //= self.^find_private_method("TWEAK_pr");
     my &build = method (\instance: *%data) is rw {
-    my @columns = instance.^columns;
+        my @columns = instance.^columns;
 
-    my %new = |@columns.map: {
-        my Mu $built := .build;
-        $built := $built.(self.WHAT, Mu) if $built ~~ Method;
-        next if $built =:= Mu;
-        if instance.^is-id: $_ {
-            instance.^set-id: .name => $built
-        }
-        .column.attr-name => $built
-    };
-
-    for %data.kv -> $k, $v { %new{$k} = $v }
-
-    my $col-data-attr         := self.^col-data-attr;
-    my $dirty-old-values-attr := self.^dirty-old-values-attr;
-    $col-data-attr.set_value: instance, %new;
-    for @columns -> \col {
-        my \proxy = Proxy.new:
-            FETCH => method {
-                $col-data-attr.get_value(instance).{ col.column.attr-name }
-            },
-            STORE => method (\value) {
-                die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
-                if instance.^is-id: col {
-                    instance.^set-id: col.name => value
-                }
-                instance.^set-dirty: col;
-                $dirty-old-values-attr.get_value(instance).{ col.column.attr-name } =
-                    $col-data-attr.get_value(instance).{ col.column.attr-name };
-                $col-data-attr.get_value(instance).{ col.column.attr-name } = value
+        my %new = |@columns.map: {
+            my Mu $built := .build;
+            $built := $built.(self.WHAT, Mu) if $built ~~ Method;
+            next if $built =:= Mu;
+            if instance.^is-id: $_ {
+                instance.^set-id: .name => $built
             }
-        #use nqp;
-        #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
-        col.set_value: instance<>, proxy
-    }
-    for self.^attributes -> $attr {
-        with %data{ $attr.name.substr: 2 } {
-            unless $attr ~~ Red::Attr::Column {
-                if self.^is-id: $attr {
-                    self.^set-id: $attr.name => $_
+            .column.attr-name => $built
+        };
+
+        for %data.kv -> $k, $v { %new{$k} = $v }
+
+
+        my $col-data-attr         := self.^col-data-attr;
+        for $col-data-attr.get_value(instance).kv -> $k, $v { %new{$k} = $v }
+
+        my $dirty-old-values-attr := self.^dirty-old-values-attr;
+        $col-data-attr.set_value: instance, %new;
+        for @columns -> \col {
+            my \proxy = Proxy.new:
+                FETCH => method {
+                    $col-data-attr.get_value(instance).{ col.column.attr-name }
+                },
+                STORE => method (\value) {
+                    die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
+                    if instance.^is-id: col {
+                        instance.^set-id: col.name => value
+                    }
+                    instance.^set-dirty: col;
+                    $dirty-old-values-attr.get_value(instance).{ col.column.attr-name } =
+                        $col-data-attr.get_value(instance).{ col.column.attr-name };
+                    $col-data-attr.get_value(instance).{ col.column.attr-name } = value
                 }
-                $attr.set_value: self, $_
-            }
+            #use nqp;
+            #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
+            col.set_value: instance<>, proxy
         }
-        # TODO: this should be on M::R::Relationship
-        if $attr ~~ Red::Attr::Relationship {
+        for self.^attributes -> $attr {
             with %data{ $attr.name.substr: 2 } {
-                $attr.set-data: instance, $_
-            } else {
-                my Mu $built := $attr.build;
-                $built := $built.(self.WHAT, Mu) if $built ~~ Method;
-                $attr.set-data: instance, $_ with $built
+                unless $attr ~~ Red::Attr::Column {
+                    if self.^is-id: $attr {
+                        self.^set-id: $attr.name => $_
+                    }
+                    $attr.set_value: self, $_
+                }
+            }
+            # TODO: this should be on M::R::Relationship
+            if $attr ~~ Red::Attr::Relationship {
+                with %data{ $attr.name.substr: 2 } {
+                    $attr.set-data: instance, $_
+                } else {
+                    my Mu $built := $attr.build;
+                    $built := $built.(self.WHAT, Mu) if $built ~~ Method;
+                    $attr.set-data: instance, $_ with $built
+                }
             }
         }
+
+        nextsame
     }
 
-    nextsame
-}
+    my role DirtableWrapped { };
 
     if self.declares_method(type, "TWEAK") {
-        self.find_method(type, "TWEAK", :no_fallback(1)).wrap: &build;
+        my &tweak = self.find_method(type, "TWEAK", :no_fallback(1));
+        if &tweak !~~ DirtableWrapped {
+            &tweak.wrap: &build;
+            &tweak does DirtableWrapped;
+        }
     } else {
         self.add_method: type, "TWEAK", &build;
     }
