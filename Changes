@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix dynamicaly `does` and `^mixin` on models (thanks Jonathan Stowe)
 
 0.1.40  2021-03-28T22:23:09+01:00
     - Map new UNIQUE SQLite error
