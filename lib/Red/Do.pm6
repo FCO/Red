@@ -5,13 +5,7 @@ use Red::Class;
 use Red::Event;
 use Red::DB;
 
-=head1 This module is experimental, to use it, do:
-
-=head2 Red::Do
-
-=begin code :lang<perl6>
-use Red <red-do>;
-=end code
+=head1 Red::Do
 
 unit module Red::Do;
 

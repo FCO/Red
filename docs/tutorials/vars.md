@@ -9,7 +9,7 @@ use Red;
 my $*RED-DB = database "SQLite";
 ```
 
-You should use [`red-do()`]() and/or [`red-defaults()`]() instead.
+You should use [`red-do()`](https://fco.github.io/Red/api/Red/Do.html) and/or [`red-defaults()`](https://fco.github.io/Red/api/Red/Do.html) instead.
 
 ## `$*RED-DEBUG`
 
