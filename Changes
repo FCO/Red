@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Retrying to release
 
 0.1.42  2021-05-02T17:05:09+01:00
     - Accept models (on referencing and on relationship) as object type
