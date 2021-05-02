@@ -3,7 +3,7 @@ MetamodelX::Red::Relationship
 
 ### method add-relationship
 
-```raku
+```perl6
 method add-relationship(
     Mu:U $self,
     Attribute $attr,
@@ -19,13 +19,13 @@ Adds a new relationship by reference.
 
 ### method add-relationship
 
-```raku
+```perl6
 method add-relationship(
     Mu:U $self,
     Attribute $attr,
     Str :$column!,
     Str :$model!,
-    Str :$require = Code.new,
+    Str :$require = { ... },
     Bool :$optional,
     Bool :$no-prefetch,
     Bool :$has-one
@@ -36,13 +36,13 @@ Adds a new relationship by column.
 
 ### method add-relationship
 
-```raku
+```perl6
 method add-relationship(
     Mu:U $self,
     Attribute $attr,
     &reference,
     Str :$model,
-    Str :$require = Code.new,
+    Str :$require = { ... },
     Bool :$optional,
     Bool :$no-prefetch,
     Bool :$has-one
@@ -53,14 +53,14 @@ Adds a new relationship by reference.
 
 ### method add-relationship
 
-```raku
+```perl6
 method add-relationship(
     Mu:U $self,
     Attribute $attr,
     &ref1,
     &ref2,
     Str :$model,
-    Str :$require = Code.new,
+    Str :$require = { ... },
     Bool :$optional,
     Bool :$no-prefetch,
     Bool :$has-one
@@ -71,7 +71,7 @@ Adds a new relationship by two references.
 
 ### method add-relationship
 
-```raku
+```perl6
 method add-relationship(
     ::Type Mu:U $self,
     Red::Attr::Relationship $attr

@@ -11,7 +11,7 @@ Supply of events of that driver
 
 ### method begin
 
-```raku
+```perl6
 method begin() returns Mu
 ```
 
@@ -19,7 +19,7 @@ Begin transaction
 
 ### method commit
 
-```raku
+```perl6
 method commit() returns Mu
 ```
 
@@ -27,7 +27,7 @@ Commit transaction
 
 ### method rollback
 
-```raku
+```perl6
 method rollback() returns Mu
 ```
 
@@ -35,7 +35,7 @@ Rollback transaction
 
 ### method auto-register
 
-```raku
+```perl6
 method auto-register(
     |
 ) returns Mu
@@ -45,7 +45,7 @@ Self-register its events on Red.events
 
 ### method emit
 
-```raku
+```perl6
 method emit(
     $data?
 ) returns Mu
@@ -55,7 +55,7 @@ Emit events
 
 ### method emit
 
-```raku
+```perl6
 method emit(
     Red::Event $event
 ) returns Mu
@@ -65,7 +65,7 @@ Emit events
 
 ### method prepare
 
-```raku
+```perl6
 method prepare(
     Red::AST $query
 ) returns Mu
@@ -75,7 +75,7 @@ Prepares a DB statement
 
 ### method is-valid-table-name
 
-```raku
+```perl6
 method is-valid-table-name(
     Str $
 ) returns Bool
@@ -85,7 +85,7 @@ Checks if a name is a valid table name
 
 ### method type-by-name
 
-```raku
+```perl6
 method type-by-name(
     "varchar"
 ) returns "varchar(255)"
@@ -95,7 +95,7 @@ Maps types
 
 ### method type-by-name
 
-```raku
+```perl6
 method type-by-name(
     "string"
 ) returns "text"
@@ -105,7 +105,7 @@ Maps types
 
 ### method type-by-name
 
-```raku
+```perl6
 method type-by-name(
     "int"
 ) returns "integer"
@@ -115,7 +115,7 @@ Maps types
 
 ### method map-exception
 
-```raku
+```perl6
 method map-exception(
     $orig-exception
 ) returns Mu
@@ -125,7 +125,7 @@ Maps exception
 
 ### method inflate
 
-```raku
+```perl6
 method inflate(
     $value,
     :$to
@@ -136,7 +136,7 @@ Default inflator
 
 ### method execute
 
-```raku
+```perl6
 method execute(
     $query,
     *@bind
@@ -147,7 +147,7 @@ Execute query
 
 ### method optimize
 
-```raku
+```perl6
 method optimize(
     Red::AST $in
 ) returns Red::AST

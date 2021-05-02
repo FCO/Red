@@ -3,7 +3,7 @@ Red::AST::Optimizer::OR
 
 ### method optimize
 
-```raku
+```perl6
 method optimize(
     Red::AST::Infix $left where { ... },
     Red::AST::Infix $right where { ... },
@@ -15,7 +15,7 @@ x > 1 OR x > 10 ==> x > 10
 
 ### method optimize
 
-```raku
+```perl6
 method optimize(
     Red::AST::Infix $left where { ... },
     Red::AST::Infix $right where { ... },
@@ -27,7 +27,7 @@ x < 1 OR x < 10 ==> x < 1
 
 ### method optimize
 
-```raku
+```perl6
 method optimize(
     Red::AST::Infix $left where { ... },
     Red::AST::Infix $right where { ... },
@@ -39,7 +39,7 @@ x < 10 OR x > 1 ==> True
 
 ### method optimize
 
-```raku
+```perl6
 method optimize(
     Red::AST::Infix $left where { ... },
     Red::AST::Infix $right where { ... },
@@ -51,7 +51,7 @@ x > 1 OR x < 10 ==> True
 
 ### method optimize
 
-```raku
+```perl6
 method optimize(
     $left where { ... },
     $right where { ... },
@@ -63,7 +63,7 @@ a.b OR NOT(a.b) ==> True
 
 ### method optimize
 
-```raku
+```perl6
 method optimize(
     $left where { ... },
     $right where { ... },

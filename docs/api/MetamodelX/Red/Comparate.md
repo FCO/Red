@@ -3,7 +3,7 @@ MetamodelX::Red::Comparate
 
 ### method add-comparate-methods
 
-```raku
+```perl6
 method add-comparate-methods(
     Mu:U \type,
     Red::Attr::Column $attr

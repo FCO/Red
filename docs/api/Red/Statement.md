@@ -2,9 +2,19 @@
 
 Base role to DB statements Returned by .query
 
+### method execute
+
+```perl6
+method execute(
+    *@binds
+) returns Mu
+```
+
+Execute the pre-prepared query
+
 ### method stt-row
 
-```raku
+```perl6
 method stt-row(
     $
 ) returns Hash(Any)
@@ -14,7 +24,7 @@ How to get a row must be implemented
 
 ### method row
 
-```raku
+```perl6
 method row() returns Mu
 ```
 

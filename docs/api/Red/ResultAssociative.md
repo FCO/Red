@@ -7,7 +7,7 @@ Lazy Associative class from Red queries (.classify)
 
 ### method of
 
-```raku
+```perl6
 method of() returns Mu
 ```
 
@@ -15,7 +15,7 @@ type of the value
 
 ### method key-of
 
-```raku
+```perl6
 method key-of() returns Mu
 ```
 
@@ -23,7 +23,7 @@ type of the key
 
 ### method keys
 
-```raku
+```perl6
 method keys() returns Mu
 ```
 
@@ -31,7 +31,7 @@ return a list of keys run a SQL query to get it
 
 ### method elems
 
-```raku
+```perl6
 method elems() returns Mu
 ```
 
@@ -39,7 +39,7 @@ Run query to get the number of elements
 
 ### method AT-KEY
 
-```raku
+```perl6
 method AT-KEY(
     $key
 ) returns Mu
@@ -49,7 +49,7 @@ return a ResultSeq for the given key
 
 ### method Bag
 
-```raku
+```perl6
 method Bag() returns Mu
 ```
 
@@ -57,7 +57,7 @@ Run query to create a Bag
 
 ### method Set
 
-```raku
+```perl6
 method Set() returns Mu
 ```
 

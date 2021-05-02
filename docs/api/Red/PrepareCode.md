@@ -1,6 +1,6 @@
 ### sub hash-to-cond
 
-```raku
+```perl6
 sub hash-to-cond(
     %val
 ) returns Mu
@@ -10,7 +10,7 @@ Transform a hash into filter (Red::AST)
 
 ### sub found-bool
 
-```raku
+```perl6
 sub found-bool(
     @values,
     $try-again is rw,
@@ -23,7 +23,7 @@ Found a boolean while trying to find what's hapenning inside a block
 
 ### sub what-does-it-do
 
-```raku
+```perl6
 sub what-does-it-do(
     &func,
     \type

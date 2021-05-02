@@ -3,10 +3,10 @@ MetamodelX::Red::Dirtable
 
 ### method set-dirty
 
-```raku
+```perl6
 method set-dirty(
     \obj,
-    Set(Any) $attr
+    $attr
 ) returns Mu
 ```
 
@@ -14,7 +14,7 @@ Accepts a Set of attributes of model and enables dirtiness flag for them, which 
 
 ### method is-dirty
 
-```raku
+```perl6
 method is-dirty(
     Any:D \obj
 ) returns Bool
@@ -24,7 +24,7 @@ Returns `True` if any of the object attributes were changed from original databa
 
 ### method dirty-columns
 
-```raku
+```perl6
 method dirty-columns(
     Any:D \obj
 ) returns Mu
@@ -34,7 +34,7 @@ Returns dirty columns of the object.
 
 ### method clean-up
 
-```raku
+```perl6
 method clean-up(
     Any:D \obj
 ) returns Mu
