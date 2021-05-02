@@ -1,8 +1,7 @@
 use Red::Attr::Relationship;
 use Red::FromRelationship;
 use Red::AST;
-#no precompilation;
-
+use Red::Model;
 =head2 MetamodelX::Red::Relationship
 
 unit role MetamodelX::Red::Relationship;
@@ -78,6 +77,20 @@ method prepare-relationships(::Type Mu \type) {
     }
 }
 
+#| Adds a new relationship by reference.
+multi method add-relationship(
+        Mu:U $self,
+        Attribute $attr,
+        &reference,
+        Red::Model :$model-type!,
+        Bool       :$optional,
+        Bool       :$no-prefetch,
+        Bool       :$has-one,
+) {
+    $attr does Red::Attr::Relationship[&reference, :$model-type, :$optional, :$no-prefetch, :$has-one];
+    self.add-relationship: $self, $attr
+}
+
 #| Adds a new relationship by column.
 multi method add-relationship(
         Mu:U $self,
@@ -87,8 +100,8 @@ multi method add-relationship(
         Str  :$require = $model,
         Bool :$optional,
         Bool :$no-prefetch,
-	Bool :$has-one,
-        ) {
+        Bool :$has-one,
+) {
     self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require, :$optional, :$no-prefetch, :$has-one
 }
 
@@ -101,8 +114,8 @@ multi method add-relationship(
         Str  :$require = $model,
         Bool :$optional,
         Bool :$no-prefetch,
-	Bool :$has-one,
-        ) {
+	    Bool :$has-one,
+) {
     $attr does Red::Attr::Relationship[&reference, :$model, :$require, :$optional, :$no-prefetch, :$has-one];
     self.add-relationship: $self, $attr
 }
@@ -117,8 +130,8 @@ multi method add-relationship(
         Str  :$require = $model,
         Bool :$optional,
         Bool :$no-prefetch,
-	Bool :$has-one,
-        ) {
+	    Bool :$has-one,
+) {
     $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require, :$optional, :$no-prefetch, :$has-one];
     self.add-relationship: $self, $attr
 }
