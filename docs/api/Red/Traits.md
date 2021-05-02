@@ -93,6 +93,28 @@ Trait that defines a reference
 
 ```perl6
 multi sub trait_mod:<is>(
+    Attribute $attr,
+    :$referencing! (&referencing, Mu:U :$model!, Bool :$nullable = Bool::True)
+) returns Empty
+```
+
+Trait that defines a reference
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :$referencing! (Mu:U :$model!, Str :$column!, Bool :$nullable = Bool::True)
+) returns Empty
+```
+
+Trait that defines a reference
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
     Mu:U $model,
     Str :$table! is copy where { ... }
 ) returns Empty
@@ -117,6 +139,17 @@ Trait that defines a relationship
 multi sub trait_mod:<is>(
     Attribute $attr,
     :$relationship! (&relationship, Str :$model, Str :$require = { ... }, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
+) returns Empty
+```
+
+Trait that defines a relationship
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :$relationship! (&relationship, Mu:U :$model!, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
 ) returns Empty
 ```
 

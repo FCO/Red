@@ -7,6 +7,22 @@ MetamodelX::Red::Relationship
 method add-relationship(
     Mu:U $self,
     Attribute $attr,
+    &reference,
+    Red::Model :$model-type!,
+    Bool :$optional,
+    Bool :$no-prefetch,
+    Bool :$has-one
+) returns Mu
+```
+
+Adds a new relationship by reference.
+
+### method add-relationship
+
+```perl6
+method add-relationship(
+    Mu:U $self,
+    Attribute $attr,
     Str :$column!,
     Str :$model!,
     Str :$require = { ... },

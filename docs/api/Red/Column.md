@@ -39,7 +39,7 @@ Returns a function that will return a column that is referenced by this column
 
 ```perl6
 method ref(
-    $model = Nil
+    $model = { ... }
 ) returns Mu
 ```
 
