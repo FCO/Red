@@ -2,16 +2,19 @@ use Red::AST::Infixes;
 use Red::AST::Value;
 use Red::HiddenFromSQLCommenting;
 use X::Red::Exceptions;
+use Red::Model;
 
 unit role Red::Attr::Relationship[
 	&rel1,
 	&rel2?,
-	Str  :$model,
-	Str  :$require = $model,
-	Bool :$optional,
-	Bool :$no-prefetch,
-	Bool :$has-one,
+	Str         :$model,
+	Str         :$require = $model,
+	Bool        :$optional,
+	Bool        :$no-prefetch,
+	Bool        :$has-one,
+    Red::Model  :$model-type,
 ];
+
 has Mu:U $!type;
 
 has Bool $.has-lazy-relationship = ?$model;
@@ -28,6 +31,15 @@ has Bool $.no-prefetch = $!has-one // $no-prefetch;
 
 has Str $.rel-name is rw;
 
+has $!model-type = $model-type;
+
+submethod TWEAK(|) {
+    if $!model-type !=== Red::Model {
+        $!has-lazy-relationship = True;
+        $!relationship-model   := $!model-type;
+        $!loaded-model          = True
+    }
+}
 
 method transfer(Mu:U $package) {
     my $attr = Attribute.new: :$package, :$.name, :$.type;
@@ -38,15 +50,15 @@ method rel {
     rel1 self.has-one ?? $!relationship-model !! self.package
 }
 
-    method relationship-model(--> Mu:U) is hidden-from-sql-commenting {
-    return self.type without $model;
+method relationship-model(--> Mu:U) is hidden-from-sql-commenting {
+    return self.type if !$model.DEFINITE && !$!loaded-model;
     unless $!loaded-model {
         my $t = ::($model);
         if !$t && $t ~~ Failure {
             require ::($require);
             $t = ::($model);
         }
-        $!relationship-model = $t;
+        $!relationship-model := $t;
         $!loaded-model = True;
     }
     $!relationship-model

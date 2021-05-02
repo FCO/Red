@@ -27,6 +27,7 @@ has             &.inflate          = $!attr.type.?inflator // { .?"{ $!attr.type
 has             &.deflate          = $!attr.type.?deflator // *.self;
 has             $.computation;
 has Str         $.model-name;
+has Red::Model  $.model-type;
 has Str         $.column-name;
 has Str         $.require          = $!model-name;
 has Mu          $.class            = $!attr.package;
@@ -140,14 +141,14 @@ method references(--> Callable) is rw {
     &!actual-references //= do {
         if &!references {
             if $!model-name {
-                ReferencesProxy.new(:&!references, :$!model-name, :$!require);
+                ReferencesProxy.new(:&!references, :$!model-name, :$!require, :$!model-type);
             }
             else {
                 &!references;
             }
         }
         elsif $!model-name && $!column-name {
-            ReferencesProxy.new(:$!model-name, :$!column-name, :$!require);
+            ReferencesProxy.new(:$!model-name, :$!column-name, :$!require, :$!model-type);
         }
         else {
             Callable
@@ -156,7 +157,7 @@ method references(--> Callable) is rw {
 }
 
 #| Returns the column that is referenced by this one.
-method ref($model = Nil) {
+method ref($model = $!model-type !=== Red::Model ?? $!model-type !! Nil) {
     .($model) with self.references
 }
 
