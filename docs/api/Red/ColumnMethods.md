@@ -7,9 +7,9 @@ Red::Column methods
 
 ### method starts-with
 
-```raku
+```perl6
 method starts-with(
-    Str(Any) $text
+    $text
 ) returns Mu
 ```
 
@@ -17,9 +17,9 @@ Tests if that column value starts with a specific sub-string is usually translat
 
 ### method ends-with
 
-```raku
+```perl6
 method ends-with(
-    Str(Any) $text
+    $text
 ) returns Mu
 ```
 
@@ -27,9 +27,9 @@ Tests if that column value ends with a specific sub-string is usually translated
 
 ### method contains
 
-```raku
+```perl6
 method contains(
-    Str(Any) $text
+    $text
 ) returns Mu
 ```
 
@@ -37,10 +37,10 @@ Tests if that column value contains a specific sub-string is usually translated 
 
 ### method substr
 
-```raku
+```perl6
 method substr(
-    Int(Any) $offset = 0,
-    Int(Any) $size?
+    $offset = 0,
+    $size?
 ) returns Mu
 ```
 
@@ -48,7 +48,7 @@ Return a substring of the column value
 
 ### method year
 
-```raku
+```perl6
 method year() returns Mu
 ```
 
@@ -56,7 +56,7 @@ Return the year from the date column
 
 ### method month
 
-```raku
+```perl6
 method month() returns Mu
 ```
 
@@ -64,7 +64,7 @@ Return the month from the date column
 
 ### method day
 
-```raku
+```perl6
 method day() returns Mu
 ```
 
@@ -72,7 +72,7 @@ Return the day from the date column
 
 ### method AT-KEY
 
-```raku
+```perl6
 method AT-KEY(
     $key where { ... }
 ) returns Mu
@@ -82,7 +82,7 @@ Return a value from a json hash key
 
 ### method DELETE-KEY
 
-```raku
+```perl6
 method DELETE-KEY(
     $key where { ... }
 ) returns Mu

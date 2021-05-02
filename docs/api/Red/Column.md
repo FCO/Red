@@ -8,7 +8,7 @@ Represents a database column
 
 ### method migration-hash
 
-```raku
+```perl6
 method migration-hash() returns Hash(Any)
 ```
 
@@ -21,7 +21,7 @@ Subclass used to lazy evaluation of parameter types
 
 ### method comment
 
-```raku
+```perl6
 method comment() returns Mu
 ```
 
@@ -29,7 +29,7 @@ Returns the class that column is part of. Method that returns the comment for th
 
 ### method references
 
-```raku
+```perl6
 method references() returns Callable
 ```
 
@@ -37,9 +37,9 @@ Returns a function that will return a column that is referenced by this column
 
 ### method ref
 
-```raku
+```perl6
 method ref(
-    $model = Code.new
+    $model = { ... }
 ) returns Mu
 ```
 
@@ -47,7 +47,7 @@ Returns the column that is referenced by this one.
 
 ### method returns
 
-```raku
+```perl6
 method returns() returns Mu
 ```
 
@@ -55,7 +55,7 @@ Required by the Red::AST role
 
 ### method alias
 
-```raku
+```perl6
 method alias(
     Str $name
 ) returns Mu
@@ -65,7 +65,7 @@ Returns an alias of that column
 
 ### method as
 
-```raku
+```perl6
 method as(
     Str $name,
     :$nullable = Bool::True
@@ -76,7 +76,7 @@ Returns a clone using a different name
 
 ### method defined
 
-```raku
+```perl6
 method defined() returns Mu
 ```
 

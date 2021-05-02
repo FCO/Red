@@ -3,7 +3,7 @@ MetamodelX::Red::OnDB
 
 ### method is-on-db
 
-```raku
+```perl6
 method is-on-db(
     \instance
 ) returns Mu
@@ -13,7 +13,7 @@ Checks if the instance of model has a record in the database or not. For example
 
 ### method saved-on-db
 
-```raku
+```perl6
 method saved-on-db(
     \instance
 ) returns Mu

@@ -3,7 +3,7 @@ Red::Operators
 
 ### multi sub prefix:<-->
 
-```raku
+```perl6
 multi sub prefix:<-->(
     Red::Column $a
 ) returns Mu
@@ -13,7 +13,7 @@ multi sub prefix:<-->(
 
 ### multi sub prefix:<++>
 
-```raku
+```perl6
 multi sub prefix:<++>(
     Red::Column $a
 ) returns Mu
@@ -23,7 +23,7 @@ multi sub prefix:<++>(
 
 ### multi sub postfix:<-->
 
-```raku
+```perl6
 multi sub postfix:<-->(
     Red::Column $a
 ) returns Mu
@@ -33,7 +33,7 @@ X--
 
 ### multi sub postfix:<++>
 
-```raku
+```perl6
 multi sub postfix:<++>(
     Red::AST $a
 ) returns Mu
@@ -43,7 +43,7 @@ X++
 
 ### multi sub prefix:<->
 
-```raku
+```perl6
 multi sub prefix:<->(
     Red::AST $a
 ) returns Mu
@@ -53,7 +53,7 @@ multi sub prefix:<->(
 
 ### multi sub prefix:<+>
 
-```raku
+```perl6
 multi sub prefix:<+>(
     Red::AST $a
 ) returns Mu
@@ -63,7 +63,7 @@ multi sub prefix:<+>(
 
 ### multi sub infix:<+>
 
-```raku
+```perl6
 multi sub infix:<+>(
     Red::AST $a,
     Red::AST $b
@@ -74,7 +74,7 @@ X + Y
 
 ### multi sub infix:<->
 
-```raku
+```perl6
 multi sub infix:<->(
     Red::AST $a,
     Red::AST $b
@@ -85,7 +85,7 @@ X - Y
 
 ### multi sub infix:<*>
 
-```raku
+```perl6
 multi sub infix:<*>(
     Red::AST $a,
     Red::AST $b
@@ -96,7 +96,7 @@ X * Y
 
 ### multi sub infix:</>
 
-```raku
+```perl6
 multi sub infix:</>(
     Red::AST $a,
     Red::AST $b
@@ -107,7 +107,7 @@ X / Y
 
 ### multi sub infix:<div>
 
-```raku
+```perl6
 multi sub infix:<div>(
     Red::AST $a,
     Red::AST $b
@@ -118,7 +118,7 @@ X div Y
 
 ### multi sub infix:<==>
 
-```raku
+```perl6
 multi sub infix:<==>(
     Red::AST $a,
     Red::AST $b
@@ -129,7 +129,7 @@ multi sub infix:<==>(
 
 ### multi sub infix:<!=>
 
-```raku
+```perl6
 multi sub infix:<!=>(
     Red::AST $a,
     Red::AST $b
@@ -140,7 +140,7 @@ multi sub infix:<!=>(
 
 ### multi sub infix:<==>
 
-```raku
+```perl6
 multi sub infix:<==>(
     Red::AST $a,
     Date $b is rw
@@ -151,7 +151,7 @@ multi sub infix:<==>(
 
 ### multi sub infix:<!=>
 
-```raku
+```perl6
 multi sub infix:<!=>(
     Red::AST $a,
     Red::AST $b
@@ -162,10 +162,10 @@ multi sub infix:<!=>(
 
 ### multi sub infix:<eq>
 
-```raku
+```perl6
 multi sub infix:<eq>(
     Red::AST $a,
-    Str(Any) $b is rw
+    $b is rw
 ) returns Mu
 ```
 
@@ -173,10 +173,10 @@ eq
 
 ### multi sub infix:<ne>
 
-```raku
+```perl6
 multi sub infix:<ne>(
     Red::AST $a,
-    Str(Any) $b is rw
+    $b is rw
 ) returns Mu
 ```
 
@@ -184,7 +184,7 @@ ne
 
 ### multi sub infix:«<»
 
-```raku
+```perl6
 multi sub infix:«<»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -195,7 +195,7 @@ multi sub infix:«<»(
 
 ### multi sub infix:«>»
 
-```raku
+```perl6
 multi sub infix:«>»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -206,7 +206,7 @@ multi sub infix:«>»(
 
 ### multi sub infix:«<=»
 
-```raku
+```perl6
 multi sub infix:«<=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -217,7 +217,7 @@ multi sub infix:«<=»(
 
 ### multi sub infix:«>=»
 
-```raku
+```perl6
 multi sub infix:«>=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -228,7 +228,7 @@ multi sub infix:«>=»(
 
 ### multi sub infix:«<»
 
-```raku
+```perl6
 multi sub infix:«<»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -239,7 +239,7 @@ multi sub infix:«<»(
 
 ### multi sub infix:«>»
 
-```raku
+```perl6
 multi sub infix:«>»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -250,7 +250,7 @@ multi sub infix:«>»(
 
 ### multi sub infix:«<=»
 
-```raku
+```perl6
 multi sub infix:«<=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -261,7 +261,7 @@ multi sub infix:«<=»(
 
 ### multi sub infix:«>=»
 
-```raku
+```perl6
 multi sub infix:«>=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -272,7 +272,7 @@ multi sub infix:«>=»(
 
 ### multi sub infix:«<»
 
-```raku
+```perl6
 multi sub infix:«<»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -283,7 +283,7 @@ multi sub infix:«<»(
 
 ### multi sub infix:«>»
 
-```raku
+```perl6
 multi sub infix:«>»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -294,7 +294,7 @@ multi sub infix:«>»(
 
 ### multi sub infix:«<=»
 
-```raku
+```perl6
 multi sub infix:«<=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -305,7 +305,7 @@ multi sub infix:«<=»(
 
 ### multi sub infix:«>=»
 
-```raku
+```perl6
 multi sub infix:«>=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -316,7 +316,7 @@ multi sub infix:«>=»(
 
 ### multi sub infix:<lt>
 
-```raku
+```perl6
 multi sub infix:<lt>(
     Red::AST $a,
     Red::AST $b
@@ -327,7 +327,7 @@ lt
 
 ### multi sub infix:<gt>
 
-```raku
+```perl6
 multi sub infix:<gt>(
     Red::AST $a,
     Red::AST $b
@@ -338,7 +338,7 @@ gt
 
 ### multi sub infix:<le>
 
-```raku
+```perl6
 multi sub infix:<le>(
     Red::AST $a,
     Red::AST $b
@@ -349,7 +349,7 @@ le
 
 ### multi sub infix:<ge>
 
-```raku
+```perl6
 multi sub infix:<ge>(
     Red::AST $a,
     Red::AST $b
@@ -360,7 +360,7 @@ ge
 
 ### multi sub infix:<%>
 
-```raku
+```perl6
 multi sub infix:<%>(
     Red::AST $a,
     Red::AST $b
@@ -371,7 +371,7 @@ multi sub infix:<%>(
 
 ### multi sub infix:<%%>
 
-```raku
+```perl6
 multi sub infix:<%%>(
     Red::AST $a,
     Red::AST $b
@@ -382,7 +382,7 @@ multi sub infix:<%%>(
 
 ### multi sub infix:<~>
 
-```raku
+```perl6
 multi sub infix:<~>(
     Red::AST $a,
     Red::AST $b
@@ -393,7 +393,7 @@ multi sub infix:<~>(
 
 ### multi sub prefix:<not>
 
-```raku
+```perl6
 multi sub prefix:<not>(
     Red::AST $a
 ) returns Mu
@@ -403,7 +403,7 @@ not X
 
 ### multi sub prefix:<!>
 
-```raku
+```perl6
 multi sub prefix:<!>(
     Red::AST::In $a
 ) returns Mu
@@ -413,7 +413,7 @@ multi sub prefix:<!>(
 
 ### multi sub prefix:<so>
 
-```raku
+```perl6
 multi sub prefix:<so>(
     Red::AST $a
 ) returns Mu
@@ -423,7 +423,7 @@ so
 
 ### multi sub prefix:<?>
 
-```raku
+```perl6
 multi sub prefix:<?>(
     Red::AST $a
 ) returns Mu
@@ -433,7 +433,7 @@ multi sub prefix:<?>(
 
 ### multi sub infix:<AND>
 
-```raku
+```perl6
 multi sub infix:<AND>(
     Red::AST $a,
     Red::AST $b
@@ -444,7 +444,7 @@ AND
 
 ### multi sub infix:<OR>
 
-```raku
+```perl6
 multi sub infix:<OR>(
     Red::AST $a,
     Red::AST $b
@@ -455,7 +455,7 @@ OR
 
 ### multi sub infix:<∪>
 
-```raku
+```perl6
 multi sub infix:<∪>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -466,7 +466,7 @@ multi sub infix:<∪>(
 
 ### multi sub infix:<(|)>
 
-```raku
+```perl6
 multi sub infix:<(|)>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -477,7 +477,7 @@ multi sub infix:<(|)>(
 
 ### multi sub infix:<∩>
 
-```raku
+```perl6
 multi sub infix:<∩>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -488,7 +488,7 @@ multi sub infix:<∩>(
 
 ### multi sub infix:<(&)>
 
-```raku
+```perl6
 multi sub infix:<(&)>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -499,7 +499,7 @@ multi sub infix:<(&)>(
 
 ### multi sub infix:<⊖>
 
-```raku
+```perl6
 multi sub infix:<⊖>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -510,7 +510,7 @@ multi sub infix:<⊖>(
 
 ### multi sub infix:<(-)>
 
-```raku
+```perl6
 multi sub infix:<(-)>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -521,7 +521,7 @@ multi sub infix:<(-)>(
 
 ### multi sub infix:<in>
 
-```raku
+```perl6
 multi sub infix:<in>(
     Red::AST $a,
     Red::ResultSeq:D $b
@@ -532,7 +532,7 @@ in
 
 ### multi sub infix:<⊂>
 
-```raku
+```perl6
 multi sub infix:<⊂>(
     Red::AST $a,
     Red::ResultSeq $b
@@ -543,7 +543,7 @@ multi sub infix:<⊂>(
 
 ### multi sub infix:«(<)»
 
-```raku
+```perl6
 multi sub infix:«(<)»(
     Red::AST $a,
     Red::ResultSeq $b
@@ -554,7 +554,7 @@ multi sub infix:«(<)»(
 
 ### multi sub infix:<⊃>
 
-```raku
+```perl6
 multi sub infix:<⊃>(
     Red::AST $a,
     Red::ResultSeq $b
@@ -565,7 +565,7 @@ multi sub infix:<⊃>(
 
 ### multi sub infix:«(>)»
 
-```raku
+```perl6
 multi sub infix:«(>)»(
     Red::AST $a,
     Red::ResultSeq $b

@@ -3,10 +3,10 @@ Red::Database
 
 ### multi sub database
 
-```raku
+```perl6
 multi sub database(
     Str $type,
-    |c
+    |c is raw
 ) returns Red::Driver
 ```
 
@@ -14,7 +14,7 @@ Accepts an SQL driver name and parameters and uses them to create an instance of
 
 ### multi sub database
 
-```raku
+```perl6
 multi sub database(
     Str $type,
     $dbh
