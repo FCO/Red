@@ -1,12 +1,5 @@
-This module is experimental, to use it, do:
-===========================================
-
 Red::Do
--------
-
-```perl6
-use Red <red-do>;
-```
+=======
 
 ### multi sub red-defaults-from-config
 
