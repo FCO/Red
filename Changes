@@ -2,6 +2,7 @@ Revision history for Red
 
 {{$NEXT}}
     - Accept models (on referencing and on relationship) as object type
+    - Regenerate docs
 
 0.1.41  2021-04-27T00:39:46+01:00
     - Fix dynamicaly `does` and `^mixin` on models (thanks Jonathan Stowe)

@@ -1,16 +1,9 @@
-This module is experimental, to use it, do:
-===========================================
-
 Red::Do
--------
-
-```perl6
-use Red <red-do>;
-```
+=======
 
 ### multi sub red-defaults-from-config
 
-```perl6
+```raku
 multi sub red-defaults-from-config() returns Mu
 ```
 
@@ -18,7 +11,7 @@ Loads Red configuration (mostly the database connection) from a json configurati
 
 ### multi sub red-defaults-from-config
 
-```perl6
+```raku
 multi sub red-defaults-from-config(
     $file where { ... }
 ) returns Mu
@@ -28,10 +21,10 @@ Loads Red configuration (mostly the database connection) from a json configurati
 
 ### multi sub red-defaults
 
-```perl6
+```raku
 multi sub red-defaults(
     Str $driver,
-    |c is raw
+    |c
 ) returns Mu
 ```
 
@@ -39,7 +32,7 @@ Sets the default connection to be used
 
 ### multi sub red-defaults
 
-```perl6
+```raku
 multi sub red-defaults(
     *%drivers
 ) returns Mu
@@ -49,7 +42,7 @@ Sets the default connections to be used. The key is the name of the connection a
 
 ### multi sub red-do
 
-```perl6
+```raku
 multi sub red-do(
     *@blocks where { ... },
     Str :$with = "default",
@@ -61,7 +54,7 @@ Receives a block and optionally a connection name. Runs the block with the conne
 
 ### multi sub red-do
 
-```perl6
+```raku
 multi sub red-do(
     &block,
     Red::Driver:D :$with,
@@ -73,7 +66,7 @@ Receives a block and optionally a connection name. Runs the block with the conne
 
 ### multi sub red-do
 
-```perl6
+```raku
 multi sub red-do(
     &block,
     Str:D :$with = "default",
@@ -85,7 +78,7 @@ Receives a block and optionally a connection name. Runs the block with the conne
 
 ### multi sub red-do
 
-```perl6
+```raku
 multi sub red-do(
     *@blocks,
     Bool :$async,

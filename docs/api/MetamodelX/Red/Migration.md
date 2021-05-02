@@ -3,7 +3,7 @@ MetamodelX::Red::Migration
 
 ### method migration
 
-```perl6
+```raku
 method migration(
     \model,
     &migr
@@ -14,7 +14,7 @@ Creates a new migration for the model.
 
 ### method migrate
 
-```perl6
+```raku
 method migrate(
     \model,
     Red::Model:U :$from
@@ -25,7 +25,7 @@ Executes migrations.
 
 ### method dump-migrations
 
-```perl6
+```raku
 method dump-migrations(
     |
 ) returns Mu

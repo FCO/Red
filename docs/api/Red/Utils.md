@@ -3,9 +3,9 @@ Red::Utils
 
 ### sub snake-to-kebab-case
 
-```perl6
+```raku
 sub snake-to-kebab-case(
-    $_
+    Str(Any) $_
 ) returns Str
 ```
 
@@ -13,9 +13,9 @@ Accepts a string and converts snake case (`foo_bar`) into kebab case (`foo-bar`)
 
 ### sub kebab-to-snake-case
 
-```perl6
+```raku
 sub kebab-to-snake-case(
-    $_
+    Str(Any) $_
 ) returns Str
 ```
 
@@ -23,9 +23,9 @@ Accepts a string and converts kebab case (`foo-bar`) into snake case (`foo_bar`)
 
 ### sub camel-to-snake-case
 
-```perl6
+```raku
 sub camel-to-snake-case(
-    $_
+    Str(Any) $_
 ) returns Str
 ```
 
@@ -33,9 +33,9 @@ Accepts a string and converts camel case (`fooBar`) into snake case (`foo_bar`).
 
 ### sub camel-to-kebab-case
 
-```perl6
+```raku
 sub camel-to-kebab-case(
-    $_
+    Str(Any) $_
 ) returns Str
 ```
 
@@ -43,9 +43,9 @@ Accepts a string and converts camel case (`fooBar`) into kebab case (`foo-bar`).
 
 ### sub kebab-to-camel-case
 
-```perl6
+```raku
 sub kebab-to-camel-case(
-    $_
+    Str(Any) $_
 ) returns Str
 ```
 
@@ -53,9 +53,9 @@ Accepts a string and converts kebab case (`foo-bar`) into camel case (`fooBar`).
 
 ### sub snake-to-camel-case
 
-```perl6
+```raku
 sub snake-to-camel-case(
-    $_
+    Str(Any) $_
 ) returns Str
 ```
 

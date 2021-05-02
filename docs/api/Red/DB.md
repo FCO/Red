@@ -3,7 +3,7 @@ Red::DB
 
 ### sub get-RED-DB
 
-```perl6
+```raku
 sub get-RED-DB() returns Mu
 ```
 
