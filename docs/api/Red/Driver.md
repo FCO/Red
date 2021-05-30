@@ -53,6 +53,14 @@ method emit(
 
 Emit events
 
+### method should-drop-cascade
+
+```perl6
+method should-drop-cascade() returns Mu
+```
+
+Does this driver accept drop table cascade?
+
 ### method emit
 
 ```perl6
