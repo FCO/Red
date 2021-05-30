@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.44  2021-05-30T20:20:04+01:00
     - Add should-drop-cascade to decide if it should use cascade to drop table
 
 0.1.43  2021-05-02T17:39:54+01:00
