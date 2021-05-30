@@ -32,7 +32,7 @@ method FALLBACK(Str $name) {
 # TODO: For tests only, please make it right
 method drop {
     for %!models.values {
-        my $drop = "DROP TABLE IF EXISTS { get-RED-DB.table-name-wrapper: .^table } { "CASCADE" if get-RED-DB.^isa: Red::Driver::Pg }";
+        my $drop = "DROP TABLE IF EXISTS { get-RED-DB.table-name-wrapper: .^table } { "CASCADE" if get-RED-DB.should-drop-cascade }";
         # say $drop;
         get-RED-DB.execute($drop);
     }

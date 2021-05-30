@@ -59,6 +59,9 @@ method create-schema(%models where .values.all ~~ Red::Model) {
 multi method join-type("outer") { die "'OUTER JOIN' is not supported by SQLite" }
 multi method join-type("right") { die "'RIGHT JOIN' is not supported by SQLite" }
 
+#| Does this driver accept drop table cascade?
+multi method should-drop-cascade { False }
+
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context? where $_ ne "bind") {
     (.value ?? 1 !! 0) => []
 }

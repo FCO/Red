@@ -56,6 +56,9 @@ multi method emit($data?) {
                     |(:metadata($_) with %*RED-METADATA)
 }
 
+#| Does this driver accept drop table cascade?
+multi method should-drop-cascade { True }
+
 #| Emit events
 multi method emit(Red::Event $event) {
     $!supplier.emit:
