@@ -73,3 +73,39 @@ method optimize(
 
 NOT(a.b) AND a.b ==> True
 
+### method optimize
+
+```perl6
+method optimize(
+    Red::AST $left,
+    Red::AST $right where { ... },
+    1
+) returns Mu
+```
+
+X AND NOT(X) => False
+
+### method optimize
+
+```perl6
+method optimize(
+    Red::AST::AND $left,
+    Red::AST $right where { ... },
+    1
+) returns Mu
+```
+
+(X AND NOT(Y)) AND Y ==> False
+
+### method optimize
+
+```perl6
+method optimize(
+    Red::AST $left,
+    Red::AST::AND $right where { ... },
+    1
+) returns Mu
+```
+
+X AND (NOT(X) AND Y) ==> False
+
