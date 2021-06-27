@@ -431,9 +431,9 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     }{
         "\nWHERE\n{ .indent: 3 }" with $where
     }{
-        "\nORDER BY\n{ .indent: 3 }" with $order
-    }{
         "\nGROUP BY\n{ .indent: 3 }" with $group
+    }{
+        "\nORDER BY\n{ .indent: 3 }" with $order
     }{
         "\nLIMIT $_" with $limit
     }{
