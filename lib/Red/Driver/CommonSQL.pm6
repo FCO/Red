@@ -508,13 +508,13 @@ multi method translate(Red::AST::Infix $_, $context?) {
 multi method translate(Red::AST::OR $_, $context?) {
     my ($l, @lbind) := do given self.translate: .left, $context  { .key, .value }
     my ($r, @rbind) := do given self.translate: .right, $context { .key, .value }
-    "{ .left ~~ Red::AST::AND|Red::AST::OR??"($l)"!!$l } OR { .right ~~ Red::AST::AND|Red::AST::OR??"($r)"!!$r }" => [|@lbind, |@rbind]
+    "{ .left ~~ Red::AST::AND??"($l)"!!$l } OR { .right ~~ Red::AST::AND??"($r)"!!$r }" => [|@lbind, |@rbind]
 }
 
 multi method translate(Red::AST::AND $_, $context?) {
     my ($l, @lbind) := do given self.translate: .left, $context  { .key, .value }
     my ($r, @rbind) := do given self.translate: .right, $context { .key, .value }
-    "{ .left ~~ Red::AST::AND|Red::AST::OR??"($l)"!!$l } AND { .right ~~ Red::AST::AND|Red::AST::OR??"($r)"!!$r }" => [|@lbind, |@rbind]
+    "{ .left ~~ Red::AST::OR??"($l)"!!$l } AND { .right ~~ Red::AST::OR??"($r)"!!$r }" => [|@lbind, |@rbind]
 }
 
 multi method translate(Red::AST::Generic::Postfix $_ , $context?) {

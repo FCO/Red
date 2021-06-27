@@ -55,6 +55,8 @@ is-deeply ((C.a > 10)  AND (C.a <= 1)), f;
 is-deeply ((C.a >= 10) AND (C.a < 1) ), f;
 is-deeply ((C.a >= 10) AND (C.a <= 1)), f;
 
+is-deeply ((C.a >= 1) AND ((C.b == 1) AND ((C.a < 1) AND (C.b == 1)))), f;
+is-deeply (((C.b == 1) AND ((C.a <= 1) AND (C.b == 1))) AND (C.a > 1)), f;
 
 
 

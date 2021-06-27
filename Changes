@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add optimizarion for X && (Y && !X) => False
 
 0.1.44  2021-05-30T20:20:04+01:00
     - Add should-drop-cascade to decide if it should use cascade to drop table

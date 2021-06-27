@@ -72,8 +72,27 @@ multi method optimize(Red::AST::Not $left, Red::Column $right, 1) {
     self.optimize: $right, $left, 1
 }
 
+#| X AND NOT(X) => False
 multi method optimize(Red::AST $left, Red::AST $right where compare($left, $right.not), 1) {
-    return ast-value True if compare $left, $right.value
+    return ast-value False
+}
+
+#| (X AND NOT(Y)) AND Y ==> False
+multi method optimize(
+    Red::AST::AND $left,
+    Red::AST $right where $left.has-condition($right.not),
+    1
+) {
+    return ast-value False
+}
+
+#| X AND (NOT(X) AND Y) ==> False
+multi method optimize(
+    Red::AST $left,
+    Red::AST::AND $right where $right.has-condition($left.not),
+    1
+) {
+    return ast-value False
 }
 
 multi method optimize($, $, $) {}
@@ -94,3 +113,8 @@ multi method optimize(Red::AST $left is copy, Red::AST $right is copy) {
     my $cols = ($lcols ∩ $rcols).elems;
     .return with self.optimize: $left, $right, $cols
 }
+
+multi method has-condition(Red::AST $cond where compare(any($.left, $.right), $cond)) { True }
+multi method has-condition(Red::AST $cond where $.left  ~~ Red::AST::AND) { $.left.has-condition:  $cond }
+multi method has-condition(Red::AST $cond where $.right ~~ Red::AST::AND) { $.right.has-condition: $cond }
+multi method has-condition(Red::AST $) { False }
