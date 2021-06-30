@@ -39,3 +39,20 @@ class Red::AST::DateTimePart does Red::AST::DateTimeFunction {
                 ]
     }
 }
+
+#| Coerce a DateTime, timestamp etc to just date for comparisons
+class Red::AST::DateTimeCoerce does Red::AST::DateTimeFunction {
+    has Red::AST                 $.base;
+
+    method returns { Str }
+    method find-column-name {
+        $!base.find-column-name
+    }
+    method args {$!base}
+
+    method default-implementation {
+        Red::AST::Function.new:
+            :func<DATE>,
+            :args[ $!base ];
+    }
+}
