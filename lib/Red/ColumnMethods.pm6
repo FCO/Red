@@ -62,6 +62,11 @@ method day($base where { .returns ~~ (Date|DateTime|Instant) }:) {
     Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::day)) but Red::ColumnMethods
 }
 
+#| Return the date from a datetime, timestamp etc
+method yyyy-mm-dd($base where { .returns ~~ (Date|DateTime|Instant) }:) {
+     Red::AST::DateTimeCoerce.new(:$base) but Red::ColumnMethods
+}
+
 method now   { self.attr.type.now   }
 method today { self.attr.type.today }
 

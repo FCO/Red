@@ -141,6 +141,9 @@ multi infix:<==>(Numeric() $a is rw, Red::AST $b) is export {
 multi infix:<==>(Numeric() $a is readonly, Red::AST $b) is export {
     Red::AST::Eq.new: ast-value($a), $b, :cast<num>
 }
+multi infix:<==>(Red::AST $a where .returns ~~ DateTime, Date $b) is export {
+    Red::AST::Eq.new: $a.yyyy-mm-dd, ast-value($b), :cast<num>;
+}
 
 #| !=
 multi infix:<!=>(Red::AST $a, Red::AST $b) is export {
@@ -205,6 +208,9 @@ multi infix:<eq>(Str() $a is rw, Red::AST $b) is export {
 }
 multi infix:<eq>(Str() $a is readonly, Red::AST $b) is export {
     Red::AST::Eq.new: ast-value($a), $b, :cast<str>
+}
+multi infix:<eq>(Red::AST $a where .returns ~~ DateTime, Date $b) is export {
+    Red::AST::Eq.new: $a.yyyy-mm-dd, ast-value($b), :cast<str>;
 }
 
 #| ne
