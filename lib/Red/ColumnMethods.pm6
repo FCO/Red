@@ -63,7 +63,7 @@ method day($base where { .returns ~~ (Date|DateTime|Instant) }:) {
 }
 
 #| Return the date from a datetime, timestamp etc
-method date($base where { .returns ~~ (Date|DateTime|Instant) }:) {
+method yyyy-mm-dd($base where { .returns ~~ (Date|DateTime|Instant) }:) {
      Red::AST::DateTimeCoerce.new(:$base) but Red::ColumnMethods
 }
 

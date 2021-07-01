@@ -16,7 +16,8 @@ Foo.^create-table;
 
 Foo.^create;
 
-ok Foo.^all.grep(*.foo-date.date eq '2021-06-30').elems, "explicit .date";
+my Str $today = Date.today.Str;
+ok Foo.^all.grep(*.foo-date.yyyy-mm-dd eq $today).elems, "explicit .yyyy-mm-dd";
 ok Foo.^all.grep(*.foo-date eq Date.today).elems, "eq with Date RHS";
 ok Foo.^all.grep(*.foo-date == Date.today).elems, "== with Date RHS";
 
