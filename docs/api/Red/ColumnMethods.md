@@ -70,6 +70,14 @@ method day() returns Mu
 
 Return the day from the date column
 
+### method yyyy-mm-dd
+
+```perl6
+method yyyy-mm-dd() returns Mu
+```
+
+Return the date from a datetime, timestamp etc
+
 ### method AT-KEY
 
 ```perl6
