@@ -676,7 +676,7 @@ method new-from-data(\of, $data) {
                 unless $c.contains: "." {
                     die "Column '$c' not found" without %cols{$c};
                     die "Inflator not defined for column '$c'" without %cols{$c}.inflate;
-                    my $inflated = %cols{$c}.inflate.($v);
+                    my $inflated = %cols{$c}.inflate.($v, |(%cols{$c}.attr.type if %cols{$c}.inflate.count > 1));
                     $inflated = get-RED-DB.inflate(
                             $inflated,
                             :to(of.^attributes.first(*.name.substr(2) eq $c).type)
