@@ -453,7 +453,7 @@ multi method create(Str :$with!, |c) {
 #| Creates a new object and saves it on DB
 #| It accepts a list os pairs (the same as C<.new>)
 #| And Lists and/or Hashes for relationships
-multi method create(\model, *%orig-pars, :$with where not .defined) is rw {
+multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is rw {
     my $RED-DB = get-RED-DB;
     {
         my $*RED-DB = $RED-DB;

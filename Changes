@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Forbid running .^create on defined model
     - Accept enums
     - Add optimization for X && (Y && !X) => False
 
