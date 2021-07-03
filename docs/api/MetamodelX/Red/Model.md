@@ -301,7 +301,7 @@ Generic save, calls C<.^save: :insert> if C<.^is-on-db> or C<.^save: :update> ot
 
 ```perl6
 multi method create(
-    \model,
+    \model where { ... },
     *%orig-pars,
     :$with where { ... }
 ) returns Mu
