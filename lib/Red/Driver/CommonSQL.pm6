@@ -427,13 +427,13 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     }SELECT\n{
         $sel ?? $sel.indent: 3 !! "*"
     }{
-        "\nFROM\n{ .indent: 3 }" with $tables
+        "\nFROM\n{ .Str.indent: 3 }" with $tables
     }{
-        "\nWHERE\n{ .indent: 3 }" with $where
+        "\nWHERE\n{ .Str.indent: 3 }" with $where
     }{
-        "\nGROUP BY\n{ .indent: 3 }" with $group
+        "\nGROUP BY\n{ .Str.indent: 3 }" with $group
     }{
-        "\nORDER BY\n{ .indent: 3 }" with $order
+        "\nORDER BY\n{ .Str.indent: 3 }" with $order
     }{
         "\nLIMIT $_" with $limit
     }{
