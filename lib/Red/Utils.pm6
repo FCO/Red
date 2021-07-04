@@ -17,7 +17,7 @@ sub snake-to-camel-case(Str() $_ --> Str) is export { S:g/"_"(\w)/{$0.uc}/ with 
 
 proto compare($,$) is export {*}
 multi compare(Red::AST $a, Red::AST $b) {
-    $a eqv $b || $a === $b
+    $a === $b || ($a.?all-versions // $a).any eqv $b
 }
 
 multi compare(Red::AST::So $a, Red::AST $b) {

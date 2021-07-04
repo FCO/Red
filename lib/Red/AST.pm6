@@ -54,6 +54,17 @@ method tables(::?CLASS:D:) {
     |@tables.grep(-> \v { v !=:= Nil }).unique
 }
 
+#| Simplify boolean expression
+method simplify {
+    my @opts := self.?all-versions // [ self ];
+    .return with @opts.first: *.size <= 1;
+    #return @opts.min: :by{ .size };
+    @opts.sort(*.size).head
+}
+
+#| All possible versions
+#method all-versions { … }
+
 multi method WHICH(::?CLASS:D:) {
     ValueObjAt.new: "{ self.^name }|{ $.args>>.WHICH.join: "|" }"
 }
@@ -61,3 +72,5 @@ multi method WHICH(::?CLASS:D:) {
 multi method WHICH(::?CLASS:U:) {
     ValueObjAt.new: "{ self.^name }"
 }
+
+method size { 1 + @.args.map({ .?size // 0 }).sum }

@@ -1,4 +1,5 @@
 use Red::AST;
+use Red::AST::Unary;
 use Red::Column;
 
 #| Represents a value
@@ -23,6 +24,8 @@ class Red::AST::Value does Red::AST is Any {
             $!value
         }
     }
+
+    method not { Red::AST::Not.new: self }
 }
 
 multi ast-value(Red::AST $value) is export {

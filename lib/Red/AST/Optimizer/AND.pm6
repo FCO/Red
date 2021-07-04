@@ -73,7 +73,7 @@ multi method optimize(Red::AST::Not $left, Red::Column $right, 1) {
 }
 
 #| X AND NOT(X) => False
-multi method optimize(Red::AST $left, Red::AST $right where compare($left, $right.not), 1) {
+multi method optimize(Red::AST $left, Red::AST $right where compare($left, $right.not), $) {
     return ast-value False
 }
 
@@ -118,3 +118,28 @@ multi method has-condition(Red::AST $cond where compare(any($.left, $.right), $c
 multi method has-condition(Red::AST $cond where $.left  ~~ Red::AST::AND) { $.left.has-condition:  $cond }
 multi method has-condition(Red::AST $cond where $.right ~~ Red::AST::AND) { $.right.has-condition: $cond }
 multi method has-condition(Red::AST $) { False }
+
+#| All possible versions
+method all-versions {
+    |do for
+        (
+            [ self.left.?all-versions // self.left ]
+            X [ self.right.?all-versions // self.right ]
+        ).unique
+        -> (Red::AST $l, Red::AST $r) {
+            |do for [$l, $r], [$r, $l] -> [$left, $right] {
+                |(self.WHAT.new($left, $right), self.WHAT.new($right, $left),
+                    |do if $left ~~ self.WHAT {
+                        self.WHAT.new: $left.left, self.WHAT.new: $left.right, $right
+                    },
+                    |do if $left ~~ Red::AST::OR {
+                        my $a = Red::AST::AND.new($right, $left.left);
+                        my $b = Red::AST::AND.new($right, $left.right);
+                        |do for [ $a.?all-versions // $a ] X [ $b.?all-versions // $b ] -> ($nl, $nr) {
+                            Red::AST::OR.new: $nl, $nr
+                        }
+                    }
+                )
+            }
+    }.unique
+}

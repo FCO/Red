@@ -31,6 +31,9 @@ class Red::AST::Cast does Red::AST::Unary {
     has Str     $.type;
     has         $.value;
 
+    multi translate(Int) { "num" }
+    multi translate(Mu ) { ""    }
+
     method gist { "($!value.gist())::$!type" }
 
     method returns { $!type }
@@ -42,9 +45,9 @@ class Red::AST::Cast does Red::AST::Unary {
     }
 
     method new($value, $type, Bool :$bind) {
+        return $value if $value.returns.&translate eq $type;
         self.bless: :$value, :$type, :$bind
     }
-
 
     method not { Red::AST::Not.new: self }
 }
