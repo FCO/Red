@@ -128,7 +128,7 @@ method all-versions {
         ).unique
         -> (Red::AST $l, Red::AST $r) {
             |do for [$l, $r], [$r, $l] -> [$left, $right] {
-                |(self.WHAT.new($left, $right), self.WHAT.new($right, $left),
+                |(self.WHAT.new($left, $right),
                     |do if $left ~~ self.WHAT {
                         self.WHAT.new: $left.left, self.WHAT.new: $left.right, $right
                     },
