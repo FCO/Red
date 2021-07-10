@@ -5,7 +5,7 @@ For more in-depth introduction about Red architecture visit [Red architecture](t
 
 ### Models and tables
 
-Red is an Object-Relational Mapping (ORM) tool for Raku
+[Red](https://github.com/FCO/Red) is an Object-Relational Mapping (ORM) tool for Raku
 
 Simply speaking, it allows you to "hide" the layer of interaction
 with your relational database and work with Raku objects instead.
@@ -30,7 +30,7 @@ everything what a usual class can do, but also helps you to interact with your t
 
 Red models use `model` keyword instead of `class`:
 
-```perl6
+```raku
 model Person {
     has Int $.id is serial;
     has Str $.name is column is rw;
@@ -40,8 +40,8 @@ my $*RED-DB = database “SQLite”;
 ```
 
 We described a model called `Person`. The first attribute `$.id` is typed to be `Int`
-and is marked with `is serial` trait. This trait marks the column as a primary one with
-autoincrement enabled. The next attribute `$.name` is marked with `is column` trait, which
+and is marked with [is serial](api/Red/Traits) trait. This trait marks the column as a primary one with
+autoincrement enabled. The next attribute `$.name` is marked with [is column](api/Red/Traits) trait, which
 means this attribute will be mapped onto a column in the table, and is typed as Str.
 
 Note we don't need to specify that the column is not nullable, as it is the default.
@@ -50,14 +50,14 @@ The second statement specifies a database to work with. In this case,
 an in-memory SQLite database is used, which means all changes will be lost after
 the script termination. To avoid this, we can specify a name for the database file:
 
-```perl6
+```raku
 my $*RED-DB = database “SQLite”, database => 'test.sqlite3'; # Now a file `test.sqlite3` will be created
 ```
 
 Next, we need to create a table itself:
 
 
-```perl6
+```raku
 Person.^create-table;
 ```
 
@@ -75,14 +75,14 @@ INSERT INTO person (name) VALUES 'John';
 
 In Red we can express it this way:
 
-```perl6
+```raku
 my $person = Person.^create(name => 'John');
 ```
 
 We call the `^create` method on type object `Person` and assign the result
 to the `$person` variable. The assignment is not necessary:
 
-```perl6
+```raku
 Person.^create(name => 'John');
 ```
 
@@ -92,7 +92,7 @@ this result can be simply ignored.
 The `$.id` attribute is auto-generated and there is no need to specify it,
 while `$.name` attribute must not be null, so we have to specify it:
 
-```perl6
+```raku
 Person.^create; # error
 ```
 
@@ -106,7 +106,7 @@ UPDATE person SET name = 'John Doe' WHERE id = 1;
 
 To do the same in Red, we use setters and a call to `^save`:
 
-```perl6
+```raku
 $person.name = 'John Doe';
 $person.^save;
 ```
@@ -118,7 +118,7 @@ method is called.
 The method `^save` is useful not only for UPDATE operation, but it can be used on
 INSERT too:
 
-```perl6
+```raku
 my $person2 = Person.new(name => 'Joan'); # ^create is not used
 $person2.^save; # does INSERT, not UPDATE
 ```
@@ -127,7 +127,7 @@ $person2.^save; # does INSERT, not UPDATE
 
 Lets add some more records:
 
-```perl6
+```raku
 Person.^create(name => "Paul"); # Method call with parentheses and an arrow pair
 Person.^create: :name<Miki>;    # Semicolon form of method call is used
 ```
@@ -140,7 +140,7 @@ SELECT * FROM person;
 
 In Red, `^all` method is used:
 
-```perl6
+```raku
 for Person.^all -> $person { say $person }
 ```
 
@@ -153,7 +153,7 @@ SELECT * FROM person WHERE person.name like 'Jo%';
 The query above selects all records where name starts with 'Jo'. In Red, you can use Raku `grep`
 method to specify clauses of the select query:
 
-```perl6
+```raku
 for Person.^all.grep(*.name.starts-with('Jo')) -> $person { say $person }
 ```
 
@@ -166,13 +166,13 @@ SELECT * FROM person WHERE person.name like 'Jo%' AND person.id = 2;
 
 To express the query above, calls to `grep` can be combined:
 
-```perl6
+```raku
 for Person.^all.grep(*.name.starts-with('Jo')).grep(*.id == 2) -> $person { say $person }
 ```
 
 Alternatively, boolean operators can be used:
 
-```perl6
+```raku
 for Person.^all.grep({ $_.name.starts-with('Jo') && $_.id == 2}) -> $person { say $person }
 ```
 
@@ -186,7 +186,7 @@ with an arbitrary number of elements. The second difference is that `^all` can e
 various SELECT statements, while `^load` is restricted to work with columns marked as PRIMARY
 and UNIQUE only.
 
-```perl6
+```raku
 say Person.^load(id => 4); # correct
 # when the primary column is unambiguous, only its value can be passed
 say Person.^load(4);      # correct, same as `id => 4`
@@ -199,7 +199,7 @@ say Person.^load(:name<Foo>); # error
 To delete rows, the `^delete` method is used. It can be called on an individual
 object or on a model to delete all records:
 
-```perl6
+```raku
 # DELETE FROM person WHERE person.id = 42;
 $p.^delete;
 # DELETE FROM person;
