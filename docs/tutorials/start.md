@@ -40,8 +40,8 @@ my $*RED-DB = database “SQLite”;
 ```
 
 We described a model called `Person`. The first attribute `$.id` is typed to be `Int`
-and is marked with [is serial](api/Red/Traits) trait. This trait marks the column as a primary one with
-autoincrement enabled. The next attribute `$.name` is marked with [is column](api/Red/Traits) trait, which
+and is marked with [is serial](../api/Red/Traits) trait. This trait marks the column as a primary one with
+autoincrement enabled. The next attribute `$.name` is marked with [is column](../api/Red/Traits) trait, which
 means this attribute will be mapped onto a column in the table, and is typed as Str.
 
 Note we don't need to specify that the column is not nullable, as it is the default.
