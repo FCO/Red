@@ -10,7 +10,29 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-This trait marks the corresponding table of the model as TEMPORARY (so it only exists for the time of Red being connected to the database).
+is temp This trait marks the corresponding table of the model as TEMPORARY (so it only exists for the time of Red being connected to the database).
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Mu:U $model,
+    Str:D :$rs-class!
+) returns Empty
+```
+
+is rs-class This trait defines the name of the class to be used as ResultSet to this model.
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Mu:U $model,
+    Mu:U :$rs-class!
+) returns Empty
+```
+
+is rs-class This trait defines the class to be used as ResultSet to this model.
 
 ### multi sub trait_mod:<is>
 
@@ -21,7 +43,29 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-This trait configures all model attributes (columns) to be NULLABLE by default, when used as `is nullable`. Without this trait applied, default for every attribute (column) is NOT NULL, though it can be stated explicitly with writing `is !nullable` for the model. Defaults can be overridden using `is nullable` or `is !nullable` for the attribute (column) itself.
+is nullable This trait configures all model attributes (columns) to be NULLABLE by default, when used as `is nullable`. Without this trait applied, default for every attribute (column) is NOT NULL, though it can be stated explicitly with writing `is !nullable` for the model. Defaults can be overridden using `is nullable` or `is !nullable` for the attribute (column) itself.
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    Bool :$column!
+) returns Empty
+```
+
+is column Defines the attribute as a column without any custom configuration.
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    Str :$column!
+) returns Empty
+```
+
+is column Defines the attribute as a column receiving a string to be used as the column name.
 
 ### multi sub trait_mod:<is>
 
@@ -32,7 +76,18 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-This trait marks an attribute (column) as UNIQUE.
+is unique This trait marks an attribute (column) as UNIQUE.
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :$unique!
+) returns Empty
+```
+
+is unique This trait marks an attribute (column) as UNIQUE receiving data to ve used on column definition.
 
 ### multi sub trait_mod:<is>
 
@@ -43,7 +98,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-This trait marks an attribute (column) as SQL PRIMARY KEY.
+is id This trait marks an attribute (column) as SQL PRIMARY KEY.
 
 ### multi sub trait_mod:<is>
 
@@ -54,7 +109,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-This trait marks an attribute (column) as SQL PRIMARY KEY with SERIAL data type, which means it auto-increments on each insertion.
+is serial This trait marks an attribute (column) as SQL PRIMARY KEY with SERIAL data type, which means it auto-increments on each insertion.
 
 ### multi sub trait_mod:<is>
 
@@ -65,7 +120,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-A generic trait used for customizing a column. It accepts a hash of Bool keys. Possible values include: * id - marks a column PRIMARY KEY * auto-increment - marks a column AUTO INCREMENT * nullable - marks a column as NULLABLE * TBD
+is column A generic trait used for customizing a column. It accepts a hash of Bool keys. Possible values include: * id - marks a column PRIMARY KEY * auto-increment - marks a column AUTO INCREMENT * nullable - marks a column as NULLABLE * TBD
 
 ### multi sub trait_mod:<is>
 
@@ -76,7 +131,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait that defines a reference
+is referencing Trait that defines a reference receiving a code block, a model name, optional require string and nullable.
 
 ### multi sub trait_mod:<is>
 
@@ -87,7 +142,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait that defines a reference
+is referencing Trait that defines a reference receiving a model name, a column name, and optional require string and nulabble.
 
 ### multi sub trait_mod:<is>
 
@@ -98,7 +153,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait that defines a reference
+is referencing Trait that defines a reference receiving a code block, a model type object and an optional nullable.
 
 ### multi sub trait_mod:<is>
 
@@ -109,7 +164,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait that defines a reference
+is referencing Trait that defines a reference receiving a model type object, a column name, and optional nulabble.
 
 ### multi sub trait_mod:<is>
 
@@ -120,7 +175,18 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-This trait allows setting a custom name for a table corresponding to a model. For example, `model MyModel is table<custom_table_name> {}` will use `custom_table_name` as the name of the underlying database table.
+is table This trait allows setting a custom name for a table corresponding to a model. For example, `model MyModel is table<custom_table_name> {}` will use `custom_table_name` as the name of the underlying database table.
+
+### multi sub trait_mod:<is>
+
+```perl6
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :&relationship!
+) returns Empty
+```
+
+is relationship Trait that defines a relationship receiving a code block.
 
 ### multi sub trait_mod:<is>
 
@@ -131,7 +197,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait that defines a relationship
+is relationship DEPRECATED: Trait that defines a relationship receiving 2 code blocks.
 
 ### multi sub trait_mod:<is>
 
@@ -142,7 +208,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait that defines a relationship
+is relationship Trait that defines a relationship receiving a code block, a model name, and opitionaly require string, optional, no-prefetch and has-one.
 
 ### multi sub trait_mod:<is>
 
@@ -153,7 +219,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait that defines a relationship
+is relationship Trait that defines a relationship receiving a code block, a model type object, and opitionaly require string, optional, no-prefetch and has-one.
 
 ### multi sub trait_mod:<is>
 
@@ -164,18 +230,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait that defines a relationship
-
-### multi sub trait_mod:<is>
-
-```perl6
-multi sub trait_mod:<is>(
-    Attribute $attr,
-    Callable :$relationship! (@relationship where { ... }, Str :$model!, Str :$require = { ... }, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
-) returns Empty
-```
-
-Trait that defines a relationship
+is relationship Trait that defines a relationship receiving a column name, a model name and opitionaly a require, optional, no-prefetch and has-one.
 
 ### multi sub trait_mod:<is>
 
@@ -186,7 +241,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait to define a phaser to run before create a new record
+is before-create Trait to define a phaser to run before create a new record
 
 ### multi sub trait_mod:<is>
 
@@ -197,7 +252,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait to define a phaser to run after create a new record
+is after-create Trait to define a phaser to run after create a new record
 
 ### multi sub trait_mod:<is>
 
@@ -208,7 +263,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait to define a phaser to run before update a record
+is before-update Trait to define a phaser to run before update a record
 
 ### multi sub trait_mod:<is>
 
@@ -219,7 +274,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait to define a phaser to run after update record
+is after-update Trait to define a phaser to run after update record
 
 ### multi sub trait_mod:<is>
 
@@ -230,7 +285,7 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait to define a phaser to run before delete a record
+is before-delete Trait to define a phaser to run before delete a record
 
 ### multi sub trait_mod:<is>
 
@@ -241,5 +296,5 @@ multi sub trait_mod:<is>(
 ) returns Empty
 ```
 
-Trait to define a phaser to run after delete a record
+is after-delete Trait to define a phaser to run after delete a record
 
