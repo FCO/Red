@@ -403,7 +403,7 @@ multi method join(Str() $sep) {
 }
 
 #| Create a custom join (SQL join)
-method join-model(Red::Model \model, &on, :$name = "{ self.^name }_{ model.^name }", *%pars where { .elems == 0 || ( .elems == 1 && so .values.head ) }) {
+method join-model(Red::Model \model, &on, :$name = "{ self.^shortname }_{ model.^shortname }", *%pars where { .elems == 0 || ( .elems == 1 && so .values.head ) }) {
     do with self.obj {
         my $filter = do given what-does-it-do(&on.assuming($_), model) {
             do if [eqv] .values {
@@ -423,7 +423,7 @@ method join-model(Red::Model \model, &on, :$name = "{ self.^name }_{ model.^name
         }
         model.^all.where: $filter
     } else {
-        self.of.^join(model, &on, |%pars).^all.clone: :$!chain
+        self.of.^join(model, &on, :$name,  |%pars).^all.clone: :$!chain
     }
 }
 
