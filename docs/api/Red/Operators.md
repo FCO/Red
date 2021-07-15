@@ -545,6 +545,17 @@ multi sub infix:<eq>(
 
 X eq Y # Where Y is any Red::AST that returns a DateTime
 
+### multi sub infix:<eq>
+
+```perl6
+multi sub infix:<eq>(
+    Red::AST $a where { ... },
+    Red::AST $b where { ... }
+) returns Mu
+```
+
+X eq Y # Where both are AST that returns Str
+
 ### multi sub infix:<ne>
 
 ```perl6
