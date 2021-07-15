@@ -269,6 +269,11 @@ multi infix:<eq>(Red::AST $a where .returns ~~ DateTime, Date $b) is export {
     Red::AST::Eq.new: $a.yyyy-mm-dd, ast-value($b), :cast<str>;
 }
 
+#| X eq Y # Where both are AST that returns Str
+multi infix:<eq>(Red::AST $a where .returns ~~ Str, Red::AST $b where .returns ~~ Str) is export {
+    Red::AST::Eq.new: $a, $b, :cast<str>;
+}
+
 #| X ne Y # Where Y is castable to Str and writable
 multi infix:<ne>(Red::AST $a, Str() $b is rw) is export {
     Red::AST::Ne.new: $a, ast-value($b), :cast<str>, :bind-right
