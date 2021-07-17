@@ -159,6 +159,11 @@ multi infix:<==>(Red::AST $a, Numeric() $b is readonly) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<num>
 }
 
+#| X == Y # Where LHS is AST and RHS is Enumeration
+multi infix:<==>(Red::AST $a, Enumeration $b) is export {
+    Red::AST::Eq.new: $a, ast-value($b.value), :cast<num>, :bind-right
+}
+
 #| X == Y # Where X is castable to Numeric and writable
 multi infix:<==>(Enumeration $a, Red::AST $b) is export {
     Red::AST::Eq.new: ast-value($a), $b, :cast<num>, :bind-left
@@ -287,6 +292,11 @@ multi infix:<eq>(Red::AST $a where .returns ~~ DateTime, Date $b) is export {
 #| X eq Y # Where both are AST that returns Str
 multi infix:<eq>(Red::AST $a where .returns ~~ Str, Red::AST $b where .returns ~~ Str) is export {
     Red::AST::Eq.new: $a, $b, :cast<str>;
+}
+
+#| X eq Y # Where LHS is an AST and RHS is Enumeration
+multi infix:<eq>(Red::AST $a, Enumeration $b) is export {
+    Red::AST::Eq.new: $a, ast-value($b.value), :cast<str>, :bind-right
 }
 
 #| X ne Y # Where Y is castable to Str and writable
@@ -887,7 +897,7 @@ multi infix:<in>(Red::AST $a, PositionalNotResultSeq $b ) is export {
 
 #| X ⊂ Y # Where Y is a positional but not a ResultSeq
 multi infix:<⊂>(Red::AST $a, PositionalNotResultSeq $b ) is export {
-    Red::AST::In.new: $a, ast-value($b);
+    Red::AST::In.new: $a, ast-value($b.map(-> $v { $v ~~ Enumeration ?? $v.value !! $v }).List);
 }
 
 #| X (<) Y # Where Y is a positional but not a ResultSeq
