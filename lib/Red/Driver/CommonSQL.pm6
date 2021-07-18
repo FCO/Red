@@ -555,7 +555,7 @@ multi method translate(Red::Column $col, "select") {
 }
 
 multi method translate(Red::AST::Value $_, "bind") {
-    self.wildcard => [ .value ]
+    self.wildcard => [ .get-value ]
 }
 
 multi method translate(Red::AST::Divisable $_, $context?) {

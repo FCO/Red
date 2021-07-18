@@ -29,11 +29,11 @@ multi ast-value(Red::AST $value) is export {
     $value
 }
 
-multi ast-value($value, :$type = $value.WHAT) is export {
-    Red::AST::Value.new: :$value, :$type
+multi ast-value($value, :$type = $value.WHAT, Red::Column :$column) is export {
+    Red::AST::Value.new: :$value, :$type, :$column
 }
 
-multi ast-value($value, Mu :$type!) is export {
-    Red::AST::Value.new: :$value, :type(Any)
+multi ast-value($value, Mu :$type!, Red::Column :$column) is export {
+    Red::AST::Value.new: :$value, :type(Any), :$column
 }
 

@@ -139,9 +139,24 @@ multi infix:<div>(Numeric() $a is rw, Red::AST $b) is export {
     Red::AST::IDiv.new: ast-value($a), $b, :bind-left
 }
 
+#| X === Y
+multi infix:<===>($a, $b where ($a, $b).any ~~ Red::AST) is export {
+    X::NYI.new(feature => "=== with Red::AST").throw
+}
+
 #| X == Y
 multi infix:<==>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Eq.new: $a, $b, :cast<num>
+}
+
+#| X == Y # Where X is a column
+multi infix:<==>(Red::Column $a, $b) is export {
+    Red::AST::Eq.new: $a, ast-value($b, :column($a)), :cast<num>, :bind-right
+}
+
+#| X == Y # Where Y is a column
+multi infix:<==>($a, Red::Column $b) is export {
+    Red::AST::Eq.new: ast-value($a, :column($b)), $b, :cast<num>, :bind-right
 }
 
 #| X == Y # Where Y is castable to Numeric and writable
@@ -249,6 +264,16 @@ multi infix:<eq>(Red::AST $a, Str() $b is rw) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<str>, :bind-right
 }
 
+#| X eq Y # Where X is a column
+multi infix:<eq>(Red::Column $a, $b) is export {
+    Red::AST::Eq.new: $a, ast-value($b, :column($a)), :cast<str>
+}
+
+#| X eq Y # Where X is a column
+multi infix:<eq>($a, Red::Column $b) is export {
+    Red::AST::Eq.new: ast-value($a, :column($a)), $b, :cast<str>
+}
+
 #| X eq Y # Where Y is castable to Str and read only
 multi infix:<eq>(Red::AST $a, Str() $b is readonly) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<str>
@@ -277,6 +302,16 @@ multi infix:<eq>(Red::AST $a where .returns ~~ Str, Red::AST $b where .returns ~
 #| X ne Y # Where Y is castable to Str and writable
 multi infix:<ne>(Red::AST $a, Str() $b is rw) is export {
     Red::AST::Ne.new: $a, ast-value($b), :cast<str>, :bind-right
+}
+
+#| X ne Y # Where X is a column
+multi infix:<ne>(Red::Column $a, $b) is export {
+    Red::AST::Ne.new: $a, ast-value($b, :column($a)), :cast<str>
+}
+
+#| X ne Y # Where X is a column
+multi infix:<ne>($a, Red::Column $b) is export {
+    Red::AST::Ne.new: ast-value($a, :column($a)), $b, :cast<str>
 }
 
 #| X ne Y # Where Y is castable to Str and read only

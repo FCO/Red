@@ -24,11 +24,15 @@ sub inflator($attr) {
 }
 sub deflator($_) {
     do with .type.?deflator {
+        note "deflator!!!";
         $_
     } else {
-        do if .type ~~ Enumeration {
+        when Enumeration {
+            note "enum!!!";
             *.value
-        } else {
+        }
+        default {
+            note "not enum!!!";
             *.self
         }
     }
@@ -222,6 +226,18 @@ submethod TWEAK(:$unique) {
         }
     }
 }
+
+# method inflate-value($value, :$of is raw, :$*RED-DB) {
+#     my $inflated = self.inflate.($value, |(self.attr.type if self.inflate.count > 1));
+#     $inflated = $*RED-DB.inflate(
+#             $inflated,
+#             :to($of.^attributes.first(*.name.substr(2) eq self.attr-name).type)
+#     ) if \(
+#         $*RED-DB,
+#         $inflated,
+#         :to($of.^attributes.first(*.name.substr(2) eq self.attr-name).type)
+#     ) ~~ $*RED-DB.^lookup("inflate").candidates.any.signature;
+# }
 
 #| Do not test definedness, but returns a new Red::AST::IsDefined.
 #| It's used to test `IS NULL` on the given column. It's also used

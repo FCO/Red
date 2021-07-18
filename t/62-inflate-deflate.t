@@ -28,4 +28,8 @@ lives-ok {
     is-deeply $obj.array, [1, 2, 3, 4, 5];
 }, "Deflator and inflator don't die";
 
+my $*FALLBACK = False;
+throws-like { TestModel.^all.grep: *.enum === a }, X::NYI, message => /"==="/;
+is-deeply TestModel.^all.grep(*.enum == a).map(*.enum).Seq, [ a, ].Seq;
+
 done-testing;
