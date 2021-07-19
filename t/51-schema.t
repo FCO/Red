@@ -50,5 +50,11 @@ dies-ok {
     $s1.Person.^create: :name<bla>;
 }
 
+my $s3 = schema( Z => 'Post', X => 'Person');
+
+isa-ok $s3, Red::Schema;
+is $s3.model('Z').^name, "Post", "model() using alias";
+is $s3.model('X').^name, "Person", "model() using alias";
+
 
 done-testing;
