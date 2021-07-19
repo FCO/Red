@@ -3,13 +3,19 @@ use Red::DB;
 use Red::Driver::Pg;
 unit class Red::Schema;
 
-sub schema(+@models) is export {
+proto sub schema(|) { * }
+
+multi sub schema(+@models) is export {
     ::?CLASS.new: @models
+}
+
+multi sub schema(*%models) is export {
+    ::?CLASS.new: %models
 }
 
 has %.models;
 
-method new(@models) {
+multi method new(@models) {
     my %models = @models.map: {
         do if $_ ~~ Str {
             require ::($_);
@@ -21,7 +27,24 @@ method new(@models) {
     self.bless: :%models
 }
 
+multi method new(%model-alias) {
+    my %models = %model-alias.kv.map: -> $alias, $model {
+        do if $model ~~ Str {
+            require ::($model);
+            $alias => ::($model)
+        } else {
+            $alias => $model
+        }
+    }
+    self.bless: :%models
+}
+
+
 method FALLBACK(Str $name) {
+    $.model($name);
+}
+
+method model(Str $name) {
     do if %!models{ $name }:exists {
         %!models{ $name }
     } else {
