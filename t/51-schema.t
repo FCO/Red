@@ -56,5 +56,14 @@ isa-ok $s3, Red::Schema;
 is $s3.model('Z').^name, "Post", "model() using alias";
 is $s3.model('X').^name, "Person", "model() using alias";
 
+# Test using type objects from the previous schema
+my $s4 = schema( Z => $s3.Z, X => $s3.X);
+
+isa-ok $s4, Red::Schema;
+is $s4.model('Z').^name, "Post", "model() using alias - type object";
+is $s4.model('X').^name, "Person", "model() using alias - type object";
+
+
+
 
 done-testing;
