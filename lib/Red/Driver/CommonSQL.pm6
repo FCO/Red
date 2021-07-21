@@ -173,6 +173,11 @@ method table-name-formatter($data) {
     camel-to-snake-case $data
 }
 
+method ping {
+    # TODO: Generalise
+    self.execute("SELECT 1 as ping").row<ping> == 1
+}
+
 method create-schema(%models where .values.all ~~ Red::Model) {
     for %models.kv -> Str() $name, Red::Model \model {
         self.execute: Red::AST::CreateTable.new:

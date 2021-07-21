@@ -28,6 +28,11 @@ class Red:ver<0.1.46>:api<2> {
     method events   { Red::Class.instance.events }
     method emit(|c) { get-RED-DB.emit: |c        }
     method experimentals { %experimentals }
+    method ping {
+        do for (%GLOBAL::RED-DEFULT-DRIVERS || :default(get-RED-DB)).kv -> $key, $conn {
+            $key => $conn.ping
+        }.Map
+    }
 }
 
 BEGIN {
