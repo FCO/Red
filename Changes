@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.46  2021-07-21T20:01:44+01:00
     - Accept aliases on schema
 
 0.1.45  2021-07-18T22:30:28+01:00
