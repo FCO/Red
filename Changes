@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Accept aliases on schema
 
 0.1.45  2021-07-18T22:30:28+01:00
     - Add documentation for `is column`
