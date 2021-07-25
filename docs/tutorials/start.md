@@ -209,4 +209,4 @@ Person.^delete;
 Here, we covered basics of Red usage. Refer to Red cookbook
 for different examples without a particular order or visit the next
 tutorial in this series, related to expressing table relationships
-using Red, [here](tutorials/relationships).
+using Red, [here](relationships).
