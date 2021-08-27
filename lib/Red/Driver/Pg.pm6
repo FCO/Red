@@ -25,6 +25,11 @@ submethod TWEAK() {
     $!dbh //= DB::Pg.new: conninfo => "{ "user=$_" with $!user } { "password=$_" with $!password } { "host=$_" with $!host } { "port=$_" with $!port } { "dbname=$_" with $!dbname }";
 }
 
+method new-connection {
+    self.WHAT.new: |self.^attributes.grep( *.name ne '$!dbh').map({ .name.substr(2) => .get_value: self }).Hash
+}
+
+
 method wildcard { "\${ ++$*bind-counter }" }
 
 multi method translate(Red::Column $_, "column-auto-increment") {}
