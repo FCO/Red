@@ -129,9 +129,10 @@ multi red-do(
         Bool :$transaction! where so *,
         *%pars where *.none.key eq "with"
 ) is export {
-    KEEP get-RED-DB.commit;
-    UNDO get-RED-DB.rollback;
-    red-do |@blocks, :$async, |%pars, :with(get-RED-DB.begin);
+    my $conn = get-RED-DB.begin;
+    KEEP $conn.commit;
+    UNDO $conn.rollback;
+    red-do |@blocks, :$async, |%pars, :with($conn);
 }
 
 #| Receives list of pairs with connection name and block
