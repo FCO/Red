@@ -61,7 +61,7 @@ method create-comment-to-caller is hidden-from-sql-commenting {
 
 #| Add a comment to SQL query
 sub comment-sql(:$meth-name, :$file, :$block, :$line) {
-    "method '$meth-name' called at: { $file } #{ $line }"
+    "method '{ $meth-name // '<anon>' }' called at: { $file // '<none>' } #{ $line // '' }"
 }
 
 #| The type of the ResultSeq
