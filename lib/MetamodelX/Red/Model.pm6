@@ -669,14 +669,16 @@ multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
 }
 
 method new-from-data(\of, $data) {
-    my %cols = of.^columns.map: { |( .column.attr-name => .column, .column.name => .column ) }
+    my %cols-by-attr = of.^columns.map: { .column.attr-name => .column  }
+    my %cols-by-col  = of.^columns.map: { .column.name => .column }
     my $obj = of.^orig.new: |(%($data).kv
         .map(-> $c, $v {
             do with $v {
                 unless $c.contains: "." {
-                    die "Column '$c' not found" without %cols{$c};
-                    die "Inflator not defined for column '$c'" without %cols{$c}.inflate;
-                    my $inflated = %cols{$c}.inflate.($v, |(%cols{$c}.attr.type if %cols{$c}.inflate.count > 1));
+                    my $col = ( %cols-by-col{$c} // %cols-by-attr{$c} );
+                    die "Column '$c' not found" without $col;
+                    die "Inflator not defined for column '$c'" without $col.inflate;
+                    my $inflated = $col.inflate.($v, |($col.attr.type if $col.inflate.count > 1));
                     $inflated = get-RED-DB.inflate(
                             $inflated,
                             :to(of.^attributes.first(*.name.substr(2) eq $c).type)
@@ -685,7 +687,7 @@ method new-from-data(\of, $data) {
                         $inflated,
                         :to(of.^attributes.first(*.name.substr(2) eq $c).type)
                     ) ~~ get-RED-DB.^lookup("inflate").candidates.any.signature;
-                    $c => $inflated
+                    $col.attr-name => $inflated
                 }
             } else { Empty }
         }).Hash
