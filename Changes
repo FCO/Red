@@ -3,6 +3,10 @@ Revision history for Red
 {{$NEXT}}
     - Create Red.ping
     - Create Red::Driver.ping
+    - small fix to introductory README example #502 (thanks @dwarring)
+    - Really create a new connection for transaction in Pg #504 (thanks @jonathanstowe)
+    - Fix sporadic warnings #509 (thanks @jonathanstowe)
+    - Ensure use attr name not column name in new-from-data #511 (thanks @jonathanstowe)
 
 0.1.46  2021-07-21T20:01:44+01:00
     - Accept aliases on schema
