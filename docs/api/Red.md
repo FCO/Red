@@ -27,7 +27,7 @@ model Person {...}
 
 model Post is rw {
     has Int         $.id        is serial;
-    has Int         $!author-id is referencing{ Person.id };
+    has Int         $!author-id is referencing( *.id, :model(Person) );
     has Str         $.title     is column{ :unique };
     has Str         $.body      is column;
     has Person      $.author    is relationship{ .author-id };
