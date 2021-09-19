@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - classify with multiple columns
 
 0.1.47  2021-09-13T22:55:22+01:00
     - Create Red.ping

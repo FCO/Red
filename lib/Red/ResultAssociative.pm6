@@ -7,10 +7,11 @@ use Red::AST::Function;
 =head2 Red::ResultAssociative
 
 #| Lazy Associative class from Red queries (.classify)
-unit role Red::ResultAssociative[$of, Red::AST $key-of] does Associative;
+unit role Red::ResultAssociative[$of, $key-of where { $_ ~~ Red::AST || $_ ~~ List && .all ~~ Red::AST }] does Associative;
 
-has Red::AST    $!key-of = $key-of;
-has             $.rs is required;
+has $!key-of = $key-of;
+has $.rs is required;
+has @.asked-keys;
 
 #| type of the value
 method of     { $of }
@@ -18,24 +19,57 @@ method of     { $of }
 #| type of the key
 method key-of { $!key-of.returns }
 
+method !get-filter {
+    my @keys = @!asked-keys.clone;
+    do if @keys == 0 {
+        True
+    } elsif @keys == 1 {
+        Red::AST::Eq.new: $!key-of<>.head, ast-value(@keys.head), :bind-right
+    } else {
+        $!key-of<>.head(@keys).reduce: -> $agg is copy, $c {
+            if $agg !~~ Red::AST::Eq {
+                $agg = Red::AST::Eq.new: $agg, ast-value(@keys.shift), :bind-right
+            }
+            Red::AST::AND.new: $agg, Red::AST::Eq.new: $c, ast-value(@keys.shift), :bind-right;
+        }
+    }
+}
+
 #| return a list of keys
 #| run a SQL query to get it
 method keys {
-    $!rs.map({ Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Int)) })
+    my $rs = $!rs.map({ |$key-of.tail(*-@!asked-keys).head }).grep: { self!get-filter }
+    $rs.group = $key-of<>.tail(*-@!asked-keys).head;
+    $rs
+}
+
+method values {
+    my @keys = $.keys.Seq;
+    @keys.map: { self.AT-KEY: $_ }
 }
 
 #| Run query to get the number of elements
 method elems {
-    $!rs.map({
-        Red::AST::Function.new(:func<COUNT> :args[
-            Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Int))
-        ])
-    }).head
+    my $rs = $!rs.map: { 1 }
+    $rs.group = $key-of<>;
+    $rs.elems
 }
 
 #| return a ResultSeq for the given key
-method AT-KEY($key) {
-    $!rs.grep: { Red::AST::Eq.new: $!key-of, ast-value($key), :bind-right }
+method AT-KEY(Str() $key) {
+    my @keys = |@!asked-keys, $key.Str;
+    my $num-of-keys = +@!asked-keys;
+    do if @keys == $!key-of.elems {
+        my $cond = $!key-of<>.reduce: -> $agg is copy, $c {
+            if $agg !~~ Red::AST::Eq {
+                $agg = Red::AST::Eq.new: $agg, ast-value(@keys.shift), :bind-right
+            }
+            Red::AST::AND.new: $agg, Red::AST::Eq.new: $c, ast-value(@keys.shift), :bind-right;
+        }
+        $!rs.grep: { $cond }
+    } else {
+        self.clone: :asked-keys(@keys)
+    }
 }
 
 method iterator {
