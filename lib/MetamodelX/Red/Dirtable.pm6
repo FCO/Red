@@ -88,9 +88,9 @@ submethod !TWEAK_pr(\instance: *%data) is rw {
             FETCH => method {
                 $col-data-attr.get_value(instance).{ col.column.attr-name }
             },
-            STORE => method (\value) {
+            STORE => method (\value) is hidden-from-backtrace {
                 die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
-                die X::TypeCheck::Assignment.new(got => value, expected => col.type) unless value ~~ col.type;
+                die X::TypeCheck::Assignment.new(symbol => col.name, got => value, expected => col.type) unless value ~~ col.type;
                 if instance.^is-id: col {
                     instance.^set-id: col.name => value
                 }
@@ -156,9 +156,9 @@ method compose-dirtable(Mu \type) {
                 FETCH => method {
                     $col-data-attr.get_value(instance).{ col.column.attr-name }
                 },
-                STORE => method (\value) {
+                STORE => method (\value) is hidden-from-backtrace {
                     die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
-                    die X::TypeCheck::Assignment.new(got => value, expected => col.type) unless value ~~ col.type;
+                    die X::TypeCheck::Assignment.new(symbol => col.name, got => value, expected => col.type) unless value ~~ col.type;
                     if instance.^is-id: col {
                         instance.^set-id: col.name => value
                     }

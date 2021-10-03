@@ -399,4 +399,10 @@ is-deeply Post3_1.author.^table, Person3.^table;
 is-deeply Post3_2.author.^table, Person3.^table;
 is-deeply Post3_1.author.^table, Post3_2.author.^table;
 
+model X is rw {
+    has Int $.foo is column{:nullable}
+}
+my X $x .= new;
+dies-ok { $x.foo = "Hi" }, "Dies when setting wrong typed value";
+
 done-testing;
