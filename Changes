@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Throws error when setting a column attribute to a wrong type value
 
 0.1.47  2021-09-13T22:55:22+01:00
     - Create Red.ping

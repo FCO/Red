@@ -90,6 +90,7 @@ submethod !TWEAK_pr(\instance: *%data) is rw {
             },
             STORE => method (\value) {
                 die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
+                die X::TypeCheck::Assignment.new(got => value, expected => col.type) unless value ~~ col.type;
                 if instance.^is-id: col {
                     instance.^set-id: col.name => value
                 }
@@ -157,6 +158,7 @@ method compose-dirtable(Mu \type) {
                 },
                 STORE => method (\value) {
                     die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
+                    die X::TypeCheck::Assignment.new(got => value, expected => col.type) unless value ~~ col.type;
                     if instance.^is-id: col {
                         instance.^set-id: col.name => value
                     }
