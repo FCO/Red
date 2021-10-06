@@ -400,9 +400,16 @@ is-deeply Post3_2.author.^table, Person3.^table;
 is-deeply Post3_1.author.^table, Post3_2.author.^table;
 
 model X is rw {
-    has Int $.foo is column{:nullable}
+    has Int $.int is column{:nullable}
+    has Str $.str is column{:nullable}
+    has Str(Int) $.coerce is column{:nullable}
 }
 my X $x .= new;
-dies-ok { $x.foo = "Hi" }, "Dies when setting wrong typed value";
+dies-ok  { $x.int = "Hi" }, "Dies when setting wrong typed value";
+lives-ok { $x.int = 42  };
+dies-ok  { $x.str = 42 }, "Dies when setting wrong typed value";
+lives-ok { $x.str = "Hi" };
+lives-ok { $x.coerce = "42" };
+lives-ok { $x.coerce = 42 };
 
 done-testing;

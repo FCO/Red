@@ -1,6 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Send to cpan... (error on release)
+
+0.1.48  2021-10-06T17:47:32Z
     - Throws error when setting a column attribute to a wrong type value
 
 0.1.47  2021-09-13T22:55:22+01:00
