@@ -121,8 +121,8 @@ $bla.^set-id: 42;
 is-deeply $bla, IsId.new: :42id;
 $bla.^set-id: { :13id };
 is-deeply $bla, IsId.new: :13id;
-$bla.^set-id: { :3id, :42not-id };
-is-deeply $bla, IsId.new: :3id, :42not-id;
+$bla.^set-id: { :3id, :not-id<42> };
+is-deeply $bla, IsId.new: :3id, :not-id<42>;
 
 is-deeply $bla.^id-map(42), { :42id, };
 

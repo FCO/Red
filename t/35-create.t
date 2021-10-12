@@ -100,4 +100,11 @@ subtest "Create with has-one", {
     is        $bla.one-ble.value,           "test42";
 };
 
+subtest "Create on transaction", {
+	throws-like {
+		Bla.^create: :value<trans1>, :bles[{ :42value }]
+	}, X::TypeCheck::Assignment, message => rx/value/;
+	is Bla.^all.grep(*.value eq "trans1").elems, 0
+};
+
 done-testing;

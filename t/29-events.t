@@ -57,6 +57,15 @@ my $s = start react whenever Red.events -> $event {
                 is $event.db-name, "Red::Driver::SQLite";
             }
         }
+	when 5 {
+            is-deeply $event.metadata, {:bla<ble>}
+            is-deeply $event.db, $*RED-DB;
+            with %*ENV<RED_DATABASE> {
+                skip "It's not using SQLite"
+            } else {
+                is $event.db-name, "Red::Driver::SQLite";
+            }
+	}
         default {
             is-deeply $event.metadata, {:bli<blo>}
             done
