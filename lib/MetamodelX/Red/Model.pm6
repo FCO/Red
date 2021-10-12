@@ -447,7 +447,7 @@ multi method create(Red::Driver :$with!, |c) is hidden-from-backtrace {
 }
 
 multi method create(Str :$with!, |c) is hidden-from-backtrace {
-    self.create: :with(%GLOBAL::RED-DEFULT-DRIVERS{$with}), |c
+    self.create: :with(%GLOBAL::RED-DEFAULT-DRIVERS{$with}), |c
 }
 
 #| Creates a new object and saves it on DB
