@@ -3,7 +3,7 @@ use Red;
 use Red::AST::CreateTable;
 use Red::AST::Insert;
 
-plan 18;
+plan 21;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
