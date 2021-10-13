@@ -3,6 +3,8 @@ use Red;
 
 plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
+my $*RED-FALLBACK = False;
+
 skip-rest "Different driver setted" if %*ENV<RED_DATABASE>:exists;
 my $*RED-DB = database "Mock";
 

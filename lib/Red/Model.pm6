@@ -14,3 +14,17 @@ multi method perl(::?CLASS:D:) {
     }
     "{ self.^name }.new({ @attrs.join: ", " })"
 }
+
+method new(*%pars) is hidden-from-backtrace {
+    my @columns = self.^columns;
+    for @columns -> \col {
+        my $name = col.name.substr: 2;
+        if %pars{$name}:exists {
+            my \value = %pars{$name};
+            my $is-rtype = col.type.?is-red-type(col.type);
+            die X::TypeCheck::Assignment.new(symbol => col.name, got => value, expected => col.type)
+                unless ( !$is-rtype && value ~~ col.type ) || ( $is-rtype && col.type.red-type-accepts: value.WHAT );
+        }
+    }
+    nextwith |%pars
+}

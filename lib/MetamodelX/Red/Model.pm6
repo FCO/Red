@@ -441,22 +441,27 @@ multi method save($obj, :$with where not .defined) {
     }
 }
 
-multi method create(Red::Driver :$with!, |c) {
+multi method create(Red::Driver :$with!, |c) is hidden-from-backtrace {
     my $*RED-DB = $with;
     self.create: |c
 }
 
-multi method create(Str :$with!, |c) {
-    self.create: :with(%GLOBAL::RED-DEFULT-DRIVERS{$with}), |c
+multi method create(Str :$with!, |c) is hidden-from-backtrace {
+    self.create: :with(%GLOBAL::RED-DEFAULT-DRIVERS{$with}), |c
 }
 
 #| Creates a new object and saves it on DB
 #| It accepts a list os pairs (the same as C<.new>)
 #| And Lists and/or Hashes for relationships
-multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is rw {
+multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {
     my $RED-DB = get-RED-DB;
+    my $trans  = so $*RED-TRANSCTION-RUNNING;
+    $RED-DB.begin unless $trans;
+    KEEP $RED-DB.commit unless $trans;
+    UNDO $RED-DB.rollback unless $trans;
     {
         my $*RED-DB = $RED-DB;
+        my $*RED-TRANSCTION-RUNNING = True;
         my %relationships = %.relationships.keys.map: {
             .name.substr(2) => $_
         }
@@ -520,7 +525,7 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
             FIRST $no //= model.^find($filter);
             my $type = attr.relationship-model;
             my $id-name = attr.rel.attr-name;
-            # What to do when there is moe than one id???
+            #TODO: What to do when there is more than one id???
             $type.^create: |%( |%val, $id-name => $no.^id-values.head )
         }
         self.apply-row-phasers($obj, AfterCreate);
@@ -668,7 +673,7 @@ multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
     samewith instance, $attr.name.substr(2), value
 }
 
-method new-from-data(\of, $data) {
+method new-from-data(\of, $data) is hidden-from-backtrace {
     my %cols-by-attr = of.^columns.map: { .column.attr-name => .column  }
     my %cols-by-col  = of.^columns.map: { .column.name => .column }
     my $obj = of.^orig.new: |(%($data).kv
