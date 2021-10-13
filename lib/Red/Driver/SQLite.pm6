@@ -40,6 +40,12 @@ class Statement does Red::Statement {
     method stt-row($stt) { $stt.row: :hash }
 }
 
+#| Begin transaction
+method begin {
+    self.prepare(Red::AST::BeginTransaction.new).map: *.execute;
+    self
+}
+
 multi method prepare(Str $query) {
     CATCH {
         default {

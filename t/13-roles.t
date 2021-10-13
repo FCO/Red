@@ -75,7 +75,7 @@ $*RED-DB.when: :twice, :return[], 'commit';
 my $blu = Blu.^create;
 my $blo = $blu.blo.create;
 
-$*RED-DB.when: :3times, :return[{:1id}], 'select "blu".id from "blu" where "blu".id = ? limit 1';
+$*RED-DB.when: :twice, :return[{:1id}], 'select "blu".id from "blu" where "blu".id = ? limit 1';
 
 isa-ok $blu, Blu;
 isa-ok $blo, Blo;

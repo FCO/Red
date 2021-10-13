@@ -59,49 +59,51 @@ dies-ok {
     Bla.^create-table;
 }, "Undefined ok";
 
-try require ::("Config::Parser::json");
-if ::("Config::Parser::json") !~~ Nil {
-    red-defaults-from-config("./t/test.json");
-
-    red-do
-        {
-            isa-ok $*RED-DB, Red::Driver::SQLite;
-        },
-        "default" => {
-            isa-ok $*RED-DB, Red::Driver::SQLite;
-        },
-        "bla" => {
-            isa-ok $*RED-DB, Red::Driver::SQLite;
-        }
-    ;
-
-    red-defaults;
-
-    dies-ok {
-        Bla.^create-table;
-    }, "Undefined ok";
-
-    throws-like {
+try {
+    require ::("Config::Parser::json");
+    if ::("Config::Parser::json") !~~ Nil {
+        red-defaults-from-config("./t/test.json");
+    
+        red-do
+    	{
+    	    isa-ok $*RED-DB, Red::Driver::SQLite;
+    	},
+    	"default" => {
+    	    isa-ok $*RED-DB, Red::Driver::SQLite;
+    	},
+    	"bla" => {
+    	    isa-ok $*RED-DB, Red::Driver::SQLite;
+    	}
+        ;
+    
+        red-defaults;
+    
+        dies-ok {
+    	Bla.^create-table;
+        }, "Undefined ok";
+    
+        throws-like {
+    	red-defaults-from-config;
+        }, X::Red::Defaults::FromConfNotFound;
+    
+        "./.red.json".IO.spurt: "./t/test.json".IO.slurp;
+    
         red-defaults-from-config;
-    }, X::Red::Defaults::FromConfNotFound;
-
-    "./.red.json".IO.spurt: "./t/test.json".IO.slurp;
-
-    red-defaults-from-config;
-
-    red-do
-        {
-            isa-ok $*RED-DB, Red::Driver::SQLite;
-        },
-        "default" => {
-            isa-ok $*RED-DB, Red::Driver::SQLite;
-        },
-        "bla" => {
-            isa-ok $*RED-DB, Red::Driver::SQLite;
-        }
-    ;
-
-    "./.red.json".IO.unlink;
+    
+        red-do
+    	{
+    	    isa-ok $*RED-DB, Red::Driver::SQLite;
+    	},
+    	"default" => {
+    	    isa-ok $*RED-DB, Red::Driver::SQLite;
+    	},
+    	"bla" => {
+    	    isa-ok $*RED-DB, Red::Driver::SQLite;
+    	}
+        ;
+    
+        "./.red.json".IO.unlink;
+    }
 }
 
 use Red::Driver::Cache;

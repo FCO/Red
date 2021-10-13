@@ -456,8 +456,8 @@ multi method create(Str :$with!, |c) is hidden-from-backtrace {
 multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {
     my $RED-DB = get-RED-DB;
     my $trans  = so $*RED-TRANSCTION-RUNNING;
-    $RED-DB.begin unless $trans;
-    KEEP $RED-DB.commit unless $trans;
+    $RED-DB   .= begin    unless $trans;
+    KEEP $RED-DB.commit   unless $trans;
     UNDO $RED-DB.rollback unless $trans;
     {
         my $*RED-DB = $RED-DB;
