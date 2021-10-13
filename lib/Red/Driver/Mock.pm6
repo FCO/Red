@@ -48,7 +48,7 @@ method die-on-unexpected() {
 
 proto method when(
     $when,
-    Int  :$times,
+         :$times,
     Bool :$once,
     Bool :$twice
 ) {
