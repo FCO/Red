@@ -130,9 +130,28 @@ multi red-do(
         *%pars where *.none.key eq "with"
 ) is export {
     my $conn = get-RED-DB.begin;
-    KEEP $conn.commit;
-    UNDO $conn.rollback;
-    red-do |@blocks, :$async, |%pars, :with($conn);
+    CATCH {
+        default {
+            UNDO $conn.rollback;
+            .rethrow
+        }
+    }
+    given red-do |@blocks, :$async, |%pars, :with($conn) {
+        when Promise {
+            start {
+                KEEP $conn.commit;
+                UNDO $conn.rollback;
+                .result
+            }
+        }
+        when !*.DEFINITE {
+            UNDO $conn.rollback;
+            $_
+        }
+        when *.DEFINITE {
+            $_
+        }
+    }
 }
 
 #| Receives list of pairs with connection name and block
