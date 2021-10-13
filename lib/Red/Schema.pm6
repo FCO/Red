@@ -64,7 +64,7 @@ method drop {
 
 method create(:$where) {
     red-do (:$where with $where), :transaction, {
-#        .say for %!models;
+        #.say for %!models;
         |.create-schema(%!models)
     }
     self

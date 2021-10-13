@@ -8,7 +8,7 @@ model Link {
 
     method ^populate($model) {
         for "t/links.csv".IO.lines {
-            $model.^create: |(<id-from id-to> Z=> .split: "\t").Hash
+            $model.^create: |(<id-from id-to> Z=> .split("\t")>>.Int).Hash
         }
     }
 }

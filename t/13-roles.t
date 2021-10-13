@@ -34,7 +34,8 @@ EOSQL
 Bli.^create-table;
 
 $*RED-DB.when: :once, :return[{:1a}], 'insert into "ble" ( a ) values ( ? )';
-Ble.^create: :1a;
+$*RED-DB.when: :once, :return[], 'commit';
+Ble.^create: :a<1>;
 
 role SerialId {
     has UInt $!id is serial;
@@ -69,6 +70,7 @@ Blu.^create-table;
 
 $*RED-DB.when: :once, :return[{:1id}],            q[insert into "blu" default values];
 $*RED-DB.when: :once, :return[{:1id, :1blu-id},], q[insert into "blo"( blu_id )values( ? )];
+$*RED-DB.when: :twice, :return[], 'commit';
 
 my $blu = Blu.^create;
 my $blo = $blu.blo.create;

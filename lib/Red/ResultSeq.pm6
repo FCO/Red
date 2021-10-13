@@ -178,7 +178,7 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
         my $attr  = Attribute.new:
             :name("\$!$name"),
             :package(model),
-            :type(.returns),
+            :type(.returns ~~ Any && .returns !~~ Nil ?? .returns !! Any),
             :has_accessor,
             :build(.returns),
         ;

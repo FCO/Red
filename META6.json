@@ -116,6 +116,7 @@
     "Red::SchemaReader": "lib/Red/SchemaReader.pm6",
     "Red::Statement": "lib/Red/Statement.pm6",
     "Red::Traits": "lib/Red/Traits.pm6",
+    "Red::Type": "lib/Red/Type.pm6",
     "Red::Type::Json": "lib/Red/Type/Json.pm6",
     "Red::Utils": "lib/Red/Utils.pm6",
     "X::Red::Exceptions": "lib/X/Red/Exceptions.pm6"
