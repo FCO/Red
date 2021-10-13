@@ -122,7 +122,7 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :iterator([].iterator)
 }
 
-method verify is test-assertion {
+method verify { #is test-assertion {
     subtest {
         plan %!when-str + %!when-re;
         for %!when-str.kv -> Str $str, % (:$counter = 0, :$times, |) {
