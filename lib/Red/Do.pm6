@@ -132,6 +132,7 @@ multi red-do(
     my $conn = get-RED-DB.begin;
     KEEP $conn.commit;
     UNDO $conn.rollback;
+    my $*RED-TRANSCTION-RUNNING = True;
     red-do |@blocks, :$async, |%pars, :with($conn);
 }
 
