@@ -1,6 +1,11 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.51  2021-10-14T21:11:05+01:00
+    - Fix red-do on SQLite
+
+0.1.49  2021-10-06T18:16:00Z
     - Error on new with wrong type parameter
     - Create on transaction
 
