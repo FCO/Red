@@ -21,14 +21,14 @@ method key-of { $!key-of.returns }
 #| return a list of keys
 #| run a SQL query to get it
 method keys {
-    $!rs.map({ Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Int)) })
+    $!rs.map({ Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Str)) })
 }
 
 #| Run query to get the number of elements
 method elems {
     $!rs.map({
         Red::AST::Function.new(:func<COUNT> :args[
-            Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Int))
+            Red::AST::Function.n it ew(:func<DISTINCT>, :args[$key-of], :returns(Int))
         ])
     }).head
 }
