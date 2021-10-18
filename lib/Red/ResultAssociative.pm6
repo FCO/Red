@@ -28,7 +28,7 @@ method keys {
 method elems {
     $!rs.map({
         Red::AST::Function.new(:func<COUNT> :args[
-            Red::AST::Function.n it ew(:func<DISTINCT>, :args[$key-of], :returns(Int))
+            Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Int))
         ])
     }).head
 }
