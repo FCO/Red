@@ -155,7 +155,7 @@ method compose(Mu \type) {
             self.?TWEAK-MODEL(|c)
         }
     }
-    my @roles-cols = self.roles_to_compose(type).flatmap(*.^attributes).grep: Red::Attr::Column;
+    my @roles-cols = self.roles_to_compose(type).grep({ .HOW !~~ Metamodel::CurriedRoleHOW }).flatmap(*.^attributes).grep: Red::Attr::Column;
     for @roles-cols -> Red::Attr::Column $attr {
         self.add-comparate-methods: type, $attr
     }
