@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.52  2021-10-22T21:33:53+01:00
     - Fix usage of parameterized roles
 
 0.1.51  2021-10-14T21:11:05+01:00
