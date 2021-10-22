@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::Optimizer::OR</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::Optimizer::OR 57.5%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-green">unit role Red::AST::Optimizer::OR;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 Red::AST::Optimizer::OR</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">my subset AstFalse of Red::AST::Value where { .value === False };</span>
+<span class="coverage-green">my subset AstTrue  of Red::AST::Value where { .value === True  };</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">my subset GeGt of Red::AST::Infix where Red::AST::Ge|Red::AST::Gt;</span>
+<span class="coverage-red">my subset LeLt of Red::AST::Infix where Red::AST::Le|Red::AST::Lt;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi infix:&lt;eqv&gt;(Red::AST::So $a, Red::AST $b) { $a.value eqv $b       }</span>
+<span class="coverage-red">multi infix:&lt;eqv&gt;(Red::AST $a, Red::AST::So $b) { $a       eqv $b.value }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method optimize(</span>
+<span class="coverage-no">        Red::AST::AND $left,</span>
+<span class="coverage-red">        Red::AST::AND $right where {$left.?left eqv $right.?left.not &amp;&amp; $left.?right eqv $right.?right},</span>
+<span class="coverage-no">        $ where * &gt; 0,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-red">            $right.right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method optimize(</span>
+<span class="coverage-no">        Red::AST::AND $left,</span>
+<span class="coverage-red">        Red::AST::AND $right where {$left.?left eqv $right.?right.not &amp;&amp; $left.?right eqv $right.?left},</span>
+<span class="coverage-no">        $ where * &gt; 0,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-red">    $right.left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method optimize(</span>
+<span class="coverage-no">        Red::AST::AND $left,</span>
+<span class="coverage-red">        Red::AST::AND $right where {$left.?right eqv $right.?left.not &amp;&amp; $left.?left eqv $right.?right},</span>
+<span class="coverage-no">        $ where * &gt; 0,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-red">    $right.right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method optimize(</span>
+<span class="coverage-no">        Red::AST::AND $left,</span>
+<span class="coverage-red">        Red::AST $right where { $left.left eqv $right.not },</span>
+<span class="coverage-no">        $,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-red">    Red::AST::OR.new: $left.right, $right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method optimize(</span>
+<span class="coverage-no">        Red::AST::AND $left,</span>
+<span class="coverage-red">        Red::AST $right where { $left.right eqv $right.not },</span>
+<span class="coverage-no">        $,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-red">    Red::AST::OR.new: $left.left, $right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method optimize(</span>
+<span class="coverage-no">        Red::AST $left,</span>
+<span class="coverage-red">        Red::AST::AND $right where { $right.left eqv $left.not },</span>
+<span class="coverage-no">        $,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-red">    Red::AST::OR.new: $left, $right.right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method optimize(</span>
+<span class="coverage-no">        Red::AST $left,</span>
+<span class="coverage-red">        Red::AST::AND $right where { $right.right eqv $left.not },</span>
+<span class="coverage-no">        $,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-red">    Red::AST::OR.new: $left, $right.left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| x &gt; 1 OR x &gt; 10 ==&gt; x &gt; 10</span>
+<span class="coverage-green">multi method optimize(GeGt $left, GeGt $right, 1) {</span>
+<span class="coverage-green">    my $lv = $left.args.first(*.^can: &quot;get-value&quot;).get-value;</span>
+<span class="coverage-green">    my $rv = $right.args.first(*.^can: &quot;get-value&quot;).get-value;</span>
+<span class="coverage-green">    if $lv.defined and $rv.defined {</span>
+<span class="coverage-green">        if $rv &gt; $lv {</span>
+<span class="coverage-green">            return $right</span>
+<span class="coverage-red">        } elsif $rv &lt; $lv {</span>
+<span class="coverage-green">            return $left</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| x &lt; 1 OR x &lt; 10 ==&gt; x &lt; 1</span>
+<span class="coverage-green">multi method optimize(LeLt $left, LeLt $right, 1) {</span>
+<span class="coverage-green">    my $lv = $left.args.first(*.^can: &quot;get-value&quot;).get-value;</span>
+<span class="coverage-green">    my $rv = $right.args.first(*.^can: &quot;get-value&quot;).get-value;</span>
+<span class="coverage-green">    if $lv.defined and $rv.defined {</span>
+<span class="coverage-green">        if $rv &lt; $lv {</span>
+<span class="coverage-green">            return $right</span>
+<span class="coverage-red">        } elsif $rv &gt; $lv {</span>
+<span class="coverage-green">            return $left</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| x &lt; 10 OR x &gt; 1 ==&gt; True</span>
+<span class="coverage-green">multi method optimize(LeLt $left, GeGt $right, 1) {</span>
+<span class="coverage-green">    my $lv = $left.args.first(*.^can: &quot;get-value&quot;).get-value;</span>
+<span class="coverage-green">    my $rv = $right.args.first(*.^can: &quot;get-value&quot;).get-value;</span>
+<span class="coverage-green">    return ast-value True if $lv.defined and $rv.defined and $lv &gt; $rv</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| x &gt; 1 OR x &lt; 10 ==&gt; True</span>
+<span class="coverage-green">multi method optimize(GeGt $left, LeLt $right, 1) {</span>
+<span class="coverage-green">    self.optimize: $right, $left, 1</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| a.b OR NOT(a.b) ==&gt; True</span>
+<span class="coverage-green">multi method optimize($left where Red::Column, $right where Red::AST::Not, 1) {</span>
+<span class="coverage-green">    return ast-value True if $left eqv $right.value</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| NOT(a.b) AND a.b ==&gt; True</span>
+<span class="coverage-red">multi method optimize($left where Red::AST::Not, $right where Red::Column, 1) {</span>
+<span class="coverage-red">    self.optimize: $right, $left, 1</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method optimize($, $, $) {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method optimize(AstTrue, Red::AST $)  { ast-value True }</span>
+<span class="coverage-green">multi method optimize(Red::AST $, AstTrue)  { ast-value True }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method optimize(AstFalse, Red::AST $right) { $right }</span>
+<span class="coverage-green">multi method optimize(Red::AST $left, AstFalse)  { $left  }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method optimize(Red::AST $left is copy, Red::AST $right is copy) {</span>
+<span class="coverage-green">    my $lcols = set $left.find-column-name;</span>
+<span class="coverage-green">    my $rcols = set $right.find-column-name;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    $left  .= value if $left ~~ Red::AST::So;</span>
+<span class="coverage-green">    $right .= value if $right ~~ Red::AST::So;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    my $cols := ($lcols ∩ $rcols).elems;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    .return with self.optimize: $left, $right, $cols</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

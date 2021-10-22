@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Cli</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Cli 0%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-red">unit class Red::Cli;</span>
+<span class="coverage-no">use Red::Database;</span>
+<span class="coverage-no">use Red::Do;</span>
+<span class="coverage-no">use Red::Schema;</span>
+<span class="coverage-no">use Red::Utils;</span>
+<span class="coverage-no">use Red::AST::CreateColumn;</span>
+<span class="coverage-no">use Red::AST::ChangeColumn;</span>
+<span class="coverage-red">use Red::AST::DropColumn;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Lists tables from database schema</span>
+<span class="coverage-red">multi list-tables(</span>
+<span class="coverage-no">        Str  :$driver!,</span>
+<span class="coverage-no">        *%pars</span>
+<span class="coverage-no">) is export {</span>
+<span class="coverage-red">    my $schema-reader = $*RED-DB.schema-reader;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    $schema-reader.tables-names.do-it</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">sub gen-stub(:@includes, :@models, :$driver, :%pars) {</span>
+<span class="coverage-no">    my @stub;</span>
+<span class="coverage-red">    @stub.push: 'use Red:api&lt;2&gt;;';</span>
+<span class="coverage-red">    for @includes.unique {</span>
+<span class="coverage-red">        @stub.push: &quot;use $_;&quot;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    @stub.push: &quot;\nred-defaults \&quot;{ $driver }\&quot;, { %pars.map(*.perl) };&quot;;</span>
+<span class="coverage-red">    @stub.push: &quot;&quot;;</span>
+<span class="coverage-red">    for @models {</span>
+<span class="coverage-red">        @stub.push: &quot;.say for { $_ }.^all;&quot;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    @stub</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Generates stub code to access models from database schema</span>
+<span class="coverage-red">multi gen-stub-code(</span>
+<span class="coverage-no">        Str  :$schema-class,</span>
+<span class="coverage-no">        Str  :$driver!,</span>
+<span class="coverage-no">        *%pars</span>
+<span class="coverage-no">) is export {</span>
+<span class="coverage-red">    my $schema-reader = $*RED-DB.schema-reader;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">    my @includes;</span>
+<span class="coverage-no">    my @models;</span>
+<span class="coverage-red">    for $schema-reader.tables-names -&gt; $table-name {</span>
+<span class="coverage-red">        my $model-name = snake-to-camel-case $table-name;</span>
+<span class="coverage-red">        @models.push: $model-name;</span>
+<span class="coverage-red">        with $schema-class {</span>
+<span class="coverage-red">            @includes.push: $schema-class;</span>
+<span class="coverage-no">        } else {</span>
+<span class="coverage-red">            @includes.push: $model-name;</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    gen-stub(:@includes, :@models, :$driver, :%pars).join: &quot;\n&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Generates migration plan to upgrade database schema</span>
+<span class="coverage-red">multi migration-plan(</span>
+<span class="coverage-no">        Str :$model!,</span>
+<span class="coverage-red">        Str :$require = $model,</span>
+<span class="coverage-no">        Str :$driver!,</span>
+<span class="coverage-no">        *%pars</span>
+<span class="coverage-no">) is export {</span>
+<span class="coverage-no">    my %steps;</span>
+<span class="coverage-red">    require ::($require);</span>
+<span class="coverage-red">    for $*RED-DB.diff-to-ast: ::($model).^diff-from-db -&gt; @data {</span>
+<span class="coverage-red">        say &quot;Step &quot;, ++$, &quot;:&quot;;</span>
+<span class="coverage-no">        #say @data.join(&quot;\n&quot;).indent: 4</span>
+<span class="coverage-no">        #        $*RED-DB.translate($_).key.indent(4).say for Red::AST::ChangeColumn.optimize: @data</span>
+<span class="coverage-red">        $*RED-DB.translate($_).key.indent(4).say for @data</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Generates models' code from database schema</span>
+<span class="coverage-red">multi generate-code(</span>
+<span class="coverage-red">        Str  :$path!    where { not .defined or .IO.d or $_ eq &quot;-&quot; or fail &quot;Path $_ does not exist.&quot; },</span>
+<span class="coverage-red">        Str  :$from-sql where { not .defined or .IO.f or $_ eq &quot;-&quot; or fail &quot;SQL $_ do not exist.&quot; },</span>
+<span class="coverage-no">        Str  :$schema-class,</span>
+<span class="coverage-no">        Bool :$print-stub       = False,</span>
+<span class="coverage-no">        Bool :$no-relationships = False,</span>
+<span class="coverage-no">        #Bool :$stub-only,</span>
+<span class="coverage-no">        Str  :$driver!,</span>
+<span class="coverage-no">        *%pars</span>
+<span class="coverage-no">) is export {</span>
+<span class="coverage-red">    my $schema-reader = $*RED-DB.schema-reader;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    my $schema = do if $path eq &quot;-&quot; {</span>
+<span class="coverage-red">        $*OUT</span>
+<span class="coverage-no">    } else {</span>
+<span class="coverage-red">        $path.IO.add(&quot;$_.pm6&quot;).open: :!bin, :w with $schema-class</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    my $sql = $from-sql eq &quot;-&quot; ?? $*IN !! .IO.open with $from-sql;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    my Bool $no-use = False;</span>
+<span class="coverage-no">    my @includes;</span>
+<span class="coverage-no">    my @models;</span>
+<span class="coverage-red">    for |(</span>
+<span class="coverage-no">            $sql</span>
+<span class="coverage-no">                    ?? $sql.slurp</span>
+<span class="coverage-no">                    !! $schema-reader.tables-names</span>
+<span class="coverage-red">            ) -&gt; $name-or-sql {</span>
+<span class="coverage-red">        for |(</span>
+<span class="coverage-no">                $name-or-sql.contains(&quot; &quot;)</span>
+<span class="coverage-no">                        ?? $schema-reader.table-definition-from-create-table($name-or-sql)</span>
+<span class="coverage-no">                        !! $schema-reader.table-definition($name-or-sql)</span>
+<span class="coverage-red">                ) -&gt; $table-definition {</span>
+<span class="coverage-red">            my $table-name = $table-definition.name;</span>
+<span class="coverage-red">            my $model-name = $table-definition.model-name;</span>
+<span class="coverage-red">            @models.push: $model-name;</span>
+<span class="coverage-red">            my $fh = do with $schema {</span>
+<span class="coverage-red">                @includes.push: $schema-class if $schema-class;</span>
+<span class="coverage-red">                $_</span>
+<span class="coverage-red">            } else {</span>
+<span class="coverage-red">                @includes.push: $model-name;</span>
+<span class="coverage-red">                $path.IO.add(&quot;{ $model-name }.pm6&quot;).open: :!bin, :w</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-red">            $fh.say: &quot;use Red;\n&quot; unless $no-use;</span>
+<span class="coverage-red">            $fh.say: &quot;#| Table: $table-name&quot;;</span>
+<span class="coverage-red">            $fh.say: $table-definition.to-code:</span>
+<span class="coverage-no">                    :$no-relationships,</span>
+<span class="coverage-red">                    |(:$schema-class with $schema-class)</span>
+<span class="coverage-no">            ;</span>
+<span class="coverage-red">            with $schema {</span>
+<span class="coverage-red">                $no-use++ if $schema-class</span>
+<span class="coverage-no">            } else {</span>
+<span class="coverage-red">                $fh.close unless $path eq &quot;-&quot;;</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    $schema.close if $schema.defined and $path ne &quot;-&quot;;</span>
+<span class="coverage-red">    gen-stub :@includes, :@models, :$driver, :%pars if $print-stub</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Prepare database</span>
+<span class="coverage-red">multi prepare-database(</span>
+<span class="coverage-no">        Bool :$populate,</span>
+<span class="coverage-no">        Str  :$models!,</span>
+<span class="coverage-no">        Str  :$driver!,</span>
+<span class="coverage-no">        *%pars</span>
+<span class="coverage-no">) is export {</span>
+<span class="coverage-red">    my @m = schema($models.split: &quot;,&quot;).create.models.values;</span>
+<span class="coverage-red">    @m.map: { .^populate } if $populate</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

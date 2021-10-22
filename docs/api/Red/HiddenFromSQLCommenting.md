@@ -3,7 +3,7 @@ Red::HiddenFromSQLCommenting
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Method $r,
     Bool :$hidden-from-sql-commenting!

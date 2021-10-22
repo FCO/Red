@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::Comparate</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::Comparate 100%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Model;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::Attr::Column;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 MetamodelX::Red::Comparate</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role MetamodelX::Red::Comparate;</span>
+<span class="coverage-green">has SetHash $!added-method .= new;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| An internal method that generates Red getters and setters for an</span>
+<span class="coverage-no">#| attribute $attr of a type.</span>
+<span class="coverage-green">method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr --&gt; Empty) {</span>
+<span class="coverage-green">    unless $!added-method{&quot;{ type.^name }|$attr&quot;} {</span>
+<span class="coverage-green">        if $attr.rw {</span>
+<span class="coverage-green">            type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) is rw {</span>
+<span class="coverage-green">                Proxy.new:</span>
+<span class="coverage-green">                FETCH =&gt; -&gt; $ { $attr.column },</span>
+<span class="coverage-green">                STORE =&gt; -&gt; $, $value {</span>
+<span class="coverage-green">                    my &amp;deflator = $attr.column.deflate;</span>
+<span class="coverage-green">                    my $val = do given $value {</span>
+<span class="coverage-green">                        when Red::AST { $_ }</span>
+<span class="coverage-green">                        default {</span>
+<span class="coverage-green">                            ast-value .&amp;deflator, :type($attr.type)</span>
+<span class="coverage-no">                        }</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-green">                    @*UPDATE.push: Pair.new: $attr.column, $val</span>
+<span class="coverage-no">                },</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">        } else {</span>
+<span class="coverage-green">            type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) {</span>
+<span class="coverage-green">                $attr.column</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        $!added-method{&quot;{ type.^name }|$attr&quot;}++</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

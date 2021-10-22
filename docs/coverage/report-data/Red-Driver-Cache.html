@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Driver::Cache</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Driver::Cache 22.2%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use v6.d;</span>
+<span class="coverage-no">use Red::Database;</span>
+<span class="coverage-no">use Red::Driver;</span>
+<span class="coverage-no">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Select;</span>
+<span class="coverage-no">use Red::AST::Infix;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::AST::LastInsertedRow;</span>
+<span class="coverage-no">use Red::Statement;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role Red::Driver::Cache does Red::Driver;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method schema-reader {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">proto cache($, $) is export { * }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi cache(Str $cache, Str $driver) {</span>
+<span class="coverage-green">    cache $cache =&gt; \(), $driver =&gt; \()</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi cache(Pair $cache-pair, Str $driver) {</span>
+<span class="coverage-red">    cache $cache-pair, $driver =&gt; \()</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi cache(Str $cache, Pair $driver-pair) {</span>
+<span class="coverage-red">    cache $cache =&gt; \(), $driver-pair</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi cache(Str $cache, Red::Driver $driver) {</span>
+<span class="coverage-red">    cache $cache =&gt; \(), $driver</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi cache(Pair (Str :key($cache-driver), Capture :value($cache-conf)), Red::Driver $driver) {</span>
+<span class="coverage-red">    my $cache = &quot;Red::Driver::Cache::$cache-driver&quot;;</span>
+<span class="coverage-red">    require ::($cache);</span>
+<span class="coverage-red">    ::($cache).new: :$driver, |$cache-conf</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi cache(</span>
+<span class="coverage-no">    Pair (Str :key($cache-driver), Capture :value($cache-conf)),</span>
+<span class="coverage-no">    Pair (Str :key($driver-name),  Capture :value($driver-conf))</span>
+<span class="coverage-no">) is export {</span>
+<span class="coverage-green">    my $driver = database $driver-name, |$driver-conf;</span>
+<span class="coverage-green">    my $cache = &quot;Red::Driver::Cache::$cache-driver&quot;;</span>
+<span class="coverage-green">    require ::($cache);</span>
+<span class="coverage-green">    ::($cache).new: :$driver, |$cache-conf</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method get-from-cache(Red::AST)  { ... }</span>
+<span class="coverage-red">multi method set-on-cache(Red::AST, @) { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Red::Driver  $.driver is required;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method default-type-for(Red::Column $a --&gt; Str:D) { $!driver.default-type-for($a)      }</span>
+<span class="coverage-red">multi method is-valid-table-name(|c)                    { $!driver.is-valid-table-name(|c)   }</span>
+<span class="coverage-red">multi method type-by-name(|c)                           { $!driver.type-by-name(|c)          }</span>
+<span class="coverage-red">multi method inflate(|c)                                { $!driver.inflate(|c)               }</span>
+<span class="coverage-red">multi method deflate(|c)                                { $!driver.deflate(|c)               }</span>
+<span class="coverage-red">multi method prepare(Str $_)                            { $!driver.prepare($_)               }</span>
+<span class="coverage-red">multi method translate(Red::AST $ast, $context?)        { $!driver.translate($ast, $context) }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">my class CachedStatement does Red::Statement {</span>
+<span class="coverage-no">    has Red::AST            $.ast       is required;</span>
+<span class="coverage-red">    has Iterator            $.iterator  is required;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method stt-exec($stt, *@bind) { }</span>
+<span class="coverage-red">    method stt-row($stt) { $!iterator.pull-one }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">my class Statement does Red::Statement {</span>
+<span class="coverage-no">    has Red::AST            $.ast       is required;</span>
+<span class="coverage-no">    has Red::Statement      $.stt       is required;</span>
+<span class="coverage-red">    has Iterator            $.iterator;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method stt-exec($stt, *@bind) {</span>
+<span class="coverage-no">        my @data;</span>
+<span class="coverage-red">        $!stt.stt-exec: $!stt, |@bind;</span>
+<span class="coverage-red">        while my $row = $!stt.row {</span>
+<span class="coverage-red">            @data.push: $row</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-red">        note &quot;setting data on cache&quot; if $*RED-CACHE-DEBUG;</span>
+<span class="coverage-red">        $!driver.set-on-cache: $!ast, @data;</span>
+<span class="coverage-red">        $!iterator = @data.iterator</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    method stt-row($stt) { $!iterator.pull-one }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method prepare(Red::AST::Select $ast ) {</span>
+<span class="coverage-red">    CATCH {</span>
+<span class="coverage-red">        default {</span>
+<span class="coverage-red">            return $!driver.prepare: $ast</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    with self.get-from-cache: $ast {</span>
+<span class="coverage-red">        PRE .^can: &quot;iterator&quot;;</span>
+<span class="coverage-red">        note &quot;getting data from cache&quot; if $*RED-CACHE-DEBUG;</span>
+<span class="coverage-red">        return CachedStatement.new: :driver(self), :iterator(.iterator), :$ast</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    do for $!driver.prepare: $ast -&gt; $stt {</span>
+<span class="coverage-red">        Statement.new: :driver(self), :$stt, :$ast</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

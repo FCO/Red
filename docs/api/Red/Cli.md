@@ -1,6 +1,6 @@
 ### multi sub list-tables
 
-```perl6
+```raku
 multi sub list-tables(
     Str :$driver!,
     *%pars
@@ -11,7 +11,7 @@ Lists tables from database schema
 
 ### multi sub gen-stub-code
 
-```perl6
+```raku
 multi sub gen-stub-code(
     Str :$schema-class,
     Str :$driver!,
@@ -23,10 +23,10 @@ Generates stub code to access models from database schema
 
 ### multi sub migration-plan
 
-```perl6
+```raku
 multi sub migration-plan(
     Str :$model!,
-    Str :$require = { ... },
+    Str :$require = Code.new,
     Str :$driver!,
     *%pars
 ) returns Mu
@@ -36,7 +36,7 @@ Generates migration plan to upgrade database schema
 
 ### multi sub generate-code
 
-```perl6
+```raku
 multi sub generate-code(
     Str :$path! where { ... },
     Str :$from-sql where { ... },
@@ -52,7 +52,7 @@ Generates models' code from database schema
 
 ### multi sub prepare-database
 
-```perl6
+```raku
 multi sub prepare-database(
     Bool :$populate,
     Str :$models!,

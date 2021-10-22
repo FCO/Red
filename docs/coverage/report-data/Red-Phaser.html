@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Phaser</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Phaser 100%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">#| Define Red phasers</span>
+<span class="coverage-green">module Red::Phaser {</span>
+<span class="coverage-no">    # Define these here rather than next to the traits</span>
+<span class="coverage-no">    # as they will be used in several places</span>
+<span class="coverage-green">    role BeforeCreate is export { }</span>
+<span class="coverage-green">    role AfterCreate  is export { }</span>
+<span class="coverage-green">    role BeforeUpdate is export { }</span>
+<span class="coverage-green">    role AfterUpdate  is export { }</span>
+<span class="coverage-green">    role BeforeDelete is export { }</span>
+<span class="coverage-green">    role AfterDelete  is export { }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

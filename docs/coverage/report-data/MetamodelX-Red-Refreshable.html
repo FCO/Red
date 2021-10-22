@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::Refreshable</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::Refreshable 100%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Model;</span>
+<span class="coverage-green">unit role MetamodelX::Red::Refreshable;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method refresh(Red::Model:D \model) {</span>
+<span class="coverage-green">	nextwith model, |model.^columns&gt;&gt;.column&gt;&gt;.attr-name</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method refresh(Red::Model:D \model, +@attrs) {</span>
+<span class="coverage-no">	my %ans;</span>
+<span class="coverage-green">	%ans{ @attrs } = |model.^rs.map(-&gt; $model { |@attrs.map: -&gt; $attr { $model.&quot;$attr&quot;() } }).head;</span>
+<span class="coverage-green">	for %ans.kv -&gt; $attr, $value {</span>
+<span class="coverage-green">		model.^set-attr: $attr, $value</span>
+<span class="coverage-no">	}</span>
+<span class="coverage-green">	model.^clean-up-columns: @attrs;</span>
+<span class="coverage-green">	model</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

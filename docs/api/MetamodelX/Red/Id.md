@@ -3,7 +3,7 @@ MetamodelX::Red::Id
 
 ### method is-id
 
-```perl6
+```raku
 method is-id(
     $,
     Red::Attr::Column $attr
@@ -14,7 +14,7 @@ Checks if the given attribute is a primary key of the model.
 
 ### method id
 
-```perl6
+```raku
 method id(
     Mu \type
 ) returns Mu
@@ -24,7 +24,7 @@ Gets a list of ids
 
 ### method general-ids
 
-```perl6
+```raku
 method general-ids(
     \model
 ) returns Mu
@@ -34,7 +34,7 @@ Returns a list of attributes that are either primary keys or marked as unique.
 
 ### method populate-ids
 
-```perl6
+```raku
 method populate-ids(
     Red::Model:D $model
 ) returns Mu
@@ -44,7 +44,7 @@ Sets ids
 
 ### method reset-id
 
-```perl6
+```raku
 method reset-id(
     Red::Model:D $model
 ) returns Mu
@@ -54,7 +54,7 @@ resets id
 
 ### method set-id
 
-```perl6
+```raku
 method set-id(
     Red::Model:D $model,
     %ids
@@ -65,7 +65,7 @@ Sets ids
 
 ### method set-id
 
-```perl6
+```raku
 method set-id(
     Red::Model:D $model,
     $id where { ... }
@@ -76,7 +76,7 @@ Sets id
 
 ### method id-map
 
-```perl6
+```raku
 method id-map(
     Red::Model $model,
     $id
@@ -87,7 +87,7 @@ Returns a Hash with an id map
 
 ### method id-filter
 
-```perl6
+```raku
 method id-filter(
     Red::Model:D $model
 ) returns Mu
@@ -97,7 +97,7 @@ Returns a filter using the id
 
 ### method id-filter
 
-```perl6
+```raku
 method id-filter(
     Red::Model:U $model,
     $id
@@ -108,7 +108,7 @@ Returns a filter using the id
 
 ### method id-filter
 
-```perl6
+```raku
 method id-filter(
     Red::Model:U $model,
     *%data

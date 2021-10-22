@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Driver::SQLite::SchemaReader</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Driver::SQLite::SchemaReader 8.1%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::SchemaReader;</span>
+<span class="coverage-no">use Red::Driver::SQLite::SQLiteMaster;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| An internal class to read SQLite schemes.</span>
+<span class="coverage-green">unit class Red::Driver::SQLite::SchemaReader;</span>
+<span class="coverage-no">also does Red::SchemaReader;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method sqlite-master { Red::Driver::SQLite::SQLiteMaster }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#use Grammar::Tracer::Compact;</span>
+<span class="coverage-green">grammar SQL::CreateTable {</span>
+<span class="coverage-red">    rule  TOP                      { :i &lt;create-table&gt;+ %% &quot;;&quot; }</span>
+<span class="coverage-red">    rule  create-table             { :i CREATE TABLE &lt;table-name=.name&gt; '(' ~ ')' &lt;column&gt;+ %% [ &quot;,&quot; ] }</span>
+<span class="coverage-red">    token name                     { :i \w+ }</span>
+<span class="coverage-red">    rule  type                     { :i &lt;name&gt;[&quot;(&quot; ~ &quot;)&quot; \d+]? }</span>
+<span class="coverage-red">    rule  column                   { :i &lt;column-name=.name&gt; &lt;type&gt; &lt;modifier&gt;? &lt;index-mod&gt;? &lt;auto-increment&gt;? }</span>
+<span class="coverage-red">    rule  auto-increment           { :i &quot;AUTOINCREMENT&quot; }</span>
+<span class="coverage-red">    proto rule modifier            {*}</span>
+<span class="coverage-red">    multi rule modifier:&lt;null&gt;     { :i NULL }</span>
+<span class="coverage-red">    multi rule modifier:&lt;not-null&gt; { :i NOT NULL }</span>
+<span class="coverage-red">    proto rule index-mod           {*}</span>
+<span class="coverage-red">    multi rule index-mod:&lt;pk&gt;      { :i PRIMARY KEY }</span>
+<span class="coverage-red">    multi rule index-mod:&lt;fk&gt;      { :i REFERENCES &lt;table-name=.name&gt; '(' ~ ')' &lt;column-name=.name&gt; }</span>
+<span class="coverage-red">    multi rule index-mod:&lt;unique&gt;  { :i UNIQUE }</span>
+<span class="coverage-red">    proto rule index               {*}</span>
+<span class="coverage-red">    multi rule index:&lt;pk&gt;          { :i PRIMARY KEY '(' ~ ')' &lt;column-name=.name&gt;+ % &quot;,&quot; }</span>
+<span class="coverage-red">    multi rule index:&lt;fk&gt;          { :i FOREIGN KEY &lt;local-column-name=.name&gt; REFERENCES '(' ~ ')' &lt;column-name=.name&gt;+ % &quot;,&quot; }</span>
+<span class="coverage-red">    multi rule index:&lt;unique&gt;      { :i UNIQUE '(' ~ ')' &lt;column-name=.name&gt;+ % &quot;,&quot; }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class SQL::CreateTable::Action {</span>
+<span class="coverage-no">    use Red::Cli::Table;</span>
+<span class="coverage-red">    use Red::Cli::Column;</span>
+<span class="coverage-red">    method TOP($/)                 { make $&lt;create-table&gt;».made }</span>
+<span class="coverage-red">    method create-table($/)        { make Red::Cli::Table.new: name =&gt; $&lt;table-name&gt;.made, columns =&gt; $&lt;column&gt;».made }</span>
+<span class="coverage-red">    method name($/)                { make ~$/ }</span>
+<span class="coverage-red">    method type($/)                { make $/.Str.trim}</span>
+<span class="coverage-red">    method column($/)              {</span>
+<span class="coverage-red">        make Red::Cli::Column.new(</span>
+<span class="coverage-no">            $&lt;column-name&gt;.made,</span>
+<span class="coverage-no">            $&lt;type&gt;.made,</span>
+<span class="coverage-no">            ($&lt;modifier&gt;.made // True),</span>
+<span class="coverage-no">            |$&lt;index-mod&gt;.made&lt;pk unique references&gt;</span>
+<span class="coverage-no">        )</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    method auto-increment          { make ( :auto-increment ) }</span>
+<span class="coverage-red">    method modifier:&lt;null&gt;($/)     { make ( :nullable ) }</span>
+<span class="coverage-red">    method modifier:&lt;not-null&gt;($/) { make ( :!nullable ) }</span>
+<span class="coverage-red">    method index-mod:&lt;pk&gt;($/)      { make ( :pk ) }</span>
+<span class="coverage-red">    method index-mod:&lt;fk&gt;($/)      { make ( :references( %( table =&gt; $&lt;table-name&gt;.made, column =&gt; $&lt;column-name&gt;.made ) ) ) }</span>
+<span class="coverage-red">    method index-mod:&lt;unique&gt;($/)  { make ( :unique ) }</span>
+<span class="coverage-red">    method index:&lt;pk&gt;($/)          { ... }</span>
+<span class="coverage-red">    method index:&lt;fk&gt;($/)          { ... }</span>
+<span class="coverage-red">    method index:&lt;unique&gt;($/)      { ... }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method tables-names       { self.sqlite-master.tables.map: *.name }</span>
+<span class="coverage-red">method indexes-of($table) { self.sqlite-master.find-table($table).indexes }</span>
+<span class="coverage-red">method table-definition($table) {</span>
+<span class="coverage-red">    my $sql = self.sqlite-master.find-table($table).sql;</span>
+<span class="coverage-red">    my $list = self.table-definition-from-create-table($sql);</span>
+<span class="coverage-red">    return unless $list;</span>
+<span class="coverage-red">    $list.head</span>
+<span class="coverage-no">}</span>
+<span class="coverage-red">multi method table-definition-from-create-table(Str:D $sql) {</span>
+<span class="coverage-red">    SQL::CreateTable.parse($sql, :actions(SQL::CreateTable::Action)).made;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method table-definition-from-create-table(Any:U) {</span>
+<span class="coverage-red">    Red::Cli::Table.new</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::Optimizer::Case</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::Optimizer::Case 56.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::Utils;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role Red::AST::Optimizer::Case;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">my subset AstFalse of Red::AST::Value where { .value === False };</span>
+<span class="coverage-green">my subset AstTrue  of Red::AST::Value where { .value === True  };</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method optimize(</span>
+<span class="coverage-no">        Red::AST:U :$case,</span>
+<span class="coverage-green">        Red::AST   :%when! where {</span>
+<span class="coverage-green">            .elems == 1 &amp;&amp; .values.head.?type ~~ Positional</span>
+<span class="coverage-no">        },</span>
+<span class="coverage-no">        Red::AST:U :else($),</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-green">    %when.values.head.get-value&lt;&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method optimize(</span>
+<span class="coverage-no">    Red::AST:U :$case,</span>
+<span class="coverage-green">    Red::AST   :%when! where { .elems &gt;= 1 },</span>
+<span class="coverage-green">    Red::AST   :$else! where { [eqv] |%when.values, $else },</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-green">    $else</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method optimize(</span>
+<span class="coverage-no">    Red::AST:D :$case,</span>
+<span class="coverage-red">    Red::AST   :%when! where {</span>
+<span class="coverage-red">        .first: { .key ~~ AstTrue }</span>
+<span class="coverage-no">    },</span>
+<span class="coverage-no">    Red::AST :$else,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-red">    %when.first({ .key ~~ AstTrue }).value.self</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method optimize(</span>
+<span class="coverage-no">    Red::AST:U :$case,</span>
+<span class="coverage-green">    Red::AST   :%when! where {</span>
+<span class="coverage-green">        .elems == 1 and not .keys.head.defined</span>
+<span class="coverage-no">    },</span>
+<span class="coverage-no">    Red::AST:U :else($),</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-green">    %when.values.head</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method optimize(</span>
+<span class="coverage-no">    Red::AST:U :$case,</span>
+<span class="coverage-green">    Red::AST :%when! where {</span>
+<span class="coverage-green">        .elems == 2</span>
+<span class="coverage-red">        &amp;&amp; Red::AST::AND.new(|.keys) ~~ (AstTrue|AstFalse)</span>
+<span class="coverage-no">    },</span>
+<span class="coverage-no">    Red::AST:U :else($),</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-green">    my $to-remove = %when.keys.first(Red::AST::So) // %when.keys.head;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    my $else = %when{$to-remove}:delete;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    my \ret = self.optimize: :$case, :%when, :$else;</span>
+<span class="coverage-green">    return ret if ret.DEFINITE &amp;&amp; ret ~~ Red::AST;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    self.bless: :$else, :%when</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method optimize(</span>
+<span class="coverage-no">        Red::AST:U :$case,</span>
+<span class="coverage-green">        Red::AST :%when! where {</span>
+<span class="coverage-green">            .elems == 2</span>
+<span class="coverage-red">                    &amp;&amp; .keys[0] ~~ Red::AST::AND</span>
+<span class="coverage-red">                    &amp;&amp; .keys[1] ~~ Red::AST::AND</span>
+<span class="coverage-red">                    &amp;&amp; (</span>
+<span class="coverage-red">                        compare(   .keys[0].left,  .keys[1].left)</span>
+<span class="coverage-red">                        || compare(.keys[0].left,  .keys[1].right)</span>
+<span class="coverage-red">                        || compare(.keys[0].right, .keys[1].left)</span>
+<span class="coverage-red">                        || compare(.keys[0].right, .keys[1].right)</span>
+<span class="coverage-no">                    )</span>
+<span class="coverage-no">        },</span>
+<span class="coverage-no">        Red::AST:U :else($),</span>
+<span class="coverage-no">        ) {</span>
+<span class="coverage-red">    %when = do given %when.keys {</span>
+<span class="coverage-red">        when compare(.[0].left, .[1].left) {</span>
+<span class="coverage-red">            .[0].right =&gt; %when{.[0]}, .[1].right =&gt; %when{.[1]}</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-red">        when compare(.[0].left, .[1].right) {</span>
+<span class="coverage-red">            .[0].right =&gt; %when{.[0]}, .[1].left =&gt; %when{.[1]}</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-red">        when compare(.[0].right, .[1].left) {</span>
+<span class="coverage-red">            .[0].left =&gt; %when{.[0]}, .[1].right =&gt; %when{.[1]}</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-red">        when compare(.[0].right, .[1].right) {</span>
+<span class="coverage-red">            .[0].left =&gt; %when{.[0]}, .[1].left =&gt; %when{.[1]}</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    my \ret = self.optimize: :$case, :%when;</span>
+<span class="coverage-red">    return ret if ret.DEFINITE &amp;&amp; ret ~~ Red::AST;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    self.bless: :%when</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method optimize(Red::AST :$case, Red::AST :%when, Red::AST :$else, UInt :$c where { $_ &lt; 1 } = 0) {</span>
+<span class="coverage-green">    my Red::AST %filteredWhen{Red::AST} = %when.grep: { .key !~~ AstFalse };</span>
+<span class="coverage-green">    die &quot;No conditions passed to CASE/WHEN&quot; unless %filteredWhen;</span>
+<span class="coverage-green">    my \ret = self.optimize: :$case, :when(%filteredWhen), :$else, :c($c + 1);</span>
+<span class="coverage-green">    return ret if ret.DEFINITE &amp;&amp; ret !~~ Empty;</span>
+<span class="coverage-green">    self.bless: :$case, :when(%filteredWhen), :$else</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method optimize(:case($), :when(%), :else($)) { Nil }</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

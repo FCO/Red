@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::Model</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::Model 78.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use v6;</span>
+<span class="coverage-no">use Red::Model;</span>
+<span class="coverage-no">use Red::Attr::Column;</span>
+<span class="coverage-no">use Red::Column;</span>
+<span class="coverage-no">use Red::Utils;</span>
+<span class="coverage-no">use Red::ResultSeq;</span>
+<span class="coverage-no">use Red::DefaultResultSeq;</span>
+<span class="coverage-no">use Red::Attr::Query;</span>
+<span class="coverage-no">use Red::DB;</span>
+<span class="coverage-no">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::AST::Insert;</span>
+<span class="coverage-no">use Red::AST::Delete;</span>
+<span class="coverage-no">use Red::AST::Update;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::CreateTable;</span>
+<span class="coverage-no">use Red::AST::Constraints;</span>
+<span class="coverage-no">use Red::AST::TableComment;</span>
+<span class="coverage-no">use Red::AST::LastInsertedRow;</span>
+<span class="coverage-no">use MetamodelX::Red::Dirtable;</span>
+<span class="coverage-no">use MetamodelX::Red::Comparate;</span>
+<span class="coverage-no">use MetamodelX::Red::Migration;</span>
+<span class="coverage-no">use MetamodelX::Red::Relationship;</span>
+<span class="coverage-no">use MetamodelX::Red::Describable;</span>
+<span class="coverage-no">use MetamodelX::Red::OnDB;</span>
+<span class="coverage-no">use MetamodelX::Red::Id;</span>
+<span class="coverage-no">use MetamodelX::Red::Populatable;</span>
+<span class="coverage-no">use Red::Formatter;</span>
+<span class="coverage-no">use X::Red::Exceptions;</span>
+<span class="coverage-no">use Red::Phaser;</span>
+<span class="coverage-no">use Red::Event;</span>
+<span class="coverage-no">use Red::PrepareCode;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 MetamodelX::Red::Model</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit class MetamodelX::Red::Model is Metamodel::ClassHOW;</span>
+<span class="coverage-no">also does MetamodelX::Red::Dirtable;</span>
+<span class="coverage-no">also does MetamodelX::Red::Comparate;</span>
+<span class="coverage-no">#also does MetamodelX::Red::Migration;</span>
+<span class="coverage-no">also does MetamodelX::Red::Relationship;</span>
+<span class="coverage-no">also does MetamodelX::Red::Describable;</span>
+<span class="coverage-no">also does MetamodelX::Red::OnDB;</span>
+<span class="coverage-no">also does MetamodelX::Red::Id;</span>
+<span class="coverage-no">also does MetamodelX::Red::Populatable;</span>
+<span class="coverage-no">also does Red::Formatter;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Attribute @!columns;</span>
+<span class="coverage-no">has Red::Column %!references;</span>
+<span class="coverage-no">has %!attr-to-column;</span>
+<span class="coverage-no">has $.rs-class;</span>
+<span class="coverage-no">has @!constraints;</span>
+<span class="coverage-no">has $.table;</span>
+<span class="coverage-no">has Bool $!temporary;</span>
+<span class="coverage-no">has Bool $!default-null;</span>
+<span class="coverage-no">has %!alias-cache;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method emit(Mu $model, Red::Event $event) {</span>
+<span class="coverage-green">    start try get-RED-DB.emit: $event.clone: :model($model.WHAT)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method emit(Mu $model, $data, Exception :$error, Red::Model :$origin) {</span>
+<span class="coverage-green">    self.emit: $model, Red::Event.new: :model($model.WHAT), |(:$data with $data), |(:$error with $error)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a list of columns names.of the model.</span>
+<span class="coverage-green">method column-names(|) { @!columns&gt;&gt;.column&gt;&gt;.name }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a hash of model constraints classified by type.</span>
+<span class="coverage-green">method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a hash of foreign keys of the model.</span>
+<span class="coverage-green">method references(|) { %!references }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the table name for the model.</span>
+<span class="coverage-green">method table(Mu \type) is rw {</span>
+<span class="coverage-green">    $!table //= self.table-formatter: type.HOW.?experimental-name(type) // type.^name</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the table alias</span>
+<span class="coverage-green">method as(Mu \type) { self.table: type }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the original model</span>
+<span class="coverage-green">method orig(Mu \type) { type.WHAT }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the name of the ResultSeq class</span>
+<span class="coverage-green">method rs-class-name(Mu \type) { &quot;{type.^name}::ResultSeq&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a list of columns</span>
+<span class="coverage-green">method columns(|) is rw {</span>
+<span class="coverage-red">    @!columns</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a hash with the migration hash</span>
+<span class="coverage-green">method migration-hash(\model --&gt; Hash()) {</span>
+<span class="coverage-green">    columns =&gt; @!columns&gt;&gt;.column&gt;&gt;.migration-hash,</span>
+<span class="coverage-no">    name    =&gt; model.^table,</span>
+<span class="coverage-no">    version =&gt; model.^ver // v0,</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a liast of id values</span>
+<span class="coverage-green">method id-values(Red::Model:D $model) {</span>
+<span class="coverage-green">    self.id($model).map({ .get_value: $model }).list</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Check if the model is nullable by default.</span>
+<span class="coverage-green">method default-nullable(|) is rw { $!default-null }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns all columns with the unique counstraint</span>
+<span class="coverage-green">method unique-constraints(\model) {</span>
+<span class="coverage-green">    @!constraints.unique.grep(*.key eq &quot;unique&quot;).unique.map: *.value.map: *.attr</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| A map from attr to column</span>
+<span class="coverage-green">method attr-to-column(|) is rw {</span>
+<span class="coverage-red">    %!attr-to-column</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method set-helper-attrs(Mu \type) {</span>
+<span class="coverage-green">    self.MetamodelX::Red::Dirtable::set-helper-attrs(type);</span>
+<span class="coverage-green">    self.MetamodelX::Red::OnDB::set-helper-attrs(type);</span>
+<span class="coverage-green">    self.MetamodelX::Red::Id::set-helper-attrs(type);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method new(|c) {</span>
+<span class="coverage-green">    my @eroles = @Red::experimental-roles.grep(self !~~ *).sort({ $^a.^name cmp $^b.^name});</span>
+<span class="coverage-green">    if +@eroles {</span>
+<span class="coverage-green">        return (self.^mixin: |@eroles).new(|c)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    nextsame</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Compose</span>
+<span class="coverage-green">method compose(Mu \type) {</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    self.set-helper-attrs: type;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    type.^prepare-relationships;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    if $.rs-class === Any {</span>
+<span class="coverage-green">        my $rs-class-name = $.rs-class-name(type);</span>
+<span class="coverage-no">        # TODO</span>
+<span class="coverage-no">        #my $rs-class = ::($rs-class-name);</span>
+<span class="coverage-no">        #if !$rs-class &amp;&amp; $rs-class !~~ Failure  {</span>
+<span class="coverage-no">        #    $!rs-class = $rs-class;</span>
+<span class="coverage-no">        #} else {</span>
+<span class="coverage-green">            $!rs-class := create-resultseq($rs-class-name, type);</span>
+<span class="coverage-green">            type.WHO&lt;ResultSeq&gt; := $!rs-class</span>
+<span class="coverage-no">        #}</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    die &quot;{$.rs-class.^name} should do the Red::ResultSeq role&quot; unless $.rs-class ~~ Red::ResultSeq;</span>
+<span class="coverage-green">    self.add_role: type, Red::Model;</span>
+<span class="coverage-green">    self.add_role: type, role :: {</span>
+<span class="coverage-green">        method TWEAK(|c) {</span>
+<span class="coverage-green">            self.^set-dirty: self.^columns;</span>
+<span class="coverage-green">            self.?TWEAK-MODEL(|c)</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    my @roles-cols = self.roles_to_compose(type).grep({ .HOW !~~ Metamodel::CurriedRoleHOW }).flatmap(*.^attributes).grep: Red::Attr::Column;</span>
+<span class="coverage-green">    for @roles-cols -&gt; Red::Attr::Column $attr {</span>
+<span class="coverage-green">        self.add-comparate-methods: type, $attr</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    type.^compose-columns;</span>
+<span class="coverage-green">    self.Metamodel::ClassHOW::compose(type);</span>
+<span class="coverage-green">    type.^compose-columns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    for type.^attributes -&gt; $attr {</span>
+<span class="coverage-green">        %!attr-to-column{$attr.name} = $attr.column.name if $attr ~~ Red::Attr::Column:D;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    self.compose-dirtable: type;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    for type.^columns.grep(*.column.unique-groups.elems &gt; 0).categorize(*.column.unique-groups).values -&gt; @grp {</span>
+<span class="coverage-green">        type.^add-unique-constraint: -&gt; | { @grp&gt;&gt;.column }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    if type.^constraints&lt;pk&gt;:!exists {</span>
+<span class="coverage-green">        type.^add-pk-constraint: type.^id&gt;&gt;.column if type.^id &gt; 1</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates a new reference (foreign key).</span>
+<span class="coverage-green">method add-reference($name, Red::Column $col) {</span>
+<span class="coverage-green">    %!references{$name} = $col</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates a new unique constraint.</span>
+<span class="coverage-green">method add-unique-constraint(Mu:U \type, &amp;columns) {</span>
+<span class="coverage-green">    @!constraints.push: &quot;unique&quot; =&gt; columns(type)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates a new primary key constraint.</span>
+<span class="coverage-red">multi method add-pk-constraint(Mu:U \type, &amp;columns) {</span>
+<span class="coverage-red">    nextwith type, columns(type)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates the primary key constraint.</span>
+<span class="coverage-green">multi method add-pk-constraint(Mu:U \type, @columns) {</span>
+<span class="coverage-green">    @!constraints.push: &quot;pk&quot; =&gt; @columns</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method tables(\model) { [ model ] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">proto method join($, $, $, :$name, *%pars where { .elems == 0 || ( .elems == 1 &amp;&amp; get-RED-DB.join-type(.keys.head) &amp;&amp; so .values.head ) }) {*}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method join(\model, \to-join, &amp;on, :$name, *%pars) {</span>
+<span class="coverage-green">    to-join.^alias: |($_ with $name), :base(model), :relationship(&amp;on.assuming: model), :join-type(%pars.keys.head // &quot;&quot;)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method join(\model, \to-join, Red::AST $on, :$name, *%pars) {</span>
+<span class="coverage-red">    to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type(%pars.keys.head // &quot;&quot;)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method join(\model, \to-join, $on where *.^can(&quot;relationship-ast&quot;), :$name, *%pars) {</span>
+<span class="coverage-green">    to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type(%pars.keys.head // &quot;&quot;)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">my UInt $alias_num = 1;</span>
+<span class="coverage-green">method alias(|c (Red::Model:U \type, Str $name = &quot;{type.^name}_{$alias_num++}&quot;, :$base, :$relationship, :$join-type)) {</span>
+<span class="coverage-green">    return %!alias-cache{$name} if %!alias-cache{$name}:exists;</span>
+<span class="coverage-green">    my \alias = ::?CLASS.new_type(:$name);</span>
+<span class="coverage-red">    %!alias-cache{$name} := alias;</span>
+<span class="coverage-green">    my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {</span>
+<span class="coverage-green">        method columns(|)     { @cols }</span>
+<span class="coverage-green">        method table(|)       { rtype.^table }</span>
+<span class="coverage-green">        method as(|)          { self.table-formatter: $rname }</span>
+<span class="coverage-green">        method orig(|)        { rtype }</span>
+<span class="coverage-green">        method join-type(|)   { join-type }</span>
+<span class="coverage-green">        method tables(|)      { [ |base.^tables, alias ] }</span>
+<span class="coverage-green">        method join-on(|)     {</span>
+<span class="coverage-green">            do given rel {</span>
+<span class="coverage-green">                when Red::AST {</span>
+<span class="coverage-green">                    $_</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-green">                when Callable {</span>
+<span class="coverage-green">                    my $filter = do given what-does-it-do($_, alias) {</span>
+<span class="coverage-green">                        do if [eqv] .values {</span>
+<span class="coverage-green">                            .values.head</span>
+<span class="coverage-green">                        } else {</span>
+<span class="coverage-green">                            .kv.map(-&gt; $test, $ret {</span>
+<span class="coverage-green">                                do with $test {</span>
+<span class="coverage-green">                                    Red::AST::AND.new: $test, ast-value $ret</span>
+<span class="coverage-no">                                } else {</span>
+<span class="coverage-red">                                    $ret</span>
+<span class="coverage-no">                                }</span>
+<span class="coverage-green">                            }).reduce: { Red::AST::OR.new: $^agg, $^fil }</span>
+<span class="coverage-no">                        }</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-green">                    with $*RED-GREP-FILTER {</span>
+<span class="coverage-red">                        $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&amp;ast-value), $filter</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-red">                    $filter</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-green">                default {</span>
+<span class="coverage-green">                    .relationship-ast(alias)</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">#    alias.^add_role: Red::Model;</span>
+<span class="coverage-green">    my @cols = do for @!columns -&gt; $col {</span>
+<span class="coverage-green">        my $new-col = Attribute.new:</span>
+<span class="coverage-no">            :name($col.name),</span>
+<span class="coverage-no">            :package(alias),</span>
+<span class="coverage-no">            :type($col.type),</span>
+<span class="coverage-no">            :has_acessor($col.has_accessor),</span>
+<span class="coverage-no">            :build($col.build)</span>
+<span class="coverage-no">        ;</span>
+<span class="coverage-green">        $new-col does Red::Attr::Column($col.column.Hash);</span>
+<span class="coverage-green">        alias.^add-comparate-methods: $new-col;</span>
+<span class="coverage-red">        $new-col</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    alias.HOW does RAlias[type, $name, alias, $relationship, $base, $join-type, @cols];</span>
+<span class="coverage-green">    for self.relationships.keys -&gt; $rel {</span>
+<span class="coverage-green">        alias.^add-relationship: $rel.transfer: alias</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    alias.^compose;</span>
+<span class="coverage-green">    alias</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates a new column and adds it to the model.</span>
+<span class="coverage-green">method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {</span>
+<span class="coverage-green">    if $attr.name eq @!columns.none.name {</span>
+<span class="coverage-green">        @!columns.push: $attr;</span>
+<span class="coverage-green">        my $name = $attr.name.substr: 2;</span>
+<span class="coverage-green">        with $attr.args{&quot;references&quot; | &quot;model-name&quot;} {</span>
+<span class="coverage-green">            self.add-reference: $name, $attr.column</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        self.add-comparate-methods(T, $attr);</span>
+<span class="coverage-green">        if $attr.has_accessor &amp;&amp; !T.^can($name) {</span>
+<span class="coverage-green">            if type.^rw or $attr.rw {</span>
+<span class="coverage-green">                $attr does role :: { method rw { True } };</span>
+<span class="coverage-green">                T.^add_multi_method: $name, my method (Red::Model:D:) is rw {</span>
+<span class="coverage-no">                    use nqp;</span>
+<span class="coverage-green">                    nqp::getattr(self, self.WHAT, $attr.name)</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            } else {</span>
+<span class="coverage-green">                T.^add_multi_method: $name, my method (Red::Model:D:) {</span>
+<span class="coverage-green">                    $attr.get_value: self</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method compose-columns(Red::Model:U \type) {</span>
+<span class="coverage-green">    for self.attributes(type).grep: Red::Attr::Column -&gt; Red::Attr::Column $attr {</span>
+<span class="coverage-no">        #        $attr.clone;</span>
+<span class="coverage-no">        #        $attr.create-column;</span>
+<span class="coverage-green">        type.^add-column: $attr.clone: :package(type)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the ResultSeq</span>
+<span class="coverage-green">multi method rs(Mu:U --&gt; Red::ResultSeq)          { $.rs-class.new }</span>
+<span class="coverage-red">multi method rs(Mu:U, :$with! --&gt; Red::ResultSeq) { $.rs-class.new.with: $with }</span>
+<span class="coverage-green">multi method rs(Mu:D $obj --&gt; Red::ResultSeq)          { $.rs-class.new: :$obj }</span>
+<span class="coverage-red">multi method rs(Mu:D $obj, :$with! --&gt; Red::ResultSeq) { $.rs-class.new(:$obj).with($with) }</span>
+<span class="coverage-no">#| Alias for C&lt;.rs()&gt;</span>
+<span class="coverage-green">multi method all($obj --&gt; Red::ResultSeq)          { $obj.^rs }</span>
+<span class="coverage-red">multi method all($obj, :$with! --&gt; Red::ResultSeq) { $obj.^rs(:$with) }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Sets model as a temporary table</span>
+<span class="coverage-green">method temp(|) is rw { $!temporary }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method create-table(Str :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};</span>
+<span class="coverage-red">    self.create-table: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method create-table(Red::Driver :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = $with;</span>
+<span class="coverage-red">    self.create-table: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates table unless table already exists</span>
+<span class="coverage-green">multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where so *, *%pars) {</span>
+<span class="coverage-green">    CATCH {</span>
+<span class="coverage-green">        when X::Red::Driver::Mapped::TableExists {</span>
+<span class="coverage-green">            return False</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    self.create-table: model, |%pars</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates table</span>
+<span class="coverage-green">multi method create-table(\model, :$with where not .defined, :if-not-exists($unless-exists) where not .defined) {</span>
+<span class="coverage-green">    die X::Red::InvalidTableName.new: :table(model.^table)</span>
+<span class="coverage-no">        unless get-RED-DB.is-valid-table-name: model.^table</span>
+<span class="coverage-no">    ;</span>
+<span class="coverage-green">    my $data = Red::AST::CreateTable.new:</span>
+<span class="coverage-no">            :name(model.^table),</span>
+<span class="coverage-no">            :temp(model.^temp),</span>
+<span class="coverage-no">            :columns(model.^columns.map(*.column.clone: :class(model))),</span>
+<span class="coverage-no">            :constraints[</span>
+<span class="coverage-green">                |@!constraints.unique.map: {</span>
+<span class="coverage-green">                    when .key ~~ &quot;unique&quot; {</span>
+<span class="coverage-green">                        Red::AST::Unique.new: :columns[|.value]</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-green">                    when .key ~~ &quot;pk&quot; {</span>
+<span class="coverage-green">                        Red::AST::Pk.new: :columns[|.value]</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            ],</span>
+<span class="coverage-red">            |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)</span>
+<span class="coverage-no">    ;</span>
+<span class="coverage-green">    get-RED-DB.execute: |$data;</span>
+<span class="coverage-green">    self.emit: model, $data;</span>
+<span class="coverage-green">    CATCH {</span>
+<span class="coverage-green">        default {</span>
+<span class="coverage-green">            self.emit: model, $data, :error($_);</span>
+<span class="coverage-green">            proceed</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    True</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Applies phasers</span>
+<span class="coverage-green">method apply-row-phasers($obj, Mu:U $phase ) {</span>
+<span class="coverage-green">    for (|$obj.^methods.grep($phase), |$obj.^private_method_table.values.grep($phase)) -&gt; $meth {</span>
+<span class="coverage-green">        $obj.$meth(|($meth.count &gt; 1 ?? $obj !! Empty));</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method save(Red::Driver :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = $with;</span>
+<span class="coverage-red">    self.save: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method save(Str :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};</span>
+<span class="coverage-red">    self.save: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Saves that object on database (create a new row)</span>
+<span class="coverage-green">multi method save($obj, Bool :$insert! where * == True, Bool :$from-create, :$with where not .defined) {</span>
+<span class="coverage-green">    self.apply-row-phasers($obj, BeforeCreate) unless $from-create;</span>
+<span class="coverage-green">    my $ast = Red::AST::Insert.new: $obj;</span>
+<span class="coverage-green">    my $ret := get-RED-DB.execute: $ast;</span>
+<span class="coverage-green">    $obj.^saved-on-db;</span>
+<span class="coverage-green">    $obj.^populate-ids;</span>
+<span class="coverage-green">    self.apply-row-phasers($obj, AfterCreate) unless $from-create;</span>
+<span class="coverage-green">    self.emit: $obj, $ast;</span>
+<span class="coverage-green">    CATCH {</span>
+<span class="coverage-green">        default {</span>
+<span class="coverage-green">            self.emit: $obj, $ast, :error($_);</span>
+<span class="coverage-green">            proceed</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    $obj.^clean-up;</span>
+<span class="coverage-green">    $ret</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Saves that object on database (update the row)</span>
+<span class="coverage-green">multi method save($obj, Bool :$update! where * == True, :$with where not .defined) {</span>
+<span class="coverage-green">    self.apply-row-phasers($obj, BeforeUpdate);</span>
+<span class="coverage-green">    my $ast = Red::AST::Update.new: $obj;</span>
+<span class="coverage-green">    my $ret := get-RED-DB.execute: $ast;</span>
+<span class="coverage-green">    $obj.^saved-on-db;</span>
+<span class="coverage-green">    $obj.^populate-ids;</span>
+<span class="coverage-green">    self.apply-row-phasers($obj, AfterUpdate);</span>
+<span class="coverage-green">    self.emit: $obj, $ast;</span>
+<span class="coverage-red">    CATCH {</span>
+<span class="coverage-red">        default {</span>
+<span class="coverage-red">            self.emit: $obj, $ast, :error($_);</span>
+<span class="coverage-red">            proceed</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    $obj.^clean-up;</span>
+<span class="coverage-green">    $ret</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Generic save, calls C&lt;.^save: :insert&gt; if C&lt;.^is-on-db&gt; or C&lt;.^save: :update&gt; otherwise</span>
+<span class="coverage-green">multi method save($obj, :$with where not .defined) {</span>
+<span class="coverage-green">    do if $obj.^is-on-db {</span>
+<span class="coverage-green">        self.save: $obj, :update</span>
+<span class="coverage-no">    } else {</span>
+<span class="coverage-green">        self.save: $obj, :insert</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method create(Red::Driver :$with!, |c) is hidden-from-backtrace {</span>
+<span class="coverage-red">    my $*RED-DB = $with;</span>
+<span class="coverage-red">    self.create: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method create(Str :$with!, |c) is hidden-from-backtrace {</span>
+<span class="coverage-red">    self.create: :with(%GLOBAL::RED-DEFAULT-DRIVERS{$with}), |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates a new object and saves it on DB</span>
+<span class="coverage-no">#| It accepts a list os pairs (the same as C&lt;.new&gt;)</span>
+<span class="coverage-no">#| And Lists and/or Hashes for relationships</span>
+<span class="coverage-green">multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {</span>
+<span class="coverage-green">    my $RED-DB = get-RED-DB;</span>
+<span class="coverage-green">    my $trans  = so $*RED-TRANSCTION-RUNNING;</span>
+<span class="coverage-green">    $RED-DB   .= begin    unless $trans;</span>
+<span class="coverage-green">    KEEP $RED-DB.commit   unless $trans;</span>
+<span class="coverage-green">    UNDO $RED-DB.rollback unless $trans;</span>
+<span class="coverage-green">    {</span>
+<span class="coverage-green">        my $*RED-DB = $RED-DB;</span>
+<span class="coverage-green">        my $*RED-TRANSCTION-RUNNING = True;</span>
+<span class="coverage-green">        my %relationships = %.relationships.keys.map: {</span>
+<span class="coverage-green">            .name.substr(2) =&gt; $_</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">        my %pars;</span>
+<span class="coverage-no">        my %positionals;</span>
+<span class="coverage-no">        my %has-one{Mu};</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        for %orig-pars.kv -&gt; $name, $val {</span>
+<span class="coverage-green">            my \attr = model.^attributes.first(*.name.substr(2) eq $name);</span>
+<span class="coverage-green">            my \attr-type = attr.type;</span>
+<span class="coverage-green">            with %relationships{ $name } {</span>
+<span class="coverage-green">                my \attr-model = attr.relationship-model;</span>
+<span class="coverage-green">                if $val ~~ Positional &amp;&amp; attr-type ~~ Positional {</span>
+<span class="coverage-green">                    %positionals{$name} = $val</span>
+<span class="coverage-no">                } elsif .has-one {</span>
+<span class="coverage-green">                    die &quot;Value of '$name' should be Associative&quot; unless $val ~~ Associative;</span>
+<span class="coverage-no">#                    my $type = attr.relationship-model;</span>
+<span class="coverage-no">#                    try { attr-type.^find(|$val) } // attr-type.^create: |$val</span>
+<span class="coverage-green">                    %has-one{$val} = attr</span>
+<span class="coverage-green">                } elsif $val ~~ Associative &amp;&amp; $val !~~ Red::Model {</span>
+<span class="coverage-green">                    %pars{$name} = do if attr-model ~~ Red::Model {</span>
+<span class="coverage-green">                        try { attr-model.^find(|$val) } // attr-model.^create: |$val</span>
+<span class="coverage-red">                    } else {</span>
+<span class="coverage-red">                        try { attr-type.^find(|$val)  } // attr-type.^create:  |$val</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-no">                } else {</span>
+<span class="coverage-green">                    %pars{$name} = $val</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-purple">            } else {</span>
+<span class="coverage-green">                %pars{$name} = $val</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        my $obj = model.new: |%pars;</span>
+<span class="coverage-green">        self.apply-row-phasers($obj, BeforeCreate);</span>
+<span class="coverage-green">        my $data := $obj.^save(:insert, :from-create).row;</span>
+<span class="coverage-green">        my @ids = model.^id&gt;&gt;.column&gt;&gt;.attr-name;</span>
+<span class="coverage-green">        my @ids-col = model.^id&gt;&gt;.column&gt;&gt;.name;</span>
+<span class="coverage-green">        my %cols = model.^columns.map: { .column.attr-name =&gt; .column };</span>
+<span class="coverage-green">        my $filter = do if @ids {</span>
+<span class="coverage-green">            model.^id-filter: |do if $data.defined and not $data.elems {</span>
+<span class="coverage-green">                $*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row{|@ids}:kv</span>
+<span class="coverage-green">            } else {</span>
+<span class="coverage-green">                do for @ids-col.kv -&gt; $i, $k {</span>
+<span class="coverage-green">                    @ids[$i] =&gt; $data{$k}</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            }.Hash</span>
+<span class="coverage-green">        } else {</span>
+<span class="coverage-green">            %pars.kv.map(-&gt; $key, $value {</span>
+<span class="coverage-green">                Red::AST::Eq.new: %cols{$key}, ast-value $value</span>
+<span class="coverage-no">            })</span>
+<span class="coverage-green">                .reduce: { Red::AST::AND.new: $^a, $^b }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">        my $no;</span>
+<span class="coverage-green">        for %positionals.kv -&gt; $name, @val {</span>
+<span class="coverage-green">            FIRST $no = model.^find($filter);</span>
+<span class="coverage-green">            $no.&quot;$name&quot;().create: |$_ for @val</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        for %has-one.kv -&gt; %val, \attr {</span>
+<span class="coverage-green">            FIRST $no //= model.^find($filter);</span>
+<span class="coverage-green">            my $type = attr.relationship-model;</span>
+<span class="coverage-green">            my $id-name = attr.rel.attr-name;</span>
+<span class="coverage-no">            #TODO: What to do when there is more than one id???</span>
+<span class="coverage-green">            $type.^create: |%( |%val, $id-name =&gt; $no.^id-values.head )</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        self.apply-row-phasers($obj, AfterCreate);</span>
+<span class="coverage-green">        return-rw Proxy.new:</span>
+<span class="coverage-red">                STORE =&gt; -&gt; | {</span>
+<span class="coverage-red">                    die X::Assignment::RO.new(value =&gt; $obj)</span>
+<span class="coverage-no">                },</span>
+<span class="coverage-green">                FETCH =&gt; {</span>
+<span class="coverage-green">                    $ //= do {</span>
+<span class="coverage-no">                        my $obj;</span>
+<span class="coverage-green">                        my $*RED-DB = $RED-DB;</span>
+<span class="coverage-green">                        if !$data.elems {</span>
+<span class="coverage-green">                            $obj = model.^find: $filter</span>
+<span class="coverage-no">                        } else {</span>
+<span class="coverage-green">                            $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);</span>
+<span class="coverage-green">                            $obj.^saved-on-db;</span>
+<span class="coverage-green">                            $obj.^clean-up;</span>
+<span class="coverage-green">                            $obj.^populate-ids;</span>
+<span class="coverage-no">                        }</span>
+<span class="coverage-red">                        $obj</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method delete(Red::Driver :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = $with;</span>
+<span class="coverage-red">    self.delete: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method delete(Str :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};</span>
+<span class="coverage-red">    self.delete: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Deletes row from database</span>
+<span class="coverage-green">multi method delete(\model, :$with where not .defined) {</span>
+<span class="coverage-green">    my $origin = model.clone;</span>
+<span class="coverage-green">    self.apply-row-phasers(model, BeforeDelete);</span>
+<span class="coverage-green">    my $ast = Red::AST::Delete.new: model;</span>
+<span class="coverage-green">    get-RED-DB.execute: $ast;</span>
+<span class="coverage-green">    self.emit: model, $ast, :$origin;</span>
+<span class="coverage-red">    CATCH {</span>
+<span class="coverage-red">        default {</span>
+<span class="coverage-red">            self.emit: model, $ast, :$origin, :error($_);</span>
+<span class="coverage-red">            proceed</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    self.apply-row-phasers(model, AfterDelete);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method load(Red::Driver :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = $with;</span>
+<span class="coverage-red">    self.load: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method load(Str :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};</span>
+<span class="coverage-red">    self.load: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Loads object from the DB</span>
+<span class="coverage-green">multi method load(Red::Model:U \model, |ids) {</span>
+<span class="coverage-green">    my $filter = model.^id-filter: |ids;</span>
+<span class="coverage-green">    model.^rs.grep({ $filter }).head</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates a new object setting ids with this values</span>
+<span class="coverage-red">multi method new-with-id(Red::Model:U \model, %ids, :$with where not .defined) {</span>
+<span class="coverage-red">    model.new: |model.^id-map: |%ids;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method new-with-id(Red::Driver :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = $with;</span>
+<span class="coverage-red">    self.new-with-id: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method new-with-id(Str :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};</span>
+<span class="coverage-red">    self.new-with-id: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates a new object setting the id</span>
+<span class="coverage-green">multi method new-with-id(Red::Model:U \model, |ids) {</span>
+<span class="coverage-green">    model.new: |model.^id-map: |ids;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method search(Red::Driver :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = $with;</span>
+<span class="coverage-red">    self.search: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method search(Str :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};</span>
+<span class="coverage-red">    self.search: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Receives a `Block` of code and returns a `ResultSeq` using the `Block`'s return as filter</span>
+<span class="coverage-green">multi method search(Red::Model:U \model, &amp;filter, :$with where not .defined) {</span>
+<span class="coverage-green">    model.^rs.grep: &amp;filter</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Receives a `AST` of code and returns a `ResultSeq` using that `AST` as filter</span>
+<span class="coverage-green">multi method search(Red::Model:U \model, Red::AST $filter, :$with where not .defined) {</span>
+<span class="coverage-green">    samewith model, { $filter }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter</span>
+<span class="coverage-green">multi method search(Red::Model:U \model, *%filter, :$with where not .defined) {</span>
+<span class="coverage-green">    samewith</span>
+<span class="coverage-no">        model,</span>
+<span class="coverage-no">        %filter.kv</span>
+<span class="coverage-green">            .map(-&gt; $k, $value { Red::AST::Eq.new: model.&quot;$k&quot;(), Red::AST::Value.new: :$value })</span>
+<span class="coverage-green">            .reduce: { Red::AST::AND.new: $^a, $^b }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method find(Red::Driver :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = $with;</span>
+<span class="coverage-red">    self.find: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method find(Str :$with!, |c) {</span>
+<span class="coverage-red">    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};</span>
+<span class="coverage-red">    self.find: |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Finds a specific row</span>
+<span class="coverage-green">multi method find(|c) { self.search(|c).head }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method find(Red::Model:U, Any:U) { die &quot;Could not use find without data&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method get-attr(\instance, Str $name) {</span>
+<span class="coverage-green">    $!col-data-attr.get_value(instance).{ $name }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method set-attr(\instance, Str $name, \value) {</span>
+<span class="coverage-green">    $!col-data-attr.get_value(instance).{ $name } = value</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method get-attr(\instance, Red::Attr::Column $attr) {</span>
+<span class="coverage-green">    samewith instance, $attr.name.substr: 2</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method set-attr(\instance, Red::Attr::Column $attr, \value) {</span>
+<span class="coverage-green">    samewith instance, $attr.name.substr(2), value</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method new-from-data(\of, $data) is hidden-from-backtrace {</span>
+<span class="coverage-green">    my %cols-by-attr = of.^columns.map: { .column.attr-name =&gt; .column  }</span>
+<span class="coverage-green">    my %cols-by-col  = of.^columns.map: { .column.name =&gt; .column }</span>
+<span class="coverage-green">    my $obj = of.^orig.new: |(%($data).kv</span>
+<span class="coverage-green">        .map(-&gt; $c, $v {</span>
+<span class="coverage-green">            do with $v {</span>
+<span class="coverage-green">                unless $c.contains: &quot;.&quot; {</span>
+<span class="coverage-green">                    my $col = ( %cols-by-col{$c} // %cols-by-attr{$c} );</span>
+<span class="coverage-green">                    die &quot;Column '$c' not found&quot; without $col;</span>
+<span class="coverage-green">                    die &quot;Inflator not defined for column '$c'&quot; without $col.inflate;</span>
+<span class="coverage-green">                    my $inflated = $col.inflate.($v, |($col.attr.type if $col.inflate.count &gt; 1));</span>
+<span class="coverage-green">                    $inflated = get-RED-DB.inflate(</span>
+<span class="coverage-no">                            $inflated,</span>
+<span class="coverage-no">                            :to(of.^attributes.first(*.name.substr(2) eq $c).type)</span>
+<span class="coverage-no">                    ) if \(</span>
+<span class="coverage-no">                        get-RED-DB,</span>
+<span class="coverage-no">                        $inflated,</span>
+<span class="coverage-no">                        :to(of.^attributes.first(*.name.substr(2) eq $c).type)</span>
+<span class="coverage-no">                    ) ~~ get-RED-DB.^lookup(&quot;inflate&quot;).candidates.any.signature;</span>
+<span class="coverage-green">                    $col.attr-name =&gt; $inflated</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-green">            } else { Empty }</span>
+<span class="coverage-no">        }).Hash</span>
+<span class="coverage-no">    );</span>
+<span class="coverage-green">    my %pre = (%(), |$data.keys).reduce: -&gt; %ag, $key {</span>
+<span class="coverage-green">        if $data{ $key }:exists &amp;&amp; $data{ $key }.defined {</span>
+<span class="coverage-green">            my ($first, *@rest) := $key.split(&quot;.&quot;);</span>
+<span class="coverage-green">            %ag{ $first }{ @rest.join(&quot;.&quot;) } = $data{ $key } if @rest;</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-red">        %ag</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    if %pre {</span>
+<span class="coverage-green">        for |$obj.^has-one-relationships -&gt; $rel {</span>
+<span class="coverage-green">            with %pre{ $rel.rel-name } {</span>
+<span class="coverage-green">                $rel.set_value: $obj, $_</span>
+<span class="coverage-no">                        with $rel.relationship-model.^new-from-data: $_</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    $obj</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Driver::Pg</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Driver::Pg 3.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use DB::Pg;</span>
+<span class="coverage-no">use Red::Driver;</span>
+<span class="coverage-no">use Red::Driver::CommonSQL;</span>
+<span class="coverage-no">use Red::Statement;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use X::Red::Exceptions;</span>
+<span class="coverage-no">use Red::AST::TableComment;</span>
+<span class="coverage-no">need UUID;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit class Red::Driver::Pg does Red::Driver::CommonSQL;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Str $!user;</span>
+<span class="coverage-no">has Str $!password;</span>
+<span class="coverage-no">has Str $!host;</span>
+<span class="coverage-no">has Int $!port;</span>
+<span class="coverage-no">has Str $!dbname;</span>
+<span class="coverage-no">has DB::Pg $!dbh;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method schema-reader {}</span>
+<span class="coverage-red">submethod BUILD(DB::Pg :$!dbh, Str :$!user, Str :$!password, Str :$!host = &quot;127.0.0.1&quot;, Int :$!port = 5432, Str :$!dbname) {</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">submethod TWEAK() {</span>
+<span class="coverage-red">    $!dbh //= DB::Pg.new: conninfo =&gt; &quot;{ &quot;user=$_&quot; with $!user } { &quot;password=$_&quot; with $!password } { &quot;host=$_&quot; with $!host } { &quot;port=$_&quot; with $!port } { &quot;dbname=$_&quot; with $!dbname }&quot;;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method new-connection {</span>
+<span class="coverage-red">    self.WHAT.new: |self.^attributes.grep( *.name ne '$!dbh').map({ .name.substr(2) =&gt; .get_value: self }).Hash</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method wildcard { &quot;\${ ++$*bind-counter }&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::Column $_, &quot;column-auto-increment&quot;) {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined) {</span>
+<span class="coverage-red">    my Int $*bind-counter;</span>
+<span class="coverage-red">    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-red">multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined) {</span>
+<span class="coverage-red">    my Int $*bind-counter;</span>
+<span class="coverage-red">    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::RowId $_, $context?) { &quot;OID&quot; =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined) {</span>
+<span class="coverage-red">    my Int $*bind-counter;</span>
+<span class="coverage-red">    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Insert $_, $context?) {</span>
+<span class="coverage-red">    my Int $*bind-counter;</span>
+<span class="coverage-red">    my @values = .values.grep({ .value.value.defined });</span>
+<span class="coverage-red">    my @bind = @values.map: *.value.get-value;</span>
+<span class="coverage-red">    &quot;INSERT INTO {</span>
+<span class="coverage-red">        self.table-name-wrapper: .into.^table</span>
+<span class="coverage-red">    }(\n{</span>
+<span class="coverage-red">        @values&gt;&gt;.key.join(&quot;,\n&quot;).indent: 3</span>
+<span class="coverage-red">    }\n)\nVALUES(\n{</span>
+<span class="coverage-red">        (self.wildcard xx @values).join(&quot;,\n&quot;).indent: 3</span>
+<span class="coverage-no">    }\n) RETURNING *&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Mod $_, $context?) {</span>
+<span class="coverage-red">    my ($ls, @lb) := self.translate: .left,  $context;</span>
+<span class="coverage-red">    my ($rs, @rb) := self.translate: .right, $context;</span>
+<span class="coverage-red">    &quot;mod($ls, $rs)&quot; =&gt; [|@lb, |@rb]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {</span>
+<span class="coverage-red">    (.value ?? &quot;'t'&quot; !! &quot;'f'&quot;) =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {</span>
+<span class="coverage-red">    &quot;'{ .value.Str }'&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::Column $_, &quot;column-comment&quot;) {</span>
+<span class="coverage-red">    (.comment ?? &quot;COMMENT ON COLUMN { self.translate: $_, &quot;table-dot-column&quot; } IS '{ .comment }'&quot; !! &quot;&quot;) =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::TableComment $_, $context?) {</span>
+<span class="coverage-red">    &quot;COMMENT ON TABLE { .table } IS '{ .msg }'&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class Statement does Red::Statement {</span>
+<span class="coverage-red">    has Str $.query;</span>
+<span class="coverage-red">    method stt-exec($stt, *@bind) {</span>
+<span class="coverage-red">        $!driver.debug: $!query, @bind || @!binds;</span>
+<span class="coverage-red">        my $db = $stt.db;</span>
+<span class="coverage-red">        my $sth = $db.prepare($!query);</span>
+<span class="coverage-red">        my $s = $sth.execute(|(@bind or @!binds));</span>
+<span class="coverage-red">        $db.finish;</span>
+<span class="coverage-red">        do if $s ~~ DB::Pg::Results {</span>
+<span class="coverage-red">            $s.hashes</span>
+<span class="coverage-no">        } else {</span>
+<span class="coverage-red">            []</span>
+<span class="coverage-no">        }.iterator</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    method stt-row($stt) { $stt.pull-one }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method comment-on-same-statement { False }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method prepare(Str $query) {</span>
+<span class="coverage-red">    CATCH {</span>
+<span class="coverage-red">        default {</span>
+<span class="coverage-red">            self.map-exception($_).throw</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    Statement.new: :driver(self), :statement($!dbh), :$query</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime                    --&gt; Str:D) {&quot;timestamp&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where { .attr.type ~~ Int and .auto-increment } --&gt; Str:D) {&quot;serial&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)              --&gt; Str:D) {&quot;integer&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Bool                        --&gt; Str:D) {&quot;boolean&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ UUID                        --&gt; Str:D) {&quot;uuid&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $                                                 --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /&quot;duplicate key value violates unique constraint &quot; \&quot;$&lt;field&gt;=(\w+)\&quot;/) {</span>
+<span class="coverage-red">    X::Red::Driver::Mapped::Unique.new:</span>
+<span class="coverage-no">            :driver&lt;Pg&gt;,</span>
+<span class="coverage-no">            :orig-exception($x),</span>
+<span class="coverage-no">            :fields($&lt;field&gt;.Str)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method map-exception(DB::Pg::Error::FatalError $x where /&quot;duplicate key value violates unique constraint&quot;/) {</span>
+<span class="coverage-red">    $x.?message-detail ~~ /&quot;Key (&quot; \s* (\w+)+ % [\s* &quot;,&quot; \s*] \s* &quot;)=(&quot; .*? &quot;) already exists.&quot;/;</span>
+<span class="coverage-red">    my @fields = $0 ?? $0&gt;&gt;.Str !! &quot;&quot;;</span>
+<span class="coverage-red">    X::Red::Driver::Mapped::Unique.new:</span>
+<span class="coverage-no">        :driver&lt;Pg&gt;,</span>
+<span class="coverage-no">        :orig-exception($x),</span>
+<span class="coverage-no">        :@fields,</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method map-exception(DB::Pg::Error::FatalError $x where /&quot;duplicate key value violates unique constraint&quot;/) {</span>
+<span class="coverage-red">    $x.?message ~~ /&quot;DETAIL:  Key (&quot; \s* (\w+)+ % [\s* &quot;,&quot; \s*] \s* &quot;)=(&quot; .*? &quot;) already exists.&quot;/;</span>
+<span class="coverage-red">    X::Red::Driver::Mapped::Unique.new:</span>
+<span class="coverage-no">        :driver&lt;Pg&gt;,</span>
+<span class="coverage-no">        :orig-exception($x),</span>
+<span class="coverage-no">        :fields($0&gt;&gt;.Str)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /relation \s+ \&quot;$&lt;table&gt;=(\w+)\&quot; \s+ already \s+ exists/) {</span>
+<span class="coverage-red">    X::Red::Driver::Mapped::TableExists.new:</span>
+<span class="coverage-no">            :driver&lt;Pg&gt;,</span>
+<span class="coverage-no">            :orig-exception($x),</span>
+<span class="coverage-no">            :table($&lt;table&gt;.Str)</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

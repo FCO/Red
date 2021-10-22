@@ -11,7 +11,7 @@ Supply of events of that driver
 
 ### method begin
 
-```perl6
+```raku
 method begin() returns Mu
 ```
 
@@ -19,7 +19,7 @@ Begin transaction
 
 ### method commit
 
-```perl6
+```raku
 method commit() returns Mu
 ```
 
@@ -27,7 +27,7 @@ Commit transaction
 
 ### method rollback
 
-```perl6
+```raku
 method rollback() returns Mu
 ```
 
@@ -35,7 +35,7 @@ Rollback transaction
 
 ### method auto-register
 
-```perl6
+```raku
 method auto-register(
     |
 ) returns Mu
@@ -45,7 +45,7 @@ Self-register its events on Red.events
 
 ### method emit
 
-```perl6
+```raku
 method emit(
     $data?
 ) returns Mu
@@ -55,7 +55,7 @@ Emit events
 
 ### method should-drop-cascade
 
-```perl6
+```raku
 method should-drop-cascade() returns Mu
 ```
 
@@ -63,7 +63,7 @@ Does this driver accept drop table cascade?
 
 ### method emit
 
-```perl6
+```raku
 method emit(
     Red::Event $event
 ) returns Mu
@@ -73,7 +73,7 @@ Emit events
 
 ### method prepare
 
-```perl6
+```raku
 method prepare(
     Red::AST $query
 ) returns Mu
@@ -83,7 +83,7 @@ Prepares a DB statement
 
 ### method is-valid-table-name
 
-```perl6
+```raku
 method is-valid-table-name(
     Str $
 ) returns Bool
@@ -93,7 +93,7 @@ Checks if a name is a valid table name
 
 ### method type-by-name
 
-```perl6
+```raku
 method type-by-name(
     "varchar"
 ) returns "varchar(255)"
@@ -103,7 +103,7 @@ Maps types
 
 ### method type-by-name
 
-```perl6
+```raku
 method type-by-name(
     "string"
 ) returns "text"
@@ -113,7 +113,7 @@ Maps types
 
 ### method type-by-name
 
-```perl6
+```raku
 method type-by-name(
     "int"
 ) returns "integer"
@@ -123,7 +123,7 @@ Maps types
 
 ### method map-exception
 
-```perl6
+```raku
 method map-exception(
     $orig-exception
 ) returns Mu
@@ -133,7 +133,7 @@ Maps exception
 
 ### method inflate
 
-```perl6
+```raku
 method inflate(
     $value,
     :$to
@@ -144,7 +144,7 @@ Default inflator
 
 ### method execute
 
-```perl6
+```raku
 method execute(
     $query,
     *@bind
@@ -155,7 +155,7 @@ Execute query
 
 ### method optimize
 
-```perl6
+```raku
 method optimize(
     Red::AST $in
 ) returns Red::AST

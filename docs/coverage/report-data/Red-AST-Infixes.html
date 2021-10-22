@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::Infixes</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::Infixes 35.9%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST::Infix;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-red">class Red::AST::Sum     { ... }</span>
+<span class="coverage-red">class Red::AST::Eq      { ... }</span>
+<span class="coverage-red">class Red::AST::Ne      { ... }</span>
+<span class="coverage-red">class Red::AST::Lt      { ... }</span>
+<span class="coverage-red">class Red::AST::Gt      { ... }</span>
+<span class="coverage-red">class Red::AST::Le      { ... }</span>
+<span class="coverage-red">class Red::AST::Ge      { ... }</span>
+<span class="coverage-red">class Red::AST::AND     { ... }</span>
+<span class="coverage-red">class Red::AST::OR      { ... }</span>
+<span class="coverage-red">class Red::AST::Mul     { ... }</span>
+<span class="coverage-red">class Red::AST::Div     { ... }</span>
+<span class="coverage-red">class Red::AST::IDiv    { ... }</span>
+<span class="coverage-red">class Red::AST::Mod     { ... }</span>
+<span class="coverage-red">class Red::AST::Concat  { ... }</span>
+<span class="coverage-red">class Red::AST::Like    { ... }</span>
+<span class="coverage-red">class Red::AST::In      { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a sum operation</span>
+<span class="coverage-green">class Red::AST::Sum does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;+&quot;;</span>
+<span class="coverage-green">    has $.returns = (self.left | self.right).returns ~~ Num ?? Num !! Int;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {</span>
+<span class="coverage-red">        self.find-column-name =&gt; self.find-value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-column-name {</span>
+<span class="coverage-red">        gather for self.args {</span>
+<span class="coverage-red">            .take for .?find-column-name</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-value {</span>
+<span class="coverage-red">        for self.args {</span>
+<span class="coverage-red">            .return with .?find-value</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a subtraction operation</span>
+<span class="coverage-green">class Red::AST::Sub does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;-&quot;;</span>
+<span class="coverage-green">    has $.returns = (self.left | self.right).returns ~~ Num ?? Num !! Int;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {</span>
+<span class="coverage-red">        self.find-column-name =&gt; self.find-value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-column-name {</span>
+<span class="coverage-red">        gather for self.args {</span>
+<span class="coverage-red">            .take for .?find-column-name</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-value {</span>
+<span class="coverage-red">        for self.args {</span>
+<span class="coverage-red">            .return with .?find-value</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a equality operation</span>
+<span class="coverage-green">class Red::AST::Eq does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;=&quot;;</span>
+<span class="coverage-red">    has Bool $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method should-set(--&gt; Hash()) {</span>
+<span class="coverage-green">        self.find-column-name =&gt; self.find-value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method find-column-name {</span>
+<span class="coverage-green">        gather for self.args {</span>
+<span class="coverage-green">            .take if .defined for .?find-column-name</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method find-value {</span>
+<span class="coverage-green">        for self.args {</span>
+<span class="coverage-green">            .return with .?find-value</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method not {</span>
+<span class="coverage-green">        Red::AST::Ne.new: $.left, $.right, :bind-left($.bind-left), :bind-right($.bind-right)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a not equality operation</span>
+<span class="coverage-green">class Red::AST::Ne does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;!=&quot;;</span>
+<span class="coverage-red">    has Bool $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) { }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method not {</span>
+<span class="coverage-green">        Red::AST::Eq.new: $.left, $.right, :bind-left($.bind-left), :bind-right($.bind-right)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a less than operation</span>
+<span class="coverage-green">class Red::AST::Lt does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;&lt;&quot;;</span>
+<span class="coverage-red">    has Bool $.returns;</span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) { }</span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method not {</span>
+<span class="coverage-green">        Red::AST::Ge.new: $.left, $.right, :bind-left($.bind-left), :bind-right($.bind-right)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a greater than operation</span>
+<span class="coverage-green">class Red::AST::Gt does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;&gt;&quot;;</span>
+<span class="coverage-red">    has Bool $.returns;</span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) { }</span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method not {</span>
+<span class="coverage-green">        Red::AST::Le.new: $.left, $.right, :bind-left($.bind-left), :bind-right($.bind-right)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a less than equal operation</span>
+<span class="coverage-green">class Red::AST::Le does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;&lt;=&quot;;</span>
+<span class="coverage-red">    has Bool $.returns;</span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) { }</span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method not {</span>
+<span class="coverage-green">        Red::AST::Gt.new: $.left, $.right, :bind-left($.bind-left), :bind-right($.bind-right)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a greater then equal operation</span>
+<span class="coverage-green">class Red::AST::Ge does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;&gt;=&quot;;</span>
+<span class="coverage-red">    has Bool $.returns;</span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) { }</span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method not {</span>
+<span class="coverage-green">        Red::AST::Lt.new: $.left, $.right, :bind-left($.bind-left), :bind-right($.bind-right)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a AND operation</span>
+<span class="coverage-green">class Red::AST::AND does Red::AST::Infix {</span>
+<span class="coverage-no">    #also does Red::AST::Optimizer::And;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">    has $.op = &quot;AND&quot;;</span>
+<span class="coverage-red">    has Bool $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    multi method new(Red::AST $left is copy, Red::AST $right is copy) {</span>
+<span class="coverage-green">        my \ret = self.optimize: $left, $right;</span>
+<span class="coverage-green">        return ret if ret.DEFINITE &amp;&amp; ret !~~ Empty;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        $left  .= value if $left  ~~ Red::AST::So;</span>
+<span class="coverage-green">        $right .= value if $right ~~ Red::AST::So;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        return $left if $left eqv $right;</span>
+<span class="coverage-green">        return ast-value(False) if $left eqv $right.not;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        self.WHAT.bless: :$left, :$right</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method should-set(--&gt; Hash()) {</span>
+<span class="coverage-green">        [$.left, $.right].flatmap({ .should-set })</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method not {</span>
+<span class="coverage-green">        Red::AST::OR.new: $.left.not, $.right.not, :bind-left($.bind-left), :bind-right($.bind-right)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a OR operation</span>
+<span class="coverage-green">class Red::AST::OR does Red::AST::Infix {</span>
+<span class="coverage-no">    #also does Red::AST::Optimizer::OR;</span>
+<span class="coverage-no">    has $.op = &quot;OR&quot;;</span>
+<span class="coverage-red">    has Bool $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    multi method new(Red::AST $left is copy, Red::AST $right is copy) {</span>
+<span class="coverage-green">        my \ret = self.optimize: $left, $right;</span>
+<span class="coverage-green">        return ret if ret.DEFINITE &amp;&amp; ret !~~ Empty;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        $left  .= value if $left  ~~ Red::AST::So;</span>
+<span class="coverage-green">        $right .= value if $right ~~ Red::AST::So;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        return $left if $left eqv $right;</span>
+<span class="coverage-green">        return ast-value(True) if $left eqv $right.not;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        self.WHAT.bless: :$left, :$right</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method not {</span>
+<span class="coverage-red">        Red::AST::AND.new: $.left.not, $.right.not, :bind-left($.bind-left), :bind-right($.bind-right)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a multiplication operation</span>
+<span class="coverage-green">class Red::AST::Mul does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;*&quot;;</span>
+<span class="coverage-green">    has $.returns = (self.left | self.right).returns ~~ Num ?? Num !! Int;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {</span>
+<span class="coverage-red">        self.find-column-name =&gt; self.find-value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-column-name {</span>
+<span class="coverage-red">        gather for self.args {</span>
+<span class="coverage-red">            .take for .?find-column-name</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-value {</span>
+<span class="coverage-red">        for self.args {</span>
+<span class="coverage-red">            .return with .?find-value</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a division operation</span>
+<span class="coverage-green">class Red::AST::Div does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;/&quot;;</span>
+<span class="coverage-red">    has Num $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {</span>
+<span class="coverage-red">        self.find-column-name =&gt; self.find-value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-column-name {</span>
+<span class="coverage-red">        gather for self.args {</span>
+<span class="coverage-red">            .take for .?find-column-name</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-value {</span>
+<span class="coverage-red">        for self.args {</span>
+<span class="coverage-red">            .return with .?find-value</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a division operation</span>
+<span class="coverage-green">class Red::AST::IDiv does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;/&quot;;</span>
+<span class="coverage-red">    has Int $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {</span>
+<span class="coverage-red">        self.find-column-name =&gt; self.find-value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-column-name {</span>
+<span class="coverage-red">        gather for self.args {</span>
+<span class="coverage-red">            .take for .?find-column-name</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-value {</span>
+<span class="coverage-red">        for self.args {</span>
+<span class="coverage-red">            .return with .?find-value</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a module operation</span>
+<span class="coverage-green">class Red::AST::Mod does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;%&quot;;</span>
+<span class="coverage-red">    has Int $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {</span>
+<span class="coverage-red">        self.find-column-name =&gt; self.find-value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-column-name {</span>
+<span class="coverage-red">        gather for self.args {</span>
+<span class="coverage-red">            .take for .?find-column-name</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method find-value {</span>
+<span class="coverage-red">        for self.args {</span>
+<span class="coverage-red">            .return with .?find-value</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a concatenation operation</span>
+<span class="coverage-green">class Red::AST::Concat does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;||&quot;;</span>
+<span class="coverage-red">    has Str $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    multi method new(Red::AST $left, Red::AST::Value $ where .value eq &quot;&quot;,  *%) { $left }</span>
+<span class="coverage-red">    multi method new(Red::AST::Value $ where .value eq &quot;&quot;, Red::AST $right, *%) { $right }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a like operation</span>
+<span class="coverage-green">class Red::AST::Like does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;like&quot;;</span>
+<span class="coverage-red">    has Str $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    multi method new(Red::AST $left, Red::AST::Value $ where .value eq &quot;&quot;,  *%) { $left }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a not in operation</span>
+<span class="coverage-green">class Red::AST::NotIn does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;NOT IN&quot;;</span>
+<span class="coverage-red">    has Str $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method not {</span>
+<span class="coverage-red">        Red::AST::In.new: $!left, $!right;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a in operation</span>
+<span class="coverage-green">class Red::AST::In does Red::AST::Infix {</span>
+<span class="coverage-no">    has $.op = &quot;IN&quot;;</span>
+<span class="coverage-red">    has Str $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(--&gt; Hash()) {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method not {</span>
+<span class="coverage-green">        Red::AST::NotIn.new: $!left, $!right;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

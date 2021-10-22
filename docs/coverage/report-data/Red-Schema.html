@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Schema</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Schema 91.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Do;</span>
+<span class="coverage-no">use Red::DB;</span>
+<span class="coverage-no">use Red::Driver::Pg;</span>
+<span class="coverage-green">unit class Red::Schema;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">proto sub schema(|) { * }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi sub schema(+@models) is export {</span>
+<span class="coverage-green">    ::?CLASS.new: @models</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi sub schema(*%models) is export {</span>
+<span class="coverage-green">    ::?CLASS.new: %models</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">has %.models;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method new(@models) {</span>
+<span class="coverage-green">    my %models = @models.map: {</span>
+<span class="coverage-green">        do if $_ ~~ Str {</span>
+<span class="coverage-green">            require ::($_);</span>
+<span class="coverage-green">            $_ =&gt; ::($_)</span>
+<span class="coverage-no">        } else {</span>
+<span class="coverage-green">            .^name =&gt; $_</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    self.bless: :%models</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method new(%model-alias) {</span>
+<span class="coverage-green">    my %models = %model-alias.kv.map: -&gt; $alias, $model {</span>
+<span class="coverage-green">        do if $model ~~ Str {</span>
+<span class="coverage-green">            require ::($model);</span>
+<span class="coverage-green">            $alias =&gt; ::($model)</span>
+<span class="coverage-no">        } else {</span>
+<span class="coverage-green">            $alias =&gt; $model</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    self.bless: :%models</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method FALLBACK(Str $name) {</span>
+<span class="coverage-green">    $.model($name);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method model(Str $name) {</span>
+<span class="coverage-green">    do if %!models{ $name }:exists {</span>
+<span class="coverage-green">        %!models{ $name }</span>
+<span class="coverage-no">    } else {</span>
+<span class="coverage-green">        fail &quot;Model '$name' not found on schema&quot;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"># TODO: For tests only, please make it right</span>
+<span class="coverage-green">method drop {</span>
+<span class="coverage-green">    for %!models.values {</span>
+<span class="coverage-green">        my $drop = &quot;DROP TABLE IF EXISTS { get-RED-DB.table-name-wrapper: .^table } { &quot;CASCADE&quot; if get-RED-DB.should-drop-cascade }&quot;;</span>
+<span class="coverage-no">        # say $drop;</span>
+<span class="coverage-green">        get-RED-DB.execute($drop);</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    self</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method create(:$where) {</span>
+<span class="coverage-green">    red-do (:$where with $where), :transaction, {</span>
+<span class="coverage-no">        #.say for %!models;</span>
+<span class="coverage-green">        |.create-schema(%!models)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    self</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

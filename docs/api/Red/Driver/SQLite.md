@@ -1,6 +1,6 @@
 ### method begin
 
-```perl6
+```raku
 method begin() returns Mu
 ```
 
@@ -8,7 +8,7 @@ Begin transaction
 
 ### multi method should-drop-cascade
 
-```perl6
+```raku
 multi method should-drop-cascade() returns Mu
 ```
 

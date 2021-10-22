@@ -5,7 +5,7 @@ Red::Traits
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Mu:U $model,
     Bool :$temp!
@@ -18,7 +18,7 @@ This trait marks the corresponding table of the model as TEMPORARY (so it only e
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Mu:U $model,
     Str:D :$rs-class!
@@ -31,7 +31,7 @@ This trait defines the name of the class to be used as ResultSet to this model.
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Mu:U $model,
     Mu:U :$rs-class!
@@ -44,7 +44,7 @@ This trait defines the class to be used as ResultSet to this model.
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Mu:U $model,
     Bool :$nullable!
@@ -57,7 +57,7 @@ This trait configures all model attributes (columns) to be NULLABLE by default, 
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     Bool :$column!
@@ -70,7 +70,7 @@ Defines the attribute as a column without any custom configuration.
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     Str :$column!
@@ -83,7 +83,7 @@ Defines the attribute as a column receiving a string to be used as the column na
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     Bool :$unique! where { ... }
@@ -96,7 +96,7 @@ This trait marks an attribute (column) as UNIQUE.
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     :$unique!
@@ -109,7 +109,7 @@ This trait marks an attribute (column) as UNIQUE receiving data to ve used on co
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     Bool :$id! where { ... }
@@ -122,7 +122,7 @@ This trait marks an attribute (column) as SQL PRIMARY KEY.
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     Bool :$serial! where { ... }
@@ -135,7 +135,7 @@ This trait marks an attribute (column) as SQL PRIMARY KEY with SERIAL data type,
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     :%column!
@@ -148,10 +148,10 @@ A generic trait used for customizing a column. It accepts a hash of Bool keys. P
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$referencing! (&referencing, Str :$model!, Str :$require = { ... }, Bool :$nullable = Bool::True)
+    :$referencing! (&referencing, Str :$model!, Str :$require = Code.new, Bool :$nullable = Bool::True)
 ) returns Empty
 ```
 
@@ -161,10 +161,10 @@ Trait that defines a reference receiving a code block, a model name, optional re
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$referencing! (Str :$model!, Str :$column!, Str :$require = { ... }, Bool :$nullable = Bool::True)
+    :$referencing! (Str :$model!, Str :$column!, Str :$require = Code.new, Bool :$nullable = Bool::True)
 ) returns Empty
 ```
 
@@ -174,7 +174,7 @@ Trait that defines a reference receiving a model name, a column name, and option
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     :$referencing! (&referencing, Mu:U :$model!, Bool :$nullable = Bool::True)
@@ -187,7 +187,7 @@ Trait that defines a reference receiving a code block, a model type object and a
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     :$referencing! (Mu:U :$model!, Str :$column!, Bool :$nullable = Bool::True)
@@ -200,7 +200,7 @@ Trait that defines a reference receiving a model type object, a column name, and
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Mu:U $model,
     Str :$table! is copy where { ... }
@@ -213,7 +213,7 @@ This trait allows setting a custom name for a table corresponding to a model. Fo
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     :&relationship!
@@ -226,7 +226,7 @@ Trait that defines a relationship receiving a code block.
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     :@relationship! where { ... }
@@ -239,10 +239,10 @@ DEPRECATED: Trait that defines a relationship receiving 2 code blocks.
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$relationship! (&relationship, Str :$model, Str :$require = { ... }, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
+    :$relationship! (&relationship, Str :$model, Str :$require = Code.new, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
 ) returns Empty
 ```
 
@@ -252,7 +252,7 @@ Trait that defines a relationship receiving a code block, a model name, and opit
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
     :$relationship! (&relationship, Mu:U :$model!, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
@@ -265,10 +265,10 @@ Trait that defines a relationship receiving a code block, a model type object, a
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$relationship! (Str :$column!, Str :$model!, Str :$require = { ... }, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
+    :$relationship! (Str :$column!, Str :$model!, Str :$require = Code.new, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
 ) returns Empty
 ```
 
@@ -278,7 +278,7 @@ Trait that defines a relationship receiving a column name, a model name and opit
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Method $m,
     :$before-create!
@@ -291,7 +291,7 @@ Trait to define a phaser to run before create a new record
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Method $m,
     :$after-create!
@@ -304,7 +304,7 @@ Trait to define a phaser to run after create a new record
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Method $m,
     :$before-update!
@@ -317,7 +317,7 @@ Trait to define a phaser to run before update a record
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Method $m,
     :$after-update!
@@ -330,7 +330,7 @@ Trait to define a phaser to run after update record
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Method $m,
     :$before-delete!
@@ -343,7 +343,7 @@ Trait to define a phaser to run before delete a record
 
 ### multi sub trait_mod:<is>
 
-```perl6
+```raku
 multi sub trait_mod:<is>(
     Method $m,
     :$after-delete!

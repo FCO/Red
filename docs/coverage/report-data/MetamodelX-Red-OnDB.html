@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::OnDB</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::OnDB 68.4%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use nqp;</span>
+<span class="coverage-no">use Red::Attr::Column;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 MetamodelX::Red::OnDB</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role MetamodelX::Red::OnDB;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">has $!is-on-db-attr;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method is-on-db-attr(|) {</span>
+<span class="coverage-red">    $!is-on-db-attr;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub is-on-db-attr-build(|){</span>
+<span class="coverage-red">    False</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method set-helper-attrs(Mu \type) {</span>
+<span class="coverage-green">    my %attr is Set = type.^attributes&gt;&gt;.name;</span>
+<span class="coverage-green">    unless %attr&lt;%!___IS_ON_DB___&gt; {</span>
+<span class="coverage-green">            $!is-on-db-attr = Attribute.new: :name&lt;%!___IS_ON_DB___&gt;, :package(type), :type(Bool), :!has_accessor;</span>
+<span class="coverage-green">            $!is-on-db-attr.set_build: &amp;is-on-db-attr-build;</span>
+<span class="coverage-green">            type.^add_attribute: $!is-on-db-attr;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Checks if the instance of model has a record in the database or not.</span>
+<span class="coverage-no">#| For example, `Person.^create(...).^is-on-db` returns True, because `^create` was called,</span>
+<span class="coverage-no">#| but `Person.new(...).^is-on-db` will return False, because the created object does not have</span>
+<span class="coverage-no">#| a representation in the database without calls to `^create` or `^save` done.</span>
+<span class="coverage-green">multi method is-on-db(\instance) {</span>
+<span class="coverage-green">    $!is-on-db-attr.get_value(instance)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method not-on-db(\instance) {</span>
+<span class="coverage-red">    $!is-on-db-attr.get_value(instance) = False</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Sets that that object is on DB</span>
+<span class="coverage-green">multi method saved-on-db(\instance) {</span>
+<span class="coverage-green">    $!is-on-db-attr.get_value(instance) = True</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

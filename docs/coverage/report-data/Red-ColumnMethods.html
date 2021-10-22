@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::ColumnMethods</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::ColumnMethods 46.2%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST::Unary;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::AST::StringFuncs;</span>
+<span class="coverage-no">use Red::AST::DateTimeFuncs;</span>
+<span class="coverage-no">use Red::AST::JsonItem;</span>
+<span class="coverage-no">use Red::AST::JsonRemoveItem;</span>
+<span class="coverage-no">use Red::Type::Json;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 Red::ColumnMethods</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Red::Column methods</span>
+<span class="coverage-green">unit role Red::ColumnMethods;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Tests if that column value starts with a specific sub-string</span>
+<span class="coverage-no">#| is usually translated for SQL as `column like 'substr%'`</span>
+<span class="coverage-green">multi method starts-with(Str() $text is readonly) {</span>
+<span class="coverage-green">    Red::AST::Like.new(self, ast-value &quot;{ $text }%&quot;) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method starts-with(Str() $text is rw) {</span>
+<span class="coverage-red">    Red::AST::Like.new(self, ast-value(&quot;{ $text }%&quot;), :bind-left) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Tests if that column value ends with a specific sub-string</span>
+<span class="coverage-no">#| is usually translated for SQL as `column like '%substr'`</span>
+<span class="coverage-red">multi method ends-with(Str() $text is readonly) {</span>
+<span class="coverage-red">    Red::AST::Like.new(self, ast-value &quot;%{ $text }&quot;) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method ends-with(Str() $text is rw) {</span>
+<span class="coverage-red">    Red::AST::Like.new(self, ast-value(&quot;%{ $text }&quot;), :bind-left) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Tests if that column value contains a specific sub-string</span>
+<span class="coverage-no">#| is usually translated for SQL as `column like %'substr%'`</span>
+<span class="coverage-green">multi method contains(Str() $text is readonly) {</span>
+<span class="coverage-green">    Red::AST::Like.new(self, ast-value &quot;%{ $text }%&quot;) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method contains(Str() $text is rw) {</span>
+<span class="coverage-red">    Red::AST::Like.new(self, ast-value(&quot;%{ $text }%&quot;), :bind-left) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Return a substring of the column value</span>
+<span class="coverage-red">method substr($base where { .returns ~~ Str }: Int() $offset = 0, Int() $size?) {</span>
+<span class="coverage-red">    Red::AST::Substring.new(:$base, :$offset, |(:$size with $size)) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Return the year from the date column</span>
+<span class="coverage-red">method year($base where { .returns ~~ (Date|DateTime|Instant) }:) {</span>
+<span class="coverage-red">    Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::year)) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Return the month from the date column</span>
+<span class="coverage-red">method month($base where { .returns ~~ (Date|DateTime|Instant) }:) {</span>
+<span class="coverage-red">    Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::month)) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Return the day from the date column</span>
+<span class="coverage-red">method day($base where { .returns ~~ (Date|DateTime|Instant) }:) {</span>
+<span class="coverage-red">    Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::day)) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Return the date from a datetime, timestamp etc</span>
+<span class="coverage-green">method yyyy-mm-dd($base where { .returns ~~ (Date|DateTime|Instant) }:) {</span>
+<span class="coverage-green">     Red::AST::DateTimeCoerce.new(:$base) but Red::ColumnMethods</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method now   { self.attr.type.now   }</span>
+<span class="coverage-red">method today { self.attr.type.today }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Return a value from a json hash key</span>
+<span class="coverage-green">multi method AT-KEY(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Str or ( $_ ~~ Red::AST and .returns ~~ Str )}) is rw {</span>
+<span class="coverage-green">    my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);</span>
+<span class="coverage-green">    Proxy.new:</span>
+<span class="coverage-green">            FETCH =&gt; -&gt; $ { $obj but Red::ColumnMethods },</span>
+<span class="coverage-green">            STORE =&gt; -&gt; $, $value {</span>
+<span class="coverage-green">                my $val = do given $value {</span>
+<span class="coverage-green">                    when Red::AST { $_ }</span>
+<span class="coverage-green">                    default {</span>
+<span class="coverage-green">                        my &amp;deflator = Json.deflator;</span>
+<span class="coverage-green">                        ast-value :type(Json), .&amp;deflator;</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-green">                @*UPDATE.push: Pair.new: $obj, $val;</span>
+<span class="coverage-green">                $obj but Red::ColumnMethods</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Delete and return a value from a json hash key</span>
+<span class="coverage-green">multi method DELETE-KEY(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Str or ( $_ ~~ Red::AST and .returns ~~ Str )}) {</span>
+<span class="coverage-green">    my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);</span>
+<span class="coverage-green">    @*UPDATE.push: Pair.new: SELF, Red::AST::JsonRemoveItem.new: SELF, ast-value $key;</span>
+<span class="coverage-green">    $obj</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#! Returns a value from a json array index</span>
+<span class="coverage-red">method AT-POS(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Int or ( $_ ~~ Red::AST and .returns ~~ Int )}) is rw {</span>
+<span class="coverage-red">    my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);</span>
+<span class="coverage-red">    Proxy.new:</span>
+<span class="coverage-red">            FETCH =&gt; -&gt; $ { $obj but Red::ColumnMethods },</span>
+<span class="coverage-red">            STORE =&gt; -&gt; $, $value {</span>
+<span class="coverage-red">                my $val = do given $value {</span>
+<span class="coverage-red">                    when Red::AST { $_ }</span>
+<span class="coverage-red">                    default {</span>
+<span class="coverage-red">                        my &amp;deflator = Json.deflator;</span>
+<span class="coverage-red">                        ast-value .&amp;deflator, :type(Json)</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-red">                @*UPDATE.push: Pair.new: $obj, $val;</span>
+<span class="coverage-red">                $obj but Red::ColumnMethods</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

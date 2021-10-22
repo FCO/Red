@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::ResultSeq::Iterator</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::ResultSeq::Iterator 100%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::DB;</span>
+<span class="coverage-no">use Red::AST;</span>
+<span class="coverage-no">use Red::Driver;</span>
+<span class="coverage-no">use Red::Utils;</span>
+<span class="coverage-green">unit class Red::ResultSeq::Iterator does Iterator;</span>
+<span class="coverage-no">has Mu:U        $.of            is required;</span>
+<span class="coverage-no">has Red::AST    $.ast           is required;</span>
+<span class="coverage-no">has             &amp;.post;</span>
+<span class="coverage-no">has             $!st-handler;</span>
+<span class="coverage-green">has Red::Driver $.driver        = get-RED-DB;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">submethod TWEAK(|) {</span>
+<span class="coverage-green">    my $ast = $!driver.optimize: $!ast;</span>
+<span class="coverage-green">    my @st-handler = $!driver.prepare: $ast;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    @st-handler&gt;&gt;.execute unless $*RED-DRY-RUN;</span>
+<span class="coverage-green">    $!st-handler = @st-handler.tail;</span>
+<span class="coverage-green">    $!of.^emit: $ast;</span>
+<span class="coverage-green">    CATCH {</span>
+<span class="coverage-green">        default {</span>
+<span class="coverage-green">            $!of.^emit: $ast, :error($_);</span>
+<span class="coverage-green">            proceed</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#method is-lazy { True }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method pull-one {</span>
+<span class="coverage-green">    if $*RED-DRY-RUN { return $!of.bless }</span>
+<span class="coverage-green">    my $data := $!st-handler.row;</span>
+<span class="coverage-green">    return IterationEnd if $data =:= IterationEnd or not $data;</span>
+<span class="coverage-green">    my $obj = $!of.^new-from-data($data);</span>
+<span class="coverage-green">    $obj.^clean-up;</span>
+<span class="coverage-green">    $obj.^saved-on-db;</span>
+<span class="coverage-green">    return .($obj) with &amp;!post;</span>
+<span class="coverage-green">    $obj</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

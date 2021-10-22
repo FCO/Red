@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Formatter</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Formatter 87.5%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Utils;</span>
+<span class="coverage-green">unit role Red::Formatter;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method table-formatter($data)  {</span>
+<span class="coverage-green">    do if self.?experimental-formatter &amp;&amp; &amp;*RED-TABLE-FORMATTER.defined {</span>
+<span class="coverage-green">	CATCH {</span>
+<span class="coverage-green">		return &amp;*RED-TABLE-FORMATTER.($data)</span>
+<span class="coverage-no">	}</span>
+<span class="coverage-green">	&amp;*RED-TABLE-FORMATTER.($data, $*RED-DB)</span>
+<span class="coverage-green">    } elsif try $*RED-DB.^can(&quot;table-name-formatter&quot;) {</span>
+<span class="coverage-green">        $*RED-DB.table-name-formatter: $data</span>
+<span class="coverage-red">    } else {</span>
+<span class="coverage-green">        camel-to-snake-case $data</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-green">method column-formatter($data) {</span>
+<span class="coverage-green">    do if self.?experimental-formatter {</span>
+<span class="coverage-green">        &amp;*RED-COLUMN-FORMATTER andthen .($data) orelse kebab-to-snake-case $data</span>
+<span class="coverage-red">    } else {</span>
+<span class="coverage-green">        kebab-to-snake-case $data</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

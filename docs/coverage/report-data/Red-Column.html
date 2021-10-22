@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Column</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Column 88%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Utils;</span>
+<span class="coverage-no">use Red::Model;</span>
+<span class="coverage-no">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Unary;</span>
+<span class="coverage-no">use Red::AST::IsDefined;</span>
+<span class="coverage-no">use Red::Formatter;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 Red::Column</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a database column</span>
+<span class="coverage-green">unit class Red::Column does Red::AST;</span>
+<span class="coverage-no">also does Red::Formatter;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub inflator($attr) {</span>
+<span class="coverage-green">    do with $attr.type.?inflator {</span>
+<span class="coverage-red">        $_</span>
+<span class="coverage-green">    } else {</span>
+<span class="coverage-green">        do if $attr.type ~~ Enumeration {</span>
+<span class="coverage-green">            -&gt; $value, $type { $type.($value) }</span>
+<span class="coverage-no">        } else {</span>
+<span class="coverage-green">            -&gt; $_ { .?&quot;{ $attr.type.^name }&quot;() // .self }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-green">sub deflator($_) {</span>
+<span class="coverage-green">    do with .type.?deflator {</span>
+<span class="coverage-red">        $_</span>
+<span class="coverage-green">    } else {</span>
+<span class="coverage-green">        do if .type ~~ Enumeration {</span>
+<span class="coverage-green">            *.value</span>
+<span class="coverage-no">        } else {</span>
+<span class="coverage-green">            *.self</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Attribute   $.attr is required;</span>
+<span class="coverage-green">has             $.model            = $!attr.package;</span>
+<span class="coverage-green">has Str         $.attr-name        = $!attr.name.substr: 2;</span>
+<span class="coverage-no">has Bool        $.id               = False;</span>
+<span class="coverage-no">has Bool        $.auto-increment   = False;</span>
+<span class="coverage-no">has             &amp;.references;</span>
+<span class="coverage-no">has             &amp;!actual-references;</span>
+<span class="coverage-no">has             $!ref;</span>
+<span class="coverage-green">has Bool        $.nullable         = $!attr.package.HOW.?default-nullable($!attr.package) // False;</span>
+<span class="coverage-green">has Str         $.name             = ::?CLASS.column-formatter: self.attr.name.substr: 2;</span>
+<span class="coverage-green">has Str         $.name-alias       = $!name;</span>
+<span class="coverage-no">has Str         $.type;</span>
+<span class="coverage-green">has             &amp;.inflate          = $!attr.&amp;inflator;</span>
+<span class="coverage-green">has             &amp;.deflate          = $!attr.&amp;deflator;</span>
+<span class="coverage-no">has             $.computation;</span>
+<span class="coverage-no">has Str         $.model-name;</span>
+<span class="coverage-no">has Red::Model  $.model-type;</span>
+<span class="coverage-no">has Str         $.column-name;</span>
+<span class="coverage-green">has Str         $.require          = $!model-name;</span>
+<span class="coverage-green">has Mu          $.class            = $!attr.package;</span>
+<span class="coverage-no">has             @.unique-groups;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#multi method WHICH(::?CLASS:D:) {</span>
+<span class="coverage-no">#    ValueObjAt.new: self.^name ~ &quot;|&quot; ~ self.migration-hash.pairs.sort.map(-&gt; (:$key, :$value) {</span>
+<span class="coverage-no">#        &quot;$key|$value&quot;</span>
+<span class="coverage-no">#    }).join: &quot;|&quot;</span>
+<span class="coverage-no">#}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method WHICH(::?CLASS:D:) {</span>
+<span class="coverage-green">    ValueObjAt.new: self.gist</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method perl(::?CLASS:D:) {</span>
+<span class="coverage-green">    &quot;{ self.^name }.new({</span>
+<span class="coverage-green">        self.Hash.pairs.sort.map(-&gt; (:$key, :$value) {</span>
+<span class="coverage-green">            next if $key eq &lt;inflate deflate&gt;.one;</span>
+<span class="coverage-green">            &quot;$key.Str() =&gt; $value.perl()&quot;</span>
+<span class="coverage-no">        }).join: &quot;, &quot;</span>
+<span class="coverage-no">    })&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method Hash(--&gt; Hash()) {</span>
+<span class="coverage-green">    %(</span>
+<span class="coverage-green">        |(:attr($_)                 with $!attr             ),</span>
+<span class="coverage-green">        |(:attr-name($_)            with $!attr-name        ),</span>
+<span class="coverage-green">        |(:id($_)                   with $!id               ),</span>
+<span class="coverage-green">        |(:auto-increment($_)       with $!auto-increment   ),</span>
+<span class="coverage-green">        |(:references($_)           with &amp;!references       ),</span>
+<span class="coverage-green">        |(:actual-references($_)    with &amp;!actual-references),</span>
+<span class="coverage-red">        |(:ref($_)                  with $!ref              ),</span>
+<span class="coverage-green">        |(:nullable($_)             with $!nullable         ),</span>
+<span class="coverage-green">        |(:name($_)                 with $!name             ),</span>
+<span class="coverage-green">        |(:name-alias($_)           with $!name-alias       ),</span>
+<span class="coverage-red">        |(:type($_)                 with $!type             ),</span>
+<span class="coverage-green">        |(:inflate($_)              with &amp;!inflate          ),</span>
+<span class="coverage-green">        |(:deflate($_)              with &amp;!deflate          ),</span>
+<span class="coverage-red">        |(:computation($_)          with $!computation      ),</span>
+<span class="coverage-green">        |(:model-name($_)           with $!model-name       ),</span>
+<span class="coverage-green">        |(:column-name($_)          with $!column-name      ),</span>
+<span class="coverage-green">        |(:require($_)              with $!require          ),</span>
+<span class="coverage-no">    )</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a Hash that represents the column for migration purposes</span>
+<span class="coverage-green">method migration-hash(--&gt; Hash()) {</span>
+<span class="coverage-green">    |(:name($_)                                 with $!name             ),</span>
+<span class="coverage-green">    |(:type(.type.^name)                        with $!attr             ),</span>
+<span class="coverage-green">    |(:references-table(.attr.package.^table)   with $.ref              ),</span>
+<span class="coverage-green">    |(:references-column(.column-name)          with $.ref              ),</span>
+<span class="coverage-green">    |(:is-id($_)                                with $!id               ),</span>
+<span class="coverage-green">    |(:is-auto-increment($_)                    with $!auto-increment   ),</span>
+<span class="coverage-green">    |(:is-nullable($_)                          with $!nullable         ),</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Subclass used to lazy evaluation of parameter types</span>
+<span class="coverage-green">class ReferencesProxy does Callable {</span>
+<span class="coverage-no">    has Str     $.model-name    is required;</span>
+<span class="coverage-no">    has Str     $.column-name;</span>
+<span class="coverage-red">    has Str     $.require       = $!model-name;</span>
+<span class="coverage-no">    has         $.model;</span>
+<span class="coverage-no">    has         &amp;.references;</span>
+<span class="coverage-red">    has Bool    $!tried-model   = False;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method model($alias = Nil --&gt; Mu:U) {</span>
+<span class="coverage-green">        if !$!tried-model {</span>
+<span class="coverage-green">            my $model = ::($!model-name);</span>
+<span class="coverage-green">            if !$model &amp;&amp; $model ~~ Failure {</span>
+<span class="coverage-green">                require ::($!require);</span>
+<span class="coverage-green">                $model = ::($!model-name);</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">            $!model = $model;</span>
+<span class="coverage-green">            $!tried-model = True;</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        do if $alias !=== Nil {</span>
+<span class="coverage-green">            do if $alias.^table eq $!model.^table {</span>
+<span class="coverage-red">                $alias</span>
+<span class="coverage-no">            } else {</span>
+<span class="coverage-red">                die &quot;$alias.^name() isn't an alias for the table $!model.^table()&quot;</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        } else {</span>
+<span class="coverage-red">            $!model</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method CALL-ME($alias = Nil) {</span>
+<span class="coverage-green">        if &amp;!references {</span>
+<span class="coverage-green">            my $model = self.model($alias);</span>
+<span class="coverage-green">            my $ret = &amp;!references.($model);</span>
+<span class="coverage-green">            if $ret ~~ Red::Column &amp;&amp; $ret.class.^name eq '$?CLASS' {</span>
+<span class="coverage-green">                $ret .= clone: :class($model)</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">            $ret</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">        else {</span>
+<span class="coverage-green">            self.model($alias).^columns.first(*.column.attr-name eq $!column-name).column</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the class that column is part of.</span>
+<span class="coverage-no">#method class { self.attr.package }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Method that returns the comment for the column</span>
+<span class="coverage-green">method comment { .Str with self.attr.WHY }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a function that will return a column that is referenced by this column</span>
+<span class="coverage-green">method references(--&gt; Callable) is rw {</span>
+<span class="coverage-green">    &amp;!actual-references //= do {</span>
+<span class="coverage-green">        if &amp;!references {</span>
+<span class="coverage-green">            if $!model-name {</span>
+<span class="coverage-green">                ReferencesProxy.new(:&amp;!references, :$!model-name, :$!require, :$!model-type);</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">            else {</span>
+<span class="coverage-green">                &amp;!references;</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">        elsif $!model-name &amp;&amp; $!column-name {</span>
+<span class="coverage-green">            ReferencesProxy.new(:$!model-name, :$!column-name, :$!require, :$!model-type);</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">        else {</span>
+<span class="coverage-red">            Callable</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the column that is referenced by this one.</span>
+<span class="coverage-green">method ref($model = $!model-type !=== Red::Model ?? $!model-type !! Nil) {</span>
+<span class="coverage-green">    .($model) with self.references</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Required by the Red::AST role</span>
+<span class="coverage-green">method returns { $!attr.type }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method transpose(&amp;func) { func self }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method gist { &quot;{$!attr.package.HOW.^can(&quot;as&quot;) ?? $!attr.package.^as !! &quot;({ $!attr.package.^name })&quot;}.{$!name-alias}&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method cast(Str $type) {</span>
+<span class="coverage-green">    Red::AST::Cast.new: self, $type</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method find-column-name {</span>
+<span class="coverage-green">    $!attr-name</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns an alias of that column</span>
+<span class="coverage-red">method alias(Str $name) {</span>
+<span class="coverage-red">    self.clone: name-alias =&gt; $name</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a clone using a different name</span>
+<span class="coverage-green">method as(Str $name, :$nullable = True) {</span>
+<span class="coverage-green">    self.clone: attr-name =&gt; $name, :$name, id =&gt; False, :$nullable, attr =&gt; Attribute</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">submethod TWEAK(:$unique) {</span>
+<span class="coverage-green">    with $unique {</span>
+<span class="coverage-green">        when Bool {</span>
+<span class="coverage-green">            $!attr.package.^add-unique-constraint: { self }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        when Positional {</span>
+<span class="coverage-green">            self.unique-groups.append: |$unique</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        default {</span>
+<span class="coverage-green">            self.unique-groups.push: $unique</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Do not test definedness, but returns a new Red::AST::IsDefined.</span>
+<span class="coverage-no">#| It's used to test `IS NULL` on the given column. It's also used</span>
+<span class="coverage-no">#| by any construction that naturally uses `.defined`.</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method defined {</span>
+<span class="coverage-green">    Red::AST::IsDefined.new: self</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method args {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method not { Red::AST::Not.new: self }</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

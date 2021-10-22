@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST 74%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use CX::Red::Bool;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 Red::AST</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Base role for all Red::AST::*</span>
+<span class="coverage-green">unit role Red::AST;</span>
+<span class="coverage-no">#has Red::AST $.next;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#multi method add(Red::AST:D: Red::AST:D $next) { if $!next { $!next.add: $next } else { $!next = $next } }</span>
+<span class="coverage-no">#multi method add(Red::AST:U: Red::AST:D $next) { $next }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#method gist { ... }</span>
+<span class="coverage-red">method find-column-name { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#method should-set($class       --&gt; Hash()) { ... }</span>
+<span class="coverage-no">#method should-validate(%values --&gt; Bool()) { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method gist { self.^name ~ &quot;:\n&quot; ~ $.args.map(*.gist).join(&quot;\n&quot;).indent: 4 }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the nagation of the AST.</span>
+<span class="coverage-red">method not { die &quot;not on { self.^name } must be implemented&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method args { ... }</span>
+<span class="coverage-red">method returns { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| If inside of a block for ResultSeq mothods throws a control exception</span>
+<span class="coverage-no">#| and populates all possibilities</span>
+<span class="coverage-green">method Bool(--&gt; Bool()) {</span>
+<span class="coverage-green">    return True unless %*VALS.defined;</span>
+<span class="coverage-green">    %*VALS{self} = False if %*VALS{self}:!exists;</span>
+<span class="coverage-green">    CX::Red::Bool.new(:ast(self), :value(%*VALS{self})).throw;</span>
+<span class="coverage-green">    %*VALS{self}</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method Str { self }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Transposes the AST tree running the function.</span>
+<span class="coverage-green">method transpose(::?CLASS:D: &amp;func) {</span>
+<span class="coverage-green">    die self unless self.^can: &quot;args&quot;;</span>
+<span class="coverage-green">    for self.args.grep: Red::AST -&gt; $arg {</span>
+<span class="coverage-green">        .transpose: &amp;func with $arg</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    func self;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a list with all the tables used on the AST</span>
+<span class="coverage-green">method tables(::?CLASS:D:) {</span>
+<span class="coverage-no">    my @tables;</span>
+<span class="coverage-green">    self.transpose: {</span>
+<span class="coverage-green">        if .^name eq &quot;Red::Column&quot; {</span>
+<span class="coverage-green">            @tables.push: .class</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    |@tables.grep(-&gt; \v { v !=:= Nil }).unique</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method WHICH(::?CLASS:D:) {</span>
+<span class="coverage-green">    ValueObjAt.new: &quot;{ self.^name }|{ $.args&gt;&gt;.WHICH.join: &quot;|&quot; }&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method WHICH(::?CLASS:U:) {</span>
+<span class="coverage-red">    ValueObjAt.new: &quot;{ self.^name }&quot;</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

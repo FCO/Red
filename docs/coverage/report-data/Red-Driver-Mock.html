@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Driver::Mock</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Driver::Mock 81.9%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Test;</span>
+<span class="coverage-no">use Red::AST;</span>
+<span class="coverage-no">use Red::Driver;</span>
+<span class="coverage-no">use Red::Statement;</span>
+<span class="coverage-no">use Red::Driver::SQLite;</span>
+<span class="coverage-no">use Red::Driver::CommonSQL;</span>
+<span class="coverage-green">unit class Red::Driver::Mock does Red::Driver;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method schema-reader {}</span>
+<span class="coverage-green">multi prepare-sql(Str:U $_) { Str }</span>
+<span class="coverage-green">multi prepare-sql(Str:D $_) {</span>
+<span class="coverage-green">    .lc</span>
+<span class="coverage-green">    .subst(/&lt;[\w.&quot;']&gt;+/, { &quot; $_ &quot; }, :g)</span>
+<span class="coverage-no">    .subst(</span>
+<span class="coverage-no">        /[\s* &quot;(&quot; \s*] ~ [\s* &quot;)&quot; \s*] ([&lt;-[()]&gt;+|&quot;(&quot; ~ &quot;)&quot; [\s*.*?\s*]])+?/,</span>
+<span class="coverage-green">        -&gt; $/ {</span>
+<span class="coverage-green">            &quot;( { $0.Str.split(/\s* &quot;,&quot; \s*/).sort.join(&quot; , &quot;) } )&quot;</span>
+<span class="coverage-no">        },</span>
+<span class="coverage-no">        :g</span>
+<span class="coverage-no">    )</span>
+<span class="coverage-no">    .subst(/\s+/, &quot; &quot;, :g)</span>
+<span class="coverage-no">    .trim</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Hash        %.when-str{Str};</span>
+<span class="coverage-no">has Hash        %.when-re{Regex};</span>
+<span class="coverage-no">has Bool        $!die-on-unexpected = False;</span>
+<span class="coverage-green">has Red::Driver $.driver-obj = Red::Driver::SQLite.new;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method default-type-for(Red::Column $a --&gt; Str:D) { $!driver-obj.default-type-for($a)     }</span>
+<span class="coverage-red">multi method is-valid-table-name(|c)                    { $!driver-obj.is-valid-table-name(|c)  }</span>
+<span class="coverage-red">multi method type-by-name(|c)                           { $!driver-obj.type-by-name(|c)         }</span>
+<span class="coverage-red">multi method inflate(|c)                                { $!driver-obj.inflate(|c)              }</span>
+<span class="coverage-green">method translate(|c)                                    { $!driver-obj.translate(|c)            }</span>
+<span class="coverage-green">multi method join-type(|c)                              { $!driver-obj.join-type(|c)            }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class Statement does Red::Statement {</span>
+<span class="coverage-no">    has Iterator $.iterator;</span>
+<span class="coverage-red">    has Str      $.should-run;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method stt-exec($stt, *@bind) { }</span>
+<span class="coverage-green">    method stt-row($stt) { $!iterator.pull-one }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method die-on-unexpected() {</span>
+<span class="coverage-green">  $!die-on-unexpected = True</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">proto method when(</span>
+<span class="coverage-no">    $when,</span>
+<span class="coverage-no">         :$times,</span>
+<span class="coverage-no">    Bool :$once,</span>
+<span class="coverage-no">    Bool :$twice</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-green">    my $*times = $times // ($once ?? 1 !! $twice ?? 2 !! Inf);</span>
+<span class="coverage-green">    {*};</span>
+<span class="coverage-red">    self</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method when($when where Str | Regex, Bool :$never! where * === True) {</span>
+<span class="coverage-red">    self.when: $when, :run{ die &quot;This should never be called&quot; }, :0times;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method when(Str $when, :&amp;run!) {</span>
+<span class="coverage-green">    %!when-str{$when.&amp;prepare-sql} = {:&amp;run, :$*times, :0counter};</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method when(Regex $when, :&amp;run!) {</span>
+<span class="coverage-green">    %!when-re{$when} = {:&amp;run, :$*times, :0counter};</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method when(Str $when, :@return!) {</span>
+<span class="coverage-green">    self.when: $when.&amp;prepare-sql, :run{ @return }, :$*times;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method when(Regex $when, :@return!) {</span>
+<span class="coverage-green">    self.when: $when, :run{ @return }, :$*times;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method when(Str $when, :$throw!) {</span>
+<span class="coverage-red">    self.when: $when.&amp;prepare-sql, :run{ die $throw }, :$*times;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method when(Regex $when, :$throw!) {</span>
+<span class="coverage-red">    self.when: $when, :run{ die $throw }, :$*times;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method prepare(Red::AST $query) {</span>
+<span class="coverage-green">    do for |self.translate: self.optimize: $query -&gt; Pair \data {</span>
+<span class="coverage-green">        my ($sql, @bind) := do given data { .key, .value }</span>
+<span class="coverage-green">        self.prepare: $sql;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method prepare(Str $query) {</span>
+<span class="coverage-green">    my $t-query = $query.trans((&quot;\n&quot;, &quot;\t&quot;) =&gt; &lt;␤ ␉&gt;);</span>
+<span class="coverage-green">    self.debug: $query;</span>
+<span class="coverage-green">    given $query.&amp;prepare-sql {</span>
+<span class="coverage-green">        with %!when-str{$_} -&gt; % (:$times!, :$counter! is rw, :&amp;run!) {</span>
+<span class="coverage-green">            $counter++;</span>
+<span class="coverage-green">            die &quot;The query '$t-query' should never be called&quot; unless $times;</span>
+<span class="coverage-green">            die &quot;The query '$t-query' should run $times time(s) but was ran $counter times&quot; if $counter &gt; $times;</span>
+<span class="coverage-green">            return Statement.new: :driver(self), :iterator(run.iterator)</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        my $size = 0;</span>
+<span class="coverage-no">        my %data;</span>
+<span class="coverage-green">        for %!when-re.kv -&gt; Regex $re, %value {</span>
+<span class="coverage-green">            if .match($re) &amp;&amp; $/.Str.chars &gt; $size {</span>
+<span class="coverage-green">                $size = $/.Str.chars;</span>
+<span class="coverage-green">                %data := %value;</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        if %data {</span>
+<span class="coverage-green">            %data&lt;counter&gt;++;</span>
+<span class="coverage-green">            die &quot;The query '$t-query' should never be called&quot; unless %data&lt;times&gt; &gt; 0;</span>
+<span class="coverage-green">            die &quot;The query '$t-query' should run %data&lt;times&gt; time(s) but was ran %data&lt;counter&gt; times&quot; if %data&lt;counter&gt; &gt; %data&lt;times&gt;;</span>
+<span class="coverage-green">            return Statement.new: :driver(self), :iterator(%data&lt;run&gt;.().iterator)</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        flunk &quot;Unexpected query: $_&quot; if $!die-on-unexpected;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    Statement.new: :driver(self), :iterator([].iterator)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method verify { #is test-assertion {</span>
+<span class="coverage-green">    subtest {</span>
+<span class="coverage-green">        plan %!when-str + %!when-re;</span>
+<span class="coverage-green">        for %!when-str.kv -&gt; Str $str, % (:$counter = 0, :$times, |) {</span>
+<span class="coverage-green">            ok ($times == Inf or $counter == $times),</span>
+<span class="coverage-no">                &quot;Query '$str' should be called $times times and was called $counter time(s)&quot;;</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        for %!when-re.kv -&gt; Regex $re, % (:$counter = 0, :$times, |) {</span>
+<span class="coverage-green">            ok ($times == Inf or $counter == $times),</span>
+<span class="coverage-no">                &quot;Query that matches '$re.perl()' should be called $times times and was called $counter time(s)&quot;;</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }, &quot;Red Mock verify&quot;</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

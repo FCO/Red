@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::Id</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::Id 82%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Model;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::Attr::Column;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 MetamodelX::Red::Id</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role MetamodelX::Red::Id;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">has $!id-values-attr;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method columns   { ... }</span>
+<span class="coverage-no">#method set-attr  { ... }</span>
+<span class="coverage-no">#method set-dirty { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method id-values-attr(|) {</span>
+<span class="coverage-red">    $!id-values-attr;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub id-values-attr-build(\type, | --&gt; Hash){</span>
+<span class="coverage-green">    {}</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method set-helper-attrs(Mu \type) {</span>
+<span class="coverage-green">    my %attr = type.^attributes.map( -&gt; $a { $a.name =&gt; $a }).Hash;</span>
+<span class="coverage-green">    if %attr&lt;%!___ID_VALUES___&gt; -&gt; $a {</span>
+<span class="coverage-green">        $!id-values-attr //= $a;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    else {</span>
+<span class="coverage-green">        $!id-values-attr = Attribute.new: :name&lt;%!___ID_VALUES___&gt;, :package(type), :type(Hash), :!has_accessor;</span>
+<span class="coverage-green">        $!id-values-attr.set_build: &amp;id-values-attr-build;</span>
+<span class="coverage-green">        type.^add_attribute: $!id-values-attr;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Checks if the given attribute is a primary key of the model.</span>
+<span class="coverage-green">multi method is-id($, Red::Attr::Column $attr) {</span>
+<span class="coverage-green">    so $attr.column.id</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method is-id($, $ --&gt; False) {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Gets a list of ids</span>
+<span class="coverage-green">method id(Mu \type) {</span>
+<span class="coverage-green">    self.columns(type).grep(*.column.id).list</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a list of attributes that are either primary keys or marked as unique.</span>
+<span class="coverage-green">method general-ids(\model) {</span>
+<span class="coverage-green">    (|model.^id, |model.^unique-constraints)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Sets ids</span>
+<span class="coverage-green">method populate-ids(Red::Model:D $model) {</span>
+<span class="coverage-green">    $model.^reset-id;</span>
+<span class="coverage-green">    $model.^set-id: $model.^id.map({ .name =&gt; .get_value: $model }).Hash;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| resets id</span>
+<span class="coverage-green">multi method reset-id(Red::Model:D $model) {</span>
+<span class="coverage-green">    $!id-values-attr.set_value: $model, {}</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Sets ids</span>
+<span class="coverage-green">multi method set-id(Red::Model:D $model, %ids --&gt; Hash()) {</span>
+<span class="coverage-green">    my %attrs = |$model.^id.map({ .name =&gt; $_ });</span>
+<span class="coverage-green">    for %ids.kv -&gt; Str $name, $val {</span>
+<span class="coverage-green">        $!id-values-attr.get_value($model).{ $name } = $model.^get-attr: $name without $!id-values-attr.get_value($model).{ $name };</span>
+<span class="coverage-green">        self.set-attr: $model, $name, $val;</span>
+<span class="coverage-green">        $model.^set-dirty: %attrs{$name};</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Sets id</span>
+<span class="coverage-green">multi method set-id(Red::Model:D $model, $id where !.^isa: Associative --&gt; Hash()) {</span>
+<span class="coverage-green">    my $col = $model.^id.head;</span>
+<span class="coverage-green">    $!id-values-attr.get_value($model).{ $col.name } = $model.^get-attr: $col without $!id-values-attr.get_value($model).{ $col.name };</span>
+<span class="coverage-green">    self.set-attr: $model, $col, $id;</span>
+<span class="coverage-green">    $model.^set-dirty: $col;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a Hash with an id map</span>
+<span class="coverage-green">multi method id-map(Red::Model $model, $id --&gt; Hash()) {</span>
+<span class="coverage-green">    die &quot;$model.^name() has no id&quot; unless $model.^id;</span>
+<span class="coverage-green">    $model.^id.head.name.substr(2) =&gt; $id</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method id-hash(Red::Model $model --&gt; Hash()) {</span>
+<span class="coverage-red">    $model.^id.map({</span>
+<span class="coverage-red">        my $name = .name.substr(2);</span>
+<span class="coverage-red">        $name =&gt; $model.&quot;$name&quot;()</span>
+<span class="coverage-no">    })</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a filter using the id</span>
+<span class="coverage-green">multi method id-filter(Red::Model:D $model) {</span>
+<span class="coverage-green">    my @a = $model.^general-ids.flat.map({</span>
+<span class="coverage-green">        Red::AST::Eq.new:</span>
+<span class="coverage-no">	    :bind-right,</span>
+<span class="coverage-no">            .column,</span>
+<span class="coverage-no">            ast-value</span>
+<span class="coverage-no">                :type(.type),</span>
+<span class="coverage-red">                $!id-values-attr.get_value($model).{ .name }</span>
+<span class="coverage-no">                    // self.get-old-attr($model, $_)</span>
+<span class="coverage-no">                    // self.get-attr: $model, $_</span>
+<span class="coverage-no">    });</span>
+<span class="coverage-green">    @a.elems &gt;= 2</span>
+<span class="coverage-green">        ?? @a.reduce: { Red::AST::AND.new: $^a, $^b }</span>
+<span class="coverage-red">        !! @a[0]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a filter using the id</span>
+<span class="coverage-green">multi method id-filter(Red::Model:U $model, $id) {</span>
+<span class="coverage-green">    die &quot;Model must have only 1 id to use id-filter this way&quot; if $model.^id.elems != 1;</span>
+<span class="coverage-green">    self.id-filter: $model, |{$model.^id.head.column.attr-name =&gt; $id}</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"># TODO: fix, $model.^general-ids can return an list of lists (for counstraints of more that one column)</span>
+<span class="coverage-no">#| Returns a filter using the id</span>
+<span class="coverage-green">multi method id-filter(Red::Model:U $model, *%data) { # where { .keys.all ~~ $model.^general-ids.flat.map(*.column.attr-name).any }) {</span>
+<span class="coverage-green">    my %cols := set $model.^general-ids.flat.map(*.column.attr-name);</span>
+<span class="coverage-green">    my @not-ids = %data.keys.grep: { not %cols{ $_ } };</span>
+<span class="coverage-green">    die &quot;one of the following keys aren't ids: { @not-ids.join: &quot;, &quot; }&quot; if @not-ids;</span>
+<span class="coverage-green">    $model.^general-ids.flat</span>
+<span class="coverage-green">        .map({</span>
+<span class="coverage-green">            next without %data{.column.attr-name};</span>
+<span class="coverage-green">            Red::AST::Eq.new:</span>
+<span class="coverage-no">                .column,</span>
+<span class="coverage-red">                ast-value %data{.column.attr-name}</span>
+<span class="coverage-no">        })</span>
+<span class="coverage-green">        .reduce: {</span>
+<span class="coverage-green">            Red::AST::AND.new: $^a, $^b</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    ;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#multi method id-filter(Red::Model:U $model, *%data) {</span>
+<span class="coverage-no">#    die &quot;one of the following keys aren't ids: { %data.keys.join: &quot;, &quot; }&quot;</span>
+<span class="coverage-no">#}</span>
+<span class="coverage-no"></span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

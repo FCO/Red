@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::IsDefined</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::IsDefined 64.2%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Unary;</span>
+<span class="coverage-no">#| Represents &quot;is defined&quot; operation</span>
+<span class="coverage-no">#| usualy defined as:</span>
+<span class="coverage-no">#| type IS NULL</span>
+<span class="coverage-green">unit class Red::AST::IsDefined does Red::AST;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">has $.col is required;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method new(::?CLASS:U: $col) {</span>
+<span class="coverage-green">    self.bless: :$col</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method returns { Bool }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method args { $!col }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method not {</span>
+<span class="coverage-green">    Red::AST::Not.new: self</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method find-column-name {</span>
+<span class="coverage-green">    $!col.name</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method find-value {</span>
+<span class="coverage-red">    $!col</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method gist { &quot;{$!col.gist}.defined&quot; }</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

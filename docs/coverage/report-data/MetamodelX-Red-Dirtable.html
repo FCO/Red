@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::Dirtable</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::Dirtable 60.2%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use nqp;</span>
+<span class="coverage-no">use Red::Attr::Column;</span>
+<span class="coverage-no">use Red::Attr::Relationship;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 MetamodelX::Red::Dirtable</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role MetamodelX::Red::Dirtable;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has %.dirty-cols{Mu} is rw;</span>
+<span class="coverage-no">has $!col-data-attr;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method col-data-attr(|) {</span>
+<span class="coverage-green">    $!col-data-attr;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub col-data-attr-build(|){</span>
+<span class="coverage-green">    {}</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has $!dirty-cols-attr;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method dirty-cols-attr(|) {</span>
+<span class="coverage-red">    $!dirty-cols-attr;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub dirty-cols-attr-build(|) {</span>
+<span class="coverage-green">    SetHash.new</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">has $!dirty-old-values-attr;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method dirty-old-values-attr(|) {</span>
+<span class="coverage-green">    $!dirty-old-values-attr;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub dirty-old-values-attr-build(|) {</span>
+<span class="coverage-green">    {}</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method set-helper-attrs(Mu \type) {</span>
+<span class="coverage-green">    my %attr = type.^attributes.map( -&gt; $a { $a.name =&gt; $a }).Hash;</span>
+<span class="coverage-green">    if %attr&lt;%!___COLUMNS_DATA___&gt;  -&gt; $a {</span>
+<span class="coverage-green">        $!col-data-attr //= $a;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    else {</span>
+<span class="coverage-green">        $!col-data-attr = Attribute.new: :name&lt;%!___COLUMNS_DATA___&gt;, :package(type), :type(Any), :!has_accessor;</span>
+<span class="coverage-green">        $!col-data-attr.set_build: &amp;col-data-attr-build;</span>
+<span class="coverage-green">        type.^add_attribute: $!col-data-attr;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    if %attr&lt;%!___DIRTY_COLS_DATA___&gt; -&gt; $a {</span>
+<span class="coverage-green">        $!dirty-cols-attr //= $a;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    else {</span>
+<span class="coverage-green">        $!dirty-cols-attr = Attribute.new: :name&lt;%!___DIRTY_COLS_DATA___&gt;, :package(type), :type(Any), :!has_accessor;</span>
+<span class="coverage-green">        $!dirty-cols-attr.set_build: &amp;dirty-cols-attr-build;</span>
+<span class="coverage-green">        type.^add_attribute: $!dirty-cols-attr;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    if %attr&lt;%!___DIRTY_OLD_DATA___&gt; -&gt; $a {</span>
+<span class="coverage-green">        $!dirty-old-values-attr //= $a;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    else {</span>
+<span class="coverage-green">        $!dirty-old-values-attr = Attribute.new: :name&lt;%!___DIRTY_OLD_DATA___&gt;, :package(type), :type(Any), :!has_accessor;</span>
+<span class="coverage-green">        $!dirty-old-values-attr.set_build: &amp;dirty-old-values-attr-build;</span>
+<span class="coverage-green">        type.^add_attribute: $!dirty-old-values-attr;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">submethod !TWEAK_pr(\instance: *%data) is rw {</span>
+<span class="coverage-red">    my @columns = instance.^columns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    my %new = |@columns.map: {</span>
+<span class="coverage-red">        my Mu $built := .build;</span>
+<span class="coverage-red">        $built := $built.(self.WHAT, Mu) if $built ~~ Method;</span>
+<span class="coverage-red">        next if $built =:= Mu;</span>
+<span class="coverage-red">        if instance.^is-id: $_ {</span>
+<span class="coverage-red">            instance.^set-id: .name =&gt; $built</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-red">        .column.attr-name =&gt; $built</span>
+<span class="coverage-no">    };</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    for %data.kv -&gt; $k, $v { %new{$k} = $v }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    my $col-data-attr         := self.^col-data-attr;</span>
+<span class="coverage-red">    my $dirty-old-values-attr := self.^dirty-old-values-attr;</span>
+<span class="coverage-red">    $col-data-attr.set_value: instance, %new;</span>
+<span class="coverage-red">    for @columns -&gt; \col {</span>
+<span class="coverage-red">        my \proxy = Proxy.new:</span>
+<span class="coverage-red">            FETCH =&gt; method {</span>
+<span class="coverage-red">                $col-data-attr.get_value(instance).{ col.column.attr-name }</span>
+<span class="coverage-no">            },</span>
+<span class="coverage-red">            STORE =&gt; method (\value) is hidden-from-backtrace {</span>
+<span class="coverage-red">                die X::Assignment::RO.new(value =&gt; $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;</span>
+<span class="coverage-red">                die X::TypeCheck::Assignment.new(symbol =&gt; col.name, got =&gt; value, expected =&gt; col.type) unless value ~~ col.type;</span>
+<span class="coverage-red">                if instance.^is-id: col {</span>
+<span class="coverage-red">                    instance.^set-id: col.name =&gt; value</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-red">                instance.^set-dirty: col;</span>
+<span class="coverage-red">                $dirty-old-values-attr.get_value(instance).{ col.column.attr-name } =</span>
+<span class="coverage-red">                    $col-data-attr.get_value(instance).{ col.column.attr-name };</span>
+<span class="coverage-red">                $col-data-attr.get_value(instance).{ col.column.attr-name } = value</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        #use nqp;</span>
+<span class="coverage-no">        #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);</span>
+<span class="coverage-red">        col.set_value: instance&lt;&gt;, proxy</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    for self.^attributes -&gt; $attr {</span>
+<span class="coverage-red">        with %data{ $attr.name.substr: 2 } {</span>
+<span class="coverage-red">            unless $attr ~~ Red::Attr::Column {</span>
+<span class="coverage-red">                if self.^is-id: $attr {</span>
+<span class="coverage-red">                    self.^set-id: $attr.name =&gt; $_</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-red">                $attr.set_value: self, $_</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">        # TODO: this should be on M::R::Relationship</span>
+<span class="coverage-red">        if $attr ~~ Red::Attr::Relationship {</span>
+<span class="coverage-red">            with %data{ $attr.name.substr: 2 } {</span>
+<span class="coverage-red">                $attr.set-data: instance, $_</span>
+<span class="coverage-no">            } else {</span>
+<span class="coverage-red">                my Mu $built := $attr.build;</span>
+<span class="coverage-red">                $built := $built.(self.WHAT, Mu) if $built ~~ Method;</span>
+<span class="coverage-red">                $attr.set-data: instance, $_ with $built</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    nextsame</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method compose-dirtable(Mu \type) {</span>
+<span class="coverage-red">    my \meta = self;</span>
+<span class="coverage-no">    #state &amp;build //= self.^find_private_method(&quot;TWEAK_pr&quot;);</span>
+<span class="coverage-green">    my &amp;build = method (\instance: *%data) is rw {</span>
+<span class="coverage-green">        my @columns = instance.^columns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        my %new = |@columns.map: {</span>
+<span class="coverage-green">            my Mu $built := .build;</span>
+<span class="coverage-green">            $built := $built.(self.WHAT, Mu) if $built ~~ Method;</span>
+<span class="coverage-green">            next if $built =:= Mu;</span>
+<span class="coverage-green">            if instance.^is-id: $_ {</span>
+<span class="coverage-green">                instance.^set-id: .name =&gt; $built</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">            .column.attr-name =&gt; $built</span>
+<span class="coverage-no">        };</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        for %data.kv -&gt; $k, $v { %new{$k} = $v }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        my $col-data-attr         := self.^col-data-attr;</span>
+<span class="coverage-green">        for $col-data-attr.get_value(instance).kv -&gt; $k, $v { %new{$k} = $v }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        my $dirty-old-values-attr := self.^dirty-old-values-attr;</span>
+<span class="coverage-green">        $col-data-attr.set_value: instance, %new;</span>
+<span class="coverage-green">        for @columns -&gt; \col {</span>
+<span class="coverage-green">            my \proxy = Proxy.new:</span>
+<span class="coverage-green">                FETCH =&gt; method {</span>
+<span class="coverage-green">                    $col-data-attr.get_value(instance).{ col.column.attr-name }</span>
+<span class="coverage-no">                },</span>
+<span class="coverage-green">                STORE =&gt; method (\value) is hidden-from-backtrace {</span>
+<span class="coverage-green">                    die X::Assignment::RO.new(value =&gt; $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;</span>
+<span class="coverage-green">                    die X::TypeCheck::Assignment.new(symbol =&gt; col.name, got =&gt; value, expected =&gt; col.type) unless value ~~ col.type;</span>
+<span class="coverage-green">                    if instance.^is-id: col {</span>
+<span class="coverage-green">                        instance.^set-id: col.name =&gt; value</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-green">                    instance.^set-dirty: col;</span>
+<span class="coverage-green">                    $dirty-old-values-attr.get_value(instance).{ col.column.attr-name } =</span>
+<span class="coverage-red">                        $col-data-attr.get_value(instance).{ col.column.attr-name };</span>
+<span class="coverage-green">                    $col-data-attr.get_value(instance).{ col.column.attr-name } = value</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            #use nqp;</span>
+<span class="coverage-no">            #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);</span>
+<span class="coverage-green">            col.set_value: instance&lt;&gt;, proxy</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        for self.^attributes -&gt; $attr {</span>
+<span class="coverage-green">            with %data{ $attr.name.substr: 2 } {</span>
+<span class="coverage-green">                unless $attr ~~ Red::Attr::Column {</span>
+<span class="coverage-green">                    if self.^is-id: $attr {</span>
+<span class="coverage-green">                        self.^set-id: $attr.name =&gt; $_</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-green">                    $attr.set_value: self, $_</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">            # TODO: this should be on M::R::Relationship</span>
+<span class="coverage-green">            if $attr ~~ Red::Attr::Relationship {</span>
+<span class="coverage-green">                with %data{ $attr.name.substr: 2 } {</span>
+<span class="coverage-green">                    $attr.set-data: instance, $_</span>
+<span class="coverage-purple">                } else {</span>
+<span class="coverage-green">                    my Mu $built := $attr.build;</span>
+<span class="coverage-green">                    $built := $built.(self.WHAT, Mu) if $built ~~ Method;</span>
+<span class="coverage-green">                    $attr.set-data: instance, $_ with $built</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        nextsame</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    my role DirtableWrapped { };</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    if self.declares_method(type, &quot;TWEAK&quot;) {</span>
+<span class="coverage-green">        my &amp;tweak = self.find_method(type, &quot;TWEAK&quot;, :no_fallback(1));</span>
+<span class="coverage-green">        if &amp;tweak !~~ DirtableWrapped {</span>
+<span class="coverage-green">            &amp;tweak.wrap: &amp;build;</span>
+<span class="coverage-green">            &amp;tweak does DirtableWrapped;</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-red">    } else {</span>
+<span class="coverage-green">        self.add_method: type, &quot;TWEAK&quot;, &amp;build;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Accepts a Set of attributes of model and enables dirtiness flag for them,</span>
+<span class="coverage-no">#| which means that the values were changed and need a database sync.</span>
+<span class="coverage-green">multi method set-dirty(\obj, Set() $attr) {</span>
+<span class="coverage-green">    $!dirty-cols-attr.get_value(obj).{$_}++ for $attr.keys</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method clean-up-columns(\obj, Set() $attr) {</span>
+<span class="coverage-green">    $!dirty-cols-attr.get_value(obj).{$_}-- for $attr.keys</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns `True` if any of the object attributes were changed</span>
+<span class="coverage-no">#| from original database record values.</span>
+<span class="coverage-green">method is-dirty(Any:D \obj --&gt; Bool) { so $!dirty-cols-attr.get_value(obj) }</span>
+<span class="coverage-no">#| Returns dirty columns of the object.</span>
+<span class="coverage-green">method dirty-columns(Any:D \obj)     { $!dirty-cols-attr.get_value(obj) }</span>
+<span class="coverage-no">#| Erases dirty status from all model's attributes, but does not (!)</span>
+<span class="coverage-no">#| revert their values to original ones.</span>
+<span class="coverage-green">method clean-up(Any:D \obj) {</span>
+<span class="coverage-green">    $!dirty-cols-attr.set_value: obj, SetHash.new;</span>
+<span class="coverage-green">    $!dirty-old-values-attr.set_value: obj, {}</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method get-attr(\instance, Str $name) {</span>
+<span class="coverage-red">    $!col-data-attr.get_value(instance).{ $name }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method set-attr(\instance, Str $name, \value) {</span>
+<span class="coverage-red">    $!col-data-attr.get_value(instance).{ $name } = value</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method get-attr(\instance, Red::Attr::Column $attr) {</span>
+<span class="coverage-red">    samewith instance, $attr.column.attr-name</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method set-attr(\instance, Red::Attr::Column $attr, \value) {</span>
+<span class="coverage-red">    samewith instance, $attr.column.attr-name, value</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method get-old-attr(\instance, Str $name) {</span>
+<span class="coverage-green">    $!dirty-old-values-attr.get_value(instance).{ $name }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method set-old-attr(\instance, Str $name, \value) {</span>
+<span class="coverage-red">    $!dirty-old-values-attr.get_value(instance).{ $name } = value</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method get-old-attr(\instance, Red::Attr::Column $attr) {</span>
+<span class="coverage-green">    samewith instance, $attr.column.attr-name</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method set-old-attr(\instance, Red::Attr::Column $attr, \value) {</span>
+<span class="coverage-red">    samewith instance, $attr.column.attr-name, value</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

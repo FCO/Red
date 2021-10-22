@@ -5,7 +5,7 @@ Base class for Red methods
 
 ### method instance
 
-```perl6
+```raku
 method instance() returns Red::Class
 ```
 
@@ -17,7 +17,7 @@ Supply that emit Red events
 
 ### method register-supply
 
-```perl6
+```raku
 method register-supply(
     Supply $_
 ) returns Mu

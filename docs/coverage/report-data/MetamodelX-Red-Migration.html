@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::Migration</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::Migration 5%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::Model;</span>
+<span class="coverage-no">use Red::Attr::Column;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 MetamodelX::Red::Migration</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">unit role MetamodelX::Red::Migration;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">my Callable    @migration-blocks;</span>
+<span class="coverage-red">my Pair        @migrations;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates a new migration for the model.</span>
+<span class="coverage-red">multi method migration(\model, &amp;migr) {</span>
+<span class="coverage-red">    @migration-blocks.push: &amp;migr</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Executes migrations.</span>
+<span class="coverage-red">multi method migrate(\model, Red::Model:U :$from) {</span>
+<span class="coverage-red">    my Red::Attr::Column %old-cols = $from.^columns.map: { .name.substr(2) =&gt; $_ };</span>
+<span class="coverage-red">    my Str               @new-cols = model.^columns.map: { .name.substr(2) };</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    my \Type = Metamodel::ClassHOW.new_type: :name(model.^name);</span>
+<span class="coverage-red">    for (|%old-cols.keys, |@new-cols) -&gt; $name {</span>
+<span class="coverage-red">        Type.^add_method: $name, method () is rw {</span>
+<span class="coverage-red">            Proxy.new:</span>
+<span class="coverage-red">                FETCH =&gt; method {</span>
+<span class="coverage-red">                    %old-cols{$name}.column</span>
+<span class="coverage-no">                },</span>
+<span class="coverage-red">                STORE =&gt; method (\data) {</span>
+<span class="coverage-red">                    @migrations.push: $name =&gt; data</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            ;</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    Type.^compose;</span>
+<span class="coverage-red">    .(Type) for @migration-blocks</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Prints the migrations.</span>
+<span class="coverage-red">method dump-migrations(|) {</span>
+<span class="coverage-red">    say &quot;{ .key } =&gt; { .value.gist }&quot; for @migrations</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Driver::Cache::Memory</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Driver::Cache::Memory 18.1%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::Driver::CacheWithStrKey;</span>
+<span class="coverage-no">use Red::Driver::CacheInvalidateOnWrite;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit class Red::Driver::Cache::Memory does Red::Driver::CacheWithStrKey does Red::Driver::CacheInvalidateOnWrite;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has %!cache;</span>
+<span class="coverage-no">has %!cache-to-table;</span>
+<span class="coverage-no">has %!expires;</span>
+<span class="coverage-no">has @!times;</span>
+<span class="coverage-red">has Int $.ttl = 10;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">submethod TWEAK(|) {</span>
+<span class="coverage-green">    start react whenever Supply.interval: 1 {</span>
+<span class="coverage-red">        CATCH {</span>
+<span class="coverage-red">            default {</span>
+<span class="coverage-red">                .say</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        my $time = self!time;</span>
+<span class="coverage-red">        while (@!times.head // Inf) &lt;= $time { #&gt;</span>
+<span class="coverage-red">            my $t = @!times.shift;</span>
+<span class="coverage-red">            for |(%!expires{$t}:delete) -&gt; $key {</span>
+<span class="coverage-red">                next without $key;</span>
+<span class="coverage-red">                note &quot;remove: $key&quot; if $*RED-CACHE-DEBUG;</span>
+<span class="coverage-red">                %!cache{$key}:delete</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method !time { now.Int }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method get-from-cache(Str $key, :$ast)  {</span>
+<span class="coverage-red">    note &quot;get-from-cache: $key&quot; if $*RED-CACHE-DEBUG;</span>
+<span class="coverage-red">    %!cache{$key}</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method set-on-cache(Str:D $key, @data, :$ast) {</span>
+<span class="coverage-red">    note &quot;set-on-cache: $key&quot; if $*RED-CACHE-DEBUG;</span>
+<span class="coverage-red">    %!cache{$key} = @data;</span>
+<span class="coverage-red">    for $ast.tables -&gt; $table {</span>
+<span class="coverage-red">        note &quot;save on $table.^table(): $key&quot; if $*RED-CACHE-DEBUG;</span>
+<span class="coverage-red">        %!cache-to-table.push: $table.^table, $key</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    my $time = self!time + $!ttl;</span>
+<span class="coverage-red">    %!expires.push: $time =&gt; $key;</span>
+<span class="coverage-red">    @!times.push: $time;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method invalidate(Str :$table, *% where ! .elems) {</span>
+<span class="coverage-red">    with %!cache-to-table{ $table }:delete {</span>
+<span class="coverage-red">        for .&lt;&gt; // [] -&gt; $key {</span>
+<span class="coverage-red">            note &quot;invalidate $table: $key&quot; if $*RED-CACHE-DEBUG;</span>
+<span class="coverage-red">            %!cache{ $key }:delete</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#multi method invalidate(Str :$table, *%columns) { say &quot;invalidate $table, { %columns.kv.map: { $^a =&gt; $^b.value } }&quot; }</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

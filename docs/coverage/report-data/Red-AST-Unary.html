@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::Unary</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::Unary 40.5%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST::Operator;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">class Red::AST::Not { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Base role for unary operators</span>
+<span class="coverage-green">role Red::AST::Unary does Red::AST::Operator {</span>
+<span class="coverage-red">    has Bool $.bind = False;</span>
+<span class="coverage-red">    method value { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method find-column-name {</span>
+<span class="coverage-green">        $.value.?find-column-name // Empty</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method find-value {</span>
+<span class="coverage-green">        $.value.?find-value // Empty</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method args { $.value }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method gist {</span>
+<span class="coverage-red">        &quot;{ $.op ~ &quot; &quot; if $.op.defined &amp;&amp; $.op }{ $.value.?gist // &quot;&quot; }&quot;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method new($value, Bool :$bind) {</span>
+<span class="coverage-green">        self.bless: :$value, :$bind</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a cast operation</span>
+<span class="coverage-green">class Red::AST::Cast does Red::AST::Unary {</span>
+<span class="coverage-no">    has Str     $.type;</span>
+<span class="coverage-red">    has         $.value;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method gist { &quot;($!value.gist())::$!type&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method returns { $!type }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method op { &quot;::{$!type}&quot; };</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set {</span>
+<span class="coverage-red">        $!value.should-set</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method new($value, $type, Bool :$bind) {</span>
+<span class="coverage-green">        self.bless: :$value, :$type, :$bind</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method not { Red::AST::Not.new: self }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">class Red::AST::So { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a not operation</span>
+<span class="coverage-green">class Red::AST::Not does Red::AST::Unary {</span>
+<span class="coverage-no">    has Str     $.type;</span>
+<span class="coverage-no">    has         $.value;</span>
+<span class="coverage-red">    has Bool    $.returns;</span>
+<span class="coverage-red">    method op { &quot;not&quot; };</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(|) { }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method not { Red::AST::So.new: $!value }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a so operation</span>
+<span class="coverage-green">class Red::AST::So does Red::AST::Unary {</span>
+<span class="coverage-no">    has Str     $.type;</span>
+<span class="coverage-no">    has         $.value;</span>
+<span class="coverage-red">    has Bool    $.returns;</span>
+<span class="coverage-red">    method op { &quot;&quot; };</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-set(|) { }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method not { Red::AST::Not.new: $!value }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

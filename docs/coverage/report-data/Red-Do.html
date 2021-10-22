@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Do</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Do 94.6%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Database;</span>
+<span class="coverage-no">use Red::Driver;</span>
+<span class="coverage-no">use X::Red::Exceptions;</span>
+<span class="coverage-no">use Red::Class;</span>
+<span class="coverage-no">use Red::Event;</span>
+<span class="coverage-no">use Red::DB;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head1 Red::Do</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit module Red::Do;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Loads Red configuration (mostly the database connection)</span>
+<span class="coverage-no">#| from a json configuration json file. If the file isn't defined</span>
+<span class="coverage-no">#| try to get it on `./.red.json`</span>
+<span class="coverage-green">multi red-defaults-from-config() is export {</span>
+<span class="coverage-green">    if &quot;./.red.json&quot;.IO.f {</span>
+<span class="coverage-green">        return red-defaults-from-config &quot;./.red.json&quot;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    X::Red::Defaults::FromConfNotFound.new(:file&lt;./.red.json&gt;).throw</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Loads Red configuration (mostly the database connection)</span>
+<span class="coverage-no">#| from a json configuration json file. If the file isn't defined</span>
+<span class="coverage-no">#| try to get it on `./.red.json`</span>
+<span class="coverage-green">multi red-defaults-from-config($file where .IO.f) is export {</span>
+<span class="coverage-green">    require ::(&quot;Config&quot;);</span>
+<span class="coverage-green">    my $conf = ::(&quot;Config&quot;).new;</span>
+<span class="coverage-green">    my $defaults = $conf.read($file.IO.absolute).get;</span>
+<span class="coverage-green">    my %defaults = $defaults.kv.map: -&gt; $name, %data {</span>
+<span class="coverage-green">        $name =&gt; [%data&lt;red-driver&gt;, :default(so %data&lt;default&gt;), |($_ with %data&lt;positional&gt;), |(.pairs with %data&lt;named&gt;)]</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    red-defaults |%defaults</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Sets the default connection to be used</span>
+<span class="coverage-green">multi red-defaults(Str $driver, |c) is export {</span>
+<span class="coverage-green">    %GLOBAL::RED-DEFULT-DRIVERS = default =&gt; database $driver, |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Sets the default connections to be used.</span>
+<span class="coverage-no">#| The key is the name of the connection and the value the connection itself</span>
+<span class="coverage-green">multi red-defaults(*%drivers) is export {</span>
+<span class="coverage-green">    my Bool $has-default = False;</span>
+<span class="coverage-green">    %GLOBAL::RED-DEFULT-DRIVERS = %drivers.kv.map(-&gt; $name, $_ {</span>
+<span class="coverage-green">        when Capture|Positional {</span>
+<span class="coverage-no">            my (Str $driver, Bool $default);</span>
+<span class="coverage-green">            my \c = \();</span>
+<span class="coverage-green">            :($driver, Bool :$default, |c) := $_;</span>
+<span class="coverage-green">            if $default {</span>
+<span class="coverage-green">                X::Red::Do::DriverDefinedMoreThanOnce.new.throw if $has-default;</span>
+<span class="coverage-green">                $has-default = True;</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">            my \db = do if $driver ~~ Red::Driver {</span>
+<span class="coverage-red">                $driver</span>
+<span class="coverage-no">            } else {</span>
+<span class="coverage-green">                database $driver, |[|c];</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">            |%(</span>
+<span class="coverage-no">                $name     =&gt; db,</span>
+<span class="coverage-no">                |(default =&gt; db if $default)</span>
+<span class="coverage-no">            )</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        when Red::Driver:D {</span>
+<span class="coverage-green">            $name =&gt; $_</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }).Hash;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub red-emit(Str() $name, $data) is export {</span>
+<span class="coverage-green">    get-RED-DB.emit: Red::Event.new: :$name, :$data</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub red-tap(Str() $name, &amp;func, :$red-db = $*RED-DB) is export {</span>
+<span class="coverage-green">    Red::Class.instance.events.grep({ $_ eq $name with .name }).tap: -&gt; Red::Event $_ {</span>
+<span class="coverage-green">        my $*RED-DB = $red-db;</span>
+<span class="coverage-green">        func .data</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub run-red-do($*RED-DB, &amp;block) {</span>
+<span class="coverage-no">    # TODO: test if its connected and reconnect if it's not</span>
+<span class="coverage-green">    block $*RED-DB</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">proto red-do(|) {</span>
+<span class="coverage-green">    my %red-supplies := %*RED-SUPPLIES // {};</span>
+<span class="coverage-green">    {</span>
+<span class="coverage-red">        my %*RED-SUPPLIES := %red-supplies;</span>
+<span class="coverage-green">        {*}</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Receives a block and optionally a connection name.</span>
+<span class="coverage-no">#| Runs the block with the connection with that name</span>
+<span class="coverage-green">multi red-do(*@blocks where .all ~~ Callable, Str :$with = &quot;default&quot;, :$async) is export {</span>
+<span class="coverage-green">    X::Red::Do::DriverNotDefined.new(:driver($with)).throw unless %GLOBAL::RED-DEFULT-DRIVERS{$with}:exists;</span>
+<span class="coverage-green">    my @ret = do for @blocks {</span>
+<span class="coverage-green">        my Str $*RED-DO-WITH = $with;</span>
+<span class="coverage-green">        red-do :with(%GLOBAL::RED-DEFULT-DRIVERS{$with}), $_, :$async</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    if $async {</span>
+<span class="coverage-green">        return start await @ret</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    return @ret.head if @ret == 1;</span>
+<span class="coverage-green">    @ret</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Receives a block and optionally a connection name.</span>
+<span class="coverage-no">#| Runs the block with the connection with that name</span>
+<span class="coverage-no">#| synchronously</span>
+<span class="coverage-green">multi red-do(&amp;block, Red::Driver:D :$with, :$async where not *) is export {</span>
+<span class="coverage-green">    run-red-do $with, &amp;block</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Receives a block and optionally a connection name.</span>
+<span class="coverage-no">#| Runs the block with the connection with that name</span>
+<span class="coverage-no">#| asynchronously</span>
+<span class="coverage-green">multi red-do(&amp;block, Str:D :$with = &quot;default&quot;, :$async! where so *) is export {</span>
+<span class="coverage-green">    my Str $*RED-DO-WITH = $with;</span>
+<span class="coverage-green">    start run-red-do %GLOBAL::RED-DEFULT-DRIVERS{$with}, &amp;block</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi red-do(</span>
+<span class="coverage-no">        *@blocks,</span>
+<span class="coverage-no">        Bool :$async,</span>
+<span class="coverage-no">        Bool :$transaction! where so *,</span>
+<span class="coverage-no">        *%pars where *.none.key eq &quot;with&quot;</span>
+<span class="coverage-no">) is export {</span>
+<span class="coverage-green">    my $conn = get-RED-DB.begin;</span>
+<span class="coverage-green">    KEEP $conn.commit;</span>
+<span class="coverage-red">    UNDO $conn.rollback;</span>
+<span class="coverage-green">    my $*RED-TRANSCTION-RUNNING = True;</span>
+<span class="coverage-green">    red-do |@blocks, :$async, |%pars, :with($conn);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Receives list of pairs with connection name and block</span>
+<span class="coverage-no">#| or blocks (assuming the default connection) or named</span>
+<span class="coverage-no">#| args where the name is the name of the connection</span>
+<span class="coverage-no">#| Runs each block with the connection with that name</span>
+<span class="coverage-green">multi red-do(*@blocks, Bool :$async, *%pars where *.none.key eq &quot;with&quot;) is export {</span>
+<span class="coverage-green">    my @ret = do for |@blocks , |%pars.pairs -&gt; $block {</span>
+<span class="coverage-green">        when $block ~~ Pair {</span>
+<span class="coverage-green">            given $block.key -&gt; $with {</span>
+<span class="coverage-green">                when $with ~~ Positional {</span>
+<span class="coverage-green">                    red-do :$async, |$with.map: { Pair.new: $_, $block.value }</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-green">                default {</span>
+<span class="coverage-green">                    red-do :$async, :$with, $block.value</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        when $block ~~ Callable {</span>
+<span class="coverage-green">            red-do :$async, $block</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    return start await @ret if $async;</span>
+<span class="coverage-green">    @ret</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

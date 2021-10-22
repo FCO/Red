@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Driver::SQLite::SQLiteMaster</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Driver::SQLite::SQLiteMaster 36.3%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red;</span>
+<span class="coverage-green">unit model Red::Driver::SQLite::SQLiteMaster is table&lt;sqlite_master&gt;;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Str      $.type      is column;</span>
+<span class="coverage-no">has Str      $.name      is id;</span>
+<span class="coverage-green">has Str      $.table     is column{:name&lt;tbl_name&gt;, :references(*.name), :model-name(::?CLASS.^name)};</span>
+<span class="coverage-no">has Int      $.root-page is column&lt;rootpage&gt;;</span>
+<span class="coverage-no">has Str      $.sql       is column;</span>
+<span class="coverage-green">has ::?CLASS @.children  is relationship{ .table }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method tables(::?CLASS:U:)   { self.^all.grep: *.is-table }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method indexes(::?CLASS:U:) { ::?CLASS.^all.grep: *.is-index }</span>
+<span class="coverage-red">multi method indexes(::?CLASS:D:) { self.children.grep: *.is-index }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method is-table              { self.type eq &quot;table&quot; }</span>
+<span class="coverage-red">method is-index              { self.type eq &quot;index&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method find-table(::?CLASS:U: Str $name) { self.tables.first:  *.name eq $name }</span>
+<span class="coverage-red">method find-index(::?CLASS:U: Str $name) { self.indexes.first: *.name eq $name }</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

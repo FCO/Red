@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Attr::Column</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Attr::Column 62.5%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Column;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role Red::Attr::Column;</span>
+<span class="coverage-no">has             %.args;</span>
+<span class="coverage-red">has Red::Column $!column;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method perl { $.column.gist }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method column(--&gt; Red::Column:D) {</span>
+<span class="coverage-green">    $!column.DEFINITE ?? $!column !! Red::Column.new: |%!args, :attr(self)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method create-column(Mu $model = Nil) {</span>
+<span class="coverage-red">    $!column = Red::Column.new: |%!args, :attr($model !=== Nil ?? self.clone: :package($model) !! self)</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

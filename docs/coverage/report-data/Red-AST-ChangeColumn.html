@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::ChangeColumn</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::ChangeColumn 10.5%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">#| Represents an alter table alter column</span>
+<span class="coverage-green">unit class Red::AST::ChangeColumn does Red::AST;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Str  $.table is required;</span>
+<span class="coverage-no">has Str  $.name  is required;</span>
+<span class="coverage-no">has Str  $.type;</span>
+<span class="coverage-no">has Bool $.nullable;</span>
+<span class="coverage-no">has Bool $.pk;</span>
+<span class="coverage-no">has Bool $.unique;</span>
+<span class="coverage-no">has Str  $.ref-table;</span>
+<span class="coverage-red">has Str  $.ref-col;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method find-column-name {}</span>
+<span class="coverage-red">method args {}</span>
+<span class="coverage-red">method returns {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"># TODO: Fix</span>
+<span class="coverage-red">method optimize(@changes) {</span>
+<span class="coverage-red">    my %lists = @changes.classify: { $_ ~~ ::?CLASS ?? &quot;changes&quot; !! &quot;other&quot; };</span>
+<span class="coverage-red">    my %cols  = .?classify: { .?name } with %lists&lt;changes&gt;;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    my @c = %cols.values.map({::?CLASS.new: |%(|.map({</span>
+<span class="coverage-red">        |(&quot;table&quot;     , $_ with .table),</span>
+<span class="coverage-red">        |(&quot;name&quot;      , $_ with .name),</span>
+<span class="coverage-red">        |(&quot;type&quot;      , $_ with .type),</span>
+<span class="coverage-red">        |(&quot;nullable&quot;  , $_ with .nullable),</span>
+<span class="coverage-red">        |(&quot;pk&quot;        , $_ with .pk),</span>
+<span class="coverage-red">        |(&quot;unique&quot;    , $_ with .unique),</span>
+<span class="coverage-red">        |(&quot;ref-table&quot; , $_ with .ref-table),</span>
+<span class="coverage-red">        |(&quot;ref-col&quot;   , $_ with .ref-col),</span>
+<span class="coverage-no">    }))});</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    [</span>
+<span class="coverage-no">        |%lists&lt;other&gt;,</span>
+<span class="coverage-no">        |@c</span>
+<span class="coverage-no">    ]</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

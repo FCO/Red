@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::ResultSeqSeq</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::ResultSeqSeq 36.3%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::Model;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 Red::ResultSeqSeq</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a Seq of ResultSeqs</span>
+<span class="coverage-green">unit class Red::ResultSeqSeq does Positional;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has     $.rs    is required;</span>
+<span class="coverage-red">has Int $.size  is required = 1;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| run SQL query to get how many elements</span>
+<span class="coverage-red">method elems {</span>
+<span class="coverage-red">    ($!rs.elems / $!size).ceiling</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| return a ResultSeq for that index</span>
+<span class="coverage-green">method AT-POS($key) {</span>
+<span class="coverage-green">    $!rs.from($key * $!size).head: $!size</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method iterator {</span>
+<span class="coverage-red">    gather for 0 .. $.elems { take self.AT-POS: $_ }.iterator</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method gist {</span>
+<span class="coverage-red">    &quot;[{self.map({ &quot;{ .gist }&quot; }).join: &quot;, &quot;}]&quot;</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red 64.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use v6;</span>
+<span class="coverage-no">use Red::Do;</span>
+<span class="coverage-no">use Red::Model;</span>
+<span class="coverage-no">use Red::Attr::Column;</span>
+<span class="coverage-no">use Red::Column;</span>
+<span class="coverage-no">use Red::ColumnMethods;</span>
+<span class="coverage-no">use Red::Utils;</span>
+<span class="coverage-no">use Red::ResultSeq;</span>
+<span class="coverage-no">use Red::DefaultResultSeq;</span>
+<span class="coverage-no">use Red::Attr::Query;</span>
+<span class="coverage-no">use Red::AST;</span>
+<span class="coverage-no">use MetamodelX::Red::Model;</span>
+<span class="coverage-no">use Red::Traits;</span>
+<span class="coverage-no">use Red::Operators;</span>
+<span class="coverage-no">use Red::Database;</span>
+<span class="coverage-no">use Red::AST::Optimizer::AND;</span>
+<span class="coverage-no">use Red::AST::Optimizer::OR;</span>
+<span class="coverage-no">use Red::AST::Optimizer::Case;</span>
+<span class="coverage-no">use Red::Class;</span>
+<span class="coverage-no">use Red::DB;</span>
+<span class="coverage-no">use Red::Schema;</span>
+<span class="coverage-no">use Red::Formatter;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class Red:ver&lt;0.1.51&gt;:api&lt;2&gt; {</span>
+<span class="coverage-no">    our %experimentals;</span>
+<span class="coverage-red">    our @experimental-roles;</span>
+<span class="coverage-green">    method events   { Red::Class.instance.events }</span>
+<span class="coverage-green">    method emit(|c) { get-RED-DB.emit: |c        }</span>
+<span class="coverage-red">    method experimentals { %experimentals }</span>
+<span class="coverage-red">    method ping {</span>
+<span class="coverage-red">        do for (%GLOBAL::RED-DEFULT-DRIVERS || :default(get-RED-DB)).kv -&gt; $key, $conn {</span>
+<span class="coverage-red">            $key =&gt; $conn.ping</span>
+<span class="coverage-no">        }.Map</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">BEGIN {</span>
+<span class="coverage-green">    Red::Column.^add_role: Red::ColumnMethods;</span>
+<span class="coverage-green">    Red::Column.^compose;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    for &lt;AND OR Case&gt; -&gt; $infix {</span>
+<span class="coverage-green">        ::(&quot;Red::AST::$infix&quot;).^add_role: ::(&quot;Red::AST::Optimizer::$infix&quot;);</span>
+<span class="coverage-green">        ::(&quot;Red::AST::$infix&quot;).^compose;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">my package EXPORTHOW {</span>
+<span class="coverage-green">    package DECLARE {</span>
+<span class="coverage-red">        constant model = MetamodelX::Red::Model;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">proto experimental(Str) {*}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi experimental(&quot;shortname&quot;) {</span>
+<span class="coverage-green">    MetamodelX::Red::Model.^add_method: &quot;experimental-name&quot;, method (\model) { model.^shortname }</span>
+<span class="coverage-green">    MetamodelX::Red::Model.^compose;</span>
+<span class="coverage-red">    Empty</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi experimental(&quot;formatters&quot;) {</span>
+<span class="coverage-green">    MetamodelX::Red::Model.^add_method: &quot;experimental-formatter&quot;, method { True }</span>
+<span class="coverage-green">    Red::Column.^add_method: &quot;experimental-formatter&quot;, method { True }</span>
+<span class="coverage-green">    MetamodelX::Red::Model.^compose;</span>
+<span class="coverage-green">    Red::Column.^compose;</span>
+<span class="coverage-red">    Empty</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi experimental($ where &quot;experimental migrations&quot; | &quot;migrations&quot;) {</span>
+<span class="coverage-red">    require ::('MetamodelX::Red::Migration');</span>
+<span class="coverage-red">    @Red::experimental-roles.push: ::('MetamodelX::Red::Migration');</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    Empty</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi experimental(&quot;supply&quot;) {</span>
+<span class="coverage-red">    require ::('MetamodelX::Red::Supply');</span>
+<span class="coverage-red">    @Red::experimental-roles.push: ::('MetamodelX::Red::Supply');</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    Empty</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi experimental(&quot;is-handling&quot;) {</span>
+<span class="coverage-green">    multi trait_mod:&lt;is&gt;(Mu:U $model, :$handling) {</span>
+<span class="coverage-green">        for $handling&lt;&gt; {</span>
+<span class="coverage-green">            my ($orig, $new) = $_ ~~ Pair ?? [.key, .value] !! [$_, $_];</span>
+<span class="coverage-green">            $model.^add_method: $new, method (|c) { self.^all.&quot;$orig&quot;(|c) }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    Map(</span>
+<span class="coverage-no">            '&amp;trait_mod:&lt;is&gt;' =&gt; &amp;trait_mod:&lt;is&gt;</span>
+<span class="coverage-no">    )</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi experimental(&quot;has-one&quot;) {</span>
+<span class="coverage-red">    Empty</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi experimental(&quot;refreshable&quot;) {</span>
+<span class="coverage-green">    require ::('MetamodelX::Red::Refreshable');</span>
+<span class="coverage-green">    @Red::experimental-roles.push: ::('MetamodelX::Red::Refreshable');</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    Empty</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi experimental($feature) { die &quot;Experimental feature '{ $feature }' not recognized.&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi EXPORT(+@experimentals) {</span>
+<span class="coverage-no">	#my $no = &quot;no-optimization&quot;;</span>
+<span class="coverage-no">    	#if @experimentals.none eq $no {</span>
+<span class="coverage-no">	#        require ::(&quot;Red::AST::Infixes&quot;);</span>
+<span class="coverage-no">    	#        for &lt;AND OR Case&gt; -&gt; $infix {</span>
+<span class="coverage-no">	#		::(&quot;Red::AST::$infix&quot;).^add_role: ::(&quot;Red::AST::Optimizer::$infix&quot;);</span>
+<span class="coverage-no">	#		::(&quot;Red::AST::$infix&quot;).^compose;</span>
+<span class="coverage-no">    	#        }</span>
+<span class="coverage-no">    	#} else {</span>
+<span class="coverage-no">    	#        @experimentals .= grep: { $_ ne $no }</span>
+<span class="coverage-no">    	#}</span>
+<span class="coverage-green">    %Red::experimentals{$_} = True for @experimentals;</span>
+<span class="coverage-green">    Map(</span>
+<span class="coverage-no">        Red::Do::EXPORT::ALL::,</span>
+<span class="coverage-no">        Red::Traits::EXPORT::ALL::,</span>
+<span class="coverage-no">        Red::Operators::EXPORT::ALL::,</span>
+<span class="coverage-no">        Red::Schema::EXPORT::ALL::,</span>
+<span class="coverage-no">        ‘&amp;database’ =&gt; &amp;database,</span>
+<span class="coverage-green">        |@experimentals.map(-&gt; $feature { |experimental( $feature ) })</span>
+<span class="coverage-no">    )</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin pod</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">[![Build Status](https://github.com/FCO/Red/workflows/test/badge.svg)](https://github.com/FCO/Red/actions)</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">[![Build Status](https://github.com/FCO/Red/workflows/ecosystem/badge.svg)](https://github.com/FCO/Red/actions)</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin head1</span>
+<span class="coverage-no">Red</span>
+<span class="coverage-no">=end head1</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Take a look at our Documentation: L&lt;https://fco.github.io/Red/&gt;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 Red - A **WiP** ORM for Raku</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 INSTALL</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">    zef install Red</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 SYNOPSIS</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">use Red:api&lt;2&gt;;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">model Person {...}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">model Post is rw {</span>
+<span class="coverage-no">    has Int         $.id        is serial;</span>
+<span class="coverage-no">    has Int         $!author-id is referencing( *.id, :model(Person) );</span>
+<span class="coverage-no">    has Str         $.title     is column{ :unique };</span>
+<span class="coverage-no">    has Str         $.body      is column;</span>
+<span class="coverage-no">    has Person      $.author    is relationship{ .author-id };</span>
+<span class="coverage-no">    has Bool        $.deleted   is column = False;</span>
+<span class="coverage-no">    has DateTime    $.created   is column .= now;</span>
+<span class="coverage-no">    has Set         $.tags      is column{</span>
+<span class="coverage-no">        :type&lt;string&gt;,</span>
+<span class="coverage-no">        :deflate{ .keys.join: &quot;,&quot; },</span>
+<span class="coverage-no">        :inflate{ set(.split: &quot;,&quot;) }</span>
+<span class="coverage-no">    } = set();</span>
+<span class="coverage-no">    method delete { $!deleted = True; self.^save }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">model Person is rw {</span>
+<span class="coverage-no">    has Int  $.id            is serial;</span>
+<span class="coverage-no">    has Str  $.name          is column;</span>
+<span class="coverage-no">    has Post @.posts         is relationship{ .author-id };</span>
+<span class="coverage-no">    method active-posts { @!posts.grep: not *.deleted }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">my $*RED-DB = database &quot;SQLite&quot;;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Person.^create-table;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">CREATE TABLE person(</span>
+<span class="coverage-no">    id integer NOT NULL primary key</span>
+<span class="coverage-no">    AUTOINCREMENT,</span>
+<span class="coverage-no">    name varchar(255) NOT NULL</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">Post.^create-table;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">CREATE TABLE post(</span>
+<span class="coverage-no">    id integer NOT NULL primary key AUTOINCREMENT,</span>
+<span class="coverage-no">    author_id integer NULL references person(id),</span>
+<span class="coverage-no">    title varchar(255) NOT NULL,</span>
+<span class="coverage-no">    body varchar(255) NOT NULL,</span>
+<span class="coverage-no">    deleted integer NOT NULL,</span>
+<span class="coverage-no">    created varchar(32) NOT NULL,</span>
+<span class="coverage-no">    tags varchar(255) NOT NULL,</span>
+<span class="coverage-no">    UNIQUE (title)</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">my Post $post1 = Post.^load: :42id;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    post.id,</span>
+<span class="coverage-no">    post.author_id as &quot;author-id&quot;,</span>
+<span class="coverage-no">    post.title,</span>
+<span class="coverage-no">    post.body,</span>
+<span class="coverage-no">    post.deleted,</span>
+<span class="coverage-no">    post.created,</span>
+<span class="coverage-no">    post.tags</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    post</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    post.id = 42</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">my Post $post1 = Post.^load: 42;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    post.id,</span>
+<span class="coverage-no">    post.author_id as &quot;author-id&quot;,</span>
+<span class="coverage-no">    post.title,</span>
+<span class="coverage-no">    post.body,</span>
+<span class="coverage-no">    post.deleted,</span>
+<span class="coverage-no">    post.created,</span>
+<span class="coverage-no">    post.tags</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    post</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    post.id = 42</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">my Post $post1 = Post.^load: :title(&quot;my title&quot;);</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    post.id,</span>
+<span class="coverage-no">    post.author_id as &quot;author-id&quot;,</span>
+<span class="coverage-no">    post.title,</span>
+<span class="coverage-no">    post.body,</span>
+<span class="coverage-no">    post.deleted,</span>
+<span class="coverage-no">    post.created,</span>
+<span class="coverage-no">    post.tags</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    post</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    post.title = ‘my title’</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">my $person = Person.^create: :name&lt;Fernando&gt;;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">INSERT INTO person(</span>
+<span class="coverage-no">    name</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">VALUES(</span>
+<span class="coverage-no">    ?</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">-- BIND: [&quot;Fernando&quot;]</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">-- SQLite needs an extra select:</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    person.id,</span>
+<span class="coverage-no">    person.name</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    person</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    _rowid_ = last_insert_rowid()</span>
+<span class="coverage-no">LIMIT 1</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">RETURNS:</span>
+<span class="coverage-no">Person.new(name =&gt; &quot;Fernando&quot;)</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no"># Using Pg Driver for this block</span>
+<span class="coverage-no">{</span>
+<span class="coverage-no">    my $*RED-DB = database &quot;Pg&quot;;</span>
+<span class="coverage-no">    my $person = Person.^create: :name&lt;Fernando&gt;;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">INSERT INTO person(</span>
+<span class="coverage-no">    name</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">VALUES(</span>
+<span class="coverage-no">    $1</span>
+<span class="coverage-no">) RETURNING *</span>
+<span class="coverage-no">-- BIND: [&quot;Fernando&quot;]</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">RETURNS:</span>
+<span class="coverage-no">Person.new(name =&gt; &quot;Fernando&quot;)</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">say $person.posts;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    post.id,</span>
+<span class="coverage-no">    post.author_id as &quot;author-id&quot;,</span>
+<span class="coverage-no">    post.title,</span>
+<span class="coverage-no">    post.body,</span>
+<span class="coverage-no">    post.deleted,</span>
+<span class="coverage-no">    post.created,</span>
+<span class="coverage-no">    post.tags</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    post</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    post.author_id = ?</span>
+<span class="coverage-no">-- BIND: [1]</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">say Person.new(:2id)</span>
+<span class="coverage-no">    .active-posts</span>
+<span class="coverage-no">    .grep: { .created &gt; now }</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    post.id,</span>
+<span class="coverage-no">    post.author_id as &quot;author-id&quot;,</span>
+<span class="coverage-no">    post.title,</span>
+<span class="coverage-no">    post.body,</span>
+<span class="coverage-no">    post.deleted,</span>
+<span class="coverage-no">    post.created,</span>
+<span class="coverage-no">    post.tags</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    post</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    (</span>
+<span class="coverage-no">       post.author_id = ?</span>
+<span class="coverage-no">       AND (</span>
+<span class="coverage-no">           post.deleted == 0</span>
+<span class="coverage-no">           OR post.deleted IS NULL</span>
+<span class="coverage-no">       )</span>
+<span class="coverage-no">    )</span>
+<span class="coverage-no">    AND post.created &gt; 1554246698.448671</span>
+<span class="coverage-no">-- BIND: [2]</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">my $now = now;</span>
+<span class="coverage-no">say Person.new(:3id)</span>
+<span class="coverage-no">    .active-posts</span>
+<span class="coverage-no">    .grep: { .created &gt; $now }</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    post.id,</span>
+<span class="coverage-no">    post.author_id as &quot;author-id&quot;,</span>
+<span class="coverage-no">    post.title,</span>
+<span class="coverage-no">    post.body,</span>
+<span class="coverage-no">    post.deleted,</span>
+<span class="coverage-no">    post.created,</span>
+<span class="coverage-no">    post.tags</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    post</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    (</span>
+<span class="coverage-no">       post.author_id = ?</span>
+<span class="coverage-no">       AND (</span>
+<span class="coverage-no">           post.deleted == 0</span>
+<span class="coverage-no">           OR post.deleted IS NULL</span>
+<span class="coverage-no">       )</span>
+<span class="coverage-no">    )</span>
+<span class="coverage-no">    AND post.created &gt; ?</span>
+<span class="coverage-no">-- BIND: [</span>
+<span class="coverage-no">--   3,</span>
+<span class="coverage-no">--   Instant.from-posix(</span>
+<span class="coverage-no">--       &lt;399441421363/257&gt;,</span>
+<span class="coverage-no">--       Bool::False</span>
+<span class="coverage-no">--   )</span>
+<span class="coverage-no">-- ]</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">Person.^create:</span>
+<span class="coverage-no">    :name&lt;Fernando&gt;,</span>
+<span class="coverage-no">    :posts[</span>
+<span class="coverage-no">        {</span>
+<span class="coverage-no">            :title(&quot;My new post&quot;),</span>
+<span class="coverage-no">            :body(&quot;A long post&quot;)</span>
+<span class="coverage-no">        },</span>
+<span class="coverage-no">    ]</span>
+<span class="coverage-no">;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">INSERT INTO person(</span>
+<span class="coverage-no">    name</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">VALUES(</span>
+<span class="coverage-no">    ?</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">-- BIND: [&quot;Fernando&quot;]</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    person.id,</span>
+<span class="coverage-no">    person.name</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    person</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    _rowid_ = last_insert_rowid()</span>
+<span class="coverage-no">LIMIT 1</span>
+<span class="coverage-no">-- BIND: []</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">INSERT INTO post(</span>
+<span class="coverage-no">    created,</span>
+<span class="coverage-no">    title,</span>
+<span class="coverage-no">    author_id,</span>
+<span class="coverage-no">    tags,</span>
+<span class="coverage-no">    deleted,</span>
+<span class="coverage-no">    body</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">VALUES(</span>
+<span class="coverage-no">    ?,</span>
+<span class="coverage-no">    ?,</span>
+<span class="coverage-no">    ?,</span>
+<span class="coverage-no">    ?,</span>
+<span class="coverage-no">    ?,</span>
+<span class="coverage-no">    ?</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">-- BIND: [</span>
+<span class="coverage-no">--   &quot;2019-04-02T22:55:13.658596+01:00&quot;,</span>
+<span class="coverage-no">--   &quot;My new post&quot;,</span>
+<span class="coverage-no">--   1,</span>
+<span class="coverage-no">--   &quot;&quot;,</span>
+<span class="coverage-no">--   Bool::False,</span>
+<span class="coverage-no">--   &quot;A long post&quot;</span>
+<span class="coverage-no">-- ]</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    post.id,</span>
+<span class="coverage-no">    post.author_id as &quot;author-id&quot;,</span>
+<span class="coverage-no">    post.title,</span>
+<span class="coverage-no">    post.body,</span>
+<span class="coverage-no">    post.deleted,</span>
+<span class="coverage-no">    post.created,</span>
+<span class="coverage-no">    post.tags</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    post</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    _rowid_ = last_insert_rowid()</span>
+<span class="coverage-no">LIMIT 1</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">my $post = Post.^load: :title(&quot;My new post&quot;);</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    post.id,</span>
+<span class="coverage-no">    post.author_id as &quot;author-id&quot;,</span>
+<span class="coverage-no">    post.title,</span>
+<span class="coverage-no">    post.body,</span>
+<span class="coverage-no">    post.deleted,</span>
+<span class="coverage-no">    post.created,</span>
+<span class="coverage-no">    post.tags</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    post</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    post.title = ‘My new post’</span>
+<span class="coverage-no">-- BIND: []</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">RETURNS:</span>
+<span class="coverage-no">Post.new(</span>
+<span class="coverage-no">   title   =&gt; &quot;My new post&quot;,</span>
+<span class="coverage-no">   body    =&gt; &quot;A long post&quot;,</span>
+<span class="coverage-no">   deleted =&gt; 0,</span>
+<span class="coverage-no">   created =&gt; DateTime.new(</span>
+<span class="coverage-no">       2019,</span>
+<span class="coverage-no">       4,</span>
+<span class="coverage-no">       2,</span>
+<span class="coverage-no">       23,</span>
+<span class="coverage-no">       7,</span>
+<span class="coverage-no">       46.677388,</span>
+<span class="coverage-no">       :timezone(3600)</span>
+<span class="coverage-no">   ),</span>
+<span class="coverage-no">   tags    =&gt; Set.new(&quot;&quot;)</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">say $post.body;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">PRINTS:</span>
+<span class="coverage-no">A long post</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">my $author = $post.author;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">RETURNS:</span>
+<span class="coverage-no">Person.new(name =&gt; &quot;Fernando&quot;)</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">$author.name = &quot;John Doe&quot;;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">$author.^save;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">UPDATE person SET</span>
+<span class="coverage-no">    name = ‘John Doe’</span>
+<span class="coverage-no">WHERE id = 1</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">$author.posts.create:</span>
+<span class="coverage-no">    :title(&quot;Second post&quot;),</span>
+<span class="coverage-no">    :body(&quot;Another long post&quot;);</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">INSERT INTO post(</span>
+<span class="coverage-no">    title,</span>
+<span class="coverage-no">    body,</span>
+<span class="coverage-no">    created,</span>
+<span class="coverage-no">    tags,</span>
+<span class="coverage-no">    deleted,</span>
+<span class="coverage-no">    author_id</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">VALUES(</span>
+<span class="coverage-no">    ?,</span>
+<span class="coverage-no">    ?,</span>
+<span class="coverage-no">    ?,</span>
+<span class="coverage-no">    ?,</span>
+<span class="coverage-no">    ?,</span>
+<span class="coverage-no">    ?</span>
+<span class="coverage-no">)</span>
+<span class="coverage-no">-- BIND: [</span>
+<span class="coverage-no">--   &quot;Second post&quot;,</span>
+<span class="coverage-no">--   &quot;Another long post&quot;,</span>
+<span class="coverage-no">--   &quot;2019-04-02T23:28:09.346442+01:00&quot;,</span>
+<span class="coverage-no">--   &quot;&quot;,</span>
+<span class="coverage-no">--   Bool::False,</span>
+<span class="coverage-no">--   1</span>
+<span class="coverage-no">-- ]</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">$author.posts.elems;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;sql&gt;</span>
+<span class="coverage-no">-- Equivalent to the following query:</span>
+<span class="coverage-no">SELECT</span>
+<span class="coverage-no">    count(*) as &quot;data_1&quot;</span>
+<span class="coverage-no">FROM</span>
+<span class="coverage-no">    post</span>
+<span class="coverage-no">WHERE</span>
+<span class="coverage-no">    post.author_id = ?</span>
+<span class="coverage-no">-- BIND: [1]</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">RETURNS:</span>
+<span class="coverage-no">2</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 DESCRIPTION</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Red is a *WiP* ORM for Raku.</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 traits</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=item C&lt;is column&gt;</span>
+<span class="coverage-no">=item C&lt;is column{}&gt;</span>
+<span class="coverage-no">=item C&lt;is id&gt;</span>
+<span class="coverage-no">=item C&lt;is id{}&gt;</span>
+<span class="coverage-no">=item C&lt;is serial&gt;</span>
+<span class="coverage-no">=item C&lt;is referencing{}&gt;</span>
+<span class="coverage-no">=item C&lt;is relationship{}&gt;</span>
+<span class="coverage-no">=item C&lt;is table&lt;&gt;&gt;</span>
+<span class="coverage-no">=item C&lt;is nullable&gt;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 features:</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 relationships</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Red will infer relationship data if you use type constraints on your properties.</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no"># Single file e.g. Schema.pm6</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">model Related { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-no"># belongs to</span>
+<span class="coverage-no">model MyModel {</span>
+<span class="coverage-no">    has Int     $!related-id is referencing( *.id, :model&lt;Related&gt; );</span>
+<span class="coverage-no">    has Related $.related    is relationship{ .id };</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"># has one/has many</span>
+<span class="coverage-no">model Related {</span>
+<span class="coverage-no">    has Int $.id is serial;</span>
+<span class="coverage-no">    has MyModel @.my-models is relationship{ .related-id };</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">If you want to put your schema into multiple files, you can create an &quot;indirect&quot;</span>
+<span class="coverage-no">relationship, and Red will look up the related models as necessary.</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no"># MyModel.pm6</span>
+<span class="coverage-no">model MyModel {</span>
+<span class="coverage-no">    has Int     $!related-id is referencing{ :model&lt;Related&gt;, :column&lt;id&gt; };</span>
+<span class="coverage-no">    has         $.related    is relationship({ .id }, :model&lt;Related&gt;);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"># Related.pm6</span>
+<span class="coverage-no">model Related {</span>
+<span class="coverage-no">    has Int $.id is serial;</span>
+<span class="coverage-no">    has     @.my-models is relationship({ .related-id }, :model&lt;MyModel&gt;);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">If Red can’t find where your C&lt;model&gt; is defined you can override where it looks</span>
+<span class="coverage-no">with C&lt;require&gt;:</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">    has Int     $!related-id is referencing{ :model&lt;Related&gt;, :column&lt;id&gt;,</span>
+<span class="coverage-no">                                             :require&lt;MyApp::Schema::Related&gt; };</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 custom table name</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">model MyModel is table&lt;custom_table_name&gt; {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 not nullable columns by default</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Red, by default, has not nullable columns, to change it:</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">#| This makes this model’s columns nullable by default</span>
+<span class="coverage-no">model MyModel is nullable {</span>
+<span class="coverage-no">    has Int $.col1 is column;               #= this column is nullable</span>
+<span class="coverage-no">    has Int $.col2 is column{ :!nullable }; #= this one is not nullable</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 load object from database</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">MyModel.^load: 42;</span>
+<span class="coverage-no">MyModel.^load: id =&gt; 42;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 save object on the database</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">$object.^save;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 search for a list of object</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">Question.^all.grep: { .answer == 42 }; # returns a result seq</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 phasers</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=item C&lt;before-create&gt;</span>
+<span class="coverage-no">=item C&lt;after-create&gt;</span>
+<span class="coverage-no">=item C&lt;before-update&gt;</span>
+<span class="coverage-no">=item C&lt;after-update&gt;</span>
+<span class="coverage-no">=item C&lt;before-delete&gt;</span>
+<span class="coverage-no">=item C&lt;after-delete&gt;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 Temporary table</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">model Bla is temp { ... }</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 Create table</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">Question.^create-table;</span>
+<span class="coverage-no">Question.^create-table: :if-not-exists;</span>
+<span class="coverage-no">Question.^create-table: :unless-exists;</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 IN</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no">Question.^all.grep: *.answer ⊂ (3.14, 13, 42)</span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head4 create</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=begin code :lang&lt;perl6&gt;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Post.^create: :body(&quot;bla ble bli blo blu&quot;), :title(&quot;qwer&quot;);</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-no">model Tree {</span>
+<span class="coverage-no">    has UInt   $!id        is id;</span>
+<span class="coverage-no">    has Str    $.value     is column;</span>
+<span class="coverage-no">    has UInt   $!parent-id is referencing{ Tree.id };</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">    has Tree   $.parent    is relationship{ .parent-id };</span>
+<span class="coverage-no">    has Tree   @.kids      is relationship{ .parent-id };</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Tree.^create-table: :if-not-exists;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Tree.^create:</span>
+<span class="coverage-no">    :value&lt;Bla&gt;,</span>
+<span class="coverage-no">    :parent{:value&lt;Ble&gt;},</span>
+<span class="coverage-no">    :kids[</span>
+<span class="coverage-no">        {:value&lt;Bli&gt;},</span>
+<span class="coverage-no">        {:value&lt;Blo&gt;},</span>
+<span class="coverage-no">        {:value&lt;Blu&gt;}</span>
+<span class="coverage-no">    ]</span>
+<span class="coverage-no">;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=end code</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 AUTHOR</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Fernando Correa de Oliveira &lt;fernandocorrea@gmail.com&gt;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 COPYRIGHT AND LICENSE</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">Copyright 2018 Fernando Correa de Oliveira</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">This library is free software; you can redistribute it and/or modify it under the Artistic License 2.0.</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=end pod</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

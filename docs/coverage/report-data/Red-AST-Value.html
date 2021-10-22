@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::Value</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::Value 88.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::Column;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a value</span>
+<span class="coverage-green">class Red::AST::Value does Red::AST is Any {</span>
+<span class="coverage-no">    has             $.value is required;</span>
+<span class="coverage-no">    has Red::Column $.column;</span>
+<span class="coverage-green">    has Mu:U        $.type = $!value.WHAT; # $!column.DEFINITE ?? $!column.attr.type !! $!value.WHAT</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method gist { $!value.gist }</span>
+<span class="coverage-green">    method returns { $!type }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method args { $!value }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method find-value { $!value }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method find-column-name {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method get-value() {</span>
+<span class="coverage-green">        do if $!column.DEFINITE {</span>
+<span class="coverage-green">            $!column.deflate.($!value)</span>
+<span class="coverage-no">        } else {</span>
+<span class="coverage-red">            $!value</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi ast-value(Red::AST $value) is export {</span>
+<span class="coverage-green">    $value</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi ast-value($value, :$type = $value.WHAT) is export {</span>
+<span class="coverage-green">    Red::AST::Value.new: :$value, :$type</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi ast-value($value, Mu :$type!) is export {</span>
+<span class="coverage-green">    Red::AST::Value.new: :$value, :type(Any)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

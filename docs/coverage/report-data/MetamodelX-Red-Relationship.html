@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::Relationship</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::Relationship 82.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Attr::Relationship;</span>
+<span class="coverage-no">use Red::FromRelationship;</span>
+<span class="coverage-no">use Red::AST;</span>
+<span class="coverage-no">use Red::Model;</span>
+<span class="coverage-no">=head2 MetamodelX::Red::Relationship</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role MetamodelX::Red::Relationship;</span>
+<span class="coverage-red">has %!relationships{Attribute};</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method relationships(|) {</span>
+<span class="coverage-green">    %!relationships</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method has-one-relationships(|) {</span>
+<span class="coverage-green">    %!relationships.keys.grep: {</span>
+<span class="coverage-green">        .type !~~ Positional &amp;&amp; !.no-prefetch</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method has-many-relationships(|) {</span>
+<span class="coverage-red">    %!relationships.keys.grep: {</span>
+<span class="coverage-red">        .type ~~ Positional</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method create-rel-name(Mu \instance, $name) { &quot;{ instance.^as }_{ $name }&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method !sel-scalar($attr, $name) {</span>
+<span class="coverage-green">    my method (Mu:U \SELF:) {</span>
+<span class="coverage-green">        SELF.^join(</span>
+<span class="coverage-no">            $attr.has-lazy-relationship</span>
+<span class="coverage-no">                    ?? $attr.relationship-model</span>
+<span class="coverage-no">                    !! $attr.type</span>
+<span class="coverage-no">            ,</span>
+<span class="coverage-no">            :name(SELF.^create-rel-name($name)),</span>
+<span class="coverage-no">            $attr,</span>
+<span class="coverage-no">            |$attr.join-type.Hash,</span>
+<span class="coverage-no">        )</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method !sel-positional($attr) {</span>
+<span class="coverage-green">    my method (Mu:U \SELF:) {</span>
+<span class="coverage-green">        my $ast = $attr.relationship-ast: SELF;</span>
+<span class="coverage-green">        ($attr.relationship-model ~~ Positional</span>
+<span class="coverage-no">            ?? $attr.relationship-model.of</span>
+<span class="coverage-no">            !! $attr.relationship-model</span>
+<span class="coverage-no">        ).^rs.new: :filter($ast)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method !get-build {</span>
+<span class="coverage-no">    #&amp; //= self.^find_private_method('BUILD_pr')</span>
+<span class="coverage-green">    method (*%data) {</span>
+<span class="coverage-red">        my \instance = self;</span>
+<span class="coverage-green">        for self.^relationships.keys -&gt; $rel {</span>
+<span class="coverage-green">            $rel.build-relationship: instance</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        for self.^attributes -&gt; $attr {</span>
+<span class="coverage-green">            my $name = $attr.name.substr: 2;</span>
+<span class="coverage-green">            with %data{ $name } {</span>
+<span class="coverage-green">                $attr.set_value: instance, $_</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        nextsame</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method prepare-relationships(::Type Mu \type) {</span>
+<span class="coverage-green">    my %rels  := %!relationships;</span>
+<span class="coverage-green">    my &amp;build := self!get-build;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    if type.^declares_method(&quot;BUILD&quot;) {</span>
+<span class="coverage-green">        type.^find_method(&quot;BUILD&quot;, :no_fallback(1)).wrap: &amp;build;</span>
+<span class="coverage-red">    } else {</span>
+<span class="coverage-green">        type.^add_method: &quot;BUILD&quot;, &amp;build</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Adds a new relationship by reference.</span>
+<span class="coverage-green">multi method add-relationship(</span>
+<span class="coverage-no">        Mu:U $self,</span>
+<span class="coverage-no">        Attribute $attr,</span>
+<span class="coverage-no">        &amp;reference,</span>
+<span class="coverage-no">        Red::Model :$model-type!,</span>
+<span class="coverage-no">        Bool       :$optional,</span>
+<span class="coverage-no">        Bool       :$no-prefetch,</span>
+<span class="coverage-no">        Bool       :$has-one,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-green">    $attr does Red::Attr::Relationship[&amp;reference, :$model-type, :$optional, :$no-prefetch, :$has-one];</span>
+<span class="coverage-green">    self.add-relationship: $self, $attr</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Adds a new relationship by column.</span>
+<span class="coverage-green">multi method add-relationship(</span>
+<span class="coverage-no">        Mu:U $self,</span>
+<span class="coverage-no">        Attribute $attr,</span>
+<span class="coverage-no">        Str  :$column!,</span>
+<span class="coverage-no">        Str  :$model!,</span>
+<span class="coverage-red">        Str  :$require = $model,</span>
+<span class="coverage-no">        Bool :$optional,</span>
+<span class="coverage-no">        Bool :$no-prefetch,</span>
+<span class="coverage-no">        Bool :$has-one,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-green">    self.add-relationship: $self, $attr, { .&quot;$column&quot;() }, :$model, :$require, :$optional, :$no-prefetch, :$has-one</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Adds a new relationship by reference.</span>
+<span class="coverage-green">multi method add-relationship(</span>
+<span class="coverage-no">        Mu:U $self,</span>
+<span class="coverage-no">        Attribute $attr,</span>
+<span class="coverage-no">        &amp;reference,</span>
+<span class="coverage-no">        Str  :$model,</span>
+<span class="coverage-green">        Str  :$require = $model,</span>
+<span class="coverage-no">        Bool :$optional,</span>
+<span class="coverage-no">        Bool :$no-prefetch,</span>
+<span class="coverage-no">	    Bool :$has-one,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-green">    $attr does Red::Attr::Relationship[&amp;reference, :$model, :$require, :$optional, :$no-prefetch, :$has-one];</span>
+<span class="coverage-green">    self.add-relationship: $self, $attr</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Adds a new relationship by two references.</span>
+<span class="coverage-red">multi method add-relationship(</span>
+<span class="coverage-no">        Mu:U $self,</span>
+<span class="coverage-no">        Attribute $attr,</span>
+<span class="coverage-no">        &amp;ref1,</span>
+<span class="coverage-no">        &amp;ref2,</span>
+<span class="coverage-no">        Str  :$model,</span>
+<span class="coverage-red">        Str  :$require = $model,</span>
+<span class="coverage-no">        Bool :$optional,</span>
+<span class="coverage-no">        Bool :$no-prefetch,</span>
+<span class="coverage-no">	    Bool :$has-one,</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-red">    $attr does Red::Attr::Relationship[&amp;ref1, &amp;ref2, :$model, :$require, :$optional, :$no-prefetch, :$has-one];</span>
+<span class="coverage-red">    self.add-relationship: $self, $attr</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Adds a new relationship using an attribute of type `Red::Attr::Relationship`.</span>
+<span class="coverage-green">multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) {</span>
+<span class="coverage-green">    die &quot;:has-one isn't accepted on relationship without its experimental feature (use Red &lt;has-one&gt;)&quot;</span>
+<span class="coverage-no">    	if $attr.has-one and not %Red::experimentals&lt;has-one&gt;;</span>
+<span class="coverage-green">    %!relationships ∪= $attr;</span>
+<span class="coverage-green">    my $name = $attr.name.substr: 2;</span>
+<span class="coverage-green">    if $attr.has_accessor {</span>
+<span class="coverage-green">        if $attr.type ~~ Positional {</span>
+<span class="coverage-green">            $self.^add_multi_method: $name, my method (Mu:D:) {</span>
+<span class="coverage-green">                $attr.get_value(self).self</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">        } elsif($attr.rw) {</span>
+<span class="coverage-green">            $self.^add_multi_method: $name, my method (Mu:D:) is rw {</span>
+<span class="coverage-red">                my \SELF = self;</span>
+<span class="coverage-green">                Proxy.new:</span>
+<span class="coverage-green">                    FETCH =&gt; method { $attr.get_value(SELF) },</span>
+<span class="coverage-green">                    STORE =&gt; method (\value) {</span>
+<span class="coverage-green">                        $attr.set-data: SELF, value</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-no">                ;</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">        } else {</span>
+<span class="coverage-green">            $self.^add_multi_method: $name, my method (Mu:D:) is rw {</span>
+<span class="coverage-no">                use nqp;</span>
+<span class="coverage-green">                nqp::getattr(self, self.WHAT, $attr.name)</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    $attr.rel-name = self.create-rel-name($self, $name);</span>
+<span class="coverage-green">    $self.^add_multi_method: $name, $attr.type ~~ Positional || $attr.has-one</span>
+<span class="coverage-no">        ?? self!sel-positional($attr)</span>
+<span class="coverage-no">        !! self!sel-scalar($attr, $name);</span>
+<span class="coverage-no">    ;</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

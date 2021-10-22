@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::Chained</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::Chained 28.5%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Comment;</span>
+<span class="coverage-green">unit class Red::AST::Chained does Red::AST;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Red::AST            $.filter;</span>
+<span class="coverage-no">has Int                 $.limit;</span>
+<span class="coverage-no">has Int                 $.offset is rw;</span>
+<span class="coverage-no">has                     &amp;.post;</span>
+<span class="coverage-no">has Red::AST            @.order;</span>
+<span class="coverage-no">has Red::AST            @.group;</span>
+<span class="coverage-no">has                     @.table-list;</span>
+<span class="coverage-red">has Red::AST::Chained   $.next;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method args {</span>
+<span class="coverage-red">    $!filter, |@!order, |@!group, |(.args with $!next)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method returns {}</span>
+<span class="coverage-red">method find-column-name {}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

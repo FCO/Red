@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::ResultSeq</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::ResultSeq 83.6%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::DB;</span>
+<span class="coverage-no">use Red::AST;</span>
+<span class="coverage-no">use Red::Utils;</span>
+<span class="coverage-no">use Red::Model;</span>
+<span class="coverage-no">use Red::Column;</span>
+<span class="coverage-no">use Red::Driver;</span>
+<span class="coverage-no">use Red::AST::Next;</span>
+<span class="coverage-no">use Red::AST::Case;</span>
+<span class="coverage-no">use Red::AST::Empty;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::AST::Update;</span>
+<span class="coverage-no">use Red::AST::Delete;</span>
+<span class="coverage-no">use Red::AST::Comment;</span>
+<span class="coverage-no">use Red::Attr::Column;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Chained;</span>
+<span class="coverage-no">use Red::AST::Function;</span>
+<span class="coverage-no">use Red::AST::Select;</span>
+<span class="coverage-no">use Red::ResultSeqSeq;</span>
+<span class="coverage-no">use Red::AST::MultiSelect;</span>
+<span class="coverage-no">use Red::ResultAssociative;</span>
+<span class="coverage-no">use Red::ResultSeq::Iterator;</span>
+<span class="coverage-no">use Red::HiddenFromSQLCommenting;</span>
+<span class="coverage-no">use X::Red::Exceptions;</span>
+<span class="coverage-no">use Red::PrepareCode;</span>
+<span class="coverage-no">use Red::Phaser;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 Red::ResultSeq</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Class that represents a Seq of query results</span>
+<span class="coverage-green">unit role Red::ResultSeq[Mu $of = Any] does Sequence;</span>
+<span class="coverage-no">also does Positional;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub create-resultseq($rs-class-name, Mu \type) is export is raw {</span>
+<span class="coverage-no">    use Red::DefaultResultSeq;</span>
+<span class="coverage-green">    my $rs-class := Metamodel::ClassHOW.new_type: :name($rs-class-name);</span>
+<span class="coverage-green">    $rs-class.^add_parent: Red::DefaultResultSeq;</span>
+<span class="coverage-green">    $rs-class.^add_role: Red::ResultSeq[type];</span>
+<span class="coverage-green">    $rs-class.^add_role: Iterable;</span>
+<span class="coverage-green">    $rs-class.^compose;</span>
+<span class="coverage-red">    $rs-class</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method create-comment-to-caller is hidden-from-sql-commenting {</span>
+<span class="coverage-no">    my %data;</span>
+<span class="coverage-green">    %data&lt;meth-name&gt; = callframe(1).code.name;</span>
+<span class="coverage-green">    given Backtrace.new.tail(*-3).first: {</span>
+<span class="coverage-green">        .subname and .subname ne &quot;&lt;anon&gt;&quot; and !.code.?is-hidden-from-sql-commenting</span>
+<span class="coverage-purple">    } {</span>
+<span class="coverage-green">        %data&lt;file&gt;  = .file;</span>
+<span class="coverage-green">        %data&lt;block&gt; = .code.?name;</span>
+<span class="coverage-green">        %data&lt;line&gt;  = .line;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    @!comments.push: Red::AST::Comment.new:</span>
+<span class="coverage-no">        :msg(</span>
+<span class="coverage-no">            &amp;*RED-COMMENT-SQL</span>
+<span class="coverage-no">                ?? &amp;*RED-COMMENT-SQL.(|%data)</span>
+<span class="coverage-no">                !! comment-sql(|%data)</span>
+<span class="coverage-no">        )</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Add a comment to SQL query</span>
+<span class="coverage-green">sub comment-sql(:$meth-name, :$file, :$block, :$line) {</span>
+<span class="coverage-green">    &quot;method '{ $meth-name // '&lt;anon&gt;' }' called at: { $file // '&lt;none&gt;' } #{ $line // '' }&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| The type of the ResultSeq</span>
+<span class="coverage-green">method of is hidden-from-sql-commenting { $of }</span>
+<span class="coverage-no">#method is-lazy { True }</span>
+<span class="coverage-green">method cache is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    List.from-iterator: self.iterator</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Pair              @.update;</span>
+<span class="coverage-no">has Red::AST::Comment @.comments;</span>
+<span class="coverage-no">has Red::Driver       $.with;</span>
+<span class="coverage-no">has                   $.obj;</span>
+<span class="coverage-green">has Red::AST::Chained $.chain handles &lt;filter limit offset post order group table-list&gt; .= new: |(:filter(.^id-filter) with $!obj);</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method with(Red::Driver $with) {</span>
+<span class="coverage-red">    self.clone: :$with</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method with(Str $with) {</span>
+<span class="coverage-red">    self.with: %GLOBAL::RED-DEFULT-DRIVERS{$with}</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method iterator(--&gt; Red::ResultSeq::Iterator) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&amp;.post, |(:driver($_) with $!with)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a Seq with the result of the SQL query</span>
+<span class="coverage-green">method Seq is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    Seq.new: self.iterator</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method do-it(*%pars) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.clone(|%pars, :chain($!chain.clone: |%pars)).Seq</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#multi method grep(::?CLASS: &amp;filter) { nextwith :filter( filter self.of.^alias: &quot;me&quot; ) }</span>
+<span class="coverage-red">multi method where(::?CLASS:U: Red::AST:U $filter) is hidden-from-sql-commenting { self.WHAT  }</span>
+<span class="coverage-red">multi method where(::?CLASS:D: Red::AST:U $filter) is hidden-from-sql-commenting { self.clone }</span>
+<span class="coverage-red">multi method where(::?CLASS:U: Red::AST:D $filter) is hidden-from-sql-commenting { self.new: :chain($!chain.clone: :$filter) }</span>
+<span class="coverage-green">multi method where(::?CLASS:D: Red::AST:D $filter) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.clone: :chain($!chain.clone: :filter(($.filter, $filter).grep({ .defined }).reduce: { Red::AST::AND.new($^a, $^b) }))</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method transform-item(*%data) is hidden-from-sql-commenting {</span>
+<span class="coverage-red">    self.of.bless: |%data</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Adds a new filter on the query (does not run the query)</span>
+<span class="coverage-green">method grep(&amp;filter) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    CATCH {</span>
+<span class="coverage-green">        default {</span>
+<span class="coverage-green">            if !$*RED-FALLBACK.defined || $*RED-FALLBACK {</span>
+<span class="coverage-green">                if !$*RED-FALLBACK.defined {</span>
+<span class="coverage-red">                    note &quot;falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .?message }&quot;;</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-green">                return self.Seq.grep: &amp;filter</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">            .rethrow</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    my $*OUT = class :: {</span>
+<span class="coverage-red">        method put(|)   { die &quot;Trying to print inside the grep's block&quot; }</span>
+<span class="coverage-green">        method print(|) { die &quot;Trying to print inside the grep's block&quot; }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    my Red::AST $*RED-GREP-FILTER;</span>
+<span class="coverage-green">    my $filter = do given what-does-it-do(&amp;filter, self.of) {</span>
+<span class="coverage-green">        do if [eqv] .values {</span>
+<span class="coverage-green">            .values.head</span>
+<span class="coverage-green">        } else {</span>
+<span class="coverage-green">            .kv.map(-&gt; $test, $ret {</span>
+<span class="coverage-green">                do with $test {</span>
+<span class="coverage-green">                    Red::AST::AND.new: $test, ast-value $ret</span>
+<span class="coverage-no">                } else {</span>
+<span class="coverage-red">                    $ret</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-green">            }).reduce: { Red::AST::OR.new: $^agg, $^fil }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    with $*RED-GREP-FILTER {</span>
+<span class="coverage-red">        $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&amp;ast-value), $filter</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    self.where: $filter;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Changes the query to return only the first row that matches the condition and run it (.grep(...).head)</span>
+<span class="coverage-green">multi method first(&amp;filter --&gt; Red::Model) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.grep(&amp;filter).head</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method first(--&gt; Red::Model) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.head</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#multi method create-map($, :&amp;filter)     { self.do-it.map: &amp;filter }</span>
+<span class="coverage-green">multi method create-map(\SELF: Red::Model $model is copy, :filter(&amp;)) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self but role :: { method of { $model } }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-green">multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&amp;filter) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    my \Meta  = $of.^orig.HOW.WHAT;</span>
+<span class="coverage-green">    my \model = Meta.new(:table(SELF.of.^table)).new_type: :name(SELF.of.^name);</span>
+<span class="coverage-green">    model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, SELF.of.^table;</span>
+<span class="coverage-green">    my $attr-name = 'data_0';</span>
+<span class="coverage-no">    my @table-list;</span>
+<span class="coverage-green">    my @attrs = do for @ret {</span>
+<span class="coverage-green">        @table-list.push: |.tables;</span>
+<span class="coverage-green">        my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;</span>
+<span class="coverage-green">        my $col-name = $_ ~~ Red::Column ?? .name !! $name;</span>
+<span class="coverage-green">        my $attr  = Attribute.new:</span>
+<span class="coverage-no">            :name(&quot;\$!$name&quot;),</span>
+<span class="coverage-no">            :package(model),</span>
+<span class="coverage-no">            :type(.returns ~~ Any &amp;&amp; .returns !~~ Nil ?? .returns !! Any),</span>
+<span class="coverage-no">            :has_accessor,</span>
+<span class="coverage-no">            :build(.returns),</span>
+<span class="coverage-no">        ;</span>
+<span class="coverage-green">        my %data = %(</span>
+<span class="coverage-no">            :name-alias($col-name),</span>
+<span class="coverage-no">            :name($col-name),</span>
+<span class="coverage-no">            :attr-name($name),</span>
+<span class="coverage-no">            :type(.returns.^name),</span>
+<span class="coverage-no">            :$attr,</span>
+<span class="coverage-no">            :model(.tables.head),</span>
+<span class="coverage-no">            :class(model),</span>
+<span class="coverage-green">        	|(do if $_ ~~ Red::Column {</span>
+<span class="coverage-green">                :inflate(.inflate),</span>
+<span class="coverage-no">                :deflate(.deflate),</span>
+<span class="coverage-red">            } else {</span>
+<span class="coverage-green">                :computation($_)</span>
+<span class="coverage-no">            })</span>
+<span class="coverage-no">        );</span>
+<span class="coverage-green">        $attr does Red::Attr::Column(%data);</span>
+<span class="coverage-green">        model.^add_attribute: $attr;</span>
+<span class="coverage-green">        model.^add_multi_method: $name, my method (Mu:D:) { SELF.get_value: &quot;\$!$name&quot; }</span>
+<span class="coverage-red">        $attr</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    model.^add_method: &quot;no-table&quot;, my method no-table { True }</span>
+<span class="coverage-green">    model.^add_method: &quot;orig-result-seq&quot;, my method orig-result-seq { SELF }</span>
+<span class="coverage-green">    model.^compose;</span>
+<span class="coverage-green">    model.^add-column: $_ for @attrs;</span>
+<span class="coverage-green">    my role CMModel [Mu:U \m] {</span>
+<span class="coverage-green">        has &amp;.last-filter = &amp;filter;</span>
+<span class="coverage-green">        has $.last-rs  = SELF;</span>
+<span class="coverage-green">        method of { model }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    SELF.clone(</span>
+<span class="coverage-no">        :chain($!chain.clone:</span>
+<span class="coverage-no">            :$.filter,</span>
+<span class="coverage-green">            :post{ my @data = do for @attrs -&gt; $attr { .&quot;{$attr.name.substr: 2}&quot;() }; @data == 1 ?? @data.head !! |@data },</span>
+<span class="coverage-red">            :table-list[(|@.table-list, self.of, |@table-list).unique],</span>
+<span class="coverage-no">            |%_</span>
+<span class="coverage-no">        )</span>
+<span class="coverage-no">    ) but CMModel[model]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Change what will be returned (does not run the query)</span>
+<span class="coverage-green">method map(\SELF: &amp;filter) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    SELF.create-comment-to-caller;</span>
+<span class="coverage-green">    CATCH {</span>
+<span class="coverage-green">        default {</span>
+<span class="coverage-green">            if !$*RED-FALLBACK.defined || $*RED-FALLBACK {</span>
+<span class="coverage-green">                if !$*RED-FALLBACK.defined {</span>
+<span class="coverage-red">                    note &quot;falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .?message }&quot;;</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-green">                return self.Seq.map: &amp;filter</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">            .rethrow</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    my $*OUT = class :: {</span>
+<span class="coverage-red">        method put(|)   { die &quot;Trying to print inside the map's block&quot; }</span>
+<span class="coverage-green">        method print(|) { die &quot;Trying to print inside the map's block&quot; }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    die &quot;Count bigger than 1&quot; if &amp;filter.count &gt; 1;</span>
+<span class="coverage-no">    my Red::AST %next{Red::AST};</span>
+<span class="coverage-no">    my Red::AST %when{Red::AST};</span>
+<span class="coverage-red">    my @*UPDATE := @!update;</span>
+<span class="coverage-green">    for what-does-it-do(&amp;filter, SELF.of) -&gt; Pair $_ {</span>
+<span class="coverage-green">        (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    my \seq := do if %next {</span>
+<span class="coverage-red">        SELF.where(%next.keys.reduce(-&gt; $agg, $n { Red::AST::OR.new: $agg, $n }))</span>
+<span class="coverage-red">    } else { SELF }</span>
+<span class="coverage-green">    my \ast = Red::AST::Case.new(:%when);</span>
+<span class="coverage-no">    #die &quot;Map returning Red::Model is NYI&quot; if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;</span>
+<span class="coverage-green">    return seq.create-map: ast.value, :&amp;filter if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;</span>
+<span class="coverage-green">    seq.create-map: ast, :&amp;filter</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#method flatmap(&amp;filter) {</span>
+<span class="coverage-no">#    treat-map :flat, $.filter, filter(self.of), &amp;filter</span>
+<span class="coverage-no">#}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Defines the order of the query (does not run the query)</span>
+<span class="coverage-green">method sort(&amp;order --&gt; Red::ResultSeq) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    my @order = order self.of;</span>
+<span class="coverage-green">    self.clone: :chain($!chain.clone: :@order)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Sets the query to return the rows in a randomic order (does not run the query)</span>
+<span class="coverage-green">multi method pick(Whatever --&gt; Red::ResultSeq) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.clone: :chain($!chain.clone: :order[Red::AST::Function.new: :func&lt;random&gt;])</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method pick(Int() $num) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.pick(*).head: |($_ with $num)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method pick() is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.pick(*).head</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a ResultAssociative classified by the passed code (does not run the query)</span>
+<span class="coverage-green">method classify(\SELF: &amp;func, :&amp;as = { $_ } --&gt; Red::ResultAssociative) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    SELF.create-comment-to-caller;</span>
+<span class="coverage-green">    do if self.?last-rs.DEFINITE {</span>
+<span class="coverage-green">        self.last-rs.classify(&amp;func o self.last-filter, :as{ ast-value True })</span>
+<span class="coverage-red">    } else {</span>
+<span class="coverage-green">        my \key   = func SELF.of;</span>
+<span class="coverage-green">        my \value = as   SELF.of;</span>
+<span class="coverage-green">        Red::ResultAssociative[value, key].new: :rs(SELF)</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Runs a query to create a Bag</span>
+<span class="coverage-green">multi method Bag {</span>
+<span class="coverage-green">    nextsame unless self.?last-rs.DEFINITE;</span>
+<span class="coverage-green">    self.last-rs.classify(self.last-filter, :as{ ast-value True }).Bag</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Runs a query to create a Set</span>
+<span class="coverage-green">multi method Set {</span>
+<span class="coverage-green">    nextsame unless self.?last-rs.DEFINITE;</span>
+<span class="coverage-green">    self.last-rs.classify(self.last-filter, :as{ ast-value True }).Set</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Gets the first row returned by the query (run the query)</span>
+<span class="coverage-green">multi method head is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.do-it(:1limit).head</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"># TODO: Return a Red::ResultSeq</span>
+<span class="coverage-green">multi method head(UInt(Numeric) $num) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.clone: :chain($!chain.clone: :limit(min $num, $.limit))</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Sets the ofset of the query</span>
+<span class="coverage-green">method from(UInt:D $num --&gt; Red::ResultSeq) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.clone: :chain($!chain.clone: :offset(($.offset // 0) + $num));</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the number of rows returned by the query (runs the query)</span>
+<span class="coverage-green">method elems( --&gt; Int()) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.create-map(Red::AST::Function.new: :func&lt;count&gt;, :args[ast-value *]).head</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns True if there are lines returned by the query False otherwise (runs the query)</span>
+<span class="coverage-green">method Bool( --&gt; Bool()) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    self.create-map(Red::AST::Gt.new: Red::AST::Function.new(:func&lt;count&gt;, :args[ast-value *]), ast-value 0).head</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method new-object(::?CLASS:D: *%pars) is hidden-from-sql-commenting {</span>
+<span class="coverage-red">    my %data = $.filter.should-set;</span>
+<span class="coverage-red">    my \obj = self.of.bless;#: |%pars, |%data;</span>
+<span class="coverage-red">    for %(|%pars, |%data).kv -&gt; $key, $val {</span>
+<span class="coverage-red">        obj.^set-attr: $key, $val</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    obj</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns a ResultSeqSeq containing ResultSeq that will return ResultSeqs with $size rows each (do not run the query)</span>
+<span class="coverage-green">method batch(Int $size --&gt; Red::ResultSeqSeq) {</span>
+<span class="coverage-green">    Red::ResultSeqSeq.new: :rs(self), :$size</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Creates a new element of that set</span>
+<span class="coverage-green">method create(::?CLASS:D: *%pars) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    $.of.^orig.^create: |%pars, |%(|(.should-set with $.filter), |(.should-set with $.of.HOW.?join-on: $.of));</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Alias for `create`</span>
+<span class="coverage-red">method push(::?CLASS:D: *%pars) is hidden-from-sql-commenting {</span>
+<span class="coverage-red">    $.create(|%pars)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Deletes every row on that ResultSeq</span>
+<span class="coverage-red">method delete(::?CLASS:D:) is hidden-from-sql-commenting {</span>
+<span class="coverage-red">    self.create-comment-to-caller;</span>
+<span class="coverage-red">    get-RED-DB.execute: Red::AST::Delete.new: $.of, $.filter</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Saves any change on any element of that ResultSet</span>
+<span class="coverage-green">method save(::?CLASS:D:) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    my @*UPDATE;</span>
+<span class="coverage-green">    die &quot;You should use a map updating value(s) before saving&quot; unless $.of.^can: &quot;orig-result-seq&quot;;</span>
+<span class="coverage-green">    $.of.orig-result-seq.of.^apply-row-phasers(BeforeUpdate);</span>
+<span class="coverage-green">    get-RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values[|@!update, |@*UPDATE], :filter($.filter)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| unifies 2 ResultSeqs</span>
+<span class="coverage-green">method union(::?CLASS:D: $other --&gt; Red::ResultSeq) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    my Red::AST $filter = self.ast.union: $other.ast;</span>
+<span class="coverage-green">    self.clone: :chain($!chain.clone: :$filter)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| intersects 2 ResultSeqs</span>
+<span class="coverage-green">method intersect(::?CLASS:D: $other --&gt; Red::ResultSeq) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    my Red::AST $filter = self.ast.intersect: $other.ast;</span>
+<span class="coverage-green">    self.clone: :chain($!chain.clone: :$filter)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Removes 1 ResultSeq elements from other ResultSeq</span>
+<span class="coverage-green">method minus(::?CLASS:D: $other --&gt; Red::ResultSeq) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    my Red::AST $filter = self.ast.minus: $other.ast;</span>
+<span class="coverage-green">    self.clone: :chain($!chain.clone: :$filter)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Join (Positional join)</span>
+<span class="coverage-red">multi method join(Str() $sep) {</span>
+<span class="coverage-red">    self.Seq.join: $sep</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Create a custom join (SQL join)</span>
+<span class="coverage-green">method join-model(Red::Model \model, &amp;on, :$name = &quot;{ self.^shortname }_{ model.^shortname }&quot;, *%pars where { .elems == 0 || ( .elems == 1 &amp;&amp; so .values.head ) }) {</span>
+<span class="coverage-green">    do with self.obj {</span>
+<span class="coverage-green">        my $filter = do given what-does-it-do(&amp;on.assuming($_), model) {</span>
+<span class="coverage-green">            do if [eqv] .values {</span>
+<span class="coverage-green">                .values.head</span>
+<span class="coverage-green">            } else {</span>
+<span class="coverage-green">                .kv.map(-&gt; $test, $ret {</span>
+<span class="coverage-green">                    do with $test {</span>
+<span class="coverage-green">                        Red::AST::AND.new: $test, ast-value $ret</span>
+<span class="coverage-no">                    } else {</span>
+<span class="coverage-red">                        $ret</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-green">                }).reduce: { Red::AST::OR.new: $^agg, $^fil }</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        with $*RED-GREP-FILTER {</span>
+<span class="coverage-red">            $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&amp;ast-value), $filter</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        model.^all.where: $filter</span>
+<span class="coverage-purple">    } else {</span>
+<span class="coverage-green">        self.of.^join(model, &amp;on, :$name,  |%pars).^all.clone: :$!chain</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the AST that will generate the SQL</span>
+<span class="coverage-green">method ast(Bool :$sub-select --&gt; Red::AST) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    if $.filter ~~ Red::AST::MultiSelect {</span>
+<span class="coverage-green">        $.filter</span>
+<span class="coverage-red">    } else {</span>
+<span class="coverage-green">        my @prefetch = $.of.^has-one-relationships;</span>
+<span class="coverage-green">        Red::AST::Select.new: :$.of, :$.filter, :$.limit, :$.offset, :@.order, :@.table-list, :@.group, :@.comments, :@prefetch, :$sub-select;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

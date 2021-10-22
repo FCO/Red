@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: X::Red::Exceptions</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>X::Red::Exceptions 45.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Column;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red is Exception {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::RedDbNotDefined is X::Red {</span>
+<span class="coverage-red">    method message { Q[$*RED-DB wasn't defined] }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::Defaults::FromConfNotFound is X::Red {</span>
+<span class="coverage-red">    has Str $.file = &quot;./.red.json&quot;;</span>
+<span class="coverage-red">    method message { &quot;Red configuration file ($!file) not found&quot; }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::Do is X::Red {</span>
+<span class="coverage-red">    has Str $.driver = &quot;default&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::Do::DriverNotDefined is X::Red::Do {</span>
+<span class="coverage-green">    method message { &quot;Driver $.driver not specified&quot; }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::Do::DriverDefinedMoreThanOnce is X::Red::Do {</span>
+<span class="coverage-red">    method message { &quot;Driver $.driver defined mor than once&quot; }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::Driver is X::Red {</span>
+<span class="coverage-green">    has Str $.driver = $*RED-DB.^name;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::RelationshipNotColumn is X::Red {</span>
+<span class="coverage-no">    has Attribute   $.relationship;</span>
+<span class="coverage-red">    has             $.points-to;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method message {</span>
+<span class="coverage-red">        &quot;The relationship '$!relationship.name()' points to a {$!points-to.^name} ($!points-to.Str()). Should point to a column that is refering to another column.&quot;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::RelationshipNotRelated is X::Red {</span>
+<span class="coverage-no">    has Attribute   $.relationship;</span>
+<span class="coverage-red">    has Red::Column $.points-to;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method message {</span>
+<span class="coverage-red">        &quot;The relationship '$!relationship.name()' points to a column ('$!points-to.attr-name()') that does not refer to any where&quot;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::InvalidTableName is X::Red::Driver {</span>
+<span class="coverage-red">    has Str $.table;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method message { &quot;'$!table' is an invalid table name for driver { $.driver }&quot; }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::UpdateNoId is X::Red::Driver {</span>
+<span class="coverage-red">    method message { &quot;Update on a model without id isn't allowed&quot; }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::Driver::Mapped is X::Red::Driver {</span>
+<span class="coverage-no">    has Exception   $.orig-exception is required;</span>
+<span class="coverage-green">    has Str         $!orig-message   = $!orig-exception.message;</span>
+<span class="coverage-green">    has Backtrace   $!orig-backtrace = $!orig-exception.backtrace;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method msg { !!! }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method message {</span>
+<span class="coverage-red">        &quot;{self.msg}\nOriginal error:\n{$!orig-message}&quot;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method throw is hidden-from-backtrace {</span>
+<span class="coverage-green">        nextwith $!orig-backtrace</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::Driver::Mapped::UnknownError is X::Red::Driver::Mapped {</span>
+<span class="coverage-red">    has Str @.fields;</span>
+<span class="coverage-red">    method msg {</span>
+<span class="coverage-red">        qq:to/END/</span>
+<span class="coverage-no">            Unknown Error!!!</span>
+<span class="coverage-no">            Please, copy this backtrace and open an issue on https://github.com/FCO/Red/issues/new</span>
+<span class="coverage-red">            Driver: { $.driver }</span>
+<span class="coverage-red">            Original error: { $.orig-exception.perl }</span>
+<span class="coverage-no">        END</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::Driver::Mapped::Unique is X::Red::Driver::Mapped {</span>
+<span class="coverage-red">    has Str @.fields;</span>
+<span class="coverage-red">    method msg { &quot;Unique constraint ({@!fields.join: &quot;, &quot;}) violated&quot; }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class X::Red::Driver::Mapped::TableExists is X::Red::Driver::Mapped {</span>
+<span class="coverage-red">    has Str $.table is required;</span>
+<span class="coverage-red">    method msg { &quot;Table $!table already exists&quot; }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Driver</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Driver 74.6%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::Column;</span>
+<span class="coverage-no">use Red::SchemaReader;</span>
+<span class="coverage-no">use X::Red::Exceptions;</span>
+<span class="coverage-no">use Red::Class;</span>
+<span class="coverage-no">use Red::Event;</span>
+<span class="coverage-no">use Red::AST::BeginTransaction;</span>
+<span class="coverage-no">use Red::AST::CommitTransaction;</span>
+<span class="coverage-no">use Red::AST::RollbackTransaction;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 Red::Driver</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Base role for a Red::Driver::*</span>
+<span class="coverage-green">unit role Red::Driver;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">has Supplier $!supplier .= new;</span>
+<span class="coverage-no">#| Supply of events of that driver</span>
+<span class="coverage-green">has Supply   $.events    = $!supplier.Supply;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method new-connection {</span>
+<span class="coverage-green">    self.WHAT.new: |self.^attributes.map({ .name.substr(2) =&gt; .get_value: self }).Hash</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Begin transaction</span>
+<span class="coverage-green">method begin {</span>
+<span class="coverage-green">    my $trans = self.new-connection;</span>
+<span class="coverage-green">    $trans.prepare(Red::AST::BeginTransaction.new).map: *.execute;</span>
+<span class="coverage-green">    $trans</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Commit transaction</span>
+<span class="coverage-green">method commit {</span>
+<span class="coverage-green">    self.prepare(Red::AST::CommitTransaction.new).map: *.execute;</span>
+<span class="coverage-red">    self</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Rollback transaction</span>
+<span class="coverage-green">method rollback {</span>
+<span class="coverage-green">    self.prepare(Red::AST::RollbackTransaction.new).map: *.execute;</span>
+<span class="coverage-red">    self</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Self-register its events on Red.events</span>
+<span class="coverage-green">method auto-register(|) {</span>
+<span class="coverage-green">    Red::Class.instance.register-supply: $!events;</span>
+<span class="coverage-red">    self</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Emit events</span>
+<span class="coverage-green">multi method emit($data?) {</span>
+<span class="coverage-green">    self.emit:</span>
+<span class="coverage-no">            Red::Event.new:</span>
+<span class="coverage-no">                    :db(self),</span>
+<span class="coverage-no">                    :db-name(self.^name),</span>
+<span class="coverage-no">                    :$data,</span>
+<span class="coverage-green">                    |(:metadata($_) with %*RED-METADATA)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Does this driver accept drop table cascade?</span>
+<span class="coverage-red">multi method should-drop-cascade { True }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Emit events</span>
+<span class="coverage-green">multi method emit(Red::Event $event) {</span>
+<span class="coverage-green">    $!supplier.emit:</span>
+<span class="coverage-no">            $event.clone:</span>
+<span class="coverage-no">                    :db(self),</span>
+<span class="coverage-no">                    :db-name(self.^name),</span>
+<span class="coverage-green">                    |(:db-name($_) with $*RED-DO-WITH),</span>
+<span class="coverage-green">                    |(:metadata($_) with %*RED-METADATA),</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method schema-reader(--&gt; Red::SchemaReader)             { ... }</span>
+<span class="coverage-red">method translate(Red::AST, $?)                          { ... }</span>
+<span class="coverage-red">multi method prepare(Str)                               { ... }</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ --&gt; Str:D)  { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Prepares a DB statement</span>
+<span class="coverage-green">multi method prepare(Red::AST $query) {</span>
+<span class="coverage-green">    note $query if $*RED-DEBUG-AST;</span>
+<span class="coverage-green">    do for |self.translate: self.optimize: $query -&gt; Pair \data {</span>
+<span class="coverage-green">        my ($sql, @bind) := do given data { .key, .value }</span>
+<span class="coverage-green">        next unless $sql;</span>
+<span class="coverage-green">        do unless $*RED-DRY-RUN {</span>
+<span class="coverage-green">            my $stt = self.prepare: $sql;</span>
+<span class="coverage-green">            $stt.predefined-bind;</span>
+<span class="coverage-green">            $stt.binds = @bind.map: { self.deflate: $_ };</span>
+<span class="coverage-red">            $stt</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Checks if a name is a valid table name</span>
+<span class="coverage-green">multi method is-valid-table-name(Str --&gt; Bool)          { True }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Maps types</span>
+<span class="coverage-red">multi method type-by-name(&quot;varchar&quot; --&gt; &quot;varchar(255)&quot;) {}</span>
+<span class="coverage-no">#| Maps types</span>
+<span class="coverage-red">multi method type-by-name(&quot;string&quot; --&gt; &quot;text&quot;)          {}</span>
+<span class="coverage-no">#| Maps types</span>
+<span class="coverage-green">multi method type-by-name(&quot;int&quot;    --&gt; &quot;integer&quot;)       {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Maps exception</span>
+<span class="coverage-green">multi method map-exception($orig-exception) {</span>
+<span class="coverage-green">    X::Red::Driver::Mapped::UnknownError.new: :$orig-exception</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method prepare(&quot;&quot;) {class :: { method execute(|) {} }}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Default inflator</span>
+<span class="coverage-green">multi method inflate(Any $value, Any :$to) { $value }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Execute query</span>
+<span class="coverage-green">method execute($query, *@bind) {</span>
+<span class="coverage-green">    my @stt = self.prepare($query);</span>
+<span class="coverage-green">    (.execute: |@bind.map: { self.deflate: $_ } for @stt).tail</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Optimize AST</span>
+<span class="coverage-green">method optimize(Red::AST $in --&gt; Red::AST) { $in }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method debug(@bind) {</span>
+<span class="coverage-green">    if $*RED-DEBUG {</span>
+<span class="coverage-green">        note &quot;BIND: @bind.perl()&quot;;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method debug($sql) {</span>
+<span class="coverage-green">    if $*RED-DEBUG {</span>
+<span class="coverage-green">        note &quot;SQL : $sql&quot;;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method debug($sql, @binds) {</span>
+<span class="coverage-red">    if $*RED-DEBUG {</span>
+<span class="coverage-red">        note &quot;SQL : $sql&quot;;</span>
+<span class="coverage-red">        note &quot;BIND: @binds.perl()&quot;;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

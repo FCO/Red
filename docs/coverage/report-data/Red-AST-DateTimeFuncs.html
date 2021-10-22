@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::DateTimeFuncs</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::DateTimeFuncs 40%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::AST::Function;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Base role for date time functions</span>
+<span class="coverage-green">role Red::AST::DateTimeFunction does Red::AST {</span>
+<span class="coverage-red">    method default-implementation {...}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">}</span>
+<span class="coverage-green">enum Red::AST::DateTime::Part (</span>
+<span class="coverage-no">        year   =&gt; &quot;%Y&quot;,</span>
+<span class="coverage-no">        month  =&gt; &quot;%m&quot;,</span>
+<span class="coverage-no">        day    =&gt; &quot;%d&quot;,</span>
+<span class="coverage-no">        hour   =&gt; &quot;%H&quot;,</span>
+<span class="coverage-no">        minute =&gt; &quot;%M&quot;,</span>
+<span class="coverage-no">        second =&gt; &quot;%S&quot;,</span>
+<span class="coverage-no">);</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a function that extracts a part of a date time</span>
+<span class="coverage-green">class Red::AST::DateTimePart does Red::AST::DateTimeFunction {</span>
+<span class="coverage-no">    has Red::AST                 $.base;</span>
+<span class="coverage-red">    has Red::AST::DateTime::Part $.part;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method returns { Str }</span>
+<span class="coverage-red">    method find-column-name {</span>
+<span class="coverage-red">        $!base.find-column-name</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    method args {$!base, $!part}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method default-implementation {</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">        Red::AST::Function.new:</span>
+<span class="coverage-no">                :func&lt;STRFTIME&gt;,</span>
+<span class="coverage-no">                :args[</span>
+<span class="coverage-no">                    ast-value($!part.value),</span>
+<span class="coverage-no">                    Red::AST::Function.new:</span>
+<span class="coverage-no">                        :func&lt;DATE&gt;,</span>
+<span class="coverage-no">                        :args[ $!base ],</span>
+<span class="coverage-no">                ]</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Coerce a DateTime, timestamp etc to just date for comparisons</span>
+<span class="coverage-green">class Red::AST::DateTimeCoerce does Red::AST::DateTimeFunction {</span>
+<span class="coverage-red">    has Red::AST                 $.base;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    method returns { Str }</span>
+<span class="coverage-red">    method find-column-name {</span>
+<span class="coverage-red">        $!base.find-column-name</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    method args {$!base}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    method default-implementation {</span>
+<span class="coverage-green">        Red::AST::Function.new:</span>
+<span class="coverage-no">            :func&lt;DATE&gt;,</span>
+<span class="coverage-no">            :args[ $!base ];</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

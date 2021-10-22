@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::PrepareCode</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::PrepareCode 94.6%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Unary;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Empty;</span>
+<span class="coverage-no">use Red::AST::Next;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-red">use CX::Red::Bool;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Transform a hash into filter (Red::AST)</span>
+<span class="coverage-green">sub hash-to-cond(%val) is export {</span>
+<span class="coverage-no">    my Red::AST $ast;</span>
+<span class="coverage-green">    for %val.kv -&gt; Red::AST $cond, Bool $so {</span>
+<span class="coverage-green">        my Red::AST $filter = $so ?? Red::AST::So.new($cond) !! $cond.not;</span>
+<span class="coverage-green">        with $ast {</span>
+<span class="coverage-green">            $ast = Red::AST::AND.new: $ast, $filter</span>
+<span class="coverage-purple">        } else {</span>
+<span class="coverage-green">            $ast = $filter</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    $ast</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Found a boolean while trying to find what's hapenning inside a block</span>
+<span class="coverage-green">sub found-bool(@values, $try-again is rw, %bools, CX::Red::Bool $ex) is export {</span>
+<span class="coverage-green">    if %bools{$ex.ast}:!exists {</span>
+<span class="coverage-green">        $try-again = True;</span>
+<span class="coverage-green">        %bools{ $ex.ast }++;</span>
+<span class="coverage-green">        if not @values {</span>
+<span class="coverage-green">            @values.push: [ :{ $ex.ast =&gt; $ex.value }, Red::AST ];</span>
+<span class="coverage-green">        } else {</span>
+<span class="coverage-green">            my @new-keys = @values.map: -&gt; $item { my %key{Red::AST} = $item.[0].clone; %key{$ex.ast} = $ex.value.succ; %key };</span>
+<span class="coverage-green">            for @values {</span>
+<span class="coverage-green">                .[0].{$ex.ast} = $ex.value</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">            @values.push: |@new-keys.map: -&gt; %key { [ %key, Red::AST ] };</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    $ex.resume</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">sub prepare-response($resp) is export {</span>
+<span class="coverage-green">    do given $resp {</span>
+<span class="coverage-green">        when Empty {</span>
+<span class="coverage-green">            Red::AST::Empty.new</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        when Red::AST {</span>
+<span class="coverage-green">            $_</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        default {</span>
+<span class="coverage-green">            ast-value $_</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Tries to find what a block do</span>
+<span class="coverage-green">sub what-does-it-do(&amp;func, \type --&gt; Hash) is export {</span>
+<span class="coverage-green">    my Bool $try-again = False;</span>
+<span class="coverage-green">    my %bools is SetHash;</span>
+<span class="coverage-no">    my @values;</span>
+<span class="coverage-green">    my %*VALS := :{};</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    my $ret = func type;</span>
+<span class="coverage-green">    return :{ Red::AST =&gt; prepare-response $ret } unless $try-again;</span>
+<span class="coverage-green">    @values.head.[1] = $ret;</span>
+<span class="coverage-green">    my %first-key := :{ @values.head.[0].keys.head.clone =&gt; @values.head.[0].values.head.clone };</span>
+<span class="coverage-green">    %first-key{ %first-key.keys.head } = True;</span>
+<span class="coverage-green">    @values.push: [%first-key, Red::AST];</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    for @values -&gt; @data (%values, $response is rw) {</span>
+<span class="coverage-green">        $try-again = False;</span>
+<span class="coverage-red">        %*VALS := %values;</span>
+<span class="coverage-green">        $response = func type;</span>
+<span class="coverage-green">        CONTROL {</span>
+<span class="coverage-green">            when CX::Next {</span>
+<span class="coverage-red">                $response = Red::AST::Next.new;</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">            when CX::Red::Bool {                # Will work when we can create real custom CX</span>
+<span class="coverage-green">                found-bool @values, $try-again, %bools, $_</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    CONTROL {</span>
+<span class="coverage-green">        when CX::Red::Bool {                # Will work when we can create real custom CX</span>
+<span class="coverage-green">            found-bool @values, $try-again, %bools, $_</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        when CX::Next {</span>
+<span class="coverage-red">            die</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">    my Red::AST %values{Red::AST};</span>
+<span class="coverage-green">    for @values {</span>
+<span class="coverage-green">        %values{hash-to-cond(.[0])} = prepare-response .[1]</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    %values</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

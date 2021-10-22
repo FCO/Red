@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::Generic::Infix</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::Generic::Infix 28.5%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST::Infix;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-green">unit class Red::AST::Generic::Infix does Red::AST::Infix;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Str $.op is required;</span>
+<span class="coverage-red">has $.returns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method should-set(--&gt; Hash()) {</span>
+<span class="coverage-red">    self.find-column-name =&gt; self.find-value</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method should-validate {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method find-column-name {</span>
+<span class="coverage-red">    gather for self.args {</span>
+<span class="coverage-red">        .take for .?find-column-name</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method find-value {</span>
+<span class="coverage-red">    for self.args {</span>
+<span class="coverage-red">        .return with .?find-value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method new($left, $right, Str :$op, :$returns, Bool :$bind-left, Bool :$bind-right) {</span>
+<span class="coverage-green">    self.bless:</span>
+<span class="coverage-no">            :left(ast-value $left),</span>
+<span class="coverage-no">            :right(ast-value $right),</span>
+<span class="coverage-no">            :$op,</span>
+<span class="coverage-no">            :$returns,</span>
+<span class="coverage-no">            :$bind-left,</span>
+<span class="coverage-no">            :$bind-right</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

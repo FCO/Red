@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Type::Json</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Type::Json 100%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use JSON::Fast;</span>
+<span class="coverage-no">use Red::Type;</span>
+<span class="coverage-green">unit class Json is Str does Red::Type;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method inflator { -&gt; $data { try { from-json $data } // $data } }</span>
+<span class="coverage-green">method deflator { -&gt; $data { try { to-json $data   } // $data } }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method red-type-accepts(Any:U --&gt; Bool) { True }</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

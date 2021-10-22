@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::Case</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::Case 81.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Unary;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a case statement</span>
+<span class="coverage-green">unit class Red::AST::Case does Red::AST;</span>
+<span class="coverage-no">#also does Red::AST::Optimizer::Case;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Red::AST $.case;</span>
+<span class="coverage-no">has Red::AST %.when{Red::AST};</span>
+<span class="coverage-red">has Red::AST $.else;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method new(Red::AST :$case, Red::AST :%when, Red::AST :$else is copy) {</span>
+<span class="coverage-green">    my \case-ret = self.optimize: :$case, :%when, :$else;</span>
+<span class="coverage-green">    return case-ret if case-ret.DEFINITE &amp;&amp; case-ret !~~ Empty;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    self.WHAT.bless: :$case, :%when, :$else</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method args {</span>
+<span class="coverage-green">    $!case, |%!when.kv, $!else</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method returns {</span>
+<span class="coverage-no">    #%!when.head.value.returns</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method find-column-name {}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

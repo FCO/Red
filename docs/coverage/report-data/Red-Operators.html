@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Operators</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Operators 34.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Divisable;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::ResultSeq;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 Red::Operators</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit module Red::Operators;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"># TODO: Diferenciate prefix and postfix</span>
+<span class="coverage-no">#| --X</span>
+<span class="coverage-red">multi prefix:&lt;--&gt;(Red::Column $a) is export {</span>
+<span class="coverage-red">    @*UPDATE.push: $a =&gt; Red::AST::Sub.new: $a, ast-value 1;</span>
+<span class="coverage-red">    $a</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| ++X</span>
+<span class="coverage-red">multi prefix:&lt;++&gt;(Red::Column $a) is export {</span>
+<span class="coverage-red">    @*UPDATE.push: $a =&gt; Red::AST::Sum.new: $a, ast-value 1;</span>
+<span class="coverage-red">    $a</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X--</span>
+<span class="coverage-red">multi postfix:&lt;--&gt;(Red::Column $a) is export {</span>
+<span class="coverage-red">    @*UPDATE.push: $a =&gt; Red::AST::Sub.new: $a, ast-value 1;</span>
+<span class="coverage-red">    $a</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X++</span>
+<span class="coverage-green">multi postfix:&lt;++&gt;(Red::AST $a) is export {</span>
+<span class="coverage-green">    @*UPDATE.push: $a =&gt; Red::AST::Sum.new: $a, ast-value 1;</span>
+<span class="coverage-green">    $a</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| -X</span>
+<span class="coverage-green">multi prefix:&lt;-&gt;(Red::AST $a) is export {</span>
+<span class="coverage-green">    Red::AST::Mul.new: ast-value(-1), $a</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| +X</span>
+<span class="coverage-red">multi prefix:&lt;+&gt;(Red::AST $a) is export {</span>
+<span class="coverage-red">    Red::AST::Mul.new: ast-value(1), $a</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X + Y</span>
+<span class="coverage-red">multi infix:&lt;+&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Sum.new: $a, $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X + Y # Where Y is castable to Numeric</span>
+<span class="coverage-green">multi infix:&lt;+&gt;(Red::AST $a, Numeric() $b) is export {</span>
+<span class="coverage-green">    Red::AST::Sum.new: $a, ast-value $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X + Y # Where X is castable to Numeric</span>
+<span class="coverage-red">multi infix:&lt;+&gt;(Numeric() $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Sum.new: ast-value($a), $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X - Y</span>
+<span class="coverage-green">multi infix:&lt;-&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Sub.new: $a, $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X - Y # Where Y is castable to Numeric</span>
+<span class="coverage-green">multi infix:&lt;-&gt;(Red::AST $a, Numeric() $b) is export {</span>
+<span class="coverage-green">    Red::AST::Sub.new: $a, ast-value $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X - Y # Where X is castable to Numeric</span>
+<span class="coverage-red">multi infix:&lt;-&gt;(Numeric() $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Sub.new: ast-value($a), $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X * Y</span>
+<span class="coverage-green">multi infix:&lt;*&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Mul.new: $a, $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X * Y # Where Y is castable to Numeric</span>
+<span class="coverage-green">multi infix:&lt;*&gt;(Red::AST $a, Numeric() $b) is export {</span>
+<span class="coverage-green">    Red::AST::Mul.new: $a, ast-value $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X * Y</span>
+<span class="coverage-red">multi infix:&lt;*&gt;(Numeric() $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Mul.new: ast-value($a), $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X / Y</span>
+<span class="coverage-green">multi infix:&lt;/&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Div.new: $a, $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X / Y # Where Y is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;/&gt;(Red::AST $a, Numeric() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Div.new: $a, ast-value $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X / Y # Where X is castable to Numeric and read only</span>
+<span class="coverage-red">multi infix:&lt;/&gt;(Numeric() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Div.new: ast-value($a), $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X / Y # Where Y is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;/&gt;(Red::AST $a, Numeric() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Div.new: $a, ast-value($b), :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X / Y # Where X is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;/&gt;(Numeric() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Div.new: ast-value($a), $b, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X div Y</span>
+<span class="coverage-red">multi infix:&lt;div&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::IDiv.new: $a, $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X div Y # Where Y is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;div&gt;(Red::AST $a, Numeric() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::IDiv.new: $a, ast-value $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X div Y # Where X is castable to Numeric and read only</span>
+<span class="coverage-red">multi infix:&lt;div&gt;(Numeric() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::IDiv.new: ast-value($a), $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X div Y # Where Y is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;div&gt;(Red::AST $a, Numeric() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::IDiv.new: $a, ast-value($b), :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X div Y # Where X is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;div&gt;(Numeric() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::IDiv.new: ast-value($a), $b, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y</span>
+<span class="coverage-green">multi infix:&lt;==&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y # Where Y is castable to Numeric and writable</span>
+<span class="coverage-green">multi infix:&lt;==&gt;(Red::AST $a, Numeric() $b is rw) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y # Where Y is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;==&gt;(Red::AST $a, Numeric() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y # Where X is castable to Numeric and writable</span>
+<span class="coverage-green">multi infix:&lt;==&gt;(Numeric() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y # Where X is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;==&gt;(Numeric() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y # Where X is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;==&gt;(Red::AST $a where .returns ~~ DateTime, Date $b) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: $a.yyyy-mm-dd, ast-value($b), :cast&lt;num&gt;;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X != Y # Where Y is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;!=&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ne.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X != Y # Where Y is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;!=&gt;(Red::AST $a, Numeric() $b is rw) is export {</span>
+<span class="coverage-green">    Red::AST::Ne.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X != Y # Where Y is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;!=&gt;(Red::AST $a, Numeric() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Ne.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X != Y # Where X is castable to Numeric and writable</span>
+<span class="coverage-green">multi infix:&lt;!=&gt;(Numeric() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Ne.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X != Y # Where X is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;!=&gt;(Numeric() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Ne.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y</span>
+<span class="coverage-no">#multi infix:&lt;==&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-no">#    Red::AST::Eq.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">#}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y # Where Y is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;==&gt;(Red::AST $a, Date $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Eq.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y # Where Y is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;==&gt;(Red::AST $a, Date $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Eq.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y # Where X is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;==&gt;(Date $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Eq.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X == Y # Where X is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;==&gt;(Date $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Eq.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X != Y</span>
+<span class="coverage-red">multi infix:&lt;!=&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ne.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X != Y # Where Y is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;!=&gt;(Red::AST $a, Date $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Ne.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X != Y # Where Y is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;!=&gt;(Red::AST $a, Date $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Ne.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X != Y # Where X is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;!=&gt;(Date $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ne.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X != Y # Where X is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;!=&gt;(Date $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ne.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X eq Y # Where Y is castable to Str and writable</span>
+<span class="coverage-green">multi infix:&lt;eq&gt;(Red::AST $a, Str() $b is rw) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: $a, ast-value($b), :cast&lt;str&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X eq Y # Where Y is castable to Str and read only</span>
+<span class="coverage-green">multi infix:&lt;eq&gt;(Red::AST $a, Str() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: $a, ast-value($b), :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X eq Y # Where X is castable to Str and writable</span>
+<span class="coverage-green">multi infix:&lt;eq&gt;(Str() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: ast-value($a), $b, :cast&lt;str&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X eq Y # Where X is castable to Str and read only</span>
+<span class="coverage-green">multi infix:&lt;eq&gt;(Str() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: ast-value($a), $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X eq Y # Where Y is any Red::AST that returns a DateTime</span>
+<span class="coverage-green">multi infix:&lt;eq&gt;(Red::AST $a where .returns ~~ DateTime, Date $b) is export {</span>
+<span class="coverage-green">    Red::AST::Eq.new: $a.yyyy-mm-dd, ast-value($b), :cast&lt;str&gt;;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X eq Y # Where both are AST that returns Str</span>
+<span class="coverage-red">multi infix:&lt;eq&gt;(Red::AST $a where .returns ~~ Str, Red::AST $b where .returns ~~ Str) is export {</span>
+<span class="coverage-red">    Red::AST::Eq.new: $a, $b, :cast&lt;str&gt;;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ne Y # Where Y is castable to Str and writable</span>
+<span class="coverage-green">multi infix:&lt;ne&gt;(Red::AST $a, Str() $b is rw) is export {</span>
+<span class="coverage-green">    Red::AST::Ne.new: $a, ast-value($b), :cast&lt;str&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ne Y # Where Y is castable to Str and read only</span>
+<span class="coverage-green">multi infix:&lt;ne&gt;(Red::AST $a, Str() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Ne.new: $a, ast-value($b), :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ne Y # Where X is castable to Str and writable</span>
+<span class="coverage-green">multi infix:&lt;ne&gt;(Str() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Ne.new: ast-value($a), $b, :cast&lt;str&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ne Y # Where X is castable to Str and read only</span>
+<span class="coverage-green">multi infix:&lt;ne&gt;(Str() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::Ne.new: ast-value($a), $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where Y is any Red::AST that returns a DateTime</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where Y is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Red::AST $a, Numeric() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where Y is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;&lt; &lt; &gt;&gt;(Red::AST $a, Numeric() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Lt.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where X is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Numeric() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where X is castable to Numeric and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Numeric() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where Y is any Red::AST that returns a Numeric</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where Y is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Red::AST $a, Numeric() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where Y is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;&lt; &gt; &gt;&gt;(Red::AST $a, Numeric() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Gt.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where X is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Numeric() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where X is castable to Numeric and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Numeric() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where Y is any Red::AST that returns a Numeric</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where Y is castable to Numeric and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Red::AST $a, Numeric() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where Y is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;&lt; &lt;= &gt;&gt;(Red::AST $a, Numeric() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Le.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where X is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Numeric() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where X is castable to Numeric and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Numeric() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where Y is any Red::AST that returns a DateTime</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where Y is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Red::AST $a, Numeric() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where Y is castable to Numeric and read only</span>
+<span class="coverage-green">multi infix:&lt;&lt; &gt;= &gt;&gt;(Red::AST $a, Numeric() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Ge.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where X is castable to Numeric and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Numeric() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where X is castable to Numeric and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Numeric() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">############################</span>
+<span class="coverage-no">#| X &lt; Y # Where Y is any Red::AST that returns a DateTime</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where Y is DateTime and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Red::AST $a, DateTime $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where Y is DateTime and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Red::AST $a, DateTime $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where X is DateTime and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(DateTime $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where X is DateTime and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(DateTime $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where Y is any Red::AST that returns a DateTime</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where Y is DateTime and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Red::AST $a, DateTime $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where Y is DateTime and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Red::AST $a, DateTime $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where X is DateTime and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(DateTime $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where X is DateTime and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(DateTime $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where Y is any Red::AST that returns a DateTime</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where Y is DateTime and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Red::AST $a, DateTime $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where Y is DateTime and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Red::AST $a, DateTime $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where X is DateTime and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(DateTime $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where X is DateTime and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(DateTime $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where Y is any Red::AST that returns a DateTime</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where Y is DateTime and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Red::AST $a, DateTime $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where Y is DateTime and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Red::AST $a, DateTime $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where X is DateTime and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(DateTime $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where X is DateTime and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(DateTime $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">############################</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where Y is any Red::AST that returns a Date</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Red::AST $a where .returns ~~ Date, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where Y is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Red::AST $a, Date $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where Y is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Red::AST $a, Date $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where X is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Date $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt; Y # Where X is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt; &gt;&gt;(Date $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where Y is any Red::AST that returns a Date</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Red::AST $a where .returns ~~ Date, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where Y is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Red::AST $a, Date $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where Y is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Red::AST $a, Date $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where X is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Date $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt; Y # Where X is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt; &gt;&gt;(Date $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where Y is any Red::AST that returns a Date</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Red::AST $a where .returns ~~ Date, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where Y is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Red::AST $a, Date $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where Y is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Red::AST $a, Date $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where X is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Date $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &lt;= Y # Where X is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &lt;= &gt;&gt;(Date $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where Y is any Red::AST that returns a Date</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Red::AST $a where .returns ~~ Date, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where Y is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Red::AST $a, Date $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where Y is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Red::AST $a, Date $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, ast-value($b), :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where X is Date and writable</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Date $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: ast-value($a), $b, :cast&lt;num&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X &gt;= Y # Where X is Date and read only</span>
+<span class="coverage-red">multi infix:&lt;&lt; &gt;= &gt;&gt;(Date $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: ast-value($a), $b, :cast&lt;num&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X lt Y</span>
+<span class="coverage-red">multi infix:&lt;lt&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X lt Y # Where Y is castable to Str and writable</span>
+<span class="coverage-red">multi infix:&lt;lt&gt;(Red::AST $a, Str() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, ast-value($b), :cast&lt;str&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X lt Y # Where Y is castable to Str and read only</span>
+<span class="coverage-red">multi infix:&lt;lt&gt;(Red::AST $a, Str() $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: $a, ast-value($b), :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X lt Y # Where X is castable to Str and writable</span>
+<span class="coverage-red">multi infix:&lt;lt&gt;(Str() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: ast-value($a), $b, :cast&lt;str&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X lt Y # Where X is castable to Str and read only</span>
+<span class="coverage-red">multi infix:&lt;lt&gt;(Str() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Lt.new: ast-value($a), $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X gt Y</span>
+<span class="coverage-red">multi infix:&lt;gt&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X gt Y # Where Y is castable to Str and writable</span>
+<span class="coverage-red">multi infix:&lt;gt&gt;(Red::AST $a, Str() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, ast-value($b), :cast&lt;str&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X gt Y # Where Y is castable to Str and read only</span>
+<span class="coverage-red">multi infix:&lt;gt&gt;(Red::AST $a, Str() $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: $a, ast-value($b), :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X gt Y # Where X is castable to Str and writable</span>
+<span class="coverage-red">multi infix:&lt;gt&gt;(Str() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: ast-value($a), $b, :cast&lt;str&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X gt Y # Where X is castable to Str and read only</span>
+<span class="coverage-red">multi infix:&lt;gt&gt;(Str() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Gt.new: ast-value($a), $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X le Y</span>
+<span class="coverage-red">multi infix:&lt;le&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X le Y # Where Y is castable to Str and writable</span>
+<span class="coverage-red">multi infix:&lt;le&gt;(Red::AST $a, Str() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, ast-value($b), :cast&lt;str&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X le Y # Where Y is castable to Str and read only</span>
+<span class="coverage-red">multi infix:&lt;le&gt;(Red::AST $a, Str() $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: $a, ast-value($b), :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X le Y # Where X is castable to Str and writable</span>
+<span class="coverage-red">multi infix:&lt;le&gt;(Str() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: ast-value($a), $b, :cast&lt;str&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X le Y # Where X is castable to Str and read only</span>
+<span class="coverage-red">multi infix:&lt;le&gt;(Str() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Le.new: ast-value($a), $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ge Y</span>
+<span class="coverage-red">multi infix:&lt;ge&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ge Y # Where Y is castable to Str and writable</span>
+<span class="coverage-red">multi infix:&lt;ge&gt;(Red::AST $a, Str() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, ast-value($b), :cast&lt;str&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ge Y # Where Y is castable to Str and read only</span>
+<span class="coverage-red">multi infix:&lt;ge&gt;(Red::AST $a, Str() $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: $a, ast-value($b), :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ge Y # Where X is castable to Str and writable</span>
+<span class="coverage-red">multi infix:&lt;ge&gt;(Str() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: ast-value($a), $b, :cast&lt;str&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ge Y # Where X is castable to Str and read only</span>
+<span class="coverage-red">multi infix:&lt;ge&gt;(Str() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Ge.new: ast-value($a), $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X % Y</span>
+<span class="coverage-red">multi infix:&lt;%&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Mod.new: $a, $b, :cast&lt;int&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X % Y # Where X is castable to Int and writable</span>
+<span class="coverage-red">multi infix:&lt;%&gt;(Red::AST $a, Int() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Mod.new: $a, ast-value($b), :cast&lt;int&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X % Y # Where Y is castable to Int and read only</span>
+<span class="coverage-red">multi infix:&lt;%&gt;(Red::AST $a, Int() $b is readonly) is export {</span>
+<span class="coverage-red">    Red::AST::Mod.new: $a, ast-value($b), :cast&lt;int&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X % Y # Where X is castable to Int and writable</span>
+<span class="coverage-red">multi infix:&lt;%&gt;(Int() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Mod.new: ast-value($a), $b, :cast&lt;int&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X % Y # Where X is castable to Int and read only</span>
+<span class="coverage-red">multi infix:&lt;%&gt;(Int() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Mod.new: ast-value($a), $b, :cast&lt;int&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X %% Y</span>
+<span class="coverage-red">multi infix:&lt;%%&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Divisable.new: $a, $b, :cast&lt;int&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X %% Y # Where Y is castable to Int and writable</span>
+<span class="coverage-red">multi infix:&lt;%%&gt;(Red::AST $a, Int() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Divisable.new: $a, ast-value($b), :cast&lt;int&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X %% Y # Where Y is castable to Int and read only</span>
+<span class="coverage-green">multi infix:&lt;%%&gt;(Red::AST $a, Int() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Divisable.new: $a, ast-value($b), :cast&lt;int&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X %% Y # Where X is castable to Int</span>
+<span class="coverage-red">multi infix:&lt;%%&gt;(Int() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Divisable.new: ast-value($a), $b, :cast&lt;int&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X %% Y # Where X is read only</span>
+<span class="coverage-red">multi infix:&lt;%%&gt;(Int() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Divisable.new: ast-value($a), $b, :cast&lt;int&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ~ Y</span>
+<span class="coverage-red">multi infix:&lt;~&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Concat.new: $a, $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ~ Y Where Y is castable to Str and writable</span>
+<span class="coverage-red">multi infix:&lt;~&gt;(Red::AST $a, Str() $b is rw) is export {</span>
+<span class="coverage-red">    Red::AST::Concat.new: $a, ast-value($b), :cast&lt;str&gt;, :bind-right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ~ Y Where Y is castable to Str and read only</span>
+<span class="coverage-green">multi infix:&lt;~&gt;(Red::AST $a, Str() $b is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Concat.new: $a, ast-value($b), :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ~ Y # Where X is castable to Str and writable</span>
+<span class="coverage-red">multi infix:&lt;~&gt;(Str() $a is rw, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Concat.new: ast-value($a), $b, :cast&lt;str&gt;, :bind-left</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ~ Y # Where X is castable to Str and read only</span>
+<span class="coverage-red">multi infix:&lt;~&gt;(Str() $a is readonly, Red::AST $b) is export {</span>
+<span class="coverage-red">    Red::AST::Concat.new: ast-value($a), $b, :cast&lt;str&gt;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| not X # Where X is read only</span>
+<span class="coverage-green">multi prefix:&lt;not&gt;(Red::AST $a is readonly) is export {</span>
+<span class="coverage-green">    Red::AST::Not.new: $a</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| not X</span>
+<span class="coverage-green">multi prefix:&lt;not&gt;(Red::AST $a is rw) is export {</span>
+<span class="coverage-green">    Red::AST::Not.new: $a, :bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| !X</span>
+<span class="coverage-green">multi prefix:&lt;!&gt;(Red::AST $a) is export {</span>
+<span class="coverage-green">    Red::AST::Not.new: $a</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| not X # Where X is a in</span>
+<span class="coverage-green">multi prefix:&lt;not&gt;(Red::AST::In $a) is export {</span>
+<span class="coverage-green">    $a.not;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| !X # Where X is a in</span>
+<span class="coverage-red">multi prefix:&lt;!&gt;(Red::AST::In $a) is export {</span>
+<span class="coverage-red">    $a.not;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| so X</span>
+<span class="coverage-red">multi prefix:&lt;so&gt;(Red::AST $a) is export {</span>
+<span class="coverage-red">    Red::AST::So.new: $a</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| ?X</span>
+<span class="coverage-red">multi prefix:&lt;?&gt;(Red::AST $a) is export {</span>
+<span class="coverage-red">    Red::AST::So.new: $a</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X AND Y</span>
+<span class="coverage-green">multi infix:&lt;AND&gt;(Red::AST $a, Red::AST $b) is export is tighter(&amp;infix:&lt;==&gt;) {</span>
+<span class="coverage-green">    Red::AST::AND.new: $a, $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X OR Y</span>
+<span class="coverage-green">multi infix:&lt;OR&gt;(Red::AST $a, Red::AST $b) is export {</span>
+<span class="coverage-green">    Red::AST::OR.new: $a, $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ∪ Y # Where X and Y are ResultSeqs</span>
+<span class="coverage-green">multi infix:&lt;∪&gt;(Red::ResultSeq $a, Red::ResultSeq $b) is export {</span>
+<span class="coverage-green">    $a (|) $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#| X (|) Y # Where X and Y are ResultSeqs</span>
+<span class="coverage-green">multi infix:&lt;(|)&gt;(Red::ResultSeq $a, Red::ResultSeq $b) is export {</span>
+<span class="coverage-green">    $a.union: $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#| X ∩ Y # Where X and Y are ResultSeqs</span>
+<span class="coverage-green">multi infix:&lt;∩&gt;(Red::ResultSeq $a, Red::ResultSeq $b) is export {</span>
+<span class="coverage-green">    $a (&amp;) $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#| X (&amp;) Y # Where X and Y are ResultSeqs</span>
+<span class="coverage-green">multi infix:&lt;(&amp;)&gt;(Red::ResultSeq $a, Red::ResultSeq $b) is export {</span>
+<span class="coverage-green">    $a.intersect: $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#| X ⊖ Y # Where X and Y are ResultSeqs</span>
+<span class="coverage-green">multi infix:&lt;⊖&gt;(Red::ResultSeq $a, Red::ResultSeq $b) is export {</span>
+<span class="coverage-green">    $a (-) $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#| X (-) Y # Where X and Y are ResultSeqs</span>
+<span class="coverage-green">multi infix:&lt;(-)&gt;(Red::ResultSeq $a, Red::ResultSeq $b) is export {</span>
+<span class="coverage-green">    $a.minus: $b</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X in Y # Where Y is a ResultSeq</span>
+<span class="coverage-green">multi infix:&lt;in&gt;(Red::AST $a, Red::ResultSeq:D $b ) is export is default {</span>
+<span class="coverage-green">    Red::AST::In.new: $a, $b.ast(:sub-select);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#| X ⊂ Y # Where Y is a ResultSeq</span>
+<span class="coverage-green">multi infix:&lt;⊂&gt;(Red::AST $a, Red::ResultSeq $b ) is export is default {</span>
+<span class="coverage-green">    Red::AST::In.new: $a, $b.ast(:sub-select);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#| X (&lt;) Y # Where Y is a ResultSeq</span>
+<span class="coverage-green">multi infix:«(&lt;)»(Red::AST $a, Red::ResultSeq $b ) is export is default {</span>
+<span class="coverage-green">    Red::AST::In.new: $a, $b.ast(:sub-select);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#| X ⊃ Y # Where Y is a ResultSeq</span>
+<span class="coverage-green">multi infix:&lt;⊃&gt;(Red::AST $a, Red::ResultSeq $b ) is export is default {</span>
+<span class="coverage-green">    Red::AST::NotIn.new: $a, $b.ast(:sub-select);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no">#| X (&gt;) Y # Where Y is a ResultSeq</span>
+<span class="coverage-green">multi infix:«(&gt;)»(Red::AST $a, Red::ResultSeq $b ) is export is default {</span>
+<span class="coverage-green">    Red::AST::NotIn.new: $a, $b.ast(:sub-select);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">subset PositionalNotResultSeq of Any  where { $_ ~~ Positional &amp;&amp; $_ !~~ Red::ResultSeq };</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X in Y # Where Y is a positional but not a ResultSeq</span>
+<span class="coverage-green">multi infix:&lt;in&gt;(Red::AST $a, PositionalNotResultSeq $b ) is export {</span>
+<span class="coverage-green">    Red::AST::In.new: $a, ast-value($b);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ⊂ Y # Where Y is a positional but not a ResultSeq</span>
+<span class="coverage-green">multi infix:&lt;⊂&gt;(Red::AST $a, PositionalNotResultSeq $b ) is export {</span>
+<span class="coverage-green">    Red::AST::In.new: $a, ast-value($b);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X (&lt;) Y # Where Y is a positional but not a ResultSeq</span>
+<span class="coverage-green">multi infix:«(&lt;)»(Red::AST $a, PositionalNotResultSeq $b ) is export {</span>
+<span class="coverage-green">    Red::AST::In.new: $a, ast-value($b);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ⊃ Y # Where Y is a positional but not a ResultSeq</span>
+<span class="coverage-green">multi infix:&lt;⊃&gt;(Red::AST $a, PositionalNotResultSeq $b ) is export {</span>
+<span class="coverage-green">    Red::AST::NotIn.new: $a, ast-value($b);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X (&gt;) Y # Where Y is a positional but not a ResultSeq</span>
+<span class="coverage-green">multi infix:«(&gt;)»(Red::AST $a, PositionalNotResultSeq $b ) is export {</span>
+<span class="coverage-green">    Red::AST::NotIn.new: $a, ast-value($b);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X in Y # where Y is a select</span>
+<span class="coverage-green">multi infix:&lt;in&gt;(Red::AST $a, Red::AST::Select $b ) is export {</span>
+<span class="coverage-green">    Red::AST::In.new: $a, $b.as-sub-select;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ⊂ Y # where Y is a select</span>
+<span class="coverage-green">multi infix:&lt;⊂&gt;(Red::AST $a, Red::AST::Select $b ) is export {</span>
+<span class="coverage-green">    Red::AST::In.new: $a, $b.as-sub-select;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X (&lt;) Y # where Y is a select</span>
+<span class="coverage-green">multi infix:«(&lt;)»(Red::AST $a, Red::AST::Select $b ) is export {</span>
+<span class="coverage-green">    Red::AST::In.new: $a, $b.as-sub-select;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X ⊃ Y # where Y is a select</span>
+<span class="coverage-green">multi infix:&lt;⊃&gt;(Red::AST $a, Red::AST::Select $b ) is export {</span>
+<span class="coverage-green">    Red::AST::NotIn.new: $a, $b.as-sub-select;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| X (&gt;) Y # Where Y is a select</span>
+<span class="coverage-green">multi infix:«(&gt;)»(Red::AST $a, Red::AST::Select $b ) is export {</span>
+<span class="coverage-green">    Red::AST::NotIn.new: $a, $b.as-sub-select;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

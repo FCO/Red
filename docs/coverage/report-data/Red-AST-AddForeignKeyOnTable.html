@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::AddForeignKeyOnTable</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::AddForeignKeyOnTable 27.2%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Column;</span>
+<span class="coverage-green">unit class Red::AST::AddForeignKeyOnTable does Red::AST;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class Fk {</span>
+<span class="coverage-no">    has Str         $.name is required;</span>
+<span class="coverage-no">    has Red::Column $.from is required;</span>
+<span class="coverage-red">    has Red::Column $.to   is required;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Str $.table;</span>
+<span class="coverage-red">has Fk  @.foreigns;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method new(:$table, :@foreigns) {</span>
+<span class="coverage-red">    self.bless: :$table, :foreigns(Array[Fk].new: @foreigns.map: {</span>
+<span class="coverage-red">        Fk.new: :from(.&lt;from&gt;), :to(.&lt;to&gt;), |(:name($_) with .&lt;name&gt;),</span>
+<span class="coverage-no">    })</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method args {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method returns {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method find-column-name {}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

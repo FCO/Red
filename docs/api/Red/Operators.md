@@ -3,7 +3,7 @@ Red::Operators
 
 ### multi sub prefix:<-->
 
-```perl6
+```raku
 multi sub prefix:<-->(
     Red::Column $a
 ) returns Mu
@@ -13,7 +13,7 @@ multi sub prefix:<-->(
 
 ### multi sub prefix:<++>
 
-```perl6
+```raku
 multi sub prefix:<++>(
     Red::Column $a
 ) returns Mu
@@ -23,7 +23,7 @@ multi sub prefix:<++>(
 
 ### multi sub postfix:<-->
 
-```perl6
+```raku
 multi sub postfix:<-->(
     Red::Column $a
 ) returns Mu
@@ -33,7 +33,7 @@ X--
 
 ### multi sub postfix:<++>
 
-```perl6
+```raku
 multi sub postfix:<++>(
     Red::AST $a
 ) returns Mu
@@ -43,7 +43,7 @@ X++
 
 ### multi sub prefix:<->
 
-```perl6
+```raku
 multi sub prefix:<->(
     Red::AST $a
 ) returns Mu
@@ -53,7 +53,7 @@ multi sub prefix:<->(
 
 ### multi sub prefix:<+>
 
-```perl6
+```raku
 multi sub prefix:<+>(
     Red::AST $a
 ) returns Mu
@@ -63,7 +63,7 @@ multi sub prefix:<+>(
 
 ### multi sub infix:<+>
 
-```perl6
+```raku
 multi sub infix:<+>(
     Red::AST $a,
     Red::AST $b
@@ -74,10 +74,10 @@ X + Y
 
 ### multi sub infix:<+>
 
-```perl6
+```raku
 multi sub infix:<+>(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -85,9 +85,9 @@ X + Y # Where Y is castable to Numeric
 
 ### multi sub infix:<+>
 
-```perl6
+```raku
 multi sub infix:<+>(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -96,7 +96,7 @@ X + Y # Where X is castable to Numeric
 
 ### multi sub infix:<->
 
-```perl6
+```raku
 multi sub infix:<->(
     Red::AST $a,
     Red::AST $b
@@ -107,10 +107,10 @@ X - Y
 
 ### multi sub infix:<->
 
-```perl6
+```raku
 multi sub infix:<->(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -118,9 +118,9 @@ X - Y # Where Y is castable to Numeric
 
 ### multi sub infix:<->
 
-```perl6
+```raku
 multi sub infix:<->(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -129,7 +129,7 @@ X - Y # Where X is castable to Numeric
 
 ### multi sub infix:<*>
 
-```perl6
+```raku
 multi sub infix:<*>(
     Red::AST $a,
     Red::AST $b
@@ -140,10 +140,10 @@ X * Y
 
 ### multi sub infix:<*>
 
-```perl6
+```raku
 multi sub infix:<*>(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -151,9 +151,9 @@ X * Y # Where Y is castable to Numeric
 
 ### multi sub infix:<*>
 
-```perl6
+```raku
 multi sub infix:<*>(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -162,7 +162,7 @@ X * Y
 
 ### multi sub infix:</>
 
-```perl6
+```raku
 multi sub infix:</>(
     Red::AST $a,
     Red::AST $b
@@ -173,10 +173,10 @@ X / Y
 
 ### multi sub infix:</>
 
-```perl6
+```raku
 multi sub infix:</>(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -184,9 +184,9 @@ X / Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:</>
 
-```perl6
+```raku
 multi sub infix:</>(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -195,10 +195,10 @@ X / Y # Where X is castable to Numeric and read only
 
 ### multi sub infix:</>
 
-```perl6
+```raku
 multi sub infix:</>(
     Red::AST $a,
-    $b is rw
+    Numeric(Any) $b is rw
 ) returns Mu
 ```
 
@@ -206,9 +206,9 @@ X / Y # Where Y is castable to Numeric and writable
 
 ### multi sub infix:</>
 
-```perl6
+```raku
 multi sub infix:</>(
-    $a is rw,
+    Numeric(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -217,7 +217,7 @@ X / Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:<div>
 
-```perl6
+```raku
 multi sub infix:<div>(
     Red::AST $a,
     Red::AST $b
@@ -228,10 +228,10 @@ X div Y
 
 ### multi sub infix:<div>
 
-```perl6
+```raku
 multi sub infix:<div>(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -239,9 +239,9 @@ X div Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:<div>
 
-```perl6
+```raku
 multi sub infix:<div>(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -250,10 +250,10 @@ X div Y # Where X is castable to Numeric and read only
 
 ### multi sub infix:<div>
 
-```perl6
+```raku
 multi sub infix:<div>(
     Red::AST $a,
-    $b is rw
+    Numeric(Any) $b is rw
 ) returns Mu
 ```
 
@@ -261,9 +261,9 @@ X div Y # Where Y is castable to Numeric and writable
 
 ### multi sub infix:<div>
 
-```perl6
+```raku
 multi sub infix:<div>(
-    $a is rw,
+    Numeric(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -272,7 +272,7 @@ X div Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:<==>
 
-```perl6
+```raku
 multi sub infix:<==>(
     Red::AST $a,
     Red::AST $b
@@ -283,10 +283,10 @@ X == Y
 
 ### multi sub infix:<==>
 
-```perl6
+```raku
 multi sub infix:<==>(
     Red::AST $a,
-    $b is rw
+    Numeric(Any) $b is rw
 ) returns Mu
 ```
 
@@ -294,10 +294,10 @@ X == Y # Where Y is castable to Numeric and writable
 
 ### multi sub infix:<==>
 
-```perl6
+```raku
 multi sub infix:<==>(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -305,9 +305,9 @@ X == Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:<==>
 
-```perl6
+```raku
 multi sub infix:<==>(
-    $a is rw,
+    Numeric(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -316,9 +316,9 @@ X == Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:<==>
 
-```perl6
+```raku
 multi sub infix:<==>(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -327,7 +327,7 @@ X == Y # Where X is castable to Numeric and read only
 
 ### multi sub infix:<==>
 
-```perl6
+```raku
 multi sub infix:<==>(
     Red::AST $a where { ... },
     Date $b
@@ -338,7 +338,7 @@ X == Y # Where X is castable to Numeric and read only
 
 ### multi sub infix:<!=>
 
-```perl6
+```raku
 multi sub infix:<!=>(
     Red::AST $a,
     Red::AST $b
@@ -349,10 +349,10 @@ X != Y # Where Y is castable to Numeric and writable
 
 ### multi sub infix:<!=>
 
-```perl6
+```raku
 multi sub infix:<!=>(
     Red::AST $a,
-    $b is rw
+    Numeric(Any) $b is rw
 ) returns Mu
 ```
 
@@ -360,10 +360,10 @@ X != Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:<!=>
 
-```perl6
+```raku
 multi sub infix:<!=>(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -371,9 +371,9 @@ X != Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:<!=>
 
-```perl6
+```raku
 multi sub infix:<!=>(
-    $a is rw,
+    Numeric(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -382,9 +382,9 @@ X != Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:<!=>
 
-```perl6
+```raku
 multi sub infix:<!=>(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -393,7 +393,7 @@ X != Y # Where X is castable to Numeric and read only
 
 ### multi sub infix:<==>
 
-```perl6
+```raku
 multi sub infix:<==>(
     Red::AST $a,
     Date $b is rw
@@ -404,7 +404,7 @@ X == Y X == Y # Where Y is Date and writable
 
 ### multi sub infix:<==>
 
-```perl6
+```raku
 multi sub infix:<==>(
     Red::AST $a,
     Date $b
@@ -415,7 +415,7 @@ X == Y # Where Y is Date and read only
 
 ### multi sub infix:<==>
 
-```perl6
+```raku
 multi sub infix:<==>(
     Date $a is rw,
     Red::AST $b
@@ -426,7 +426,7 @@ X == Y # Where X is Date and writable
 
 ### multi sub infix:<==>
 
-```perl6
+```raku
 multi sub infix:<==>(
     Date $a,
     Red::AST $b
@@ -437,7 +437,7 @@ X == Y # Where X is Date and read only
 
 ### multi sub infix:<!=>
 
-```perl6
+```raku
 multi sub infix:<!=>(
     Red::AST $a,
     Red::AST $b
@@ -448,7 +448,7 @@ X != Y
 
 ### multi sub infix:<!=>
 
-```perl6
+```raku
 multi sub infix:<!=>(
     Red::AST $a,
     Date $b is rw
@@ -459,7 +459,7 @@ X != Y # Where Y is Date and writable
 
 ### multi sub infix:<!=>
 
-```perl6
+```raku
 multi sub infix:<!=>(
     Red::AST $a,
     Date $b
@@ -470,7 +470,7 @@ X != Y # Where Y is Date and read only
 
 ### multi sub infix:<!=>
 
-```perl6
+```raku
 multi sub infix:<!=>(
     Date $a is rw,
     Red::AST $b
@@ -481,7 +481,7 @@ X != Y # Where X is Date and writable
 
 ### multi sub infix:<!=>
 
-```perl6
+```raku
 multi sub infix:<!=>(
     Date $a,
     Red::AST $b
@@ -492,10 +492,10 @@ X != Y # Where X is Date and read only
 
 ### multi sub infix:<eq>
 
-```perl6
+```raku
 multi sub infix:<eq>(
     Red::AST $a,
-    $b is rw
+    Str(Any) $b is rw
 ) returns Mu
 ```
 
@@ -503,10 +503,10 @@ X eq Y # Where Y is castable to Str and writable
 
 ### multi sub infix:<eq>
 
-```perl6
+```raku
 multi sub infix:<eq>(
     Red::AST $a,
-    $b
+    Str(Any) $b
 ) returns Mu
 ```
 
@@ -514,9 +514,9 @@ X eq Y # Where Y is castable to Str and read only
 
 ### multi sub infix:<eq>
 
-```perl6
+```raku
 multi sub infix:<eq>(
-    $a is rw,
+    Str(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -525,9 +525,9 @@ X eq Y # Where X is castable to Str and writable
 
 ### multi sub infix:<eq>
 
-```perl6
+```raku
 multi sub infix:<eq>(
-    $a,
+    Str(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -536,7 +536,7 @@ X eq Y # Where X is castable to Str and read only
 
 ### multi sub infix:<eq>
 
-```perl6
+```raku
 multi sub infix:<eq>(
     Red::AST $a where { ... },
     Date $b
@@ -547,7 +547,7 @@ X eq Y # Where Y is any Red::AST that returns a DateTime
 
 ### multi sub infix:<eq>
 
-```perl6
+```raku
 multi sub infix:<eq>(
     Red::AST $a where { ... },
     Red::AST $b where { ... }
@@ -558,10 +558,10 @@ X eq Y # Where both are AST that returns Str
 
 ### multi sub infix:<ne>
 
-```perl6
+```raku
 multi sub infix:<ne>(
     Red::AST $a,
-    $b is rw
+    Str(Any) $b is rw
 ) returns Mu
 ```
 
@@ -569,10 +569,10 @@ X ne Y # Where Y is castable to Str and writable
 
 ### multi sub infix:<ne>
 
-```perl6
+```raku
 multi sub infix:<ne>(
     Red::AST $a,
-    $b
+    Str(Any) $b
 ) returns Mu
 ```
 
@@ -580,9 +580,9 @@ X ne Y # Where Y is castable to Str and read only
 
 ### multi sub infix:<ne>
 
-```perl6
+```raku
 multi sub infix:<ne>(
-    $a is rw,
+    Str(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -591,9 +591,9 @@ X ne Y # Where X is castable to Str and writable
 
 ### multi sub infix:<ne>
 
-```perl6
+```raku
 multi sub infix:<ne>(
-    $a,
+    Str(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -602,7 +602,7 @@ X ne Y # Where X is castable to Str and read only
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -613,10 +613,10 @@ X < Y # Where Y is any Red::AST that returns a DateTime
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Red::AST $a,
-    $b is rw
+    Numeric(Any) $b is rw
 ) returns Mu
 ```
 
@@ -624,10 +624,10 @@ X < Y # Where Y is castable to Numeric and writable
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -635,9 +635,9 @@ X < Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
-    $a is rw,
+    Numeric(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -646,9 +646,9 @@ X < Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -657,7 +657,7 @@ X < Y # Where X is castable to Numeric and read only
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -668,10 +668,10 @@ X > Y # Where Y is any Red::AST that returns a Numeric
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Red::AST $a,
-    $b is rw
+    Numeric(Any) $b is rw
 ) returns Mu
 ```
 
@@ -679,10 +679,10 @@ X > Y # Where Y is castable to Numeric and writable
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -690,9 +690,9 @@ X > Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
-    $a is rw,
+    Numeric(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -701,9 +701,9 @@ X > Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -712,7 +712,7 @@ X > Y # Where X is castable to Numeric and read only
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -723,10 +723,10 @@ X <= Y # Where Y is any Red::AST that returns a Numeric
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Red::AST $a,
-    $b is rw
+    Numeric(Any) $b is rw
 ) returns Mu
 ```
 
@@ -734,10 +734,10 @@ X <= Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -745,9 +745,9 @@ X <= Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
-    $a is rw,
+    Numeric(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -756,9 +756,9 @@ X <= Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -767,7 +767,7 @@ X <= Y # Where X is castable to Numeric and read only
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -778,10 +778,10 @@ X >= Y # Where Y is any Red::AST that returns a DateTime
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Red::AST $a,
-    $b is rw
+    Numeric(Any) $b is rw
 ) returns Mu
 ```
 
@@ -789,10 +789,10 @@ X >= Y # Where Y is castable to Numeric and writable
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Red::AST $a,
-    $b
+    Numeric(Any) $b
 ) returns Mu
 ```
 
@@ -800,9 +800,9 @@ X >= Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
-    $a is rw,
+    Numeric(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -811,9 +811,9 @@ X >= Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
-    $a,
+    Numeric(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -822,7 +822,7 @@ X >= Y # Where X is castable to Numeric and read only
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -833,7 +833,7 @@ X < Y # Where Y is any Red::AST that returns a DateTime
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Red::AST $a,
     DateTime $b is rw
@@ -844,7 +844,7 @@ X < Y # Where Y is DateTime and writable
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Red::AST $a,
     DateTime $b
@@ -855,7 +855,7 @@ X < Y # Where Y is DateTime and read only
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     DateTime $a is rw,
     Red::AST $b
@@ -866,7 +866,7 @@ X < Y # Where X is DateTime and writable
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     DateTime $a,
     Red::AST $b
@@ -877,7 +877,7 @@ X < Y # Where X is DateTime and read only
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -888,7 +888,7 @@ X > Y # Where Y is any Red::AST that returns a DateTime
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Red::AST $a,
     DateTime $b is rw
@@ -899,7 +899,7 @@ X > Y # Where Y is DateTime and writable
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Red::AST $a,
     DateTime $b
@@ -910,7 +910,7 @@ X > Y # Where Y is DateTime and read only
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     DateTime $a is rw,
     Red::AST $b
@@ -921,7 +921,7 @@ X > Y # Where X is DateTime and writable
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     DateTime $a,
     Red::AST $b
@@ -932,7 +932,7 @@ X > Y # Where X is DateTime and read only
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -943,7 +943,7 @@ X <= Y # Where Y is any Red::AST that returns a DateTime
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Red::AST $a,
     DateTime $b is rw
@@ -954,7 +954,7 @@ X <= Y # Where Y is DateTime and writable
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Red::AST $a,
     DateTime $b
@@ -965,7 +965,7 @@ X <= Y # Where Y is DateTime and read only
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     DateTime $a is rw,
     Red::AST $b
@@ -976,7 +976,7 @@ X <= Y # Where X is DateTime and writable
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     DateTime $a,
     Red::AST $b
@@ -987,7 +987,7 @@ X <= Y # Where X is DateTime and read only
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -998,7 +998,7 @@ X >= Y # Where Y is any Red::AST that returns a DateTime
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Red::AST $a,
     DateTime $b is rw
@@ -1009,7 +1009,7 @@ X >= Y # Where Y is DateTime and writable
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Red::AST $a,
     DateTime $b
@@ -1020,7 +1020,7 @@ X >= Y # Where Y is DateTime and read only
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     DateTime $a is rw,
     Red::AST $b
@@ -1031,7 +1031,7 @@ X >= Y # Where X is DateTime and writable
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     DateTime $a,
     Red::AST $b
@@ -1042,7 +1042,7 @@ X >= Y # Where X is DateTime and read only
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -1053,7 +1053,7 @@ X < Y # Where Y is any Red::AST that returns a Date
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Red::AST $a,
     Date $b is rw
@@ -1064,7 +1064,7 @@ X < Y # Where Y is Date and writable
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Red::AST $a,
     Date $b
@@ -1075,7 +1075,7 @@ X < Y # Where Y is Date and read only
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Date $a is rw,
     Red::AST $b
@@ -1086,7 +1086,7 @@ X < Y # Where X is Date and writable
 
 ### multi sub infix:«<»
 
-```perl6
+```raku
 multi sub infix:«<»(
     Date $a,
     Red::AST $b
@@ -1097,7 +1097,7 @@ X < Y # Where X is Date and read only
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -1108,7 +1108,7 @@ X > Y # Where Y is any Red::AST that returns a Date
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Red::AST $a,
     Date $b is rw
@@ -1119,7 +1119,7 @@ X > Y # Where Y is Date and writable
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Red::AST $a,
     Date $b
@@ -1130,7 +1130,7 @@ X > Y # Where Y is Date and read only
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Date $a is rw,
     Red::AST $b
@@ -1141,7 +1141,7 @@ X > Y # Where X is Date and writable
 
 ### multi sub infix:«>»
 
-```perl6
+```raku
 multi sub infix:«>»(
     Date $a,
     Red::AST $b
@@ -1152,7 +1152,7 @@ X > Y # Where X is Date and read only
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -1163,7 +1163,7 @@ X <= Y # Where Y is any Red::AST that returns a Date
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Red::AST $a,
     Date $b is rw
@@ -1174,7 +1174,7 @@ X <= Y # Where Y is Date and writable
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Red::AST $a,
     Date $b
@@ -1185,7 +1185,7 @@ X <= Y # Where Y is Date and read only
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Date $a is rw,
     Red::AST $b
@@ -1196,7 +1196,7 @@ X <= Y # Where X is Date and read only
 
 ### multi sub infix:«<=»
 
-```perl6
+```raku
 multi sub infix:«<=»(
     Date $a,
     Red::AST $b
@@ -1207,7 +1207,7 @@ X <= Y # Where X is Date and read only
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Red::AST $a where { ... },
     Red::AST $b
@@ -1218,7 +1218,7 @@ X >= Y # Where Y is any Red::AST that returns a Date
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Red::AST $a,
     Date $b is rw
@@ -1229,7 +1229,7 @@ X >= Y # Where Y is Date and writable
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Red::AST $a,
     Date $b
@@ -1240,7 +1240,7 @@ X >= Y # Where Y is Date and read only
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Date $a is rw,
     Red::AST $b
@@ -1251,7 +1251,7 @@ X >= Y # Where X is Date and writable
 
 ### multi sub infix:«>=»
 
-```perl6
+```raku
 multi sub infix:«>=»(
     Date $a,
     Red::AST $b
@@ -1262,7 +1262,7 @@ X >= Y # Where X is Date and read only
 
 ### multi sub infix:<lt>
 
-```perl6
+```raku
 multi sub infix:<lt>(
     Red::AST $a,
     Red::AST $b
@@ -1273,10 +1273,10 @@ X lt Y
 
 ### multi sub infix:<lt>
 
-```perl6
+```raku
 multi sub infix:<lt>(
     Red::AST $a,
-    $b is rw
+    Str(Any) $b is rw
 ) returns Mu
 ```
 
@@ -1284,10 +1284,10 @@ X lt Y # Where Y is castable to Str and writable
 
 ### multi sub infix:<lt>
 
-```perl6
+```raku
 multi sub infix:<lt>(
     Red::AST $a,
-    $b
+    Str(Any) $b
 ) returns Mu
 ```
 
@@ -1295,9 +1295,9 @@ X lt Y # Where Y is castable to Str and read only
 
 ### multi sub infix:<lt>
 
-```perl6
+```raku
 multi sub infix:<lt>(
-    $a is rw,
+    Str(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -1306,9 +1306,9 @@ X lt Y # Where X is castable to Str and writable
 
 ### multi sub infix:<lt>
 
-```perl6
+```raku
 multi sub infix:<lt>(
-    $a,
+    Str(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -1317,7 +1317,7 @@ X lt Y # Where X is castable to Str and read only
 
 ### multi sub infix:<gt>
 
-```perl6
+```raku
 multi sub infix:<gt>(
     Red::AST $a,
     Red::AST $b
@@ -1328,10 +1328,10 @@ X gt Y
 
 ### multi sub infix:<gt>
 
-```perl6
+```raku
 multi sub infix:<gt>(
     Red::AST $a,
-    $b is rw
+    Str(Any) $b is rw
 ) returns Mu
 ```
 
@@ -1339,10 +1339,10 @@ X gt Y # Where Y is castable to Str and writable
 
 ### multi sub infix:<gt>
 
-```perl6
+```raku
 multi sub infix:<gt>(
     Red::AST $a,
-    $b
+    Str(Any) $b
 ) returns Mu
 ```
 
@@ -1350,9 +1350,9 @@ X gt Y # Where Y is castable to Str and read only
 
 ### multi sub infix:<gt>
 
-```perl6
+```raku
 multi sub infix:<gt>(
-    $a is rw,
+    Str(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -1361,9 +1361,9 @@ X gt Y # Where X is castable to Str and writable
 
 ### multi sub infix:<gt>
 
-```perl6
+```raku
 multi sub infix:<gt>(
-    $a,
+    Str(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -1372,7 +1372,7 @@ X gt Y # Where X is castable to Str and read only
 
 ### multi sub infix:<le>
 
-```perl6
+```raku
 multi sub infix:<le>(
     Red::AST $a,
     Red::AST $b
@@ -1383,10 +1383,10 @@ X le Y
 
 ### multi sub infix:<le>
 
-```perl6
+```raku
 multi sub infix:<le>(
     Red::AST $a,
-    $b is rw
+    Str(Any) $b is rw
 ) returns Mu
 ```
 
@@ -1394,10 +1394,10 @@ X le Y # Where Y is castable to Str and writable
 
 ### multi sub infix:<le>
 
-```perl6
+```raku
 multi sub infix:<le>(
     Red::AST $a,
-    $b
+    Str(Any) $b
 ) returns Mu
 ```
 
@@ -1405,9 +1405,9 @@ X le Y # Where Y is castable to Str and read only
 
 ### multi sub infix:<le>
 
-```perl6
+```raku
 multi sub infix:<le>(
-    $a is rw,
+    Str(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -1416,9 +1416,9 @@ X le Y # Where X is castable to Str and writable
 
 ### multi sub infix:<le>
 
-```perl6
+```raku
 multi sub infix:<le>(
-    $a,
+    Str(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -1427,7 +1427,7 @@ X le Y # Where X is castable to Str and read only
 
 ### multi sub infix:<ge>
 
-```perl6
+```raku
 multi sub infix:<ge>(
     Red::AST $a,
     Red::AST $b
@@ -1438,10 +1438,10 @@ X ge Y
 
 ### multi sub infix:<ge>
 
-```perl6
+```raku
 multi sub infix:<ge>(
     Red::AST $a,
-    $b is rw
+    Str(Any) $b is rw
 ) returns Mu
 ```
 
@@ -1449,10 +1449,10 @@ X ge Y # Where Y is castable to Str and writable
 
 ### multi sub infix:<ge>
 
-```perl6
+```raku
 multi sub infix:<ge>(
     Red::AST $a,
-    $b
+    Str(Any) $b
 ) returns Mu
 ```
 
@@ -1460,9 +1460,9 @@ X ge Y # Where Y is castable to Str and read only
 
 ### multi sub infix:<ge>
 
-```perl6
+```raku
 multi sub infix:<ge>(
-    $a is rw,
+    Str(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -1471,9 +1471,9 @@ X ge Y # Where X is castable to Str and writable
 
 ### multi sub infix:<ge>
 
-```perl6
+```raku
 multi sub infix:<ge>(
-    $a,
+    Str(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -1482,7 +1482,7 @@ X ge Y # Where X is castable to Str and read only
 
 ### multi sub infix:<%>
 
-```perl6
+```raku
 multi sub infix:<%>(
     Red::AST $a,
     Red::AST $b
@@ -1493,10 +1493,10 @@ X % Y
 
 ### multi sub infix:<%>
 
-```perl6
+```raku
 multi sub infix:<%>(
     Red::AST $a,
-    $b is rw
+    Int(Any) $b is rw
 ) returns Mu
 ```
 
@@ -1504,10 +1504,10 @@ X % Y # Where X is castable to Int and writable
 
 ### multi sub infix:<%>
 
-```perl6
+```raku
 multi sub infix:<%>(
     Red::AST $a,
-    $b
+    Int(Any) $b
 ) returns Mu
 ```
 
@@ -1515,9 +1515,9 @@ X % Y # Where Y is castable to Int and read only
 
 ### multi sub infix:<%>
 
-```perl6
+```raku
 multi sub infix:<%>(
-    $a is rw,
+    Int(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -1526,9 +1526,9 @@ X % Y # Where X is castable to Int and writable
 
 ### multi sub infix:<%>
 
-```perl6
+```raku
 multi sub infix:<%>(
-    $a,
+    Int(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -1537,7 +1537,7 @@ X % Y # Where X is castable to Int and read only
 
 ### multi sub infix:<%%>
 
-```perl6
+```raku
 multi sub infix:<%%>(
     Red::AST $a,
     Red::AST $b
@@ -1548,10 +1548,10 @@ X %% Y
 
 ### multi sub infix:<%%>
 
-```perl6
+```raku
 multi sub infix:<%%>(
     Red::AST $a,
-    $b is rw
+    Int(Any) $b is rw
 ) returns Mu
 ```
 
@@ -1559,10 +1559,10 @@ X %% Y # Where Y is castable to Int and writable
 
 ### multi sub infix:<%%>
 
-```perl6
+```raku
 multi sub infix:<%%>(
     Red::AST $a,
-    $b
+    Int(Any) $b
 ) returns Mu
 ```
 
@@ -1570,9 +1570,9 @@ X %% Y # Where Y is castable to Int and read only
 
 ### multi sub infix:<%%>
 
-```perl6
+```raku
 multi sub infix:<%%>(
-    $a is rw,
+    Int(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -1581,9 +1581,9 @@ X %% Y # Where X is castable to Int
 
 ### multi sub infix:<%%>
 
-```perl6
+```raku
 multi sub infix:<%%>(
-    $a,
+    Int(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -1592,7 +1592,7 @@ X %% Y # Where X is read only
 
 ### multi sub infix:<~>
 
-```perl6
+```raku
 multi sub infix:<~>(
     Red::AST $a,
     Red::AST $b
@@ -1603,10 +1603,10 @@ X ~ Y
 
 ### multi sub infix:<~>
 
-```perl6
+```raku
 multi sub infix:<~>(
     Red::AST $a,
-    $b is rw
+    Str(Any) $b is rw
 ) returns Mu
 ```
 
@@ -1614,10 +1614,10 @@ X ~ Y Where Y is castable to Str and writable
 
 ### multi sub infix:<~>
 
-```perl6
+```raku
 multi sub infix:<~>(
     Red::AST $a,
-    $b
+    Str(Any) $b
 ) returns Mu
 ```
 
@@ -1625,9 +1625,9 @@ X ~ Y Where Y is castable to Str and read only
 
 ### multi sub infix:<~>
 
-```perl6
+```raku
 multi sub infix:<~>(
-    $a is rw,
+    Str(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -1636,9 +1636,9 @@ X ~ Y # Where X is castable to Str and writable
 
 ### multi sub infix:<~>
 
-```perl6
+```raku
 multi sub infix:<~>(
-    $a,
+    Str(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -1647,7 +1647,7 @@ X ~ Y # Where X is castable to Str and read only
 
 ### multi sub prefix:<not>
 
-```perl6
+```raku
 multi sub prefix:<not>(
     Red::AST $a
 ) returns Mu
@@ -1657,7 +1657,7 @@ not X # Where X is read only
 
 ### multi sub prefix:<not>
 
-```perl6
+```raku
 multi sub prefix:<not>(
     Red::AST $a is rw
 ) returns Mu
@@ -1667,7 +1667,7 @@ not X
 
 ### multi sub prefix:<!>
 
-```perl6
+```raku
 multi sub prefix:<!>(
     Red::AST $a
 ) returns Mu
@@ -1677,7 +1677,7 @@ multi sub prefix:<!>(
 
 ### multi sub prefix:<not>
 
-```perl6
+```raku
 multi sub prefix:<not>(
     Red::AST::In $a
 ) returns Mu
@@ -1687,7 +1687,7 @@ not X # Where X is a in
 
 ### multi sub prefix:<!>
 
-```perl6
+```raku
 multi sub prefix:<!>(
     Red::AST::In $a
 ) returns Mu
@@ -1697,7 +1697,7 @@ multi sub prefix:<!>(
 
 ### multi sub prefix:<so>
 
-```perl6
+```raku
 multi sub prefix:<so>(
     Red::AST $a
 ) returns Mu
@@ -1707,7 +1707,7 @@ so X
 
 ### multi sub prefix:<?>
 
-```perl6
+```raku
 multi sub prefix:<?>(
     Red::AST $a
 ) returns Mu
@@ -1717,7 +1717,7 @@ multi sub prefix:<?>(
 
 ### multi sub infix:<AND>
 
-```perl6
+```raku
 multi sub infix:<AND>(
     Red::AST $a,
     Red::AST $b
@@ -1728,7 +1728,7 @@ X AND Y
 
 ### multi sub infix:<OR>
 
-```perl6
+```raku
 multi sub infix:<OR>(
     Red::AST $a,
     Red::AST $b
@@ -1739,7 +1739,7 @@ X OR Y
 
 ### multi sub infix:<∪>
 
-```perl6
+```raku
 multi sub infix:<∪>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -1750,7 +1750,7 @@ X ∪ Y # Where X and Y are ResultSeqs
 
 ### multi sub infix:<(|)>
 
-```perl6
+```raku
 multi sub infix:<(|)>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -1761,7 +1761,7 @@ X (|) Y # Where X and Y are ResultSeqs
 
 ### multi sub infix:<∩>
 
-```perl6
+```raku
 multi sub infix:<∩>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -1772,7 +1772,7 @@ X ∩ Y # Where X and Y are ResultSeqs
 
 ### multi sub infix:<(&)>
 
-```perl6
+```raku
 multi sub infix:<(&)>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -1783,7 +1783,7 @@ X (&) Y # Where X and Y are ResultSeqs
 
 ### multi sub infix:<⊖>
 
-```perl6
+```raku
 multi sub infix:<⊖>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -1794,7 +1794,7 @@ X ⊖ Y # Where X and Y are ResultSeqs
 
 ### multi sub infix:<(-)>
 
-```perl6
+```raku
 multi sub infix:<(-)>(
     Red::ResultSeq $a,
     Red::ResultSeq $b
@@ -1805,7 +1805,7 @@ X (-) Y # Where X and Y are ResultSeqs
 
 ### multi sub infix:<in>
 
-```perl6
+```raku
 multi sub infix:<in>(
     Red::AST $a,
     Red::ResultSeq:D $b
@@ -1816,7 +1816,7 @@ X in Y # Where Y is a ResultSeq
 
 ### multi sub infix:<⊂>
 
-```perl6
+```raku
 multi sub infix:<⊂>(
     Red::AST $a,
     Red::ResultSeq $b
@@ -1827,7 +1827,7 @@ X ⊂ Y # Where Y is a ResultSeq
 
 ### multi sub infix:«(<)»
 
-```perl6
+```raku
 multi sub infix:«(<)»(
     Red::AST $a,
     Red::ResultSeq $b
@@ -1838,7 +1838,7 @@ X (<) Y # Where Y is a ResultSeq
 
 ### multi sub infix:<⊃>
 
-```perl6
+```raku
 multi sub infix:<⊃>(
     Red::AST $a,
     Red::ResultSeq $b
@@ -1849,7 +1849,7 @@ X ⊃ Y # Where Y is a ResultSeq
 
 ### multi sub infix:«(>)»
 
-```perl6
+```raku
 multi sub infix:«(>)»(
     Red::AST $a,
     Red::ResultSeq $b
@@ -1860,7 +1860,7 @@ X (>) Y # Where Y is a ResultSeq
 
 ### multi sub infix:<in>
 
-```perl6
+```raku
 multi sub infix:<in>(
     Red::AST $a,
     $b where { ... }
@@ -1871,7 +1871,7 @@ X in Y # Where Y is a positional but not a ResultSeq
 
 ### multi sub infix:<⊂>
 
-```perl6
+```raku
 multi sub infix:<⊂>(
     Red::AST $a,
     $b where { ... }
@@ -1882,7 +1882,7 @@ X ⊂ Y # Where Y is a positional but not a ResultSeq
 
 ### multi sub infix:«(<)»
 
-```perl6
+```raku
 multi sub infix:«(<)»(
     Red::AST $a,
     $b where { ... }
@@ -1893,7 +1893,7 @@ X (<) Y # Where Y is a positional but not a ResultSeq
 
 ### multi sub infix:<⊃>
 
-```perl6
+```raku
 multi sub infix:<⊃>(
     Red::AST $a,
     $b where { ... }
@@ -1904,7 +1904,7 @@ X ⊃ Y # Where Y is a positional but not a ResultSeq
 
 ### multi sub infix:«(>)»
 
-```perl6
+```raku
 multi sub infix:«(>)»(
     Red::AST $a,
     $b where { ... }
@@ -1915,7 +1915,7 @@ X (>) Y # Where Y is a positional but not a ResultSeq
 
 ### multi sub infix:<in>
 
-```perl6
+```raku
 multi sub infix:<in>(
     Red::AST $a,
     Red::AST::Select $b
@@ -1926,7 +1926,7 @@ X in Y # where Y is a select
 
 ### multi sub infix:<⊂>
 
-```perl6
+```raku
 multi sub infix:<⊂>(
     Red::AST $a,
     Red::AST::Select $b
@@ -1937,7 +1937,7 @@ X ⊂ Y # where Y is a select
 
 ### multi sub infix:«(<)»
 
-```perl6
+```raku
 multi sub infix:«(<)»(
     Red::AST $a,
     Red::AST::Select $b
@@ -1948,7 +1948,7 @@ X (<) Y # where Y is a select
 
 ### multi sub infix:<⊃>
 
-```perl6
+```raku
 multi sub infix:<⊃>(
     Red::AST $a,
     Red::AST::Select $b
@@ -1959,7 +1959,7 @@ X ⊃ Y # where Y is a select
 
 ### multi sub infix:«(>)»
 
-```perl6
+```raku
 multi sub infix:«(>)»(
     Red::AST $a,
     Red::AST::Select $b

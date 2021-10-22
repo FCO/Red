@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Driver::SQLite</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Driver::SQLite 75.6%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use DBIish;</span>
+<span class="coverage-no">need DBDish::SQLite::Connection;</span>
+<span class="coverage-no">use Red::AST;</span>
+<span class="coverage-no">use Red::Driver;</span>
+<span class="coverage-no">use Red::Statement;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::AST::Select;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Function;</span>
+<span class="coverage-no">use Red::Driver::CommonSQL;</span>
+<span class="coverage-no">use Red::AST::LastInsertedRow;</span>
+<span class="coverage-no">use Red::AST::TableComment;</span>
+<span class="coverage-no">use Red::AST::JsonItem;</span>
+<span class="coverage-no">use Red::AST::JsonRemoveItem;</span>
+<span class="coverage-no">use X::Red::Exceptions;</span>
+<span class="coverage-no">use UUID;</span>
+<span class="coverage-no">use Red::SchemaReader;</span>
+<span class="coverage-no">use Red::Driver::SQLite::SchemaReader;</span>
+<span class="coverage-no">use Red::Type::Json;</span>
+<span class="coverage-green">unit class Red::Driver::SQLite does Red::Driver::CommonSQL;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has $.database = q&lt;:memory:&gt;;</span>
+<span class="coverage-no">has DBDish::SQLite::Connection $!dbh;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method schema-reader { Red::Driver::SQLite::SchemaReader }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">submethod BUILD(DBDish::SQLite::Connection :$!dbh, Str :$!database = q&lt;:memory:&gt; ) {</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">submethod TWEAK() {</span>
+<span class="coverage-green">    $!dbh //= DBIish.connect: &quot;SQLite&quot;, :$!database;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">class Statement does Red::Statement {</span>
+<span class="coverage-green">    method stt-exec($stt, *@bind) {</span>
+<span class="coverage-green">        $.driver.debug: (@bind || @!binds);</span>
+<span class="coverage-green">        $stt.execute:  |(@bind || @!binds);</span>
+<span class="coverage-green">        $stt</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    method stt-row($stt) { $stt.row: :hash }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Begin transaction</span>
+<span class="coverage-green">method begin {</span>
+<span class="coverage-green">    self.prepare(Red::AST::BeginTransaction.new).map: *.execute;</span>
+<span class="coverage-red">    self</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method prepare(Str $query) {</span>
+<span class="coverage-green">    CATCH {</span>
+<span class="coverage-green">        default {</span>
+<span class="coverage-green">            self.map-exception($_).throw</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    self.debug: $query;</span>
+<span class="coverage-green">    Statement.new: :driver(self), :statement($!dbh.prepare: $query);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method create-schema(%models where .values.all ~~ Red::Model) {</span>
+<span class="coverage-green">    do for %models.kv -&gt; Str() $name, Red::Model $model {</span>
+<span class="coverage-green">        $name =&gt; $model.^create-table</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method join-type(&quot;outer&quot;) { die &quot;'OUTER JOIN' is not supported by SQLite&quot; }</span>
+<span class="coverage-red">multi method join-type(&quot;right&quot;) { die &quot;'RIGHT JOIN' is not supported by SQLite&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Does this driver accept drop table cascade?</span>
+<span class="coverage-green">multi method should-drop-cascade { False }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context? where $_ ne &quot;bind&quot;) {</span>
+<span class="coverage-green">    (.value ?? 1 !! 0) =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Value $_ where { .type ~~ Json }, $context? where { !.defined || $_ ne &quot;bind&quot; }) {</span>
+<span class="coverage-green">    self.translate:</span>
+<span class="coverage-no">            Red::AST::Function.new(:func&lt;JSON&gt;, :args[ ast-value .value, :type(Str) ]),</span>
+<span class="coverage-no">            $context</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {</span>
+<span class="coverage-green">    my ($val, @bind) := do given self.translate: .value, $context { .key, .value }</span>
+<span class="coverage-green">    &quot;($val == 0 OR $val IS NULL)&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {</span>
+<span class="coverage-red">    my ($val, @bind) := do given self.translate: .value, $context { .key, .value }</span>
+<span class="coverage-red">    &quot;($val &lt;&gt; 0 AND $val IS NOT NULL)&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type ~~ Str }, $context?) {</span>
+<span class="coverage-red">    my ($val, @bind) := do given self.translate: .value, $context { .key, .value }</span>
+<span class="coverage-red">    &quot;($val == '' OR $val IS NULL)&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.attr.type ~~ Str }, $context?) {</span>
+<span class="coverage-red">    my ($val, @bind) := do given self.translate: .value, $context { .key, .value }</span>
+<span class="coverage-red">    &quot;($val &lt;&gt; '' AND $val IS NOT NULL)&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::RowId $_, $context?) { &quot;_rowid_&quot; =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::LastInsertedRow $_, $context?) {</span>
+<span class="coverage-green">    my $of     = .of;</span>
+<span class="coverage-green">    my $filter = Red::AST::Eq.new: Red::AST::RowId, Red::AST::Function.new: :func&lt;last_insert_rowid&gt;;</span>
+<span class="coverage-green">    self.translate(Red::AST::Select.new: :$of, :table-list[$of], :$filter, :1limit)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;column-auto-increment&quot;) { (.auto-increment ?? &quot;AUTOINCREMENT&quot; !! &quot;&quot;) =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;column-comment&quot;) {</span>
+<span class="coverage-green">    (&quot; { self.comment-starter } $_\n&quot; with .comment) =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::TableComment $_, $context?) {</span>
+<span class="coverage-red">        (&quot; { self.comment-starter } { .msg }&quot; =&gt; []) with $_</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::JsonRemoveItem $_, $context?) {</span>
+<span class="coverage-green">    self.translate:</span>
+<span class="coverage-no">            Red::AST::Function.new:</span>
+<span class="coverage-no">                    :func&lt;JSON_REMOVE&gt;,</span>
+<span class="coverage-no">                    :args[</span>
+<span class="coverage-no">                        .left,</span>
+<span class="coverage-no">                        ast-value('$' ~ self.prepare-json-path-item: .right.value)</span>
+<span class="coverage-no">                    ],</span>
+<span class="coverage-no">                    :returns(Json),</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::JsonItem $_, $context?) {</span>
+<span class="coverage-green">    self.translate:</span>
+<span class="coverage-no">            Red::AST::Function.new:</span>
+<span class="coverage-no">                    :func&lt;JSON_EXTRACT&gt;,</span>
+<span class="coverage-no">                    :args[</span>
+<span class="coverage-no">                        .left,</span>
+<span class="coverage-no">                        ast-value('$' ~ self.prepare-json-path-item: .right.value)</span>
+<span class="coverage-no">                    ],</span>
+<span class="coverage-no">                    :returns(Json),</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~~ Red::AST::JsonItem}, &quot;update&quot;) {</span>
+<span class="coverage-green">    my $value = Red::AST::Function.new:</span>
+<span class="coverage-no">            :func&lt;JSON_SET&gt;,</span>
+<span class="coverage-no">            :args[</span>
+<span class="coverage-no">                .value.key.left,</span>
+<span class="coverage-no">                ast-value('$' ~ self.prepare-json-path-item(.value.key.right.value)),</span>
+<span class="coverage-no">                .value.value</span>
+<span class="coverage-no">            ],</span>
+<span class="coverage-no">            :returns(Json),</span>
+<span class="coverage-no">    ;</span>
+<span class="coverage-green">    self.translate: ast-value(.value.key.left =&gt; $value), &quot;update&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Minus $ast, &quot;multi-select-op&quot;) { &quot;EXCEPT&quot; =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method comment-on-same-statement { True }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#multi method default-type-for(Red::Column $ where .attr.type ~~ Mu             --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ Bool            --&gt; Str:D) {&quot;integer&quot;}</span>
+<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)  --&gt; Str:D) {&quot;integer&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ UUID            --&gt; Str:D) {&quot;varchar(36)&quot;}</span>
+<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ Json            --&gt; Str:D) {&quot;json&quot;}</span>
+<span class="coverage-no">#multi method default-type-for(Red::Column $ where .attr.type ~~ Any             --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $                                     --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-red">multi method default-type-for($ --&gt; Str:D) is default {&quot;varchar(255)&quot;}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method map-exception(X::DBDish::DBError $x where { (.?code == 19 or .?code == 1555 or .?code == 2067) and .native-message.starts-with: &quot;UNIQUE constraint failed:&quot; }) {</span>
+<span class="coverage-green">    X::Red::Driver::Mapped::Unique.new:</span>
+<span class="coverage-no">        :driver&lt;SQLite&gt;,</span>
+<span class="coverage-no">        :orig-exception($x),</span>
+<span class="coverage-no">        :fields($x.native-message.substr(26).split: /\s* &quot;,&quot; \s*/)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method map-exception(X::DBDish::DBError $x where { .?code == 1 and .native-message ~~ m:i/^table \s+ $&lt;table&gt;=(\w+) \s+ already \s+ exists/ }) {</span>
+<span class="coverage-red">    X::Red::Driver::Mapped::TableExists.new:</span>
+<span class="coverage-no">            :driver&lt;SQLite&gt;,</span>
+<span class="coverage-no">            :orig-exception($x),</span>
+<span class="coverage-no">            :table($&lt;table&gt;.Str)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method map-exception(X::DBDish::DBError $x where { .?code == 1 and .native-message ~~ m:i/^table \s+ \&quot;$&lt;table&gt;=(\w+)\&quot; \s+ already \s+ exists/ }) {</span>
+<span class="coverage-green">    X::Red::Driver::Mapped::TableExists.new:</span>
+<span class="coverage-no">            :driver&lt;SQLite&gt;,</span>
+<span class="coverage-no">            :orig-exception($x),</span>
+<span class="coverage-no">            :table($&lt;table&gt;.Str)</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

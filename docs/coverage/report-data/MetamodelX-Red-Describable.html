@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::Describable</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::Describable 14.2%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::DB;</span>
+<span class="coverage-no">use Red::Utils;</span>
+<span class="coverage-no">use Red::Cli::Table;</span>
+<span class="coverage-no">use Red::Cli::Column;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 MetamodelX::Red::Describable</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role MetamodelX::Red::Describable;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method !create-column($_ --&gt; Red::Cli::Column) {</span>
+<span class="coverage-red">    Red::Cli::Column.new:</span>
+<span class="coverage-no">        :name(.column-name // self.column-formatter: .attr-name),</span>
+<span class="coverage-no">        :formated-name(.attr-name),</span>
+<span class="coverage-no">        :type(get-RED-DB.default-type-for($_)),</span>
+<span class="coverage-no">        :perl-type(.type),</span>
+<span class="coverage-no">        :nullable(.nullable),</span>
+<span class="coverage-no">        :pk(.id),</span>
+<span class="coverage-red">        |(:references(%(table =&gt; .ref.attr.package.^table, column =&gt; .ref.name)) if .references)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns an object of type `Red::Cli::Table` that represents</span>
+<span class="coverage-no">#| a database table of the caller.</span>
+<span class="coverage-red">method describe(\model --&gt; Red::Cli::Table) {</span>
+<span class="coverage-red">    Red::Cli::Table.new: :name(self.table(model)), :model-name(self.name(model)),</span>
+<span class="coverage-red">        :columns(self.columns&gt;&gt;.column.map({self!create-column($_)}).cache)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the difference to transform this model to the database version.</span>
+<span class="coverage-red">method diff-to-db(\model) {</span>
+<span class="coverage-red">    model.^describe.diff: $*RED-DB.schema-reader.table-definition: model.^table</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the difference to transform the DB table into this model.</span>
+<span class="coverage-red">method diff-from-db(\model) {</span>
+<span class="coverage-red">    $*RED-DB.schema-reader.table-definition(model.^table).diff: model.^describe</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Returns the difference between two models.</span>
+<span class="coverage-red">method diff(\model, \other-model) {</span>
+<span class="coverage-red">    model.^describe.diff: other-model.^describe</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

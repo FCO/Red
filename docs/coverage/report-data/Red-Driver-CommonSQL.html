@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Driver::CommonSQL</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Driver::CommonSQL 56.8%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::Model;</span>
+<span class="coverage-no">use Red::Column;</span>
+<span class="coverage-no">use Red::AST::Case;</span>
+<span class="coverage-no">use Red::AST::Infix;</span>
+<span class="coverage-no">use Red::AST::Select;</span>
+<span class="coverage-no">use Red::AST::Unary;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::AST::Insert;</span>
+<span class="coverage-no">use Red::AST::Update;</span>
+<span class="coverage-no">use Red::AST::Delete;</span>
+<span class="coverage-no">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Function;</span>
+<span class="coverage-no">use Red::AST::Divisable;</span>
+<span class="coverage-no">use Red::AST::IsDefined;</span>
+<span class="coverage-no">use Red::AST::CreateTable;</span>
+<span class="coverage-no">use Red::AST::LastInsertedRow;</span>
+<span class="coverage-no">use Red::AST::CreateColumn;</span>
+<span class="coverage-no">use Red::AST::ChangeColumn;</span>
+<span class="coverage-no">use Red::AST::DropColumn;</span>
+<span class="coverage-no">use Red::AST::TableComment;</span>
+<span class="coverage-no">use Red::AST::StringFuncs;</span>
+<span class="coverage-no">use Red::AST::DateTimeFuncs;</span>
+<span class="coverage-no">use Red::AST::BeginTransaction;</span>
+<span class="coverage-no">use Red::AST::CommitTransaction;</span>
+<span class="coverage-no">use Red::AST::RollbackTransaction;</span>
+<span class="coverage-no">use Red::AST::Generic::Prefix;</span>
+<span class="coverage-no">use Red::AST::Generic::Postfix;</span>
+<span class="coverage-no">use Red::AST::AddForeignKeyOnTable;</span>
+<span class="coverage-no">use Red::Cli::Column;</span>
+<span class="coverage-no">use Red::FromRelationship;</span>
+<span class="coverage-no">use Red::Driver;</span>
+<span class="coverage-no">use Red::Type::Json;</span>
+<span class="coverage-no">use Red::Utils;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">use UUID;</span>
+<span class="coverage-green">unit role Red::Driver::CommonSQL does Red::Driver;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method reserved-words {&lt;</span>
+<span class="coverage-no">    A ABORT ABS ABSOLUTE ACCESS ACTION ADA ADD ADMIN AFTER AGGREGATE ALIAS ALL ALLOCATE ALSO ALTER ALWAYS ANALYSE</span>
+<span class="coverage-no">    ANALYZE AND ANY ARE ARRAY AS ASC ASENSITIVE ASSERTION ASSIGNMENT ASYMMETRIC AT ATOMIC ATTRIBUTE ATTRIBUTES</span>
+<span class="coverage-no">    AUDIT AUTHORIZATION AUTO_INCREMENT AVG AVG_ROW_LENGTH BACKUP BACKWARD BEFORE BEGIN BERNOULLI BETWEEN BIGINT</span>
+<span class="coverage-no">    BINARY BIT BIT_LENGTH BITVAR BLOB BOOL BOOLEAN BOTH BREADTH BREAK BROWSE BULK BY C CACHE CALL CALLED CARDINALITY</span>
+<span class="coverage-no">    CASCADE CASCADED CASE CAST CATALOG CATALOG_NAME CEIL CEILING CHAIN CHANGE CHAR CHAR_LENGTH CHARACTER CHARACTER_LENGTH</span>
+<span class="coverage-no">    CHARACTER_SET_CATALOG CHARACTER_SET_NAME CHARACTER_SET_SCHEMA CHARACTERISTICS CHARACTERS CHECK CHECKED CHECKPOINT</span>
+<span class="coverage-no">    CHECKSUM CLASS CLASS_ORIGIN CLOB CLOSE CLUSTER CLUSTERED COALESCE COBOL COLLATE COLLATION COLLATION_CATALOG</span>
+<span class="coverage-no">    COLLATION_NAME COLLATION_SCHEMA COLLECT COLUMN COLUMN_NAME COLUMNS COMMAND_FUNCTION COMMAND_FUNCTION_CODE COMMENT</span>
+<span class="coverage-no">    COMMIT COMMITTED COMPLETION COMPRESS COMPUTE CONDITION CONDITION_NUMBER CONNECT CONNECTION CONNECTION_NAME CONSTRAINT</span>
+<span class="coverage-no">    CONSTRAINT_CATALOG CONSTRAINT_NAME CONSTRAINT_SCHEMA CONSTRAINTS CONSTRUCTOR CONTAINS CONTAINSTABLE CONTINUE CONVERSION</span>
+<span class="coverage-no">    CONVERT COPY CORR CORRESPONDING COUNT COVAR_POP COVAR_SAMP CREATE CREATEDB CREATEROLE CREATEUSER CROSS CSV CUBE</span>
+<span class="coverage-no">    CUME_DIST CURRENT CURRENT_DATE CURRENT_DEFAULT_TRANSFORM_GROUP CURRENT_PATH CURRENT_ROLE CURRENT_TIME CURRENT_TIMESTAMP</span>
+<span class="coverage-no">    CURRENT_TRANSFORM_GROUP_FOR_TYPE CURRENT_USER CURSOR CURSOR_NAME CYCLE DATA DATABASE DATABASES DATE DATETIME</span>
+<span class="coverage-no">    DATETIME_INTERVAL_CODE DATETIME_INTERVAL_PRECISION DAY DAY_HOUR DAY_MICROSECOND DAY_MINUTE DAY_SECOND DAYOFMONTH</span>
+<span class="coverage-no">    DAYOFWEEK DAYOFYEAR DBCC DEALLOCATE DEC DECIMAL DECLARE DEFAULT DEFAULTS DEFERRABLE DEFERRED DEFINED DEFINER</span>
+<span class="coverage-no">    DEGREE DELAY_KEY_WRITE DELAYED DELETE DELIMITER DELIMITERS DENSE_RANK DENY DEPTH DEREF DERIVED DESC DESCRIBE</span>
+<span class="coverage-no">    DESCRIPTOR DESTROY DESTRUCTOR DETERMINISTIC DIAGNOSTICS DICTIONARY DISABLE DISCONNECT DISK DISPATCH DISTINCT</span>
+<span class="coverage-no">    DISTINCTROW DISTRIBUTED DIV DO DOMAIN DOUBLE DROP DUAL DUMMY DUMP DYNAMIC DYNAMIC_FUNCTION DYNAMIC_FUNCTION_CODE</span>
+<span class="coverage-no">    EACH ELEMENT ELSE ELSEIF ENABLE ENCLOSED ENCODING ENCRYPTED END END-EXEC ENUM EQUALS ERRLVL ESCAPE ESCAPED EVERY</span>
+<span class="coverage-no">    EXCEPT EXCEPTION EXCLUDE EXCLUDING EXCLUSIVE EXEC EXECUTE EXISTING EXISTS EXIT EXP EXPLAIN EXTERNAL EXTRACT FALSE</span>
+<span class="coverage-no">    FETCH FIELDS FILE FILLFACTOR FILTER FINAL FIRST FLOAT FLOAT4 FLOAT8 FLOOR FLUSH FOLLOWING FOR FORCE FOREIGN FORTRAN</span>
+<span class="coverage-no">    FORWARD FOUND FREE FREETEXT FREETEXTTABLE FREEZE FROM FULL FULLTEXT FUNCTION FUSION G GENERAL GENERATED GET GLOBAL</span>
+<span class="coverage-no">    GO GOTO GRANT GRANTED GRANTS GREATEST GROUP GROUPING HANDLER HAVING HEADER HEAP HIERARCHY HIGH_PRIORITY HOLD</span>
+<span class="coverage-no">    HOLDLOCK HOST HOSTS HOUR HOUR_MICROSECOND HOUR_MINUTE HOUR_SECOND IDENTIFIED IDENTITY IDENTITY_INSERT IDENTITYCOL</span>
+<span class="coverage-no">    IF IGNORE ILIKE IMMEDIATE IMMUTABLE IMPLEMENTATION IMPLICIT IN INCLUDE INCLUDING INCREMENT INDEX INDICATOR</span>
+<span class="coverage-no">    INFILE INFIX INHERIT INHERITS INITIAL INITIALIZE INITIALLY INNER INOUT INPUT INSENSITIVE INSERT INSERT_ID</span>
+<span class="coverage-no">    INSTANCE INSTANTIABLE INSTEAD INT INT1 INT2 INT3 INT4 INT8 INTEGER INTERSECT INTERSECTION INTERVAL INTO INVOKER</span>
+<span class="coverage-no">    IS ISAM ISNULL ISOLATION ITERATE JOIN K KEY KEY_MEMBER KEY_TYPE KEYS KILL LANCOMPILER LANGUAGE LARGE LAST</span>
+<span class="coverage-no">    LAST_INSERT_ID LATERAL LEADING LEAST LEAVE LEFT LENGTH LESS LEVEL LIKE LIMIT LINENO LINES LISTEN LN LOAD LOCAL</span>
+<span class="coverage-no">    LOCALTIME LOCALTIMESTAMP LOCATION LOCATOR LOCK LOGIN LOGS LONG LONGBLOB LONGTEXT LOOP LOW_PRIORITY LOWER M MAP</span>
+<span class="coverage-no">    MATCH MATCHED MAX MAX_ROWS MAXEXTENTS MAXVALUE MEDIUMBLOB MEDIUMINT MEDIUMTEXT MEMBER MERGE MESSAGE_LENGTH</span>
+<span class="coverage-no">    MESSAGE_OCTET_LENGTH MESSAGE_TEXT METHOD MIDDLEINT MIN MIN_ROWS MINUS MINUTE MINUTE_MICROSECOND MINUTE_SECOND</span>
+<span class="coverage-no">    MINVALUE MLSLABEL MOD MODE MODIFIES MODIFY MODULE MONTH MONTHNAME MORE MOVE MULTISET MUMPS MYISAM NAME NAMES</span>
+<span class="coverage-no">    NATIONAL NATURAL NCHAR NCLOB NESTING NEW NEXT NO NO_WRITE_TO_BINLOG NOAUDIT NOCHECK NOCOMPRESS NOCREATEDB</span>
+<span class="coverage-no">    NOCREATEROLE NOCREATEUSER NOINHERIT NOLOGIN NONCLUSTERED NONE NORMALIZE NORMALIZED NOSUPERUSER NOT NOTHING</span>
+<span class="coverage-no">    NOTIFY NOTNULL NOWAIT NULL NULLABLE NULLIF NULLS NUMBER NUMERIC OBJECT OCTET_LENGTH OCTETS OF OFF OFFLINE OFFSET</span>
+<span class="coverage-no">    OFFSETS OIDS OLD ON ONLINE ONLY OPEN OPENDATASOURCE OPENQUERY OPENROWSET OPENXML OPERATION OPERATOR OPTIMIZE</span>
+<span class="coverage-no">    OPTION OPTIONALLY OPTIONS OR ORDER ORDERING ORDINALITY OTHERS OUT OUTER OUTFILE OUTPUT OVER OVERLAPS OVERLAY</span>
+<span class="coverage-no">    OVERRIDING OWNER PACK_KEYS PAD PARAMETER PARAMETER_MODE PARAMETER_NAME PARAMETER_ORDINAL_POSITION</span>
+<span class="coverage-no">    PARAMETER_SPECIFIC_CATALOG PARAMETER_SPECIFIC_NAME PARAMETER_SPECIFIC_SCHEMA PARAMETERS PARTIAL PARTITION</span>
+<span class="coverage-no">    PASCAL PASSWORD PATH PCTFREE PERCENT PERCENT_RANK PERCENTILE_CONT PERCENTILE_DISC PLACING PLAN PLI POSITION</span>
+<span class="coverage-no">    POSTFIX POWER PRECEDING PRECISION PREFIX PREORDER PREPARE PREPARED PRESERVE PRIMARY PRINT PRIOR PRIVILEGES PROC</span>
+<span class="coverage-no">    PROCEDURAL PROCEDURE PROCESS PROCESSLIST PUBLIC PURGE QUOTE RAID0 RAISERROR RANGE RANK RAW READ READS READTEXT</span>
+<span class="coverage-no">    REAL RECHECK RECONFIGURE RECURSIVE REF REFERENCES REFERENCING REGEXP REGR_AVGX REGR_AVGY REGR_COUNT REGR_INTERCEPT</span>
+<span class="coverage-no">    REGR_R2 REGR_SLOPE REGR_SXX REGR_SXY REGR_SYY REINDEX RELATIVE RELEASE RELOAD RENAME REPEAT REPEATABLE REPLACE</span>
+<span class="coverage-no">    REPLICATION REQUIRE RESET RESIGNAL RESOURCE RESTART RESTORE RESTRICT RESULT RETURN RETURNED_CARDINALITY RETURNED_LENGTH</span>
+<span class="coverage-no">    RETURNED_OCTET_LENGTH RETURNED_SQLSTATE RETURNS REVOKE RIGHT RLIKE ROLE ROLLBACK ROLLUP ROUTINE ROUTINE_CATALOG</span>
+<span class="coverage-no">    ROUTINE_NAME ROUTINE_SCHEMA ROW ROW_COUNT ROW_NUMBER ROWCOUNT ROWGUIDCOL ROWID ROWNUM ROWS RULE SAVE SAVEPOINT SCALE</span>
+<span class="coverage-no">    SCHEMA SCHEMA_NAME SCHEMAS SCOPE SCOPE_CATALOG SCOPE_NAME SCOPE_SCHEMA SCROLL SEARCH SECOND SECOND_MICROSECOND SECTION</span>
+<span class="coverage-no">    SECURITY SELECT SELF SENSITIVE SEPARATOR SEQUENCE SERIALIZABLE SERVER_NAME SESSION SESSION_USER SET SETOF SETS SETUSER</span>
+<span class="coverage-no">    SHARE SHOW SHUTDOWN SIGNAL SIMILAR SIMPLE SIZE SMALLINT SOME SONAME SOURCE SPACE SPATIAL SPECIFIC SPECIFIC_NAME</span>
+<span class="coverage-no">    SPECIFICTYPE SQL SQL_BIG_RESULT SQL_BIG_SELECTS SQL_BIG_TABLES SQL_CALC_FOUND_ROWS SQL_LOG_OFF SQL_LOG_UPDATE</span>
+<span class="coverage-no">    SQL_LOW_PRIORITY_UPDATES SQL_SELECT_LIMIT SQL_SMALL_RESULT SQL_WARNINGS SQLCA SQLCODE SQLERROR SQLEXCEPTION SQLSTATE</span>
+<span class="coverage-no">    SQLWARNING SQRT SSL STABLE START STARTING STATE STATEMENT STATIC STATISTICS STATUS STDDEV_POP STDDEV_SAMP STDIN</span>
+<span class="coverage-no">    STDOUT STORAGE STRAIGHT_JOIN STRICT STRING STRUCTURE STYLE SUBCLASS_ORIGIN SUBLIST SUBMULTISET SUBSTRING SUCCESSFUL</span>
+<span class="coverage-no">    SUM SUPERUSER SYMMETRIC SYNONYM SYSDATE SYSID SYSTEM SYSTEM_USER TABLE TABLE_NAME TABLES TABLESAMPLE TABLESPACE TEMP</span>
+<span class="coverage-no">    TEMPLATE TEMPORARY TERMINATE TERMINATED TEXT TEXTSIZE THAN THEN TIES TIME TIMESTAMP TIMEZONE_HOUR TIMEZONE_MINUTE</span>
+<span class="coverage-no">    TINYBLOB TINYINT TINYTEXT TO TOAST TOP TOP_LEVEL_COUNT TRAILING TRAN TRANSACTION TRANSACTION_ACTIVE TRANSACTIONS_COMMITTED</span>
+<span class="coverage-no">    TRANSACTIONS_ROLLED_BACK TRANSFORM TRANSFORMS TRANSLATE TRANSLATION TREAT TRIGGER TRIGGER_CATALOG TRIGGER_NAME TRIGGER_SCHEMA</span>
+<span class="coverage-no">    TRIM TRUE TRUNCATE TRUSTED TSEQUAL TYPE UESCAPE UID UNBOUNDED UNCOMMITTED UNDER UNDO UNENCRYPTED UNION UNIQUE UNKNOWN UNLISTEN</span>
+<span class="coverage-no">    UNLOCK UNNAMED UNNEST UNSIGNED UNTIL UPDATE UPDATETEXT UPPER USAGE USE USER USER_DEFINED_TYPE_CATALOG USER_DEFINED_TYPE_CODE</span>
+<span class="coverage-no">    USER_DEFINED_TYPE_NAME USER_DEFINED_TYPE_SCHEMA USING UTC_DATE UTC_TIME UTC_TIMESTAMP VACUUM VALID VALIDATE VALIDATOR</span>
+<span class="coverage-no">    VALUE VALUES VAR_POP VAR_SAMP VARBINARY VARCHAR VARCHAR2 VARCHARACTER VARIABLE VARIABLES VARYING VERBOSE VIEW VOLATILE</span>
+<span class="coverage-no">    WAITFOR WHEN WHENEVER WHERE WHILE WIDTH_BUCKET WINDOW WITH WITHIN WITHOUT WORK WRITE WRITETEXT X509 XOR YEAR YEAR_MONTH</span>
+<span class="coverage-no">    ZEROFILL ZONE</span>
+<span class="coverage-no">&gt;}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method table-name-wrapper($name) { qq[&quot;$name&quot;] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method diff-to-ast($table, &quot;+&quot;, &quot;col&quot;, Red::Cli::Column $_ --&gt; Hash()) {</span>
+<span class="coverage-red">    1 =&gt; Red::AST::CreateColumn.new(</span>
+<span class="coverage-no">        :$table,</span>
+<span class="coverage-no">        :name(.name),</span>
+<span class="coverage-no">        :type(.type),</span>
+<span class="coverage-no">        :nullable,</span>
+<span class="coverage-no">        :!pk,</span>
+<span class="coverage-no">        :!unique,</span>
+<span class="coverage-no">        :ref-table(Str),</span>
+<span class="coverage-no">        :ref-col(Str),</span>
+<span class="coverage-no">    ),</span>
+<span class="coverage-no">    8 =&gt; Red::AST::ChangeColumn.new(</span>
+<span class="coverage-no">        :$table,</span>
+<span class="coverage-no">        :name(.name),</span>
+<span class="coverage-no">        :type(.type),</span>
+<span class="coverage-no">        :nullable(.nullable),</span>
+<span class="coverage-no">        :pk(.pk),</span>
+<span class="coverage-no">        :unique(.unique),</span>
+<span class="coverage-no">        :ref-table(.references.&lt;table&gt; // Str),</span>
+<span class="coverage-no">        :ref-col(.references.&lt;column&gt; // Str),</span>
+<span class="coverage-no">    ),</span>
+<span class="coverage-no">}</span>
+<span class="coverage-red">multi method diff-to-ast(Str, Str, &quot;-&quot;, Str, $) {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#multi method diff-to-ast(Str:D, Str:D, &quot;-&quot;, Str:D, Bool:D) {}</span>
+<span class="coverage-red">multi method diff-to-ast($table, Str $column, &quot;+&quot;, &quot;nullable&quot;, Bool $nullable --&gt; Hash()) {</span>
+<span class="coverage-red">    8 =&gt; Red::AST::ChangeColumn.new(</span>
+<span class="coverage-no">            :$table,</span>
+<span class="coverage-no">            :name($column),</span>
+<span class="coverage-no">            :$nullable,</span>
+<span class="coverage-no">    ),</span>
+<span class="coverage-no">}</span>
+<span class="coverage-red">multi method diff-to-ast($table, Str $column, &quot;+&quot;, &quot;type&quot;, Str $type --&gt; Hash()) {</span>
+<span class="coverage-red">    8 =&gt; Red::AST::ChangeColumn.new(</span>
+<span class="coverage-no">            :$table,</span>
+<span class="coverage-no">            :name($column),</span>
+<span class="coverage-no">            :$type,</span>
+<span class="coverage-no">    ),</span>
+<span class="coverage-no">}</span>
+<span class="coverage-red">multi method diff-to-ast($table, Str $column, &quot;+&quot;, &quot;pk&quot;, Bool $pk --&gt; Hash()) {</span>
+<span class="coverage-red">    8 =&gt; Red::AST::ChangeColumn.new(</span>
+<span class="coverage-no">            :$table,</span>
+<span class="coverage-no">            :name($column),</span>
+<span class="coverage-no">            :$pk,</span>
+<span class="coverage-no">    ),</span>
+<span class="coverage-no">}</span>
+<span class="coverage-red">multi method diff-to-ast($table, Str $column, &quot;+&quot;, &quot;unique&quot;, Bool $unique --&gt; Hash()) {</span>
+<span class="coverage-red">    8 =&gt; Red::AST::ChangeColumn.new(</span>
+<span class="coverage-no">            :$table,</span>
+<span class="coverage-no">            :name($column),</span>
+<span class="coverage-no">            :$unique,</span>
+<span class="coverage-no">    ),</span>
+<span class="coverage-no">}</span>
+<span class="coverage-red">multi method diff-to-ast($table, &quot;-&quot;, &quot;col&quot;, Red::Cli::Column $_ --&gt; Hash()) {</span>
+<span class="coverage-red">    9 =&gt; Red::AST::DropColumn.new:</span>
+<span class="coverage-no">        :table(.table.name),</span>
+<span class="coverage-no">        :name(.name),</span>
+<span class="coverage-no">    ;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-red">multi method diff-to-ast(@diff) {</span>
+<span class="coverage-red">    @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(|*.key, :as{ |.value }).sort.map: *.value</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method table-name-formatter($data) {</span>
+<span class="coverage-green">    camel-to-snake-case $data</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method ping {</span>
+<span class="coverage-no">    # TODO: Generalise</span>
+<span class="coverage-red">    self.execute(&quot;SELECT 1 as ping&quot;).row&lt;ping&gt; == 1</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method create-schema(%models where .values.all ~~ Red::Model) {</span>
+<span class="coverage-red">    for %models.kv -&gt; Str() $name, Red::Model \model {</span>
+<span class="coverage-red">        self.execute: Red::AST::CreateTable.new:</span>
+<span class="coverage-no">            :name(model.^table),</span>
+<span class="coverage-no">            :temp(model.^temp),</span>
+<span class="coverage-no">            :columns(model.^columns.map(*.column.clone: :references(Callable), :class(model))),</span>
+<span class="coverage-red">            |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY),</span>
+<span class="coverage-red">            :constraints[</span>
+<span class="coverage-red">                |do given model.^constraints {</span>
+<span class="coverage-red">                    |do for .kv -&gt; $k, @v {</span>
+<span class="coverage-red">                        my @columns = Array[Red::Column].new: flat |@v;</span>
+<span class="coverage-red">                        do if $k eq &quot;unique&quot; {</span>
+<span class="coverage-red">                            Red::AST::Unique.new: :@columns</span>
+<span class="coverage-red">                        } elsif $k eq &quot;pk&quot; {</span>
+<span class="coverage-red">                            Red::AST::Pk.new: :@columns</span>
+<span class="coverage-no">                        }</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            ],</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    for %models.kv -&gt; Str() $name, Red::Model \model {</span>
+<span class="coverage-red">        my @fks = model.^columns&gt;&gt;.column.grep({ .ref.defined });</span>
+<span class="coverage-red">        self.execute: Red::AST::AddForeignKeyOnTable.new:</span>
+<span class="coverage-no">                :table(model.^table),</span>
+<span class="coverage-red">                :foreigns[@fks.map: {</span>
+<span class="coverage-red">                    %(</span>
+<span class="coverage-red">                            :name(&quot;{</span>
+<span class="coverage-red">                                .class.^table</span>
+<span class="coverage-red">                            }_{</span>
+<span class="coverage-red">                                .name</span>
+<span class="coverage-red">                            }_{</span>
+<span class="coverage-red">                                .ref.class.^table</span>
+<span class="coverage-red">                            }_{</span>
+<span class="coverage-red">                                .ref.name</span>
+<span class="coverage-no">                            }_fkey&quot;),</span>
+<span class="coverage-no">                            :from($_),</span>
+<span class="coverage-no">                            :to(.ref),</span>
+<span class="coverage-no">                    )</span>
+<span class="coverage-no">                }]</span>
+<span class="coverage-no">        if @fks</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    %models.keys Z=&gt; True xx *</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">proto method translate(Red::AST, $? --&gt; Pair) {*}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::BeginTransaction, $context?) {</span>
+<span class="coverage-green">                                    &quot;BEGIN&quot; =&gt; []</span>
+<span class="coverage-no">                                }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::CommitTransaction, $context?) {</span>
+<span class="coverage-green">                                    &quot;COMMIT&quot; =&gt; []</span>
+<span class="coverage-no">                                }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::RollbackTransaction, $context?) {</span>
+<span class="coverage-green">                                    &quot;ROLLBACK&quot; =&gt; []</span>
+<span class="coverage-no">                                }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::DropColumn $_, $context?) {</span>
+<span class="coverage-red">                                    &quot;ALTER TABLE {</span>
+<span class="coverage-red">                                        .table</span>
+<span class="coverage-red">                                    } DROP COLUMN {</span>
+<span class="coverage-red">                                        .name</span>
+<span class="coverage-red">                                    }&quot; =&gt; []</span>
+<span class="coverage-no">                                }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::ChangeColumn $_, $context?) {</span>
+<span class="coverage-red">                                    &quot;ALTER TABLE {</span>
+<span class="coverage-red">                                        .table</span>
+<span class="coverage-red">                                    } ALTER COLUMN {</span>
+<span class="coverage-red">                                        .name</span>
+<span class="coverage-red">                                    } {</span>
+<span class="coverage-red">                                        .type // &quot;&quot;</span>
+<span class="coverage-red">                                    }{</span>
+<span class="coverage-red">                                        &quot; NOT NULL&quot; unless .nullable</span>
+<span class="coverage-red">                                    }{</span>
+<span class="coverage-red">                                        &quot; UNIQUE&quot; if .unique</span>
+<span class="coverage-red">                                    }{</span>
+<span class="coverage-red">                                        &quot; REFERENCES { self.table-name-wrapper: .ref-table } ({ .ref-col })&quot; if .ref-table and .ref-col</span>
+<span class="coverage-red">                                    }{</span>
+<span class="coverage-red">                                        &quot; PRIMARY KEY&quot; if .pk</span>
+<span class="coverage-red">                                    }&quot; =&gt; []</span>
+<span class="coverage-no">                                }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::CreateColumn $_, $context?) {</span>
+<span class="coverage-red">                                    &quot;ALTER TABLE {</span>
+<span class="coverage-red">                                        .table</span>
+<span class="coverage-red">                                    } ADD {</span>
+<span class="coverage-red">                                        .name</span>
+<span class="coverage-red">                                    } {</span>
+<span class="coverage-red">                                        .type</span>
+<span class="coverage-red">                                    }{</span>
+<span class="coverage-red">                                        &quot; NOT NULL&quot; unless .nullable</span>
+<span class="coverage-red">                                    }{</span>
+<span class="coverage-red">                                        &quot; UNIQUE&quot; if .unique</span>
+<span class="coverage-red">                                    }{</span>
+<span class="coverage-red">                                        &quot; REFERENCES { self.table-name-wrapper: .ref-table } ({ .ref-col })&quot; if .ref-table and .ref-col</span>
+<span class="coverage-red">                                    }{</span>
+<span class="coverage-red">                                        &quot; PRIMARY KEY&quot; if .pk</span>
+<span class="coverage-red">                                    }&quot; =&gt; []</span>
+<span class="coverage-no">                                }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::AddForeignKeyOnTable $ast, $context?) {</span>
+<span class="coverage-red">    |$ast.foreigns.map: -&gt; $fk {</span>
+<span class="coverage-red">        &quot;ALTER TABLE {</span>
+<span class="coverage-red">            $ast.table</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-red">        ADD CONSTRAINT {</span>
+<span class="coverage-red">            $fk.name</span>
+<span class="coverage-red">        } FOREIGN KEY ({</span>
+<span class="coverage-red">            $fk.from.name</span>
+<span class="coverage-red">        }) REFERENCES {</span>
+<span class="coverage-red">            self.table-name-wrapper: $fk.to.class.^table</span>
+<span class="coverage-red">        } ({</span>
+<span class="coverage-red">            $fk.to.name</span>
+<span class="coverage-red">        })&quot; =&gt; []</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Union $ast, $context?) {</span>
+<span class="coverage-green">                                    $ast.selects.map({</span>
+<span class="coverage-green">                                        self.translate( $_, &quot;multi-select&quot; ).key</span>
+<span class="coverage-no">                                    })</span>
+<span class="coverage-green">                                            .join(&quot;\n{</span>
+<span class="coverage-green">                                        self.translate($ast, &quot;multi-select-op&quot;).key</span>
+<span class="coverage-red">                                    }\n&quot;) =&gt; []</span>
+<span class="coverage-no">                                }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Intersect $ast, $context?) {</span>
+<span class="coverage-green">                                    $ast.selects.map({ self.translate( $_, &quot;multi-select&quot;).key })</span>
+<span class="coverage-green">                                            .join(&quot;\n{ self.translate($ast, &quot;multi-select-op&quot;).key }\n&quot;) =&gt; []</span>
+<span class="coverage-no">                                }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Minus $ast, $context?) {</span>
+<span class="coverage-green">                                    $ast.selects.map({ self.translate( $_, &quot;multi-select&quot; ).key })</span>
+<span class="coverage-green">                                            .join(&quot;\n{ self.translate($ast, &quot;multi-select-op&quot;).key }\n&quot;) =&gt; []</span>
+<span class="coverage-no">                                }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Union $ast, &quot;multi-select-op&quot;) { &quot;UNION&quot; =&gt; [] }</span>
+<span class="coverage-green">multi method translate(Red::AST::Intersect $ast, &quot;multi-select-op&quot;) { &quot;INTERSECT&quot; =&gt; [] }</span>
+<span class="coverage-red">multi method translate(Red::AST::Minus $ast, &quot;multi-select-op&quot;) { &quot;MINUS&quot; =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Comment $_, $context?) {</span>
+<span class="coverage-red">    .msg.split(/\s*\n\s*/).grep(*.chars &gt; 0).map({ &quot;{ self.comment-starter } $_\n&quot; }).join =&gt; []</span>
+<span class="coverage-no">        if $*RED-COMMENT-SQL or &amp;*RED-COMMENT-SQL</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method comment-starter { &quot;--&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Select $ast, 'where') {</span>
+<span class="coverage-green">    my ( $key, $value ) = do given self.translate($ast) { .key, .value };</span>
+<span class="coverage-green">    '( ' ~ $key ~ ' )' =&gt; $value // [];</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method join-type(&quot;inner&quot; --&gt; &quot;INNER&quot;) {}</span>
+<span class="coverage-red">multi method join-type(&quot;outer&quot; --&gt; &quot;OUTER&quot;) {}</span>
+<span class="coverage-green">multi method join-type(&quot;left&quot;  --&gt; &quot;LEFT&quot; ) {}</span>
+<span class="coverage-red">multi method join-type(&quot;right&quot; --&gt; &quot;RIGHT&quot;) {}</span>
+<span class="coverage-green">multi method join-type(&quot;&quot;) { self.join-type: &quot;inner&quot; }</span>
+<span class="coverage-red">multi method join-type($type) { die &quot;'$type' isn't a valid join type&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Select $ast, $context?, :$gambi) {</span>
+<span class="coverage-green">    my role ColClass [Mu:U \c] { method class { c } };</span>
+<span class="coverage-no">    my @bind;</span>
+<span class="coverage-green">    my $sel = do given $ast.of {</span>
+<span class="coverage-green">        when Red::Model {</span>
+<span class="coverage-green">            my $class = $_;</span>
+<span class="coverage-green">            .^columns.map({</span>
+<span class="coverage-green">                my ($s, @b) := do given self.translate:</span>
+<span class="coverage-green">                        (.column but ColClass[$class]), &quot;select&quot; { .key, .value }</span>
+<span class="coverage-green">                @bind.push: |@b;</span>
+<span class="coverage-red">                $s</span>
+<span class="coverage-no">            }).join: &quot;, &quot;;</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-red">        default {</span>
+<span class="coverage-red">            my ($s, @b) := do given self.translate: $_, &quot;select&quot; { .key, .value }</span>
+<span class="coverage-red">            @bind.push: |@b;</span>
+<span class="coverage-red">            $s</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">    my @pre-join;</span>
+<span class="coverage-green">    my $pre = $ast.prefetch.map({</span>
+<span class="coverage-green">        |$ast.of.&quot;{.name.substr: 2}&quot;().^columns.map: {</span>
+<span class="coverage-green">            my $class = .package;</span>
+<span class="coverage-green">            @pre-join.push: $class;</span>
+<span class="coverage-green">            my $*RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;</span>
+<span class="coverage-green">            my ($s, @b) := do given self.translate:</span>
+<span class="coverage-green">                    (.column but ColClass[$class]), &quot;select&quot; { .key, .value }</span>
+<span class="coverage-green">            @bind.push: |@b;</span>
+<span class="coverage-red">            $s</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }).join: &quot;, &quot;;</span>
+<span class="coverage-green">    $sel ~= &quot;, $pre&quot; if $pre;</span>
+<span class="coverage-green">    my @t = (|$ast.tables, $ast.of, |@pre-join).grep({ not .?no-table }).unique.map({ .^tables });</span>
+<span class="coverage-green">    my %t{Red::Model} = @t.classify: { .head }, :as{ .tail: *-1 };</span>
+<span class="coverage-no">    my @join-binds;</span>
+<span class="coverage-green">    my $tables = %t.kv.map(-&gt; $_, @joins {</span>
+<span class="coverage-green">        [</span>
+<span class="coverage-green">            &quot;{</span>
+<span class="coverage-green">                self.table-name-wrapper: .^table</span>
+<span class="coverage-green">            }{</span>
+<span class="coverage-green">                do if .^table ne .^as {</span>
+<span class="coverage-red">                    &quot; as {</span>
+<span class="coverage-red">                        .^as</span>
+<span class="coverage-no">                    }&quot;</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            }&quot;,</span>
+<span class="coverage-green">            |@joins.reduce({ |$^a, |$^b }).unique(:as{ .^as }).map({</span>
+<span class="coverage-green">                &quot; { self.join-type: .^join-type } JOIN {</span>
+<span class="coverage-green">                    self.table-name-wrapper: .^table</span>
+<span class="coverage-green">                }{</span>
+<span class="coverage-green">                    &quot; as {</span>
+<span class="coverage-green">                        .^as</span>
+<span class="coverage-green">                    }{</span>
+<span class="coverage-green">                        do with .HOW.^can(&quot;join-on&quot;) &amp;&amp; .^join-on {</span>
+<span class="coverage-green">                            my ($str, @b) := do given self.translate: $_, &quot;where&quot; { .key, .value }</span>
+<span class="coverage-green">                            @join-binds.push: |@b;</span>
+<span class="coverage-green">                            &quot; ON { $str }&quot;</span>
+<span class="coverage-no">                        }</span>
+<span class="coverage-no">                    }&quot;</span>
+<span class="coverage-no">                }&quot;</span>
+<span class="coverage-no">            })</span>
+<span class="coverage-no">        ].join: &quot;\n&quot;</span>
+<span class="coverage-no">    }).join: &quot;,\n&quot;                                                                   if $ast.^can: &quot;tables&quot;;</span>
+<span class="coverage-green">    @bind.push: |@join-binds;</span>
+<span class="coverage-green">    my ($where, @wb) := do given self.translate: $ast.filter, &quot;where&quot; { .key, .value }  if $ast.?filter;</span>
+<span class="coverage-green">    @bind.push: |@wb;</span>
+<span class="coverage-green">    my $order = $ast.order.map({</span>
+<span class="coverage-green">        my ($s, @b) := do given self.translate: $_, &quot;order&quot; { .key, .value }</span>
+<span class="coverage-green">        @bind.push: |@b;</span>
+<span class="coverage-red">        $s</span>
+<span class="coverage-no">    }).join: &quot;,\n&quot;   if $ast.?order;</span>
+<span class="coverage-green">    my $limit  = $ast.limit;</span>
+<span class="coverage-green">    my $offset = $ast.offset;</span>
+<span class="coverage-no">    my $group;</span>
+<span class="coverage-green">    if $ast.?group -&gt; $g {</span>
+<span class="coverage-green">        when Red::Column {</span>
+<span class="coverage-red">            $group = $g.map({ .name }).join: &quot;, &quot;;</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        default {</span>
+<span class="coverage-green">            $group = $g.map({</span>
+<span class="coverage-green">                my ($s, @b) := do given self.translate: $_, &quot;group-by&quot; { .key, .value };</span>
+<span class="coverage-green">                @bind.push: |@b;</span>
+<span class="coverage-red">                $s</span>
+<span class="coverage-no">            }).join: &quot;, &quot;;</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    &quot;{</span>
+<span class="coverage-green">       $ast.comments.map({ self.translate($_, &quot;comment&quot; ).key }).join(&quot;\n&quot;) ~ &quot;\n&quot;</span>
+<span class="coverage-red">        if $ast.comments and ($*RED-COMMENT-SQL or &amp;*RED-COMMENT-SQL)</span>
+<span class="coverage-green">    }SELECT\n{</span>
+<span class="coverage-green">        $sel ?? $sel.indent: 3 !! &quot;*&quot;</span>
+<span class="coverage-green">    }{</span>
+<span class="coverage-green">        &quot;\nFROM\n{ .Str.indent: 3 }&quot; with $tables</span>
+<span class="coverage-green">    }{</span>
+<span class="coverage-green">        &quot;\nWHERE\n{ .Str.indent: 3 }&quot; with $where</span>
+<span class="coverage-green">    }{</span>
+<span class="coverage-green">        &quot;\nGROUP BY\n{ .Str.indent: 3 }&quot; with $group</span>
+<span class="coverage-green">    }{</span>
+<span class="coverage-green">        &quot;\nORDER BY\n{ .Str.indent: 3 }&quot; with $order</span>
+<span class="coverage-green">    }{</span>
+<span class="coverage-green">        &quot;\nLIMIT $_&quot; with $limit</span>
+<span class="coverage-green">    }{</span>
+<span class="coverage-green">        &quot;\nOFFSET $_&quot; with $offset</span>
+<span class="coverage-no">    }&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::StringFunction $_, $context?) {</span>
+<span class="coverage-red">    self.translate: .default-implementation, $context</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::DateTimeFunction $_, $context?) {</span>
+<span class="coverage-green">    self.translate: .default-implementation, $context</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Function $_, $context?) {</span>
+<span class="coverage-no">    my @bind;</span>
+<span class="coverage-green">    &quot;{ .func }({ .args.map({</span>
+<span class="coverage-green">        my ($s, @b) := do given self.translate: $_, $context { .key, .value }</span>
+<span class="coverage-green">        @bind.append: @b;</span>
+<span class="coverage-red">        $s</span>
+<span class="coverage-no">    }).join: &quot;, &quot; })&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::IsDefined $_, $context?) {</span>
+<span class="coverage-green">    my ($str, @bind) := do given self.translate: .col, &quot;is defined&quot; { .key, .value }</span>
+<span class="coverage-green">    &quot;$str IS NOT NULL&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Case $_, $context?) {</span>
+<span class="coverage-no">    my @bind;</span>
+<span class="coverage-green">    my $str = qq:to/END-SQL/;</span>
+<span class="coverage-green">    CASE {</span>
+<span class="coverage-green">        do with .case {</span>
+<span class="coverage-red">            my ($s, @b) := do given self.translate: $_, &quot;case&quot; { .key, .value }</span>
+<span class="coverage-red">            @bind.push: |@b;</span>
+<span class="coverage-red">            $s</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    {</span>
+<span class="coverage-green">        (</span>
+<span class="coverage-green">            &quot;WHEN {</span>
+<span class="coverage-green">                my ($s, @b) := do given self.translate: .key, &quot;when&quot; { .key, .value }</span>
+<span class="coverage-green">                @bind.push: |@b;</span>
+<span class="coverage-red">                $s</span>
+<span class="coverage-green">            } THEN {</span>
+<span class="coverage-green">                my ($s, @b) := do given self.translate: .value, &quot;then&quot; { .key, .value }</span>
+<span class="coverage-green">                @bind.push: |@b;</span>
+<span class="coverage-red">                $s</span>
+<span class="coverage-no">            }&quot; for .when</span>
+<span class="coverage-no">        ).join(&quot;\n&quot;).indent: 3</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    {</span>
+<span class="coverage-green">        &quot;ELSE {</span>
+<span class="coverage-green">            my ($s, @b) := do given self.translate: $_, &quot;then&quot; { .key, .value }</span>
+<span class="coverage-green">            @bind.push: |@b;</span>
+<span class="coverage-red">            $s</span>
+<span class="coverage-no">        }&quot; with .else</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">    END</span>
+<span class="coverage-no">    END-SQL</span>
+<span class="coverage-green">    $str =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Infix $_, $context?) {</span>
+<span class="coverage-green">    my ($lstr, @lbind) := do given self.translate: .left,  .bind-left  ?? &quot;bind&quot; !! $context { .key, .value }</span>
+<span class="coverage-green">    my ($rstr, @rbind) := do given self.translate: .right, .bind-right ?? &quot;bind&quot; !! $context { .key, .value }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    &quot;$lstr { .op } $rstr&quot; =&gt; [|@lbind, |@rbind]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::OR $_, $context?) {</span>
+<span class="coverage-red">    my ($l, @lbind) := do given self.translate: .left, $context  { .key, .value }</span>
+<span class="coverage-red">    my ($r, @rbind) := do given self.translate: .right, $context { .key, .value }</span>
+<span class="coverage-red">    &quot;{ .left ~~ Red::AST::AND??&quot;($l)&quot;!!$l } OR { .right ~~ Red::AST::AND??&quot;($r)&quot;!!$r }&quot; =&gt; [|@lbind, |@rbind]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::AND $_, $context?) {</span>
+<span class="coverage-green">    my ($l, @lbind) := do given self.translate: .left, $context  { .key, .value }</span>
+<span class="coverage-green">    my ($r, @rbind) := do given self.translate: .right, $context { .key, .value }</span>
+<span class="coverage-green">    &quot;{ .left ~~ Red::AST::OR??&quot;($l)&quot;!!$l } AND { .right ~~ Red::AST::OR??&quot;($r)&quot;!!$r }&quot; =&gt; [|@lbind, |@rbind]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Generic::Postfix $_ , $context?) {</span>
+<span class="coverage-green">    my ($str, @bind) := do given self.translate: .value, .bind ?? &quot;bind&quot; !! $context { .key, .value }</span>
+<span class="coverage-green">    &quot;$str { .op }&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Generic::Prefix $_ , $context?) {</span>
+<span class="coverage-green">    my ($str, @bind) := do given self.translate: .value, .bind ?? &quot;bind&quot; !! $context { .key, .value }</span>
+<span class="coverage-green">    &quot;{ .op } $str&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Not $_ where .value ~~ Red::AST::IsDefined, $context?) {</span>
+<span class="coverage-green">    my ($str, @bind) := do given self.translate: .value.col, &quot;is defined&quot; { .key, .value }</span>
+<span class="coverage-green">    &quot;$str IS NULL&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Not $_, $context?) {</span>
+<span class="coverage-red">    my ($str, @bind) := do given self.translate: .value, .bind ?? &quot;bind&quot; !! $context { .key, .value }</span>
+<span class="coverage-red">    &quot;NOT ($str)&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::So $_, $context?) {</span>
+<span class="coverage-red">    self.translate: .value, .bind ?? &quot;bind&quot; !! $context;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $col, &quot;select&quot;) {</span>
+<span class="coverage-green">    my ($str, @bind) := do with $col.computation {</span>
+<span class="coverage-green">        do given self.translate: $_ { .key, .value }</span>
+<span class="coverage-green">    } else {</span>
+<span class="coverage-green">        &quot;{ self.table-name-wrapper: $col.model.^as }.{ $col.name }&quot;, []</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    qq[$str {qq&lt;as &quot;{ &quot;{$*RED-OVERRIDE-COLUMN-AS-PREFIX}.&quot; if $*RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }&quot;&gt; if</span>
+<span class="coverage-no">            $col.computation</span>
+<span class="coverage-no">            or $col.name ne $col.attr-name</span>
+<span class="coverage-no">            or $*RED-OVERRIDE-COLUMN-AS-PREFIX</span>
+<span class="coverage-no">    }] =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Value $_, &quot;bind&quot;) {</span>
+<span class="coverage-green">    self.wildcard =&gt; [ .value ]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Divisable $_, $context?) {</span>
+<span class="coverage-green">    return self.translate:</span>
+<span class="coverage-no">            Red::AST::Eq.new(</span>
+<span class="coverage-no">                Red::AST::Mod.new(.left, .right),</span>
+<span class="coverage-no">                ast-value(0),</span>
+<span class="coverage-no">            ),</span>
+<span class="coverage-no">            $context</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Mul $_ where .left.?value == -1, &quot;order&quot;) {</span>
+<span class="coverage-green">    &quot;{ .right.name } DESC&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;where&quot;) {</span>
+<span class="coverage-green">    &quot;{ { self.table-name-wrapper: .class.^as } }.{ .name }&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, $context?) {</span>
+<span class="coverage-green">    &quot;{ self.table-name-wrapper: .model.^as }.{.name}&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;create-table-column-name&quot;) {</span>
+<span class="coverage-green">    .name =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;unique&quot;) {</span>
+<span class="coverage-green">    .name =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;pk&quot;) {</span>
+<span class="coverage-green">    .name =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Cast $_, $context?) {</span>
+<span class="coverage-green">    when Red::AST::Value {</span>
+<span class="coverage-red">        .bind ?? self.translate(.value, &quot;bind&quot;) !! qq|'{ .value }'| =&gt; []</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    default {</span>
+<span class="coverage-green">        self.translate: .value, .bind ?? &quot;bind&quot; !! $context</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Value $_ where not .value.defined, &quot;update&quot; ) {</span>
+<span class="coverage-red">    &quot;NULL&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $context? ) {</span>
+<span class="coverage-red">    my ( :$key, :$value ) = self.translate(.value, $context );</span>
+<span class="coverage-red">    '( ' ~ $key ~ ' )' =&gt; $value ;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Value $_ where .type ~~ Positional, $context?) {</span>
+<span class="coverage-green">    '( ' ~ .get-value.map( -&gt; $v { self.wildcard } ).join(', ') ~ ' )' =&gt; .get-value;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW, $context?) {</span>
+<span class="coverage-red">    self.translate: ast-value(.get-value.Str), $context</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Value $_ where .type ~~ Str, $context? where { not .defined or $_ ne &quot;update-rval&quot; }) {</span>
+<span class="coverage-green">    qq|'{ .get-value.subst: &quot;'&quot;, q&quot;''&quot;, :g }'| =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Value $_ where .type ~~ DateTime, $context?) {</span>
+<span class="coverage-red">    self.translate: ast-value(.get-value.Str), $context</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Value $_ where .type ~~ Instant, $context?) {</span>
+<span class="coverage-red">    self.translate: ast-value(.get-value.?to-posix.head), $context</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Value $_ where .type ~~ Numeric, $context?) {</span>
+<span class="coverage-green">    ~.get-value =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Value $_ where .type ~~ Red::FromRelationship, $context?) {</span>
+<span class="coverage-red">    die &quot;NYI: map returning a relationship&quot;;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Value $_ where .type !~~ Str, $context?) {</span>
+<span class="coverage-green">    return self.translate: ast-value(.get-value), $context if .column.DEFINITE;</span>
+<span class="coverage-green">    self.translate: ast-value ~(.get-value // &quot;&quot;)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method comment-on-same-statement { False }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;create-table&quot;) {</span>
+<span class="coverage-green">    (</span>
+<span class="coverage-no">        &quot;create-table-column-name&quot;,</span>
+<span class="coverage-no">        &quot;column-type&quot;,</span>
+<span class="coverage-no">        &quot;nullable-column&quot;,</span>
+<span class="coverage-red">        (|(</span>
+<span class="coverage-no">            &quot;column-pk&quot;,</span>
+<span class="coverage-no">            &quot;column-auto-increment&quot;,</span>
+<span class="coverage-no">        ) if .class.^id &lt;= 1),</span>
+<span class="coverage-no">        &quot;column-references&quot;,</span>
+<span class="coverage-red">        |(&quot;column-comment&quot; if self.comment-on-same-statement),</span>
+<span class="coverage-no">    )</span>
+<span class="coverage-green">        .map(-&gt; $context {</span>
+<span class="coverage-green">            self.translate($_, $context).key</span>
+<span class="coverage-no">        })</span>
+<span class="coverage-no">        .grep( *.defined )</span>
+<span class="coverage-no">        .join(&quot; &quot;)</span>
+<span class="coverage-red">        .subst(/\s ** 2..*/, &quot; &quot;, :g) =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::Column $_, &quot;column-name&quot;)           { .name // &quot;&quot; =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;column-type&quot;)           {</span>
+<span class="coverage-green">    if .attr.type =:= Mu &amp;&amp; ! .type.defined {</span>
+<span class="coverage-green">        return self.type-by-name(&quot;int&quot;)  =&gt; [] if .auto-increment;</span>
+<span class="coverage-green">        return self.type-by-name(&quot;string&quot;) =&gt; []</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    (.type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_) =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;nullable-column&quot;)       { (.nullable ?? &quot;NULL&quot; !! &quot;NOT NULL&quot;) =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;column-pk&quot;)             { (.id ?? &quot;primary key&quot; !! &quot;&quot;) =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::Column $_, &quot;column-auto-increment&quot;) { (.auto-increment ?? &quot;auto_increment&quot; !! &quot;&quot;) =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;column-references&quot;) {</span>
+<span class="coverage-green">    (&quot;references { .class.^table }({ .name })&quot; with .ref) =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::Column $_, &quot;table-dot-column&quot;) {</span>
+<span class="coverage-red">    &quot;{ .class.^table }.{ .name }&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::Column $_, &quot;column-comment&quot;) {</span>
+<span class="coverage-red">    (&quot; COMMENT '$_'&quot;) =&gt; [] if .comment</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::Column $_, &quot;update-lval&quot;) {</span>
+<span class="coverage-green">    .name // &quot;&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::CreateTable $_, $context?) {</span>
+<span class="coverage-green">    &quot;CREATE{ &quot; TEMPORARY&quot; if .temp } TABLE {</span>
+<span class="coverage-green">        self.table-name-wrapper: .name</span>
+<span class="coverage-green">    } (\n{</span>
+<span class="coverage-green">        (</span>
+<span class="coverage-green">            |.columns.map({ self.translate($_, &quot;create-table&quot;).key }),</span>
+<span class="coverage-green">            |.constraints.map({ self.translate($_, &quot;create-table&quot;).key })</span>
+<span class="coverage-no">        ).join(&quot;,\n&quot;).indent: 3</span>
+<span class="coverage-red">    }\n)&quot; =&gt; [],</span>
+<span class="coverage-green">    |do if not self.comment-on-same-statement {</span>
+<span class="coverage-red">        self.translate($_).key =&gt; [] with .comment</span>
+<span class="coverage-no">    },</span>
+<span class="coverage-red">    |(.columns.map({ self.translate: $_, &quot;column-comment&quot; }) if not self.comment-on-same-statement)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::TableComment $_, $context?) {</span>
+<span class="coverage-red">        (&quot; COMMENT '{ .msg }'&quot; =&gt; []) with $_</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Pk $_, $context?) {</span>
+<span class="coverage-green">    &quot;PRIMARY KEY ({ .columns.map({ self.translate($_, &quot;pk&quot;).key }).join: &quot;, &quot; })&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Unique $_, $context?) {</span>
+<span class="coverage-green">    &quot;UNIQUE ({ .columns.map({ self.translate($_, &quot;unique&quot;).key }).join: &quot;, &quot; })&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Insert $_, $context?) {</span>
+<span class="coverage-green">    my @values = .values.grep({ .value.value.defined });</span>
+<span class="coverage-green">    return &quot;INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES&quot; =&gt; [] unless @values;</span>
+<span class="coverage-green">    my @bind = @values.map: *.value.get-value;</span>
+<span class="coverage-green">    &quot;INSERT INTO {</span>
+<span class="coverage-green">        self.table-name-wrapper: .into.^table</span>
+<span class="coverage-green">    }(\n{</span>
+<span class="coverage-green">        @values&gt;&gt;.key.join(&quot;,\n&quot;).indent: 3</span>
+<span class="coverage-green">    }\n)\nVALUES(\n{</span>
+<span class="coverage-green">        (self.wildcard xx @values).join(&quot;,\n&quot;).indent: 3</span>
+<span class="coverage-no">    }\n)&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Delete $_, $context?) {</span>
+<span class="coverage-green">    my ($key, @binds) := do given self.translate(.filter) { .key, .value }</span>
+<span class="coverage-green">    &quot;DELETE FROM { .from }\n{ &quot;WHERE { $key }&quot; }&quot; =&gt; @binds</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Update $_, $context?) {</span>
+<span class="coverage-no">    my @bind;</span>
+<span class="coverage-green">    my $str = .values.map({</span>
+<span class="coverage-green">        my ($c, @c) := do given self.translate: .&amp;ast-value, &quot;update&quot; { .key, .value }</span>
+<span class="coverage-green">        @bind.append: @c;</span>
+<span class="coverage-red">        $c</span>
+<span class="coverage-no">    }).join(&quot;,\n&quot;).indent: 3;</span>
+<span class="coverage-green">    my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };</span>
+<span class="coverage-green">    qq:to/END/ =&gt; [|@bind, |@wbind];</span>
+<span class="coverage-green">    UPDATE {</span>
+<span class="coverage-green">        .into</span>
+<span class="coverage-no">    } SET</span>
+<span class="coverage-no">    $str</span>
+<span class="coverage-green">    {</span>
+<span class="coverage-green">        &quot;WHERE $wstr&quot; with .filter</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">    END</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Value $_ where .type ~~ Pair, &quot;update&quot;) {</span>
+<span class="coverage-green">    my ($c, @c) := do given self.translate: .value.key, 'update-lval' { .key, .value }</span>
+<span class="coverage-green">    my ($s, @b) := do given self.translate: .value.value, 'update-rval' { .key, .value }</span>
+<span class="coverage-green">    &quot;{ $c } = { $s }&quot; =&gt; [|@c, |@b]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Value $_, &quot;update-rval&quot;) {</span>
+<span class="coverage-green">    self.wildcard =&gt; [.get-value]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::LastInsertedRow $_, $context?) { &quot;&quot; =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST:U $_, $context?) { &quot;&quot; =&gt; [] }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Json        --&gt; Str:D) {&quot;json&quot;}</span>
+<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ Rat         --&gt; Str:D) {&quot;real&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Num         --&gt; Str:D) {&quot;real&quot;}</span>
+<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ Numeric     --&gt; Str:D) {&quot;real&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --&gt; Str:D) {&quot;real&quot;}</span>
+<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --&gt; Str:D) {&quot;varchar(32)&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Duration    --&gt; Str:D) {&quot;interval&quot;}</span>
+<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ Mu          --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Str         --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --&gt; Str:D) {&quot;integer&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --&gt; Str:D) {&quot;boolean&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --&gt; Str:D) {&quot;varchar(36)&quot;}</span>
+<span class="coverage-no">#multi method default-type-for(Red::Column                                   --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method type-for-sql(&quot;real&quot;     --&gt; &quot;Num&quot;     ) {}</span>
+<span class="coverage-red">multi method type-for-sql(&quot;blob&quot;     --&gt; &quot;Blob&quot;    ) {}</span>
+<span class="coverage-red">multi method type-for-sql(&quot;text&quot;     --&gt; &quot;Str&quot;     ) {}</span>
+<span class="coverage-red">multi method type-for-sql(&quot;varchar&quot;  --&gt; &quot;Str&quot;     ) {}</span>
+<span class="coverage-red">multi method type-for-sql(&quot;interval&quot; --&gt; &quot;Duration&quot;) {}</span>
+<span class="coverage-red">multi method type-for-sql(&quot;integer&quot;  --&gt; &quot;Int&quot;     ) {}</span>
+<span class="coverage-red">multi method type-for-sql(&quot;serial&quot;   --&gt; &quot;UInt&quot;    ) {}</span>
+<span class="coverage-red">multi method type-for-sql(&quot;boolean&quot;  --&gt; &quot;Bool&quot;    ) {}</span>
+<span class="coverage-red">multi method type-for-sql(&quot;json&quot;     --&gt; &quot;Json&quot;    ) {}</span>
+<span class="coverage-red">multi method type-for-sql(Str $ where /^ &quot;varchar(&quot; ~ &quot;)&quot; \d+ $/ --&gt; &quot;Str&quot;) {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method inflate(Num $value, Int      :$to!) { $to.new:        $value }</span>
+<span class="coverage-green">multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }</span>
+<span class="coverage-red">multi method inflate(Str $value, DateTime :$to!) { $to.new:        $value }</span>
+<span class="coverage-red">multi method inflate(Str $value, Date     :$to!) { $to.new:        $value }</span>
+<span class="coverage-green">multi method inflate(Num $value, Duration :$to!) { $to.new:        $value }</span>
+<span class="coverage-red">multi method inflate(Int $value, Duration :$to!) { $to.new:        $value }</span>
+<span class="coverage-red">multi method inflate(Str $value, Version  :$to!) { $to.new:        $value }</span>
+<span class="coverage-red">multi method inflate(Str $value, Duration :$to!) { $to.new: [+] $value.comb(/\d+/).reverse Z[*] (1, 10, 100 ... *) }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method deflate(Instant  $value) { +$value }</span>
+<span class="coverage-red">multi method deflate(Date     $value) { ~$value }</span>
+<span class="coverage-green">multi method deflate(DateTime $value) { ~$value }</span>
+<span class="coverage-green">multi method deflate(Duration $value) { +$value }</span>
+<span class="coverage-red">multi method deflate(Version  $value) { ~$value }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method deflate($value) { $value }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method type-by-name(&quot;string&quot; --&gt; &quot;varchar(255)&quot;) {}</span>
+<span class="coverage-green">multi method type-by-name(Str $type) { $type }</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#multi method is-valid-table-name(Str $ where .fc ~~ self.reserved-words.any.fc) { False }</span>
+<span class="coverage-green">multi method is-valid-table-name(Str $str) is default {</span>
+<span class="coverage-green">    so $str ~~ /^ &lt;[\w_]&gt;+ $/</span>
+<span class="coverage-no">}</span>
+<span class="coverage-green">method wildcard { &quot;?&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method prepare-json-path-item(@items) {</span>
+<span class="coverage-green">    @items.map({ self.prepare-json-path-item: $_ }).join;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-green">multi method prepare-json-path-item(Red::AST::Value $_) { self.prepare-json-path-item: .value }</span>
+<span class="coverage-red">multi method prepare-json-path-item(Int $_) { &quot;[{ $_ }]&quot; }</span>
+<span class="coverage-green">multi method prepare-json-path-item(Str $_) { &quot;.{ $_ }&quot;  }</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

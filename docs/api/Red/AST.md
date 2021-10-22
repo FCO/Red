@@ -7,7 +7,7 @@ Base role for all Red::AST::*
 
 ### method not
 
-```perl6
+```raku
 method not() returns Mu
 ```
 
@@ -15,15 +15,15 @@ Returns the nagation of the AST.
 
 ### method Bool
 
-```perl6
-method Bool() returns Bool(Any)
+```raku
+method Bool() returns Bool
 ```
 
 If inside of a block for ResultSeq mothods throws a control exception and populates all possibilities
 
 ### method transpose
 
-```perl6
+```raku
 method transpose(
     &func
 ) returns Mu
@@ -33,7 +33,7 @@ Transposes the AST tree running the function.
 
 ### method tables
 
-```perl6
+```raku
 method tables() returns Mu
 ```
 

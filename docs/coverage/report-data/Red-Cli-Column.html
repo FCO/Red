@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Cli::Column</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Cli::Column 4.2%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Utils;</span>
+<span class="coverage-no">use Red::DB;</span>
+<span class="coverage-green">unit class Red::Cli::Column;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has      $.table      is rw;</span>
+<span class="coverage-no">has Str  $.name       is required;</span>
+<span class="coverage-red">has Str  $.formated-name = snake-to-kebab-case $!name;</span>
+<span class="coverage-no">has Str  $.type       is required;</span>
+<span class="coverage-red">has Str  $.perl-type  = get-RED-DB.type-for-sql: $!type.lc;</span>
+<span class="coverage-no">has Bool $.nullable   = True;</span>
+<span class="coverage-no">has Bool $.pk         = False;</span>
+<span class="coverage-no">has Bool $.unique     = False;</span>
+<span class="coverage-red">has      $.references = {};</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method new($name, $type, $nullable, $pk, $unique, $references) {</span>
+<span class="coverage-red">    self.bless: :$name, :$type, :nullble(?$nullable), :pk(?$pk), :unique(?$unique), :$references</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method gist(::?CLASS:D:) {</span>
+<span class="coverage-red">    &quot;Red::Cli::Column.new(:name($!name), :type($!type), :nullable($!nullable), :pk($!pk), :unique($!unique), {</span>
+<span class="coverage-red">        &quot;:references($_)&quot; with $!references</span>
+<span class="coverage-no">    } #`( table =&gt; $!table.name() ))&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method !modifier(Str :$schema-class) {</span>
+<span class="coverage-red">    do given self {</span>
+<span class="coverage-red">        when ?.pk         { &quot;id&quot; }</span>
+<span class="coverage-red">        when ?.references {</span>
+<span class="coverage-red">            qq:to/END/.chomp;</span>
+<span class="coverage-red">            referencing\{{</span>
+<span class="coverage-red">                    [</span>
+<span class="coverage-red">                        &quot;\n:model&lt;{</span>
+<span class="coverage-red">                            snake-to-camel-case self.references&lt;table&gt;</span>
+<span class="coverage-no">                        }&gt;&quot;,</span>
+<span class="coverage-red">                        &quot;\n:column&lt;{</span>
+<span class="coverage-red">                            snake-to-kebab-case self.references&lt;column&gt;</span>
+<span class="coverage-no">                        }&gt;&quot;,</span>
+<span class="coverage-red">                        (&quot;\n:require&lt;{ $schema-class }&gt;&quot; with $schema-class)</span>
+<span class="coverage-no">                    ].join(&quot;,&quot;).indent: 4</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">            END</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-red">        default          { &quot;column&quot; }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method to-code(Str :$schema-class) {</span>
+<span class="coverage-red">    &quot;has {$!perl-type} \$.{ $!formated-name } is {</span>
+<span class="coverage-red">        self!modifier(</span>
+<span class="coverage-red">            |(:$schema-class with $schema-class)</span>
+<span class="coverage-no">        ).chomp</span>
+<span class="coverage-no">    };&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method diff(::?CLASS $b) {</span>
+<span class="coverage-no">    my @diffs;</span>
+<span class="coverage-red">    if self.name ne $b.name {</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;+&quot;, &quot;name&quot;, $b.name   ];</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;-&quot;, &quot;name&quot;, self.name ];</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    if self.type ne $b.type {</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;+&quot;, &quot;type&quot;, $b.type   ];</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;-&quot;, &quot;type&quot;, self.type ];</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    if self.nullable != $b.nullable {</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;+&quot;, &quot;nullable&quot;, $b.nullable   ];</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;-&quot;, &quot;nullable&quot;, self.nullable ];</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    if self.pk != $b.pk {</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;+&quot;, &quot;pk&quot;, $b.pk   ];</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;-&quot;, &quot;pk&quot;, self.pk ];</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    if self.unique != $b.unique {</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;+&quot;, &quot;unique&quot;, $b.unique   ];</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;-&quot;, &quot;unique&quot;, self.unique ];</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    if quietly ?self.references&lt;table&gt; and ?$b.references&lt;table&gt;</span>
+<span class="coverage-no">        and self.references&lt;table&gt;  ne $b.references&lt;table&gt;</span>
+<span class="coverage-no">        or  self.references&lt;column&gt; ne $b.references&lt;column&gt;</span>
+<span class="coverage-no">    {</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;+&quot;, &quot;references&quot;, $b.references   ];</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;-&quot;, &quot;references&quot;, self.references ];</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    @diffs</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

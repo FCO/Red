@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Driver::CacheWithStrKey</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Driver::CacheWithStrKey 5.7%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Driver::Cache;</span>
+<span class="coverage-no">use X::Red::Exceptions;</span>
+<span class="coverage-no">use Red::AST;</span>
+<span class="coverage-no">use Red::AST::Unary;</span>
+<span class="coverage-no">use Red::AST::Select;</span>
+<span class="coverage-no">use Red::AST::Infix;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::AST::LastInsertedRow;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role Red::Driver::CacheWithStrKey does Red::Driver::Cache;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method get-from-cache(Str)  { ... }</span>
+<span class="coverage-red">method set-on-cache(Str, @) { ... }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method get-from-cache(Red::AST $ast)  {</span>
+<span class="coverage-red">    CATCH {</span>
+<span class="coverage-red">        default {</span>
+<span class="coverage-red">            .say</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    my Str $key = self.translate-key: $ast;</span>
+<span class="coverage-red">    self.get-from-cache: $key, :$ast</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method set-on-cache(Red::AST $ast, @data) {</span>
+<span class="coverage-red">    my Str $key = self.translate-key: $ast;</span>
+<span class="coverage-red">    self.set-on-cache: $key, @data, :$ast</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate-key(Red::AST::Cast $_, $context?)  {</span>
+<span class="coverage-red">    &quot;{ self.translate-key: .value }::{ .type }&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate-key(Red::AST::LastInsertedRow $_, $context?)  {</span>
+<span class="coverage-red">    X::Red::Driver::Cache::DoNotCache.new.throw</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate-key(Red::Column $_, $context?)  {</span>
+<span class="coverage-red">    (.computation // $_).gist.subst: /\s+/, &quot;_&quot;, :g</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate-key(Red::Model:U $_, &quot;table-list&quot;)  {</span>
+<span class="coverage-red">    .^table</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate-key(Red::Model:U $_, &quot;of&quot;)  {</span>
+<span class="coverage-red">    .^columns&gt;&gt;.column.map({ self.translate-key: $_, &quot;of&quot; }).join: &quot;|&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate-key(Red::AST::Infix $_, $context)  {</span>
+<span class="coverage-red">    &quot;{ self.translate-key: .left, $context }_{ .op }_{ self.translate-key: .right, $context }&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate-key(Red::AST::Value $_, $context)  {</span>
+<span class="coverage-red">    .value.Str</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate-key(Red::AST::Select $_, $context?)  {</span>
+<span class="coverage-red">    (</span>
+<span class="coverage-no">        &quot;CACHED_SELECT&quot;,</span>
+<span class="coverage-no">        self.translate-key(.of, &quot;of&quot;),</span>
+<span class="coverage-no">        &quot;FROM&quot;,</span>
+<span class="coverage-red">        .tables.grep({ not .?no-table }).unique.map({ self.translate-key: $_, &quot;table-list&quot; }).join(&quot;|&quot;),</span>
+<span class="coverage-red">        (|(</span>
+<span class="coverage-no">            &quot;WHERE&quot;,</span>
+<span class="coverage-no">            self.translate-key($_, &quot;filter&quot;),</span>
+<span class="coverage-no">        ) with .filter),</span>
+<span class="coverage-red">        (|(</span>
+<span class="coverage-no">            &quot;ORDER_BY&quot;,</span>
+<span class="coverage-red">            .order.map({ self.translate-key: $_, &quot;order&quot; }).join: &quot;|&quot;</span>
+<span class="coverage-no">        ) if .order),</span>
+<span class="coverage-red">        |( &quot;LIMIT&quot;, .limit if .limit),</span>
+<span class="coverage-red">        |( &quot;OFFSET&quot;, .offset if .offset),</span>
+<span class="coverage-no">    ).join: &quot;:&quot;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

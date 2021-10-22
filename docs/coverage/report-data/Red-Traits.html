@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Traits</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Traits 85.5%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Column;</span>
+<span class="coverage-no">use Red::Attr::Column;</span>
+<span class="coverage-no">use Red::ResultSeq;</span>
+<span class="coverage-no">use Red::Phaser;</span>
+<span class="coverage-green">unit module Red::Traits;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head2 Red::Traits</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is temp</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| This trait marks the corresponding table of the</span>
+<span class="coverage-no">#| model as TEMPORARY (so it only exists for the time</span>
+<span class="coverage-no">#| of Red being connected to the database).</span>
+<span class="coverage-red">multi trait_mod:&lt;is&gt;(Mu:U $model, Bool :$temp! --&gt; Empty) {</span>
+<span class="coverage-red">    $model.^temp = True;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is rs-class</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| This trait defines the name of the class to be used as</span>
+<span class="coverage-no">#| ResultSet to this model.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Mu:U $model, Str:D :$rs-class! --&gt; Empty) {</span>
+<span class="coverage-green">    trait_mod:&lt;is&gt;($model, :rs-class(::($rs-class)))</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is rs-class</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| This trait defines the class to be used as ResultSet to this model.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Mu:U $model, Mu:U :$rs-class! --&gt; Empty) {</span>
+<span class="coverage-green">    die &quot;{$rs-class.^name} should do the Red::ResultSeq role&quot; unless $rs-class ~~ Red::ResultSeq;</span>
+<span class="coverage-green">    my role RSClass[Mu:U $rclass] { method rs-class(|) { $rclass&lt;&gt; } }</span>
+<span class="coverage-green">    $model.HOW does RSClass[$rs-class];</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is nullable</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| This trait configures all model attributes (columns) to be NULLABLE by default, when used as `is nullable`.</span>
+<span class="coverage-no">#| Without this trait applied, default for every attribute (column) is NOT NULL,</span>
+<span class="coverage-no">#| though it can be stated explicitly with writing `is !nullable` for the model.</span>
+<span class="coverage-no">#| Defaults can be overridden using `is nullable` or `is !nullable` for the attribute (column) itself.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Mu:U $model, Bool :$nullable! --&gt; Empty) {</span>
+<span class="coverage-green">    $model.HOW does role :: { method default-nullable(|) { $nullable } }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is column</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Defines the attribute as a column without any custom configuration.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, Bool :$column! --&gt; Empty) is export {</span>
+<span class="coverage-green">    trait_mod:&lt;is&gt;($attr, :column{}) if $column</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is column</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Defines the attribute as a column receiving a string to be used as the column name.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, Str :$column! --&gt; Empty) is export {</span>
+<span class="coverage-green">    trait_mod:&lt;is&gt;($attr, :column{:name($column)}) if $column</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is unique</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| This trait marks an attribute (column) as UNIQUE.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, Bool :$unique! where $_ == True --&gt; Empty) is export {</span>
+<span class="coverage-green">    trait_mod:&lt;is&gt;($attr, :column{:unique})</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is unique</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| This trait marks an attribute (column) as UNIQUE receiving data to ve used on column definition.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :$unique! --&gt; Empty) is export {</span>
+<span class="coverage-green">    trait_mod:&lt;is&gt;($attr, :column{:$unique})</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is id</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| This trait marks an attribute (column) as SQL PRIMARY KEY.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, Bool :$id! where $_ == True --&gt; Empty) is export {</span>
+<span class="coverage-green">    trait_mod:&lt;is&gt;($attr, :column{:id, :!nullable})</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is serial</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| This trait marks an attribute (column) as SQL PRIMARY KEY with SERIAL data type, which</span>
+<span class="coverage-no">#| means it auto-increments on each insertion.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, Bool :$serial! where $_ == True --&gt; Empty) is export {</span>
+<span class="coverage-green">    trait_mod:&lt;is&gt;($attr, :column{:id, :!nullable, :auto-increment})</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is column</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| A generic trait used for customizing a column. It accepts a hash of Bool keys.</span>
+<span class="coverage-no">#| Possible values include:</span>
+<span class="coverage-no">#| * id - marks a column PRIMARY KEY</span>
+<span class="coverage-no">#| * auto-increment - marks a column AUTO INCREMENT</span>
+<span class="coverage-no">#| * nullable - marks a column as NULLABLE</span>
+<span class="coverage-no">#| * TBD</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :%column! --&gt; Empty) is export {</span>
+<span class="coverage-green">    if %column&lt;references&gt;:exists and (%column{&lt;model-name model-type&gt;.all}:!exists) {</span>
+<span class="coverage-green">        die &quot;On Red:api&lt;2&gt; references must declaire :model-name (or :model-type) and the references block must receive the model as reference&quot;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    $attr does Red::Attr::Column(%column);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi trait_mod:&lt;is&gt;(Attribute $attr, :&amp;referencing! --&gt; Empty) is export {</span>
+<span class="coverage-red">    die 'On Red:api&lt;2&gt; &quot;:model&quot; is required on &quot;is referencing&quot;'</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is referencing</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait that defines a reference receiving a code block, a model name, optional require string and nullable.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :$referencing! (&amp;referencing!, Str :$model!, Str :$require = $model, Bool :$nullable = True ) --&gt; Empty) is export {</span>
+<span class="coverage-green">    trait_mod:&lt;is&gt;($attr, :column{ :$nullable, :references(&amp;referencing), model-name  =&gt; $model, :$require })</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is referencing</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait that defines a reference receiving a model name, a column name, and optional require string and nulabble.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :$referencing! (Str :$model!, Str :$column!, Str :$require = $model, Bool :$nullable = True ) --&gt; Empty) is export {</span>
+<span class="coverage-green">    trait_mod:&lt;is&gt;($attr, :column{ :$nullable, model-name =&gt; $model, column-name =&gt; $column, :$require })</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is referencing</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait that defines a reference receiving a code block, a model type object and an optional nullable.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :$referencing! (&amp;referencing!, Mu:U :$model!, Bool :$nullable = True ) --&gt; Empty) is export {</span>
+<span class="coverage-green">    $model.^add_role: Red::Model;</span>
+<span class="coverage-green">    trait_mod:&lt;is&gt;($attr, :column{ :$nullable, :references(&amp;referencing), model-type  =&gt; $model })</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is referencing</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait that defines a reference receiving a model type object, a column name, and optional nulabble.</span>
+<span class="coverage-red">multi trait_mod:&lt;is&gt;(Attribute $attr, :$referencing! (Mu:U :$model!, Str :$column!, Bool :$nullable = True ) --&gt; Empty) is export {</span>
+<span class="coverage-red">    trait_mod:&lt;is&gt;($attr, :column{ :$nullable, model-type =&gt; $model, column-name =&gt; $column })</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is table</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| This trait allows setting a custom name for a table corresponding to a model.</span>
+<span class="coverage-no">#| For example, `model MyModel is table&lt;custom_table_name&gt; {}` will use `custom_table_name`</span>
+<span class="coverage-no">#| as the name of the underlying database table.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Mu:U $model, Str :$table! is copy where .chars &gt; 0 --&gt; Empty) {</span>
+<span class="coverage-green">    $model.HOW.^attributes.first({ .name eq '$!table' }).set_value($model.HOW, $table)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is relationship</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait that defines a relationship receiving a code block.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :&amp;relationship! --&gt; Empty) is export {</span>
+<span class="coverage-green">    $attr.package.^add-relationship: $attr, &amp;relationship</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is relationship</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| DEPRECATED: Trait that defines a relationship receiving 2 code blocks.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :@relationship! where { .all ~~ Callable and .elems == 2 } --&gt; Empty) is DEPRECATED is export {</span>
+<span class="coverage-red">    $attr.package.^add-relationship: $attr, |@relationship</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is relationship</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait that defines a relationship receiving a code block, a model name, and opitionaly require string, optional, no-prefetch and has-one.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :$relationship! (&amp;relationship, Str :$model, Str :$require = $model, Bool :$optional, Bool :$no-prefetch, Bool :$has-one) --&gt; Empty) is export {</span>
+<span class="coverage-green">    die &quot;Please, use the has-one experimental feature (use Red &lt;has-one&gt;) to allow using it on relationships&quot;</span>
+<span class="coverage-no">    	if $has-one &amp;&amp; !%Red::experimentals&lt;has-one&gt;;</span>
+<span class="coverage-green">    $attr.package.^add-relationship: $attr, &amp;relationship, |(:$model with $model), |(:$require with $require), :$optional, :$no-prefetch, |(:$has-one if $has-one)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is relationship</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait that defines a relationship receiving a code block, a model type object, and opitionaly require string, optional, no-prefetch and has-one.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :$relationship! (&amp;relationship, Mu:U :$model!, Bool :$optional, Bool :$no-prefetch, Bool :$has-one) --&gt; Empty) is export {</span>
+<span class="coverage-green">    die &quot;Please, use the has-one experimental feature (use Red &lt;has-one&gt;) to allow using it on relationships&quot;</span>
+<span class="coverage-no">        if $has-one &amp;&amp; !%Red::experimentals&lt;has-one&gt;;</span>
+<span class="coverage-green">    $attr.package.^add-relationship: $attr, &amp;relationship, :model-type($model), :$optional, :$no-prefetch, |(:$has-one if $has-one)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is relationship</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait that defines a relationship receiving a column name, a model name and opitionaly a require, optional, no-prefetch and has-one.</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :$relationship! (Str :$column!, Str :$model!, Str :$require = $model, Bool :$optional, Bool :$no-prefetch, Bool :$has-one) --&gt; Empty) is export {</span>
+<span class="coverage-green">    die &quot;Please, use the has-one experimental feature (use Red &lt;has-one&gt;) to allow using it on relationships&quot;</span>
+<span class="coverage-no">    	if $has-one &amp;&amp; !%Red::experimentals&lt;has-one&gt;;</span>
+<span class="coverage-green">    $attr.package.^add-relationship: $attr, :$column, :$model, :$require, :$optional, :$no-prefetch, |(:$has-one if $has-one)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi trait_mod:&lt;is&gt;(Attribute $attr, Callable :$relationship! ( @relationship! where *.elems == 2, Str :$model!, Str :$require = $model, Bool :$optional, Bool :$no-prefetch, Bool :$has-one) --&gt; Empty) {</span>
+<span class="coverage-red">    die &quot;Please, use the has-one experimental feature (use Red &lt;has-one&gt;) to allow using it on relationships&quot;</span>
+<span class="coverage-no">    	if $has-one &amp;&amp; !%Red::experimentals&lt;has-one&gt;;</span>
+<span class="coverage-red">    $attr.package.^add-relationship: $attr, |@relationship, :$model, :$require, :$optional, :$no-prefetch, |(:$has-one if $has-one)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is before-create</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait to define a phaser to run before create a new record</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Method $m, :$before-create! --&gt; Empty) {</span>
+<span class="coverage-green">    $m does BeforeCreate;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is after-create</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait to define a phaser to run after create a new record</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Method $m, :$after-create! --&gt; Empty) {</span>
+<span class="coverage-green">    $m does AfterCreate;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is before-update</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait to define a phaser to run before update a record</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Method $m, :$before-update! --&gt; Empty) {</span>
+<span class="coverage-green">    $m does BeforeUpdate;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is after-update</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait to define a phaser to run after update record</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Method $m, :$after-update! --&gt; Empty) {</span>
+<span class="coverage-green">    $m does AfterUpdate;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is before-delete</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait to define a phaser to run before delete a record</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Method $m, :$before-delete! --&gt; Empty) {</span>
+<span class="coverage-green">    $m does BeforeDelete;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head3 is after-delete</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait to define a phaser to run after delete a record</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;(Method $m, :$after-delete! --&gt; Empty) {</span>
+<span class="coverage-green">    $m does AfterDelete;</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

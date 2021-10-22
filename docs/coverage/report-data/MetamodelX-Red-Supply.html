@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::Supply</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::Supply 0%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-red">use Red::Model;</span>
+<span class="coverage-no">use Red::DB;</span>
+<span class="coverage-red">unit role MetamodelX::Red::Supply;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method last-state-of(::Model Red::Model:U \model, Supply $supply) {</span>
+<span class="coverage-red">	my Supplier $s .= new;</span>
+<span class="coverage-red">	multi update(Model:D $model) {</span>
+<span class="coverage-red">		try {</span>
+<span class="coverage-red">			$model.^saved-on-db;</span>
+<span class="coverage-red">			$model.^clean-up-columns: $model.^id;</span>
+<span class="coverage-red">			$model.^save;</span>
+<span class="coverage-no">		}</span>
+<span class="coverage-no">		# TODO: Generalise</span>
+<span class="coverage-red">		my %row = get-RED-DB.execute(&quot;SELECT changes() as changes;&quot;).row;</span>
+<span class="coverage-red">		unless %row&lt;changes&gt; {</span>
+<span class="coverage-red">			$model.^not-on-db;</span>
+<span class="coverage-red">			$model.^save;</span>
+<span class="coverage-no">		}</span>
+<span class="coverage-red">		$s.emit: $model</span>
+<span class="coverage-no">	}</span>
+<span class="coverage-red">	multi update(%model) {</span>
+<span class="coverage-red">		update Model.new: |%model;</span>
+<span class="coverage-no">	}</span>
+<span class="coverage-red">	$supply.tap: &amp;update;</span>
+<span class="coverage-red">	$s.Supply</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method transformed-state-of(::Model Red::Model:U \model, Supply $supply, &amp;func) {</span>
+<span class="coverage-red">	my Supplier $s .= new;</span>
+<span class="coverage-red">	multi agg(Model:D $model) {</span>
+<span class="coverage-red">		try $model.^all.map(&amp;func.assuming: *, $model).save;</span>
+<span class="coverage-no">		# TODO: Generalise</span>
+<span class="coverage-red">		my %row = get-RED-DB.execute(&quot;SELECT changes() as changes;&quot;).row;</span>
+<span class="coverage-red">		unless %row&lt;changes&gt; {</span>
+<span class="coverage-red">			$model.^not-on-db;</span>
+<span class="coverage-red">			$model.^save;</span>
+<span class="coverage-no">		}</span>
+<span class="coverage-red">		$s.emit: $model.^all.head</span>
+<span class="coverage-no">	}</span>
+<span class="coverage-red">	multi agg(%model) {</span>
+<span class="coverage-red">		agg Model.new: |%model;</span>
+<span class="coverage-no">	}</span>
+<span class="coverage-red">	$supply.tap: &amp;agg;</span>
+<span class="coverage-red">	$s.Supply</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

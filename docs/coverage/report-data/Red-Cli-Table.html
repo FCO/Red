@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Cli::Table</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Cli::Table 4.7%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::Utils;</span>
+<span class="coverage-no">use Red::Cli::Column;</span>
+<span class="coverage-no">use Red::Cli::Relationship;</span>
+<span class="coverage-green">unit class Red::Cli::Table;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Str  $.name;</span>
+<span class="coverage-red">has Str  $.model-name = try { snake-to-camel-case $!name };</span>
+<span class="coverage-no">has      @.columns;</span>
+<span class="coverage-no">has      @.relationships;</span>
+<span class="coverage-red">has Bool $.exists = True;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">submethod TWEAK(:@columns) {</span>
+<span class="coverage-red">    for @columns -&gt; $col {</span>
+<span class="coverage-red">        $col.table = self;</span>
+<span class="coverage-red">        with $col.references {</span>
+<span class="coverage-red">            @!relationships.push: Red::Cli::Relationship.new: :id($col)</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method model-definition($ where so *)  { &quot;unit model { $!model-name };\n&quot; }</span>
+<span class="coverage-red">multi method model-definition($ where not *) { &quot;model { $!model-name } \{&quot; }</span>
+<span class="coverage-red">multi method model-end($ where so *)  { &quot;&quot; }</span>
+<span class="coverage-red">multi method model-end($ where not *) { &quot;\}&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method to-code(Str :$schema-class, Bool :$no-relationships) {</span>
+<span class="coverage-red">    my $unit = not $schema-class.defined;</span>
+<span class="coverage-red">    qq:to/END/;</span>
+<span class="coverage-red">    { self.model-definition: $unit }</span>
+<span class="coverage-red">    { do for @!columns -&gt; $col {</span>
+<span class="coverage-red">        $col.to-code: :$schema-class</span>
+<span class="coverage-no">    }.join(&quot;\n&quot;).indent: $unit ?? 0 !! 4 }</span>
+<span class="coverage-red">    { &quot;\n&quot; ~ do for @!relationships -&gt; $rel {</span>
+<span class="coverage-red">        $rel.to-code: :$schema-class</span>
+<span class="coverage-no">    }.join(&quot;\n&quot;).indent: $unit ?? 0 !! 4 unless $no-relationships}</span>
+<span class="coverage-red">    { self.model-end: $unit }</span>
+<span class="coverage-no">    END</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method diff(::?CLASS $b) {</span>
+<span class="coverage-no">    my @diffs;</span>
+<span class="coverage-red">    if $!name ne $b.name {</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;+&quot;, &quot;name&quot;, $b.name ];</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;-&quot;, &quot;name&quot;, $!name  ];</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    if @!columns != $b.columns {</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;+&quot;, &quot;n-of-cols&quot;, $b.columns.elems ];</span>
+<span class="coverage-red">        @diffs.push: [ $!name, &quot;-&quot;, &quot;n-of-cols&quot;, @!columns.elems  ];</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    my @a = @!columns.sort:  *.name;</span>
+<span class="coverage-red">    my @b = $b.columns.sort: *.name;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">    while @a &gt; 0 and @b &gt; 0 {</span>
+<span class="coverage-red">        if @a.head.name eq @b.head.name {</span>
+<span class="coverage-red">            my $a = @a.shift;</span>
+<span class="coverage-red">            my $b = @b.shift;</span>
+<span class="coverage-red">            for $a.diff: $b -&gt; @d {</span>
+<span class="coverage-red">                @diffs.push: [ $!name, |@d ]</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        } elsif @b.head lt @a.head {</span>
+<span class="coverage-red">            @diffs.push: [ $!name, &quot;+&quot;, &quot;col&quot;, @b.shift ];</span>
+<span class="coverage-no">        } elsif @a.head lt @b.head {</span>
+<span class="coverage-red">            @diffs.push: [ $!name, &quot;-&quot;, &quot;col&quot;, @a.shift ];</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    @diffs.push: [ $!name, &quot;+&quot;, &quot;col&quot;, $_ ] for @b;</span>
+<span class="coverage-red">    @diffs.push: [ $!name, &quot;-&quot;, &quot;col&quot;, $_ ] for @a;</span>
+<span class="coverage-red">    @diffs</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

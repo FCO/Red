@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::AST::Select</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::AST::Select 73.3%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST;</span>
+<span class="coverage-no">use Red::Model;</span>
+<span class="coverage-no">use Red::AST::Union;</span>
+<span class="coverage-no">use Red::AST::Intersect;</span>
+<span class="coverage-no">use Red::AST::Minus;</span>
+<span class="coverage-no">use Red::AST::Comment;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Represents a Select</span>
+<span class="coverage-green">unit class Red::AST::Select does Red::AST;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Mu:U                $.of;</span>
+<span class="coverage-no">has Red::AST            @.fields;</span>
+<span class="coverage-no">has Red::AST            $.filter;</span>
+<span class="coverage-no">has Red::AST            @.order;</span>
+<span class="coverage-no">has Int                 $.limit;</span>
+<span class="coverage-no">has Int                 $.offset;</span>
+<span class="coverage-no">has Red::AST            @.group;</span>
+<span class="coverage-no">has                     @.table-list;</span>
+<span class="coverage-no">has Red::AST::Comment   @.comments;</span>
+<span class="coverage-no">has Bool                $.sub-select;</span>
+<span class="coverage-red">has                     @.prefetch;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method returns { Red::Model }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method args { $!sub-select ?? () !! ( $!of, $!filter, |@!order ) }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method gist {</span>
+<span class="coverage-red">    do if $!sub-select {</span>
+<span class="coverage-red">        &quot;{ self.^name }:\n&quot; ~ [|@!table-list, $!filter, |@!order].map(*.gist).join(&quot;\n&quot;).indent: 4</span>
+<span class="coverage-no">    } else {</span>
+<span class="coverage-red">        self.Red::AST::gist()</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method tables(::?CLASS:D:) {</span>
+<span class="coverage-green">    |(|@!table-list, |(.tables with $!filter), callsame).grep(-&gt; \v { v !=:= Nil }).unique</span>
+<span class="coverage-no">}</span>
+<span class="coverage-red">method find-column-name {}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method union($sel) {</span>
+<span class="coverage-green">    my $union = Red::AST::Union.new;</span>
+<span class="coverage-green">    $union.union: self;</span>
+<span class="coverage-green">    $union.union: $sel;</span>
+<span class="coverage-green">    $union</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method intersect($sel) {</span>
+<span class="coverage-green">    my $union = Red::AST::Intersect.new;</span>
+<span class="coverage-green">    $union.intersect: self;</span>
+<span class="coverage-green">    $union.intersect: $sel;</span>
+<span class="coverage-green">    $union</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method minus($sel) {</span>
+<span class="coverage-green">    my $union = Red::AST::Minus.new;</span>
+<span class="coverage-green">    $union.minus: self;</span>
+<span class="coverage-green">    $union.minus: $sel;</span>
+<span class="coverage-green">    $union</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method as-sub-select {</span>
+<span class="coverage-green">    $!sub-select = True;</span>
+<span class="coverage-red">    self;</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Attr::Query</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Attr::Query 10%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">unit role Red::Attr::Query;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method wrapper($obj, $query) {</span>
+<span class="coverage-no">    #TODO</span>
+<span class="coverage-red">    now # FIXME: run the query</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method wrap-data($filter) {</span>
+<span class="coverage-red">    my $name = self.name.substr: 2;</span>
+<span class="coverage-red">    my \attr = self;</span>
+<span class="coverage-red">    with self.package.^lookup: $name {</span>
+<span class="coverage-red">        .wrap: method { attr.wrapper: attr, $filter }</span>
+<span class="coverage-red">    } elsif self.has_accessor {</span>
+<span class="coverage-red">        self.package.^add_method: $name, method (|) { attr.wrapper: self, $filter }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

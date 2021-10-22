@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Attr::Relationship</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Attr::Relationship 87.9%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST::Infixes;</span>
+<span class="coverage-no">use Red::AST::Value;</span>
+<span class="coverage-no">use Red::HiddenFromSQLCommenting;</span>
+<span class="coverage-no">use X::Red::Exceptions;</span>
+<span class="coverage-no">use Red::Model;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role Red::Attr::Relationship[</span>
+<span class="coverage-no">	&amp;rel1,</span>
+<span class="coverage-no">	&amp;rel2?,</span>
+<span class="coverage-no">	Str         :$model,</span>
+<span class="coverage-green">	Str         :$require = $model,</span>
+<span class="coverage-no">	Bool        :$optional,</span>
+<span class="coverage-no">	Bool        :$no-prefetch,</span>
+<span class="coverage-no">	Bool        :$has-one,</span>
+<span class="coverage-no">    Red::Model  :$model-type,</span>
+<span class="coverage-no">];</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Mu:U $!type;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">has Bool $.has-lazy-relationship = ?$model;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Mu:U $!relationship-model;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Bool $!loaded-model = False;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">has Bool $!optional = $optional;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">has Bool $.has-one = $has-one;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">has Bool $.no-prefetch = $!has-one // $no-prefetch;</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">has Str $.rel-name is rw;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">has $!model-type = $model-type;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">submethod TWEAK(|) {</span>
+<span class="coverage-green">    if $!model-type !=== Red::Model {</span>
+<span class="coverage-green">        $!has-lazy-relationship = True;</span>
+<span class="coverage-green">        $!relationship-model   := $!model-type;</span>
+<span class="coverage-green">        $!loaded-model          = True</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method transfer(Mu:U $package) {</span>
+<span class="coverage-green">    my $attr = Attribute.new: :$package, :$.name, :$.type;</span>
+<span class="coverage-green">    $attr but Red::Attr::Relationship[&amp;rel1, &amp;rel2, :$model, :$require]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method rel {</span>
+<span class="coverage-green">    rel1 self.has-one ?? $!relationship-model !! self.package</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method relationship-model(--&gt; Mu:U) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    return self.type if !$model.DEFINITE &amp;&amp; !$!loaded-model;</span>
+<span class="coverage-green">    unless $!loaded-model {</span>
+<span class="coverage-green">        my $t = ::($model);</span>
+<span class="coverage-green">        if !$t &amp;&amp; $t ~~ Failure {</span>
+<span class="coverage-green">            require ::($require);</span>
+<span class="coverage-green">            $t = ::($model);</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        $!relationship-model := $t;</span>
+<span class="coverage-green">        $!loaded-model = True;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    $!relationship-model</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method set-data(\instance, Mu $value) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    do given $.rel {</span>
+<span class="coverage-green">        my $attr = .attr;</span>
+<span class="coverage-green">        my $ref  = .ref;</span>
+<span class="coverage-green">        $attr.set_value: instance, $ref.attr.get_value: $value;</span>
+<span class="coverage-green">        instance.^set-dirty: $attr;</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method build-relationship(\instance) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    my \type = self.type;</span>
+<span class="coverage-red">    my \attr = self;</span>
+<span class="coverage-green">    my \rel-model = $model ?? self.relationship-model !! type ~~ Positional ?? type.of !! type;</span>
+<span class="coverage-no">    use nqp;</span>
+<span class="coverage-green">    nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:</span>
+<span class="coverage-green">        FETCH =&gt; method () {</span>
+<span class="coverage-green">            my \ret = do if type ~~ Positional || attr.has-one {</span>
+<span class="coverage-green">                rel-model.^rs.where: rel1(rel-model).map(-&gt; $rel {</span>
+<span class="coverage-green">                    X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;</span>
+<span class="coverage-green">                    my $ref = $rel.ref;</span>
+<span class="coverage-green">                    X::Red::RelationshipNotRelated.new(:relationship(attr), :points-to($rel)).throw unless $ref.DEFINITE;</span>
+<span class="coverage-green">                    my $val = do given $ref.attr but role :: {</span>
+<span class="coverage-red">                        method package {</span>
+<span class="coverage-red">                            instance.WHAT</span>
+<span class="coverage-no">                        }</span>
+<span class="coverage-purple">                    } {</span>
+<span class="coverage-green">                        instance.^get-attr: .name.substr: 2</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-green">                    my \value = ast-value $val;</span>
+<span class="coverage-green">                    Red::AST::Eq.new: $rel, value, :bind-right</span>
+<span class="coverage-green">                }).reduce: -&gt; $left, $right {</span>
+<span class="coverage-green">                    Red::AST::AND.new: $left, $right</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-green">            } else {</span>
+<span class="coverage-green">                my @models = rel1(instance.WHAT).map(-&gt; $rel {</span>
+<span class="coverage-green">                    my $val = $rel.attr.get_value: instance;</span>
+<span class="coverage-green">                    do with $val {</span>
+<span class="coverage-green">                        my \value = ast-value $val;</span>
+<span class="coverage-green">                        Red::AST::Eq.new: $rel.ref, value, :bind-right</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-no">                }).grep(*.defined);</span>
+<span class="coverage-green">                return rel-model unless @models;</span>
+<span class="coverage-green">                rel-model.^rs.where(@models.reduce(-&gt; $left, $right {</span>
+<span class="coverage-red">                    Red::AST::AND.new: $left, $right</span>
+<span class="coverage-no">                }))</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">	    return ret.head if type !~~ Positional || attr.has-one;</span>
+<span class="coverage-green">	    ret</span>
+<span class="coverage-no">        },</span>
+<span class="coverage-red">        STORE =&gt; method ($value where type) {</span>
+<span class="coverage-red">            die X::Assignment::RO.new(value =&gt; attr.type) unless attr.rw;</span>
+<span class="coverage-red">            if type !~~ Positional {</span>
+<span class="coverage-red">                attr.set-data: instance, $value</span>
+<span class="coverage-red">            } else {</span>
+<span class="coverage-red">                die &quot;NYI Couldnt set value&quot;</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    );</span>
+<span class="coverage-green">    return</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method relationship-argument-type {</span>
+<span class="coverage-green">    do if self.type ~~ Positional || self.has-one {</span>
+<span class="coverage-green">        $model ?? self.relationship-model !! self.type ~~ Positional ?? self.type.of !! self.type</span>
+<span class="coverage-red">    } else {</span>
+<span class="coverage-green">        self.package</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method relationship-ast($type = Nil) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    my \type = self.relationship-argument-type;</span>
+<span class="coverage-green">    my @col1 = |rel1 type;</span>
+<span class="coverage-green">    @col1.map({</span>
+<span class="coverage-green">        Red::AST::Eq.new: $_, .ref: $type</span>
+<span class="coverage-green">    }).reduce: -&gt; $agg, $i {</span>
+<span class="coverage-green">        Red::AST::AND.new: $agg, $i</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method join-type {</span>
+<span class="coverage-green">    with $!optional {</span>
+<span class="coverage-red">        return $!optional</span>
+<span class="coverage-no">                ?? :left</span>
+<span class="coverage-no">                !! :inner</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    do given rel1 self.relationship-argument-type {</span>
+<span class="coverage-green">        when .?nullable {</span>
+<span class="coverage-green">            :left</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        default {</span>
+<span class="coverage-green">            :inner</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>
