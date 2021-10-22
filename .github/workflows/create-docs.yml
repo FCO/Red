@@ -11,9 +11,10 @@ jobs:
     - name: Create local changes
       run: |
         raku tools/make-docs.pl6
-        racoco --fail-level=$(cat .coverage) --exec='zef test -v .' --html | raku -ne 'say $<num>.floor if /^ "Coverage:" <.ws> $<num>=[\d+\.\d+] "%" $/' > .coverage
-    - name: Move coverage report
+    - name: Run test coverage
       run: |
+        racoco --fail-level=$(cat .coverage) --exec='zef test -v .' --html | raku -ne 'say $<num>.floor if /^ "Coverage:" <.ws> $<num>=[\d+\.\d+] "%" $/' > .coverage
+        mkdir docs/coverage/
         mv .racoco/report{.html,-data} docs/coverage/
     - name: Commit files
       run: |
