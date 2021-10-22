@@ -11,3 +11,4 @@
 .idea/workspace.xml
 *.db
 tags
+.racoco

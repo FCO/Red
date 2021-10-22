@@ -131,7 +131,8 @@
     "relational"
   ],
   "test-depends": [
-    "Test::META"
+    "Test::META",
+    "App::RaCoCo"
   ],
   "version": "0.1.51"
 }
