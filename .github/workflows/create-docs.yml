@@ -15,7 +15,7 @@ jobs:
       run: |
         racoco --fail-level=$(cat .coverage) --exec='zef test -v .' --html | raku -ne 'say $<num>.floor if /^ "Coverage:" <.ws> $<num>=[\d+\.\d+] "%" $/' > .coverage
         mkdir docs/coverage/
-        mv .racoco/report{.html,-data} docs/coverage/
+        mv .racoco/report.html .racoco/report-data docs/coverage/
     - name: Commit files
       run: |
         git config --local user.email "action@github.com"
