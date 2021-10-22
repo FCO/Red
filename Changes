@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix usage of parameterized roles
 
 0.1.51  2021-10-14T21:11:05+01:00
     - Fix red-do on SQLite
