@@ -82,6 +82,29 @@ isa-ok $blo, Blo;
 
 is-deeply $blo.blu, $blu;
 
+role Bar[Bool :$opt-in = False] {
+   has Int $.b is column;
+}
+
+role Baz {
+   has Rat $.c is column;
+}
+
+model Foo does Bar[:opt-in] does Baz {
+    has Int $.id is serial;
+    has Str $.a is column;
+}
+
+$*RED-DB.when: :once, :return[], q:to/EOSQL/;
+    create table "foo"(
+        id integer not null primary key autoincrement,
+        a varchar ( 255 ) not null,
+        b integer not null,
+        c real not null
+    )
+EOSQL
+lives-ok { Foo.^create-table }
+
 $*RED-DB.verify;
 
 isa-ok Ble.a, Red::Column;
