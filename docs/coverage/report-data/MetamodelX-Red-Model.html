@@ -684,6 +684,7 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter</span>
+<span class="coverage-no">#| Usualy passed unique values as IDs or columns with unique counstraint</span>
 <span class="coverage-green">multi method search(Red::Model:U \model, *%filter, :$with where not .defined) {</span>
 <span class="coverage-green">    samewith</span>
 <span class="coverage-no">        model,</span>
@@ -703,6 +704,7 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Finds a specific row</span>
+<span class="coverage-no">#| using the same data as search()</span>
 <span class="coverage-green">multi method find(|c) { self.search(|c).head }</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method find(Red::Model:U, Any:U) { die &quot;Could not use find without data&quot; }</span>

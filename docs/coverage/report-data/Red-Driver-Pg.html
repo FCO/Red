@@ -68,6 +68,13 @@
 <span class="coverage-no"></span>
 <span class="coverage-no"></span>
 <span class="coverage-red">method schema-reader {}</span>
+<span class="coverage-no">#| Data accepted by the Pg driver constructor:</span>
+<span class="coverage-no">#| dbh     : DB::Pg object</span>
+<span class="coverage-no">#| user    : User to be used to connect to the database</span>
+<span class="coverage-no">#| password: Password to be used to connect to the database</span>
+<span class="coverage-no">#| host    : To be connected to</span>
+<span class="coverage-no">#| port    : What port to connect</span>
+<span class="coverage-no">#| dbname  : Database name</span>
 <span class="coverage-red">submethod BUILD(DB::Pg :$!dbh, Str :$!user, Str :$!password, Str :$!host = &quot;127.0.0.1&quot;, Int :$!port = 5432, Str :$!dbname) {</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
