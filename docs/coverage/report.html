@@ -136,7 +136,7 @@
 <tr class="report"><td><a href="./report-data/Red-AST-MultiSelect.html">Red::AST::MultiSelect</a></td><td>100</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 100%;"></span></span></td><td class="total">2</td><td class="covered">2</td></tr>
 <tr class="report"><td><a href="./report-data/Red-AST-Next.html">Red::AST::Next</a></td><td>40</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 40%;"></span></span></td><td class="total">5</td><td class="covered">2</td></tr>
 <tr class="report"><td><a href="./report-data/Red-AST-Operator.html">Red::AST::Operator</a></td><td>66.6</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 66.6%;"></span></span></td><td class="total">3</td><td class="covered">2</td></tr>
-<tr class="report"><td><a href="./report-data/Red-AST-Optimizer-AND.html">Red::AST::Optimizer::AND</a></td><td>84.7</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 84.7%;"></span></span></td><td class="total">59</td><td class="covered">50</td></tr>
+<tr class="report"><td><a href="./report-data/Red-AST-Optimizer-AND.html">Red::AST::Optimizer::AND</a></td><td>88.1</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 88.1%;"></span></span></td><td class="total">59</td><td class="covered">52</td></tr>
 <tr class="report"><td><a href="./report-data/Red-AST-Optimizer-Case.html">Red::AST::Optimizer::Case</a></td><td>56.8</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 56.8%;"></span></span></td><td class="total">58</td><td class="covered">33</td></tr>
 <tr class="report"><td><a href="./report-data/Red-AST-Optimizer-OR.html">Red::AST::Optimizer::OR</a></td><td>57.5</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 57.5%;"></span></span></td><td class="total">66</td><td class="covered">38</td></tr>
 <tr class="report"><td><a href="./report-data/Red-AST-RollbackTransaction.html">Red::AST::RollbackTransaction</a></td><td>40</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 40%;"></span></span></td><td class="total">5</td><td class="covered">2</td></tr>
@@ -168,7 +168,7 @@
 <tr class="report"><td><a href="./report-data/Red-Driver-CacheWithStrKey.html">Red::Driver::CacheWithStrKey</a></td><td>5.7</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 5.7%;"></span></span></td><td class="total">35</td><td class="covered">2</td></tr>
 <tr class="report"><td><a href="./report-data/Red-Driver-CommonSQL.html">Red::Driver::CommonSQL</a></td><td>56.8</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 56.8%;"></span></span></td><td class="total">443</td><td class="covered">252</td></tr>
 <tr class="report"><td><a href="./report-data/Red-Driver-Mock.html">Red::Driver::Mock</a></td><td>81.9</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 81.9%;"></span></span></td><td class="total">72</td><td class="covered">59</td></tr>
-<tr class="report"><td><a href="./report-data/Red-Driver-Pg.html">Red::Driver::Pg</a></td><td>3.8</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 3.8%;"></span></span></td><td class="total">78</td><td class="covered">3</td></tr>
+<tr class="report"><td><a href="./report-data/Red-Driver-Pg.html">Red::Driver::Pg</a></td><td>7.6</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 7.6%;"></span></span></td><td class="total">78</td><td class="covered">6</td></tr>
 <tr class="report"><td><a href="./report-data/Red-Driver-SQLite.html">Red::Driver::SQLite</a></td><td>75.6</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 75.6%;"></span></span></td><td class="total">74</td><td class="covered">56</td></tr>
 <tr class="report"><td><a href="./report-data/Red-Driver-SQLite-SQLiteMaster.html">Red::Driver::SQLite::SQLiteMaster</a></td><td>36.3</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 36.3%;"></span></span></td><td class="total">11</td><td class="covered">4</td></tr>
 <tr class="report"><td><a href="./report-data/Red-Driver-SQLite-SchemaReader.html">Red::Driver::SQLite::SchemaReader</a></td><td>8.1</td><td><span class="progress-bar"><span class="progress-bar-fill" style="width: 8.1%;"></span></span></td><td class="total">49</td><td class="covered">4</td></tr>
@@ -266,6 +266,8 @@
                 });
         });
     });
+
+    filterInput.dispatchEvent(new Event('keyup',{'key':'a'}));
 </script>
 </body>
 </html>
