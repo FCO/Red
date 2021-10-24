@@ -5,15 +5,17 @@
 You use its new [`model`](https://github.com/FCO/Red/blob/master/lib/Red.pm6#L41) keyword to describe your table and its relations as a Raku class.
 
 The [Red Metamodel](https://github.com/FCO/Red/blob/master/lib/MetamodelX/Red/Model.pm6) exports a meta-method called [`all`](https://github.com/FCO/Red/blob/master/lib/MetamodelX/Red/Model.pm6#L283)
-or [`rs`](https://github.com/FCO/Red/blob/master/lib/MetamodelX/Red/Model.pm6#L280), which returns an instance of a class called [`Red::ResultSeq`](https://github.com/FCO/Red/blob/master/lib/Red/ResultSeq.pm6).
-[`Red::ResultSeq`](https://github.com/FCO/Red/blob/master/lib/Red/ResultSeq.pm6) is essentially a 
+(called using `MyModel.^all`)
+or [`rs`](https://github.com/FCO/Red/blob/master/lib/MetamodelX/Red/Model.pm6#L280) (called using `MyModel.^rs`)
+, which returns an instance of a class called [`Red::ResultSeq`](https://github.com/FCO/Red/blob/master/lib/Red/ResultSeq.pm6).
+[`Red::ResultSeq`](https://github.com/FCO/Red/blob/master/lib/Red/ResultSeq.pm6) is essentially a
 specialization of Raku’s [`Seq`](https://docs.raku.org/type/Seq) type for data in the database. So
 
 ```raku
 MyModel.^all
 ```
 
-represents all rows in the `MyModel` table, and 
+represents all rows in the `MyModel` table, and
 
 ```raku
 MyModel.^all.grep: *.col1 > 3
