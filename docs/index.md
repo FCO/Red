@@ -32,6 +32,7 @@ More examples can be found at the project [Wiki](https://github.com/FCO/Red/wiki
 * [Red architecture](tutorials/architecture)
 * How to create a new driver
 * How to create a new cache
+* [Test coverage report](https://fco.github.io/Red/coverage/report.html)
 
 #### How to contribute to documentation
 
