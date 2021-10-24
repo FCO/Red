@@ -14,7 +14,7 @@ jobs:
     - name: Run test coverage
       run: |
         racoco --fail-level=$(cat .coverage) --exec='zef test -v .' --html | raku -ne 'say $<num>.floor if /^ "Coverage:" <.ws> $<num>=[\d+\.\d+] "%" $/' > .coverage
-        mkdir docs/coverage/
+        mkdir -p docs/coverage/
         mv .racoco/report.html .racoco/report-data docs/coverage/
     - name: Commit files
       run: |
