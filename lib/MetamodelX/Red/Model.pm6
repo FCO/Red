@@ -634,6 +634,7 @@ multi method search(Red::Model:U \model, Red::AST $filter, :$with where not .def
 }
 
 #| Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter
+#| Usualy passed unique values as IDs or columns with unique counstraint
 multi method search(Red::Model:U \model, *%filter, :$with where not .defined) {
     samewith
         model,
@@ -653,6 +654,7 @@ multi method find(Str :$with!, |c) {
 }
 
 #| Finds a specific row
+#| using the same data as search()
 multi method find(|c) { self.search(|c).head }
 
 multi method find(Red::Model:U, Any:U) { die "Could not use find without data" }
