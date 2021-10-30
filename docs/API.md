@@ -37,7 +37,6 @@ API Pages
 - [Red::AST::Minus](api/Red/AST/Minus)
 - [Red::AST::MultiSelect](api/Red/AST/MultiSelect)
 - [Red::AST::Next](api/Red/AST/Next)
-- [Red::AST::Optimizer::AND](api/Red/AST/Optimizer/AND)
 - [Red::AST::Optimizer::OR](api/Red/AST/Optimizer/OR)
 - [Red::AST::RollbackTransaction](api/Red/AST/RollbackTransaction)
 - [Red::AST::Select](api/Red/AST/Select)
