@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::CommonSQL 56.8%</h1>
+				<h1>Red::Driver::CommonSQL 56.9%</h1>
 			</div>
 		</div>
 	</div>
@@ -349,23 +349,23 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Union $ast, $context?) {</span>
-<span class="coverage-green">                                    $ast.selects.map({</span>
-<span class="coverage-green">                                        self.translate( $_, &quot;multi-select&quot; ).key</span>
-<span class="coverage-no">                                    })</span>
-<span class="coverage-green">                                            .join(&quot;\n{</span>
-<span class="coverage-green">                                        self.translate($ast, &quot;multi-select-op&quot;).key</span>
-<span class="coverage-red">                                    }\n&quot;) =&gt; []</span>
-<span class="coverage-no">                                }</span>
+<span class="coverage-green">    $ast.selects.map({</span>
+<span class="coverage-green">        self.translate( $_, &quot;multi-select&quot; ).key</span>
+<span class="coverage-no">    })</span>
+<span class="coverage-green">            .join(&quot;\n{</span>
+<span class="coverage-green">        self.translate($ast, &quot;multi-select-op&quot;).key</span>
+<span class="coverage-red">    }\n&quot;) =&gt; []</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Intersect $ast, $context?) {</span>
-<span class="coverage-green">                                    $ast.selects.map({ self.translate( $_, &quot;multi-select&quot;).key })</span>
-<span class="coverage-green">                                            .join(&quot;\n{ self.translate($ast, &quot;multi-select-op&quot;).key }\n&quot;) =&gt; []</span>
-<span class="coverage-no">                                }</span>
+<span class="coverage-green">    $ast.selects.map({ self.translate( $_, &quot;multi-select&quot;).key })</span>
+<span class="coverage-green">            .join(&quot;\n{ self.translate($ast, &quot;multi-select-op&quot;).key }\n&quot;) =&gt; []</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Minus $ast, $context?) {</span>
-<span class="coverage-green">                                    $ast.selects.map({ self.translate( $_, &quot;multi-select&quot; ).key })</span>
-<span class="coverage-green">                                            .join(&quot;\n{ self.translate($ast, &quot;multi-select-op&quot;).key }\n&quot;) =&gt; []</span>
-<span class="coverage-no">                                }</span>
+<span class="coverage-green">    $ast.selects.map({ self.translate( $_, &quot;multi-select&quot; ).key })</span>
+<span class="coverage-green">            .join(&quot;\n{ self.translate($ast, &quot;multi-select-op&quot;).key }\n&quot;) =&gt; []</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Union $ast, &quot;multi-select-op&quot;) { &quot;UNION&quot; =&gt; [] }</span>
 <span class="coverage-green">multi method translate(Red::AST::Intersect $ast, &quot;multi-select-op&quot;) { &quot;INTERSECT&quot; =&gt; [] }</span>
@@ -376,12 +376,19 @@
 <span class="coverage-no">        if $*RED-COMMENT-SQL or &amp;*RED-COMMENT-SQL</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
+<span class="coverage-green">multi method translate(Red::AST::Infix $_ where { (.right | .right.?value) ~~ Red::AST::Select }, $context?) {</span>
+<span class="coverage-green">    my ($lstr, @lbind) := do given self.translate: .left,  .bind-left  ?? &quot;bind&quot; !! $context { .key, .value }</span>
+<span class="coverage-green">    my ($rstr, @rbind) := do given self.translate: .right, .bind-right ?? &quot;bind&quot; !! $context { .key, .value }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    &quot;$lstr { .op } ( $rstr )&quot; =&gt; [|@lbind, |@rbind]</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
 <span class="coverage-red">method comment-starter { &quot;--&quot; }</span>
 <span class="coverage-no"></span>
-<span class="coverage-green">multi method translate(Red::AST::Select $ast, 'where') {</span>
-<span class="coverage-green">    my ( $key, $value ) = do given self.translate($ast) { .key, .value };</span>
-<span class="coverage-green">    '( ' ~ $key ~ ' )' =&gt; $value // [];</span>
-<span class="coverage-no">}</span>
+<span class="coverage-no">#multi method translate(Red::AST::Select $ast, 'where') {</span>
+<span class="coverage-no">#    my ( $key, $value ) = do given self.translate($ast) { .key, .value };</span>
+<span class="coverage-no">#    '( ' ~ $key ~ ' )' =&gt; $value // [];</span>
+<span class="coverage-no">#}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method join-type(&quot;inner&quot; --&gt; &quot;INNER&quot;) {}</span>
 <span class="coverage-red">multi method join-type(&quot;outer&quot; --&gt; &quot;OUTER&quot;) {}</span>
