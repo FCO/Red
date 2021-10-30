@@ -7,6 +7,7 @@ model Foo is rw {
 }
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-AST      = $_ with %*ENV<RED_DEBUG-AST>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
@@ -85,6 +86,43 @@ for @multibars -> $bar {
 
 todo "What's happening here???" with %*ENV<RED_DATABASE>;
 is-deeply MultiFoo.^rs.grep(*.bar-id in MultiBar.^rs.grep( *.name eq 'one' ).map( *.id ) ).Seq, (@multifoos[0], ), "in with different table in sub-select (no cartesian join)";
+
+subtest "#521" => {
+    model A {
+        has Str $.id is id;
+        has     @.bs is relationship({ .a-id }, model => "B" );
+    }
+
+    model B {
+        has Int  $.id   is serial;
+        has Str  $.a-id is column({ name => "a", model-name => "A", column-name => "id" });
+        has      $.a    is relationship({ .a-id }, model => "A");
+        has Int  $.c-id is referencing(model => "C", column => "id" );
+        has      $.c    is relationship({ .c-id }, model => "C");
+        has Bool $.d    is column is rw = True;
+    }
+
+    model C {
+        has Int $.id is serial;
+        has Str $.d  is column;
+        has     @.bs is relationship({ .c-id }, model => "B" );
+    }
+
+    A.^create-table;
+    C.^create-table;
+    B.^create-table;
+
+    my $a = A.^create( :id<FOO>, :bs[{ :c{ :d<a> }, :!d }, { :c{ :d<b> }, :!d }, { :c{ :d<c> }, :!d }, { :c{ :d<d> }, :!d }, ] );
+
+    is B.^all.grep({ not .d }).map(*.c.d).Seq, <a b c d>;
+
+    lives-ok {
+        my $sub = $a.bs.grep( *.c.d (>) <a b c> ).map( *.id );
+        $a.bs.grep(*.id (<) $sub).map( { .d = True }).save;
+    }
+
+    is B.^all.grep({ not .d }).map(*.c.d).Seq, <a b c>
+}
 
 done-testing;
 # vim: ft=perl6

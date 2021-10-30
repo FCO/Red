@@ -12,7 +12,7 @@ has Pair     @.values;
 has Red::AST $.filter;
 
 method returns { Nil }
-method args { |@!values }
+method args { |@!values, $.filter }
 
 multi method new(Red::Model $model) {
     do given $model {

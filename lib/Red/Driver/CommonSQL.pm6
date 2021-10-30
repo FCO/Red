@@ -299,23 +299,23 @@ multi method translate(Red::AST::AddForeignKeyOnTable $ast, $context?) {
 }
 
 multi method translate(Red::AST::Union $ast, $context?) {
-                                    $ast.selects.map({
-                                        self.translate( $_, "multi-select" ).key
-                                    })
-                                            .join("\n{
-                                        self.translate($ast, "multi-select-op").key
-                                    }\n") => []
-                                }
+    $ast.selects.map({
+        self.translate( $_, "multi-select" ).key
+    })
+            .join("\n{
+        self.translate($ast, "multi-select-op").key
+    }\n") => []
+}
 
 multi method translate(Red::AST::Intersect $ast, $context?) {
-                                    $ast.selects.map({ self.translate( $_, "multi-select").key })
-                                            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
-                                }
+    $ast.selects.map({ self.translate( $_, "multi-select").key })
+            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
+}
 
 multi method translate(Red::AST::Minus $ast, $context?) {
-                                    $ast.selects.map({ self.translate( $_, "multi-select" ).key })
-                                            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
-                                }
+    $ast.selects.map({ self.translate( $_, "multi-select" ).key })
+            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
+}
 
 multi method translate(Red::AST::Union $ast, "multi-select-op") { "UNION" => [] }
 multi method translate(Red::AST::Intersect $ast, "multi-select-op") { "INTERSECT" => [] }
@@ -326,12 +326,19 @@ multi method translate(Red::AST::Comment $_, $context?) {
         if $*RED-COMMENT-SQL or &*RED-COMMENT-SQL
 }
 
+multi method translate(Red::AST::Infix $_ where { (.right | .right.?value) ~~ Red::AST::Select }, $context?) {
+    my ($lstr, @lbind) := do given self.translate: .left,  .bind-left  ?? "bind" !! $context { .key, .value }
+    my ($rstr, @rbind) := do given self.translate: .right, .bind-right ?? "bind" !! $context { .key, .value }
+
+    "$lstr { .op } ( $rstr )" => [|@lbind, |@rbind]
+}
+
 method comment-starter { "--" }
 
-multi method translate(Red::AST::Select $ast, 'where') {
-    my ( $key, $value ) = do given self.translate($ast) { .key, .value };
-    '( ' ~ $key ~ ' )' => $value // [];
-}
+#multi method translate(Red::AST::Select $ast, 'where') {
+#    my ( $key, $value ) = do given self.translate($ast) { .key, .value };
+#    '( ' ~ $key ~ ' )' => $value // [];
+#}
 
 multi method join-type("inner" --> "INNER") {}
 multi method join-type("outer" --> "OUTER") {}
