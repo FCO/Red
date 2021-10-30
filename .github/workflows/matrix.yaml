@@ -23,8 +23,6 @@ jobs:
       - uses: Raku/setup-raku@v1
         with:
           raku-version: ${{ matrix.raku-version }}
-      - name: Install openssl
-        run: sudo apt-get install -y openssl-dev
       - run: raku -V
       - name: Install dependencies
         run: |
