@@ -74,6 +74,9 @@
 <span class="coverage-no"></span>
 <span class="coverage-red">method schema-reader { Red::Driver::SQLite::SchemaReader }</span>
 <span class="coverage-no"></span>
+<span class="coverage-no">#| Data accepted by the SQLite driver constructor:</span>
+<span class="coverage-no">#| dbh     : DBDish::SQLite object</span>
+<span class="coverage-no">#| database: File name or C&lt;:memory:&gt; to a in memory DB (default)</span>
 <span class="coverage-green">submethod BUILD(DBDish::SQLite::Connection :$!dbh, Str :$!database = q&lt;:memory:&gt; ) {</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>

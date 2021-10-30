@@ -376,7 +376,7 @@ multi method search(
 ) returns Mu
 ```
 
-Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter
+Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter Usualy passed unique values as IDs or columns with unique counstraint
 
 ### multi method find
 
@@ -386,5 +386,5 @@ multi method find(
 ) returns Mu
 ```
 
-Finds a specific row
+Finds a specific row using the same data as search()
 
