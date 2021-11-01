@@ -8,7 +8,9 @@ has Int      $.root-page is column<rootpage>;
 has Str      $.sql       is column;
 has ::?CLASS @.children  is relationship{ .table }
 
-method tables(::?CLASS:U:)   { self.^all.grep: *.is-table }
+method tables(::?CLASS:U:)   {
+    self.^all.grep: *.is-table
+}
 
 multi method indexes(::?CLASS:U:) { ::?CLASS.^all.grep: *.is-index }
 multi method indexes(::?CLASS:D:) { self.children.grep: *.is-index }

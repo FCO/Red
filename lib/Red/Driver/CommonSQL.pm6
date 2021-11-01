@@ -756,11 +756,38 @@ multi method translate(Red::AST::Delete $_, $context?) {
 multi method translate(Red::AST::Update $_, $context?) {
     my @bind;
     my $str = .values.map({
-        my ($c, @c) := do given self.translate: .&ast-value, "update" { .key, .value }
+        my ($c, @c) := do given self.translate: .&ast-value, "update" { .key, .value };
         @bind.append: @c;
         $c
     }).join(",\n").indent: 3;
-    my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };
+
+    my $into = .into;
+
+    my $i;
+    my @from;
+
+    with .filter {
+        for .tables -> \t {
+            if t.^table ne $into {
+                @from.push: t;
+                next
+            }
+            $i = t
+        }
+    }
+
+    my $sub-select = Red::AST::In.new:
+        $i.^id>>.column.head,
+        Red::AST::Select.new: :of($i), :fields($i.^id.head.column), :filter(@from.map(*.^join-on).reduce(-> $l, $r { Red::AST::AND.new: $l, $r }))
+        if @from;
+
+    my $filter = $sub-select
+        ?? Red::AST::AND.new(.filter, $sub-select)
+        !! .filter
+    ;
+
+    my ($wstr, @wbind) := do given self.translate: $filter { .key, .value };
+
     qq:to/END/ => [|@bind, |@wbind];
     UPDATE {
         .into

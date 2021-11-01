@@ -38,7 +38,8 @@ method Str { self }
 method transpose(::?CLASS:D: &func) {
     die self unless self.^can: "args";
     for self.args.grep: Red::AST -> $arg {
-        .transpose: &func with $arg
+        next without $arg;
+        .transpose: &func with $arg;
     }
     func self;
 }
@@ -49,9 +50,11 @@ method tables(::?CLASS:D:) {
     self.transpose: {
         if .^name eq "Red::Column" {
             @tables.push: .class
+        } elsif self !=:= .<> {
+            @tables.push: |.tables
         }
     }
-    |@tables.grep(-> \v { v !=:= Nil }).unique
+    |@tables.grep(-> \v { v !=:= Nil }).unique;
 }
 
 multi method WHICH(::?CLASS:D:) {
