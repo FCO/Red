@@ -166,18 +166,19 @@ multi method create-map(\SELF: Red::Model $model is copy, :filter(&)) is hidden-
     self but role :: { method of { $model } }
 }
 multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden-from-sql-commenting {
-    my @*table-list;
+    my @*table-list = |@.table-list, self.of;
     my \model = SELF.of.^specialise(|@ret);
     my role CMModel [Mu:U \m] {
         has &.last-filter = &filter;
         has $.last-rs  = SELF;
         method of { model }
     }
+    @*table-list .= unique;
     SELF.clone(
         :chain($!chain.clone:
             :$.filter,
             :post{ my @data = do for model.^columns -> $attr { ."{$attr.name.substr: 2}"() }; @data == 1 ?? @data.head !! |@data },
-            :table-list[(|@.table-list, self.of, |@*table-list).unique],
+            :@*table-list,
             |%_
         )
     ) but CMModel[model]

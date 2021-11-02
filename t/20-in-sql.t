@@ -118,10 +118,16 @@ subtest "#521" => {
 
     lives-ok {
         my $sub = $a.bs.grep( *.c.d (>) <a b c> ).map( *.id );
-        $a.bs.grep(*.id (<) $sub).map( { .d = True }).save;
+        $a.bs.grep(*.id (<) $sub).map({ .d = True }).save;
     }
 
-    is B.^all.grep({ not .d }).map(*.c.d).Seq, <a b c>
+    is B.^all.grep({ not .d }).map(*.c.d).Seq, <a b c>;
+
+    lives-ok {
+        $a.bs.grep(*.c.d (>) <a b c>).map({ .d = False }).save;
+    }
+
+    is B.^all.grep({ not .d }).map(*.c.d).Seq, <a b c d>
 }
 
 done-testing;

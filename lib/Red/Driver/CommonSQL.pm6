@@ -379,7 +379,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
         }
     }).join: ", ";
     $sel ~= ", $pre" if $pre;
-    my @t = (|$ast.tables, $ast.of, |@pre-join).grep({ not .?no-table }).unique.map({ .^tables });
+    my @t = (|$ast.tables, $ast.of, |@pre-join).grep({ $_ ~~ Red::Model && not .?no-table }).unique(:as{ .WHICH }).map({ .^tables });
     my %t{Red::Model} = @t.classify: { .head }, :as{ .tail: *-1 };
     my @join-binds;
     my $tables = %t.kv.map(-> $_, @joins {
@@ -761,30 +761,28 @@ multi method translate(Red::AST::Update $_, $context?) {
         $c
     }).join(",\n").indent: 3;
 
-    my $into = .into;
+    my $into   = .into;
+    my $filter = .filter;
 
-    my $i;
-    my @from;
+    with $filter {
+        my $i = .tables.first: *.^table eq $into;
 
-    with .filter {
-        for .tables -> \t {
-            if t.^table ne $into {
-                @from.push: t;
-                next
-            }
-            $i = t
+        # find on .filter an operator that has a Red::Column argument with .class.on-join
+        my @nodes = .transpose-grep: { .args.any ~~ -> Any $_ { $_ ~~ Red::Column && .class.HOW.?join-on(.class) } };
+        # prepare $subselect with :of as $i.^specialise: $i.^id».column and filter as that operator
+        my @sub-selects = @nodes.map: -> Red::AST $filter {
+            Red::AST::In.new:
+                $i.^id».column.head,
+                Red::AST::Select.new:
+                    :of($i.^specialise: $i.^id».column),
+                    :fields($i.^id.head.column),
+                    :$filter
+        }
+        # replace the whole operator with a Red::AST::In($i.^id».column, $subselect)
+        for @nodes Z @sub-selects -> ($n, $s) {
+            $filter .= replace: $n, $s # does not exist yet
         }
     }
-
-    my $sub-select = Red::AST::In.new:
-        $i.^id>>.column.head,
-        Red::AST::Select.new: :of($i), :fields($i.^id.head.column), :filter(@from.map(*.^join-on).reduce(-> $l, $r { Red::AST::AND.new: $l, $r }))
-        if @from;
-
-    my $filter = $sub-select
-        ?? Red::AST::AND.new(.filter, $sub-select)
-        !! .filter
-    ;
 
     my ($wstr, @wbind) := do given self.translate: $filter { .key, .value };
 
