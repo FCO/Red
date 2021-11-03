@@ -762,25 +762,17 @@ multi method translate(Red::AST::Update $_, $context?) {
     }).join(",\n").indent: 3;
 
     my $into   = .into;
+    my $model  = .model;
     my $filter = .filter;
 
     with $filter {
-        my $i = .tables.first: *.^table eq $into;
-
-        # find on .filter an operator that has a Red::Column argument with .class.on-join
-        my @nodes = .transpose-grep: { .args.any ~~ -> Any $_ { $_ ~~ Red::Column && .class.HOW.?join-on(.class) } };
-        # prepare $subselect with :of as $i.^specialise: $i.^id».column and filter as that operator
-        my @sub-selects = @nodes.map: -> Red::AST $filter {
-            Red::AST::In.new:
-                $i.^id».column.head,
+        die "Internal error" unless $model ~~ Red::Model;
+        if .tables.any ~~ -> Any $_ { .HOW.?join-on($_) } {
+            $filter = Red::AST::In.new:
+                $model.^id».column.head,
                 Red::AST::Select.new:
-                    :of($i.^specialise: $i.^id».column),
-                    :fields($i.^id.head.column),
+                    :of($model.^specialise: $model.^id».column),
                     :$filter
-        }
-        # replace the whole operator with a Red::AST::In($i.^id».column, $subselect)
-        for @nodes Z @sub-selects -> ($n, $s) {
-            $filter .= replace: $n, $s # does not exist yet
         }
     }
 
