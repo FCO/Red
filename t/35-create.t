@@ -107,4 +107,11 @@ subtest "Create on transaction", {
 	is Bla.^all.grep(*.value eq "trans1").elems, 0
 };
 
+subtest "Create on has-one", {
+    my $ble = Ble.^create(:value<ble>);
+    say $ble.bla.^join-on: $ble.bla;
+    #my $bla = $ble.bla.^create: :value<bla>;
+    #is $bla.bles.head, $ble
+}
+
 done-testing;

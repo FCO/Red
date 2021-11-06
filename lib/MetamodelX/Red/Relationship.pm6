@@ -160,7 +160,11 @@ multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) 
         } else {
             $self.^add_multi_method: $name, my method (Mu:D:) is rw {
                 use nqp;
-                nqp::getattr(self, self.WHAT, $attr.name)
+                my \value = nqp::getattr(self, self.WHAT, $attr.name);
+                my $n = $self.WHAT."$name"();
+                $n.^parent = self if $n.HOW.^can: "parent";
+                return $n unless value;
+                value
             }
         }
     }

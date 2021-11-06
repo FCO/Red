@@ -221,19 +221,20 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
     my \alias = ::?CLASS.new_type(:$name);
     %!alias-cache{$name} := alias;
     my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
-        method columns(|)     { @cols }
-        method table(|)       { rtype.^table }
-        method as(|)          { self.table-formatter: $rname }
-        method orig(|)        { rtype }
-        method join-type(|)   { join-type }
-        method tables(|)      { [ |base.^tables, alias ] }
-        method join-on(|)     {
+        method parent(|) is rw { $ }
+        method columns(|)      { @cols }
+        method table(|)        { rtype.^table }
+        method as(|)           { self.table-formatter: $rname }
+        method orig(|)         { rtype }
+        method join-type(|)    { join-type }
+        method tables(|)       { [ |base.^tables, alias ] }
+        method join-on($, \a = alias) {
             do given rel {
                 when Red::AST {
                     $_
                 }
                 when Callable {
-                    my $filter = do given what-does-it-do($_, alias) {
+                    my $filter = do given what-does-it-do($_, a) {
                         do if [eqv] .values {
                             .values.head
                         } else {
@@ -252,7 +253,7 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
                     $filter
                 }
                 default {
-                    .relationship-ast(alias)
+                    .relationship-ast(a)
 
                 }
             }
@@ -453,7 +454,8 @@ multi method create(Str :$with!, |c) is hidden-from-backtrace {
 #| Creates a new object and saves it on DB
 #| It accepts a list os pairs (the same as C<.new>)
 #| And Lists and/or Hashes for relationships
-multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {
+multi method create(\mo where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {
+    my \model = mo.^orig;
     my $RED-DB = get-RED-DB;
     my $trans  = so $*RED-TRANSCTION-RUNNING;
     $RED-DB   .= begin    unless $trans;
@@ -468,6 +470,8 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
         my %pars;
         my %positionals;
         my %has-one{Mu};
+        # TODO: make it before creating transaction
+        die "Not possible call .^create on a defined model" if mo.defined;
 
         for %orig-pars.kv -> $name, $val {
             my \attr = model.^attributes.first(*.name.substr(2) eq $name);
@@ -529,6 +533,29 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
             $type.^create: |%( |%val, $id-name => $no.^id-values.head )
         }
         self.apply-row-phasers($obj, AfterCreate);
+
+        if mo.HOW.?join-on(mo) && mo.HOW.?parent(mo) {
+            my $obj;
+            my $*RED-DB = $RED-DB;
+            if !$data.elems {
+                $obj = model.^find: $filter
+            } else {
+                $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);
+                $obj.^saved-on-db;
+                $obj.^clean-up;
+                $obj.^populate-ids;
+            }
+            my %should-set = |mo.^join-on(mo.^parent).should-set.Hash if mo.HOW.?join-on: mo;
+            my $p = mo.^parent;
+            my %attrs = |$p.^columns.map: { .name.substr(2) => .self }
+            for %should-set.kv -> $name, $value {
+                $p.^set-attr: $name, $value;
+                $p.^set-dirty: %attrs{ $name };
+            }
+            $p.^save;
+            return $obj
+        }
+
         return-rw Proxy.new:
                 STORE => -> | {
                     die X::Assignment::RO.new(value => $obj)
