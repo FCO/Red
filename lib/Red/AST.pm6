@@ -34,24 +34,44 @@ method Bool(--> Bool()) {
 
 method Str { self }
 
+#| Find the first AST node folowing the rule
+method transpose-first(::?CLASS:D: &func) {
+    self.transpose-grep(&func).head
+}
+
+#| Find AST nodes folowing the rule
+method transpose-grep(::?CLASS:D: &func) {
+    gather {
+        self.transpose: -> $node {
+            take $node if func $node;
+            True
+        }
+    }
+}
+
 #| Transposes the AST tree running the function.
 method transpose(::?CLASS:D: &func) {
+    return unless func self;
     die self unless self.^can: "args";
     for self.args.grep: Red::AST -> $arg {
-        .transpose: &func with $arg
+        next without $arg;
+        .transpose: &func with $arg;
     }
-    func self;
 }
 
 #| Returns a list with all the tables used on the AST
 method tables(::?CLASS:D:) {
-    my @tables;
-    self.transpose: {
-        if .^name eq "Red::Column" {
-            @tables.push: .class
-        }
-    }
-    |@tables.grep(-> \v { v !=:= Nil }).unique
+    |self.transpose-grep({ .^name eq "Red::Column" })».class.grep(-> \v { v !=:= Nil }).unique;
+}
+
+method replace(::?CLASS:D: Red::AST \n, Red::AST $s) {
+    self eqv n
+        ?? $s
+        !! self.clone:
+            |self.^attributes.map({
+                my \val = .get_value(self);
+                .name.substr(2) => val ~~ Red::AST && val.DEFINITE ?? (val.?replace(n, $s) // val) !! val
+            }).Hash
 }
 
 multi method WHICH(::?CLASS:D:) {

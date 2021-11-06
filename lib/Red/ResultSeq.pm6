@@ -166,56 +166,19 @@ multi method create-map(\SELF: Red::Model $model is copy, :filter(&)) is hidden-
     self but role :: { method of { $model } }
 }
 multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden-from-sql-commenting {
-    my \Meta  = $of.^orig.HOW.WHAT;
-    my \model = Meta.new(:table(SELF.of.^table)).new_type: :name(SELF.of.^name);
-    model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, SELF.of.^table;
-    my $attr-name = 'data_0';
-    my @table-list;
-    my @attrs = do for @ret {
-        @table-list.push: |.tables;
-        my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;
-        my $col-name = $_ ~~ Red::Column ?? .name !! $name;
-        my $attr  = Attribute.new:
-            :name("\$!$name"),
-            :package(model),
-            :type(.returns ~~ Any && .returns !~~ Nil ?? .returns !! Any),
-            :has_accessor,
-            :build(.returns),
-        ;
-        my %data = %(
-            :name-alias($col-name),
-            :name($col-name),
-            :attr-name($name),
-            :type(.returns.^name),
-            :$attr,
-            :model(.tables.head),
-            :class(model),
-        	|(do if $_ ~~ Red::Column {
-                :inflate(.inflate),
-                :deflate(.deflate),
-            } else {
-                :computation($_)
-            })
-        );
-        $attr does Red::Attr::Column(%data);
-        model.^add_attribute: $attr;
-        model.^add_multi_method: $name, my method (Mu:D:) { SELF.get_value: "\$!$name" }
-        $attr
-    }
-    model.^add_method: "no-table", my method no-table { True }
-    model.^add_method: "orig-result-seq", my method orig-result-seq { SELF }
-    model.^compose;
-    model.^add-column: $_ for @attrs;
+    my @*table-list = |@.table-list, self.of;
+    my \model = SELF.of.^specialise(|@ret);
     my role CMModel [Mu:U \m] {
         has &.last-filter = &filter;
         has $.last-rs  = SELF;
         method of { model }
     }
+    @*table-list .= unique;
     SELF.clone(
         :chain($!chain.clone:
             :$.filter,
-            :post{ my @data = do for @attrs -> $attr { ."{$attr.name.substr: 2}"() }; @data == 1 ?? @data.head !! |@data },
-            :table-list[(|@.table-list, self.of, |@table-list).unique],
+            :post{ my @data = do for model.^columns -> $attr { ."{$attr.name.substr: 2}"() }; @data == 1 ?? @data.head !! |@data },
+            :@*table-list,
             |%_
         )
     ) but CMModel[model]
@@ -373,7 +336,7 @@ method save(::?CLASS:D:) is hidden-from-sql-commenting {
     my @*UPDATE;
     die "You should use a map updating value(s) before saving" unless $.of.^can: "orig-result-seq";
     $.of.orig-result-seq.of.^apply-row-phasers(BeforeUpdate);
-    get-RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values[|@!update, |@*UPDATE], :filter($.filter)
+    get-RED-DB.execute: Red::AST::Update.new: :model($.table-list.head), :values[|@!update, |@*UPDATE], :filter($.filter)
 }
 
 #| unifies 2 ResultSeqs

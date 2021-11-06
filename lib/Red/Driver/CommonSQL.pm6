@@ -379,7 +379,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
         }
     }).join: ", ";
     $sel ~= ", $pre" if $pre;
-    my @t = (|$ast.tables, $ast.of, |@pre-join).grep({ not .?no-table }).unique.map({ .^tables });
+    my @t = (|$ast.tables, $ast.of, |@pre-join).grep({ $_ ~~ Red::Model && not .?no-table }).unique(:as{ .WHICH }).map({ .^tables });
     my %t{Red::Model} = @t.classify: { .head }, :as{ .tail: *-1 };
     my @join-binds;
     my $tables = %t.kv.map(-> $_, @joins {
@@ -756,11 +756,28 @@ multi method translate(Red::AST::Delete $_, $context?) {
 multi method translate(Red::AST::Update $_, $context?) {
     my @bind;
     my $str = .values.map({
-        my ($c, @c) := do given self.translate: .&ast-value, "update" { .key, .value }
+        my ($c, @c) := do given self.translate: .&ast-value, "update" { .key, .value };
         @bind.append: @c;
         $c
     }).join(",\n").indent: 3;
-    my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };
+
+    my $into   = .into;
+    my $model  = .model;
+    my $filter = .filter;
+
+    with $filter {
+        die "Internal error" unless $model ~~ Red::Model;
+        if .tables.any ~~ -> Any $_ { .HOW.?join-on($_) } {
+            $filter = Red::AST::In.new:
+                $model.^id».column.head,
+                Red::AST::Select.new:
+                    :of($model.^specialise: $model.^id».column),
+                    :$filter
+        }
+    }
+
+    my ($wstr, @wbind) := do given self.translate: $filter { .key, .value };
+
     qq:to/END/ => [|@bind, |@wbind];
     UPDATE {
         .into

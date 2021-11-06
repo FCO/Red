@@ -13,7 +13,7 @@ method returns { Red::Model }
 method args { flat @!selects>>.args }
 
 method tables(::?CLASS:D:) {
-    (flat @!selects>>.tables).unique
+    (flat @!selects».?tables).grep(-> \v { v !=:= Nil }).unique
 }
 method find-column-name {}
 
