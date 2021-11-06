@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::AST::Update 71.4%</h1>
+				<h1>Red::AST::Update 73.3%</h1>
 			</div>
 		</div>
 	</div>
@@ -57,9 +57,10 @@
 <span class="coverage-no">#| Represents an update operation</span>
 <span class="coverage-green">unit class Red::AST::Update does Red::AST;</span>
 <span class="coverage-no"></span>
-<span class="coverage-no">has Str      $.into;</span>
-<span class="coverage-no">has Pair     @.values;</span>
-<span class="coverage-red">has Red::AST $.filter;</span>
+<span class="coverage-no">has Red::Model $.model;</span>
+<span class="coverage-green">has Str        $.into = $!model.^table;</span>
+<span class="coverage-no">has Pair       @.values;</span>
+<span class="coverage-red">has Red::AST   $.filter;</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">method returns { Nil }</span>
 <span class="coverage-red">method args { |@!values, $.filter }</span>
@@ -74,7 +75,7 @@
 <span class="coverage-green">        X::Red::UpdateNoId.new.throw without $filter;</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">        self.bless:</span>
-<span class="coverage-no">                :into(.^table),</span>
+<span class="coverage-no">                :model($_),</span>
 <span class="coverage-no">                :$filter,</span>
 <span class="coverage-no">                :@values</span>
 <span class="coverage-no">    }</span>

@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::ResultSeq 83.6%</h1>
+				<h1>Red::ResultSeq 83.4%</h1>
 			</div>
 		</div>
 	</div>
@@ -216,56 +216,19 @@
 <span class="coverage-green">    self but role :: { method of { $model } }</span>
 <span class="coverage-no">}</span>
 <span class="coverage-green">multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&amp;filter) is hidden-from-sql-commenting {</span>
-<span class="coverage-green">    my \Meta  = $of.^orig.HOW.WHAT;</span>
-<span class="coverage-green">    my \model = Meta.new(:table(SELF.of.^table)).new_type: :name(SELF.of.^name);</span>
-<span class="coverage-green">    model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, SELF.of.^table;</span>
-<span class="coverage-green">    my $attr-name = 'data_0';</span>
-<span class="coverage-no">    my @table-list;</span>
-<span class="coverage-green">    my @attrs = do for @ret {</span>
-<span class="coverage-green">        @table-list.push: |.tables;</span>
-<span class="coverage-green">        my $name = $.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;</span>
-<span class="coverage-green">        my $col-name = $_ ~~ Red::Column ?? .name !! $name;</span>
-<span class="coverage-green">        my $attr  = Attribute.new:</span>
-<span class="coverage-no">            :name(&quot;\$!$name&quot;),</span>
-<span class="coverage-no">            :package(model),</span>
-<span class="coverage-no">            :type(.returns ~~ Any &amp;&amp; .returns !~~ Nil ?? .returns !! Any),</span>
-<span class="coverage-no">            :has_accessor,</span>
-<span class="coverage-no">            :build(.returns),</span>
-<span class="coverage-no">        ;</span>
-<span class="coverage-green">        my %data = %(</span>
-<span class="coverage-no">            :name-alias($col-name),</span>
-<span class="coverage-no">            :name($col-name),</span>
-<span class="coverage-no">            :attr-name($name),</span>
-<span class="coverage-no">            :type(.returns.^name),</span>
-<span class="coverage-no">            :$attr,</span>
-<span class="coverage-no">            :model(.tables.head),</span>
-<span class="coverage-no">            :class(model),</span>
-<span class="coverage-green">        	|(do if $_ ~~ Red::Column {</span>
-<span class="coverage-green">                :inflate(.inflate),</span>
-<span class="coverage-no">                :deflate(.deflate),</span>
-<span class="coverage-red">            } else {</span>
-<span class="coverage-green">                :computation($_)</span>
-<span class="coverage-no">            })</span>
-<span class="coverage-no">        );</span>
-<span class="coverage-green">        $attr does Red::Attr::Column(%data);</span>
-<span class="coverage-green">        model.^add_attribute: $attr;</span>
-<span class="coverage-green">        model.^add_multi_method: $name, my method (Mu:D:) { SELF.get_value: &quot;\$!$name&quot; }</span>
-<span class="coverage-red">        $attr</span>
-<span class="coverage-no">    }</span>
-<span class="coverage-green">    model.^add_method: &quot;no-table&quot;, my method no-table { True }</span>
-<span class="coverage-green">    model.^add_method: &quot;orig-result-seq&quot;, my method orig-result-seq { SELF }</span>
-<span class="coverage-green">    model.^compose;</span>
-<span class="coverage-green">    model.^add-column: $_ for @attrs;</span>
+<span class="coverage-green">    my @*table-list = |@.table-list, self.of;</span>
+<span class="coverage-green">    my \model = SELF.of.^specialise(|@ret);</span>
 <span class="coverage-green">    my role CMModel [Mu:U \m] {</span>
 <span class="coverage-green">        has &amp;.last-filter = &amp;filter;</span>
 <span class="coverage-green">        has $.last-rs  = SELF;</span>
 <span class="coverage-green">        method of { model }</span>
 <span class="coverage-no">    }</span>
+<span class="coverage-green">    @*table-list .= unique;</span>
 <span class="coverage-green">    SELF.clone(</span>
 <span class="coverage-no">        :chain($!chain.clone:</span>
 <span class="coverage-no">            :$.filter,</span>
-<span class="coverage-green">            :post{ my @data = do for @attrs -&gt; $attr { .&quot;{$attr.name.substr: 2}&quot;() }; @data == 1 ?? @data.head !! |@data },</span>
-<span class="coverage-red">            :table-list[(|@.table-list, self.of, |@table-list).unique],</span>
+<span class="coverage-green">            :post{ my @data = do for model.^columns -&gt; $attr { .&quot;{$attr.name.substr: 2}&quot;() }; @data == 1 ?? @data.head !! |@data },</span>
+<span class="coverage-no">            :@*table-list,</span>
 <span class="coverage-no">            |%_</span>
 <span class="coverage-no">        )</span>
 <span class="coverage-no">    ) but CMModel[model]</span>
@@ -423,7 +386,7 @@
 <span class="coverage-green">    my @*UPDATE;</span>
 <span class="coverage-green">    die &quot;You should use a map updating value(s) before saving&quot; unless $.of.^can: &quot;orig-result-seq&quot;;</span>
 <span class="coverage-green">    $.of.orig-result-seq.of.^apply-row-phasers(BeforeUpdate);</span>
-<span class="coverage-green">    get-RED-DB.execute: Red::AST::Update.new: :into($.table-list.head.^table), :values[|@!update, |@*UPDATE], :filter($.filter)</span>
+<span class="coverage-green">    get-RED-DB.execute: Red::AST::Update.new: :model($.table-list.head), :values[|@!update, |@*UPDATE], :filter($.filter)</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| unifies 2 ResultSeqs</span>

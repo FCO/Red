@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::SQLite::SQLiteMaster 36.3%</h1>
+				<h1>Red::Driver::SQLite::SQLiteMaster 33.3%</h1>
 			</div>
 		</div>
 	</div>
@@ -58,7 +58,9 @@
 <span class="coverage-no">has Str      $.sql       is column;</span>
 <span class="coverage-green">has ::?CLASS @.children  is relationship{ .table }</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">method tables(::?CLASS:U:)   { self.^all.grep: *.is-table }</span>
+<span class="coverage-red">method tables(::?CLASS:U:)   {</span>
+<span class="coverage-red">    self.^all.grep: *.is-table</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method indexes(::?CLASS:U:) { ::?CLASS.^all.grep: *.is-index }</span>
 <span class="coverage-red">multi method indexes(::?CLASS:D:) { self.children.grep: *.is-index }</span>

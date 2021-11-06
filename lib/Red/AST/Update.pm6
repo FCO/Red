@@ -7,9 +7,10 @@ use X::Red::Exceptions;
 #| Represents an update operation
 unit class Red::AST::Update does Red::AST;
 
-has Str      $.into;
-has Pair     @.values;
-has Red::AST $.filter;
+has Red::Model $.model;
+has Str        $.into = $!model.^table;
+has Pair       @.values;
+has Red::AST   $.filter;
 
 method returns { Nil }
 method args { |@!values, $.filter }
@@ -24,7 +25,7 @@ multi method new(Red::Model $model) {
         X::Red::UpdateNoId.new.throw without $filter;
 
         self.bless:
-                :into(.^table),
+                :model($_),
                 :$filter,
                 :@values
     }

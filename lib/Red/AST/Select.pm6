@@ -33,7 +33,7 @@ method gist {
 }
 
 method tables(::?CLASS:D:) {
-    |(|@!table-list, |(.tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique
+    |(|@!table-list, |(.?tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique
 }
 method find-column-name {}
 

@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: MetamodelX::Red::Specialisable</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>MetamodelX::Red::Specialisable 92.3%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST::MultiSelect;</span>
+<span class="coverage-no">use Red::Column;</span>
+<span class="coverage-no">use Red::Attr::Column;</span>
+<span class="coverage-no">use Red::HiddenFromSQLCommenting;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">unit role MetamodelX::Red::Specialisable;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method specialise($self, +@ret where .all ~~ Red::AST) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    my \Meta  = $self.^orig.HOW.WHAT;</span>
+<span class="coverage-green">    my \model = Meta.new(:table($self.^table)).new_type: :name($self.^name);</span>
+<span class="coverage-green">    model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, $self.^table;</span>
+<span class="coverage-green">    my $attr-name = 'data_0';</span>
+<span class="coverage-green">    my @attrs = do for @ret {</span>
+<span class="coverage-green">        @*table-list.push: |.tables if @*table-list.defined;</span>
+<span class="coverage-green">        my $name = $self.^all.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;</span>
+<span class="coverage-green">        my $col-name = $_ ~~ Red::Column ?? .name !! $name;</span>
+<span class="coverage-green">        my $attr  = Attribute.new:</span>
+<span class="coverage-no">            :name(&quot;\$!$name&quot;),</span>
+<span class="coverage-no">            :package(model),</span>
+<span class="coverage-no">            :type(.returns ~~ Any &amp;&amp; .returns !~~ Nil ?? .returns !! Any),</span>
+<span class="coverage-no">            :has_accessor,</span>
+<span class="coverage-no">            :build(.returns),</span>
+<span class="coverage-no">        ;</span>
+<span class="coverage-green">        my %data = %(</span>
+<span class="coverage-no">            :name-alias($col-name),</span>
+<span class="coverage-no">            :name($col-name),</span>
+<span class="coverage-no">            :attr-name($name),</span>
+<span class="coverage-no">            :type(.returns.^name),</span>
+<span class="coverage-no">            :$attr,</span>
+<span class="coverage-no">            :model(.tables.head),</span>
+<span class="coverage-no">            :class(model),</span>
+<span class="coverage-green">        	|(do if $_ ~~ Red::Column {</span>
+<span class="coverage-green">                :inflate(.inflate),</span>
+<span class="coverage-no">                :deflate(.deflate),</span>
+<span class="coverage-red">            } else {</span>
+<span class="coverage-green">                :computation($_)</span>
+<span class="coverage-no">            })</span>
+<span class="coverage-no">        );</span>
+<span class="coverage-green">        $attr does Red::Attr::Column(%data);</span>
+<span class="coverage-green">        model.^add_attribute: $attr;</span>
+<span class="coverage-green">        model.^add_multi_method: $name, my method (Mu:D:) { $self.^all.get_value: &quot;\$!$name&quot; }</span>
+<span class="coverage-red">        $attr</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    model.^add_method: &quot;no-table&quot;, my method no-table { True }</span>
+<span class="coverage-green">    model.^add_method: &quot;orig-result-seq&quot;, my method orig-result-seq { $self.^all }</span>
+<span class="coverage-green">    model.^compose;</span>
+<span class="coverage-green">    model.^add-column: $_ for @attrs;</span>
+<span class="coverage-green">    model</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

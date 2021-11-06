@@ -21,6 +21,26 @@ method Bool() returns Bool
 
 If inside of a block for ResultSeq mothods throws a control exception and populates all possibilities
 
+### method transpose-first
+
+```raku
+method transpose-first(
+    &func
+) returns Mu
+```
+
+Find the first AST node folowing the rule
+
+### method transpose-grep
+
+```raku
+method transpose-grep(
+    &func
+) returns Mu
+```
+
+Find AST nodes folowing the rule
+
 ### method transpose
 
 ```raku
