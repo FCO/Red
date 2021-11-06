@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::AST 74%</h1>
+				<h1>Red::AST 59.4%</h1>
 			</div>
 		</div>
 	</div>
@@ -84,24 +84,44 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">method Str { self }</span>
 <span class="coverage-no"></span>
+<span class="coverage-no">#| Find the first AST node folowing the rule</span>
+<span class="coverage-red">method transpose-first(::?CLASS:D: &amp;func) {</span>
+<span class="coverage-red">    self.transpose-grep(&amp;func).head</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Find AST nodes folowing the rule</span>
+<span class="coverage-green">method transpose-grep(::?CLASS:D: &amp;func) {</span>
+<span class="coverage-green">    gather {</span>
+<span class="coverage-green">        self.transpose: -&gt; $node {</span>
+<span class="coverage-green">            take $node if func $node;</span>
+<span class="coverage-red">            True</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
 <span class="coverage-no">#| Transposes the AST tree running the function.</span>
 <span class="coverage-green">method transpose(::?CLASS:D: &amp;func) {</span>
+<span class="coverage-green">    return unless func self;</span>
 <span class="coverage-green">    die self unless self.^can: &quot;args&quot;;</span>
 <span class="coverage-green">    for self.args.grep: Red::AST -&gt; $arg {</span>
-<span class="coverage-green">        .transpose: &amp;func with $arg</span>
+<span class="coverage-green">        next without $arg;</span>
+<span class="coverage-green">        .transpose: &amp;func with $arg;</span>
 <span class="coverage-no">    }</span>
-<span class="coverage-green">    func self;</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Returns a list with all the tables used on the AST</span>
 <span class="coverage-green">method tables(::?CLASS:D:) {</span>
-<span class="coverage-no">    my @tables;</span>
-<span class="coverage-green">    self.transpose: {</span>
-<span class="coverage-green">        if .^name eq &quot;Red::Column&quot; {</span>
-<span class="coverage-green">            @tables.push: .class</span>
-<span class="coverage-no">        }</span>
-<span class="coverage-no">    }</span>
-<span class="coverage-green">    |@tables.grep(-&gt; \v { v !=:= Nil }).unique</span>
+<span class="coverage-green">    |self.transpose-grep({ .^name eq &quot;Red::Column&quot; })».class.grep(-&gt; \v { v !=:= Nil }).unique;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method replace(::?CLASS:D: Red::AST \n, Red::AST $s) {</span>
+<span class="coverage-red">    self eqv n</span>
+<span class="coverage-no">        ?? $s</span>
+<span class="coverage-no">        !! self.clone:</span>
+<span class="coverage-red">            |self.^attributes.map({</span>
+<span class="coverage-red">                my \val = .get_value(self);</span>
+<span class="coverage-red">                .name.substr(2) =&gt; val ~~ Red::AST &amp;&amp; val.DEFINITE ?? (val.?replace(n, $s) // val) !! val</span>
+<span class="coverage-no">            }).Hash</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method WHICH(::?CLASS:D:) {</span>

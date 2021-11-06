@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::CommonSQL 56.9%</h1>
+				<h1>Red::Driver::CommonSQL 57.6%</h1>
 			</div>
 		</div>
 	</div>
@@ -429,7 +429,7 @@
 <span class="coverage-no">        }</span>
 <span class="coverage-no">    }).join: &quot;, &quot;;</span>
 <span class="coverage-green">    $sel ~= &quot;, $pre&quot; if $pre;</span>
-<span class="coverage-green">    my @t = (|$ast.tables, $ast.of, |@pre-join).grep({ not .?no-table }).unique.map({ .^tables });</span>
+<span class="coverage-green">    my @t = (|$ast.tables, $ast.of, |@pre-join).grep({ $_ ~~ Red::Model &amp;&amp; not .?no-table }).unique(:as{ .WHICH }).map({ .^tables });</span>
 <span class="coverage-green">    my %t{Red::Model} = @t.classify: { .head }, :as{ .tail: *-1 };</span>
 <span class="coverage-no">    my @join-binds;</span>
 <span class="coverage-green">    my $tables = %t.kv.map(-&gt; $_, @joins {</span>
@@ -806,11 +806,28 @@
 <span class="coverage-green">multi method translate(Red::AST::Update $_, $context?) {</span>
 <span class="coverage-no">    my @bind;</span>
 <span class="coverage-green">    my $str = .values.map({</span>
-<span class="coverage-green">        my ($c, @c) := do given self.translate: .&amp;ast-value, &quot;update&quot; { .key, .value }</span>
+<span class="coverage-green">        my ($c, @c) := do given self.translate: .&amp;ast-value, &quot;update&quot; { .key, .value };</span>
 <span class="coverage-green">        @bind.append: @c;</span>
 <span class="coverage-red">        $c</span>
 <span class="coverage-no">    }).join(&quot;,\n&quot;).indent: 3;</span>
-<span class="coverage-green">    my ($wstr, @wbind) := do given self.translate: .filter { .key, .value };</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    my $into   = .into;</span>
+<span class="coverage-green">    my $model  = .model;</span>
+<span class="coverage-green">    my $filter = .filter;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    with $filter {</span>
+<span class="coverage-green">        die &quot;Internal error&quot; unless $model ~~ Red::Model;</span>
+<span class="coverage-green">        if .tables.any ~~ -&gt; Any $_ { .HOW.?join-on($_) } {</span>
+<span class="coverage-green">            $filter = Red::AST::In.new:</span>
+<span class="coverage-no">                $model.^id».column.head,</span>
+<span class="coverage-no">                Red::AST::Select.new:</span>
+<span class="coverage-no">                    :of($model.^specialise: $model.^id».column),</span>
+<span class="coverage-no">                    :$filter</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">    my ($wstr, @wbind) := do given self.translate: $filter { .key, .value };</span>
+<span class="coverage-no"></span>
 <span class="coverage-green">    qq:to/END/ =&gt; [|@bind, |@wbind];</span>
 <span class="coverage-green">    UPDATE {</span>
 <span class="coverage-green">        .into</span>

@@ -63,7 +63,7 @@
 <span class="coverage-red">method args { flat @!selects&gt;&gt;.args }</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">method tables(::?CLASS:D:) {</span>
-<span class="coverage-red">    (flat @!selects&gt;&gt;.tables).unique</span>
+<span class="coverage-red">    (flat @!selects».?tables).grep(-&gt; \v { v !=:= Nil }).unique</span>
 <span class="coverage-no">}</span>
 <span class="coverage-red">method find-column-name {}</span>
 <span class="coverage-no"></span>

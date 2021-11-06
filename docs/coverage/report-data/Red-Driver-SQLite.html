@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::SQLite 75.6%</h1>
+				<h1>Red::Driver::SQLite 79.7%</h1>
 			</div>
 		</div>
 	</div>
@@ -136,9 +136,9 @@
 <span class="coverage-green">    &quot;($val == 0 OR $val IS NULL)&quot; =&gt; @bind</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {</span>
-<span class="coverage-red">    my ($val, @bind) := do given self.translate: .value, $context { .key, .value }</span>
-<span class="coverage-red">    &quot;($val &lt;&gt; 0 AND $val IS NOT NULL)&quot; =&gt; @bind</span>
+<span class="coverage-green">multi method translate(Red::AST::So $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {</span>
+<span class="coverage-green">    my ($val, @bind) := do given self.translate: .value, $context { .key, .value }</span>
+<span class="coverage-green">    &quot;($val &lt;&gt; 0 AND $val IS NOT NULL)&quot; =&gt; @bind</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type ~~ Str }, $context?) {</span>
