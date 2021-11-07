@@ -33,6 +33,55 @@ subtest "Create on has-one", {
     is $ble.bla.gist, $bla.gist;
 }
 
+subtest "belogs-to using types", {
+    model Blo { ... }
+    model Bli {
+        has UInt $.id      is serial;
+        has Str  $.value   is column;
+        has Blo  @.blos    is relationship(*.bli-id, :model(Blo));
+        has Blo  $.one-blo is relationship(*.bli-id, :model(Blo), :has-one);
+    }
+
+    model Blo {
+        has UInt $.id     is serial;
+        has Str  $.value  is column;
+        has UInt $.bli-id is referencing(*.id, :model(Bli));
+        has Bli  $.bli    is relationship(*.bli-id, :model(Bli));
+    }
+
+    schema(Bli, Blo).create;
+
+    my $blo = Blo.^create(:value<blo>);
+    my $bli = $blo.bli.^create: :value<bli>;
+    is $bli.blos.head.gist, $blo.gist;
+    is $blo.bli.gist, $bli.gist;
+}
+
+# TODO: make this work
+#subtest "belogs-to using types not using it on attrs", {
+#    model Blu { ... }
+#    model Blb {
+#        has UInt $.id      is serial;
+#        has Str  $.value   is column;
+#        has      @.blus    is relationship(*.blb-id, :model(Blu));
+#        has      $.one-blu is relationship(*.blb-id, :model(Blu), :has-one);
+#    }
+#
+#    model Blu {
+#        has UInt $.id     is serial;
+#        has Str  $.value  is column;
+#        has UInt $.blb-id is referencing(*.id, :model(Blb));
+#        has      $.blb    is relationship(*.blb-id, :model(Blb));
+#    }
+#
+#    schema(Blb, Blu).create;
+#
+#    my $blu = Blu.^create(:value<blu>);
+#    my $blb = $blu.blb.^create: :value<blb>;
+#    is $blb.blus.head.gist, $blu.gist;
+#    is $blu.blb.gist, $blb.gist;
+#}
+
 subtest "Simple create and fk id", {
     my $bla = Bla.^create: :value<test1>;
     my $ble = Ble.^create: :value<test2>, :bla-id($bla.id);
@@ -114,4 +163,5 @@ subtest "Simple create and creating by array", {
     isa-ok    $bla.bles,                    Ble::ResultSeq;
     is        $bla.bles.map(*.value),       <test3 test4>;
 };
+
 done-testing;

@@ -15,7 +15,7 @@ unit role Red::Attr::Relationship[
     Red::Model  :$model-type,
 ];
 
-has Mu:U $!type;
+#has Mu:U $!type;
 
 has Bool $.has-lazy-relationship = ?$model;
 

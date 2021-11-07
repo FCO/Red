@@ -547,7 +547,6 @@ multi method create(\mo where *.DEFINITE, *%orig-pars, :$with where not .defined
                 $obj.^clean-up;
                 $obj.^populate-ids;
             }
-
             my %should-set = |mo.^join-on(mo.^parent).should-set.Hash if mo.HOW.?join-on: mo;
             my $p = mo.^parent;
             my %attrs = |$p.^columns.map: { .name.substr(2) => .self }

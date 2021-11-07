@@ -163,7 +163,7 @@ method comment { .Str with self.attr.WHY }
 
 #| Returns a function that will return a column that is referenced by this column
 method references(--> Callable) is rw {
-    &!actual-references = do {
+    &!actual-references //= do {
         if &!references {
             if $!model-name {
                 ReferencesProxy.new(:&!references, :$!model-name, :$!require, :$!model-type);
