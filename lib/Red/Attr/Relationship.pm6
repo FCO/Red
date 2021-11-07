@@ -15,7 +15,7 @@ unit role Red::Attr::Relationship[
     Red::Model  :$model-type,
 ];
 
-has Mu:U $!type;
+#has Mu:U $!type;
 
 has Bool $.has-lazy-relationship = ?$model;
 
@@ -110,8 +110,8 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
                     Red::AST::AND.new: $left, $right
                 }))
             }
-	    return ret.head if type !~~ Positional || attr.has-one;
-	    ret
+            return ret.head if type !~~ Positional || attr.has-one;
+            ret
         },
         STORE => method ($value where type) {
             die X::Assignment::RO.new(value => attr.type) unless attr.rw;
@@ -137,7 +137,7 @@ method relationship-ast($type = Nil) is hidden-from-sql-commenting {
     my \type = self.relationship-argument-type;
     my @col1 = |rel1 type;
     @col1.map({
-        Red::AST::Eq.new: $_, .ref: $type
+        Red::AST::Eq.new: $_, ast-value .ref: $type
     }).reduce: -> $agg, $i {
         Red::AST::AND.new: $agg, $i
     }
