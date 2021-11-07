@@ -139,7 +139,9 @@ class ReferencesProxy does Callable {
     }
 
     method CALL-ME($alias = Nil) {
-        if &!references {
+        do if $alias.DEFINITE {
+            &!references.($alias)
+        } elsif &!references {
             my $model = self.model($alias);
             my $ret = &!references.($model);
             if $ret ~~ Red::Column && $ret.class.^name eq '$?CLASS' {
@@ -161,7 +163,7 @@ method comment { .Str with self.attr.WHY }
 
 #| Returns a function that will return a column that is referenced by this column
 method references(--> Callable) is rw {
-    &!actual-references //= do {
+    &!actual-references = do {
         if &!references {
             if $!model-name {
                 ReferencesProxy.new(:&!references, :$!model-name, :$!require, :$!model-type);
