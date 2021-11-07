@@ -25,6 +25,14 @@ my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=
 
 schema(Bla, Ble).drop.create;
 
+# TODO: Figure out why this test can't be the last one
+subtest "Create on has-one", {
+    my $ble = Ble.^create(:value<ble>);
+    my $bla = $ble.bla.^create: :value<bla>;
+    is $bla.bles.head.gist, $ble.gist;
+    is $ble.bla.gist, $bla.gist;
+}
+
 subtest "Simple create and fk id", {
     my $bla = Bla.^create: :value<test1>;
     my $ble = Ble.^create: :value<test2>, :bla-id($bla.id);
@@ -79,17 +87,6 @@ subtest "Simple create and calling create on Relationship", {
     is        $bla.bles.map(*.value),       <test test test>;
 };
 
-subtest "Simple create and creating by array", {
-    my $bla = Bla.^create: :value<test1>, :bles[{:value<test3>}, {:value<test4>}];
-
-    isa-ok    $bla,                         Bla;
-    is-deeply $bla,                         Bla.^load: $bla.id;
-
-    does-ok   $bla.bles,                    Red::ResultSeq;
-    isa-ok    $bla.bles,                    Ble::ResultSeq;
-    is        $bla.bles.map(*.value),       <test3 test4>;
-};
-
 subtest "Create with has-one", {
     my $bla = Bla.^create: :value<test1>, :one-ble{:value<test42>};
 
@@ -107,11 +104,14 @@ subtest "Create on transaction", {
 	is Bla.^all.grep(*.value eq "trans1").elems, 0
 };
 
-subtest "Create on has-one", {
-    my $ble = Ble.^create(:value<ble>);
-    say $ble.bla.^join-on: $ble.bla;
-    #my $bla = $ble.bla.^create: :value<bla>;
-    #is $bla.bles.head, $ble
-}
+subtest "Simple create and creating by array", {
+    my $bla = Bla.^create: :value<test1>, :bles[{:value<test3>}, {:value<test4>}];
 
+    isa-ok    $bla,                         Bla;
+    is-deeply $bla,                         Bla.^load: $bla.id;
+
+    does-ok   $bla.bles,                    Red::ResultSeq;
+    isa-ok    $bla.bles,                    Ble::ResultSeq;
+    is        $bla.bles.map(*.value),       <test3 test4>;
+};
 done-testing;
