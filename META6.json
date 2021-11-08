@@ -120,6 +120,7 @@
     "Red::Type": "lib/Red/Type.pm6",
     "Red::Type::Json": "lib/Red/Type/Json.pm6",
     "Red::Utils": "lib/Red/Utils.pm6",
+    "Red::Config": "lib/Red/Config.pm6",
     "X::Red::Exceptions": "lib/X/Red/Exceptions.pm6"
   },
   "resources": [
