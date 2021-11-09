@@ -33,16 +33,14 @@ class Red:ver<0.1.52>:api<2> {
             $key => $conn.ping
         }.Map
     }
-    method exports(@experimentals) {
+    method exports(@experimentals --> Map()) {
         %Red::experimentals{$_} = True for @experimentals;
-        Map(
-            Red::Do::EXPORT::ALL::,
-            Red::Traits::EXPORT::ALL::,
-            Red::Operators::EXPORT::ALL::,
-            Red::Schema::EXPORT::ALL::,
-            ‘&database’ => &database,
-            |@experimentals.map(-> $feature { |experimental( $feature ) })
-        )
+        Red::Do::EXPORT::ALL::,
+        Red::Traits::EXPORT::ALL::,
+        Red::Operators::EXPORT::ALL::,
+        Red::Schema::EXPORT::ALL::,
+        ‘&database’ => &database,
+        |@experimentals.map(-> $feature { |experimental( $feature ) })
     }
 }
 

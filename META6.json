@@ -83,6 +83,7 @@
     "Red::Cli::Table": "lib/Red/Cli/Table.pm6",
     "Red::Column": "lib/Red/Column.pm6",
     "Red::ColumnMethods": "lib/Red/ColumnMethods.pm6",
+    "Red::Config": "lib/Red/Config.pm6",
     "Red::DB": "lib/Red/DB.pm6",
     "Red::Database": "lib/Red/Database.pm6",
     "Red::DefaultResultSeq": "lib/Red/DefaultResultSeq.pm6",
@@ -120,7 +121,6 @@
     "Red::Type": "lib/Red/Type.pm6",
     "Red::Type::Json": "lib/Red/Type/Json.pm6",
     "Red::Utils": "lib/Red/Utils.pm6",
-    "Red::Config": "lib/Red/Config.pm6",
     "X::Red::Exceptions": "lib/X/Red/Exceptions.pm6"
   },
   "resources": [

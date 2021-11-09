@@ -1,8 +1,8 @@
 use Red;
 
 my @exp;
-sub EXPORT(--> Map()) {
-    '&database' => &database,
+sub EXPORT(*@experimentals--> Map()) {
+    |Red.exports(@experimentals)
 }
 
 proto red-config(| --> Map()) is export {*}
