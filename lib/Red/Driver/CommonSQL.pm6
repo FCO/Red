@@ -750,7 +750,7 @@ multi method translate(Red::AST::Insert $_, $context?) {
 
 multi method translate(Red::AST::Delete $_, $context?) {
     my ($key, @binds) := do given self.translate(.filter) { .key, .value }
-    "DELETE FROM { .from }\n{ "WHERE { $key }" }" => @binds
+    "DELETE FROM { .from }{ "\nWHERE { $key }" if $key }" => @binds
 }
 
 multi method translate(Red::AST::Update $_, $context?) {

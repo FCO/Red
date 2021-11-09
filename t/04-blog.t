@@ -69,4 +69,14 @@ isa-ok $p.posts.head.created, DateTime;
 
 is-deeply $p.posts.map(*.tags).head, set <bla ble>;
 
+Post.^create: :title<asdf>, :body<zxcv>;
+is Post.^all.elems, 2;
+lives-ok { Post.^delete }
+is Post.^all.elems, 0;
+
+Post.^create: :title<asdf>, :body<zxcv>;
+is Post.^all.elems, 1;
+lives-ok { Post.^all.delete }
+is Post.^all.elems, 0;
+
 done-testing
