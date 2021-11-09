@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::ResultSeq 83.4%</h1>
+				<h1>Red::ResultSeq 84.9%</h1>
 			</div>
 		</div>
 	</div>
@@ -375,9 +375,9 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Deletes every row on that ResultSeq</span>
-<span class="coverage-red">method delete(::?CLASS:D:) is hidden-from-sql-commenting {</span>
-<span class="coverage-red">    self.create-comment-to-caller;</span>
-<span class="coverage-red">    get-RED-DB.execute: Red::AST::Delete.new: $.of, $.filter</span>
+<span class="coverage-green">method delete(::?CLASS:D:) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    self.create-comment-to-caller;</span>
+<span class="coverage-green">    get-RED-DB.execute: Red::AST::Delete.new: $.of, $.filter</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Saves any change on any element of that ResultSet</span>

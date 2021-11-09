@@ -800,7 +800,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Delete $_, $context?) {</span>
 <span class="coverage-green">    my ($key, @binds) := do given self.translate(.filter) { .key, .value }</span>
-<span class="coverage-green">    &quot;DELETE FROM { .from }\n{ &quot;WHERE { $key }&quot; }&quot; =&gt; @binds</span>
+<span class="coverage-green">    &quot;DELETE FROM { .from }{ &quot;\nWHERE { $key }&quot; if $key }&quot; =&gt; @binds</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Update $_, $context?) {</span>
