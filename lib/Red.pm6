@@ -33,6 +33,15 @@ class Red:ver<0.1.52>:api<2> {
             $key => $conn.ping
         }.Map
     }
+    method exports(@experimentals --> Map()) {
+        %Red::experimentals{$_} = True for @experimentals;
+        Red::Do::EXPORT::ALL::,
+        Red::Traits::EXPORT::ALL::,
+        Red::Operators::EXPORT::ALL::,
+        Red::Schema::EXPORT::ALL::,
+        ‘&database’ => &database,
+        |@experimentals.map(-> $feature { |experimental( $feature ) })
+    }
 }
 
 BEGIN {
@@ -117,15 +126,7 @@ multi EXPORT(+@experimentals) {
     	#} else {
     	#        @experimentals .= grep: { $_ ne $no }
     	#}
-    %Red::experimentals{$_} = True for @experimentals;
-    Map(
-        Red::Do::EXPORT::ALL::,
-        Red::Traits::EXPORT::ALL::,
-        Red::Operators::EXPORT::ALL::,
-        Red::Schema::EXPORT::ALL::,
-        ‘&database’ => &database,
-        |@experimentals.map(-> $feature { |experimental( $feature ) })
-    )
+    Red.exports(@experimentals)
 }
 
 =begin pod
