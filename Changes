@@ -4,6 +4,7 @@ Revision history for Red
     - Separate the Model generation for changing attributes
     - Make join on update use subselect
     - Teaching AST new dance moves (.replace)
+    - Create Red::Config
 
 0.1.52  2021-10-22T21:33:53+01:00
     - Fix usage of parameterized roles
