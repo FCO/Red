@@ -14,7 +14,7 @@ has Str $!password;
 has Str $!host;
 has Int $!port;
 has Str $!dbname;
-has DB::Pg $!dbh;
+has DB::Pg $.dbh;
 
 
 method schema-reader {}
@@ -33,9 +33,8 @@ submethod TWEAK() {
 }
 
 method new-connection {
-    self.WHAT.new: |self.^attributes.grep( *.name ne '$!dbh').map({ .name.substr(2) => .get_value: self }).Hash
+    self.WHAT.new: |self.^attributes.grep( *.name ne '$!dbh').map({ .name.substr(2) => .get_value: self }).Hash, dbh => $.dbh
 }
-
 
 method wildcard { "\${ ++$*bind-counter }" }
 
