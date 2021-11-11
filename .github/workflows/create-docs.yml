@@ -1,6 +1,8 @@
 name: create-docs
 on:
-  push
+  push:
+    branches:
+      - master
 jobs:
   perl6:
     runs-on: ubuntu-latest
