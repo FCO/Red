@@ -443,12 +443,12 @@ multi method save($obj, :$with where not .defined) {
     }
 }
 
-multi method create(Red::Driver :$with!, |c) is hidden-from-backtrace {
+multi method create($, Red::Driver :$with!, |c) is hidden-from-backtrace {
     my $*RED-DB = $with;
     self.create: |c
 }
 
-multi method create(Str :$with!, |c) is hidden-from-backtrace {
+multi method create($, Str :$with!, |c) is hidden-from-backtrace {
     self.create: :with(%GLOBAL::RED-DEFAULT-DRIVERS{$with}), |c
 }
 
@@ -458,9 +458,9 @@ multi method create(Str :$with!, |c) is hidden-from-backtrace {
 multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {
     my $RED-DB = get-RED-DB;
     my $trans  = so $*RED-TRANSCTION-RUNNING;
-    $RED-DB   .= begin    unless $trans;
-    KEEP $RED-DB.commit   unless $trans;
-    UNDO $RED-DB.rollback unless $trans;
+    $RED-DB   .= begin        unless $trans;
+    KEEP $RED-DB.commit       unless $trans;
+    UNDO try $RED-DB.rollback unless $trans;
     {
         my $*RED-DB = $RED-DB;
         my $*RED-TRANSCTION-RUNNING = True;
@@ -515,20 +515,33 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
                 Red::AST::Eq.new: %cols{$key}, ast-value $value
             })
                 .reduce: { Red::AST::AND.new: $^a, $^b }
-        }
+        } unless $data<>;
 
         my $no;
-        for %positionals.kv -> $name, @val {
-            FIRST $no = model.^find($filter);
-            $no."$name"().create: |$_ for @val
-        }
+        if %positionals || %has-one {
+            $no = do {
+                my $obj;
+                if !$data.elems {
+                    $obj = model.^find: $filter
+                } else {
+                    $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);
+                    $obj.^saved-on-db;
+                    $obj.^clean-up;
+                    $obj.^populate-ids;
+                }
+                $obj
+            }
+            for %positionals.kv -> $name, @val {
+                my \rs = $no."$name"();
+                rs.create: |$_ for @val;
+            }
 
-        for %has-one.kv -> %val, \attr {
-            FIRST $no //= model.^find($filter);
-            my $type = attr.relationship-model;
-            my $id-name = attr.rel.attr-name;
-            #TODO: What to do when there is more than one id???
-            $type.^create: |%( |%val, $id-name => $no.^id-values.head )
+            for %has-one.kv -> %val, \attr {
+                my $type = attr.relationship-model;
+                my $id-name = attr.rel.attr-name;
+                #TODO: What to do when there is more than one id???
+                $type.^create: |%( |%val, $id-name => $no.^id-values.head )
+            }
         }
         self.apply-row-phasers($obj, AfterCreate);
         return-rw Proxy.new:
@@ -539,7 +552,9 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
                     $ //= do {
                         my $obj;
                         my $*RED-DB = $RED-DB;
-                        if !$data.elems {
+                        if $no {
+                            $obj = $no
+                        } elsif !$data.elems {
                             $obj = model.^find: $filter
                         } else {
                             $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);
