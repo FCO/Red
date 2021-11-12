@@ -60,7 +60,13 @@ multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined)
 multi method translate(Red::AST::Insert $_, $context?) {
     my Int $*bind-counter;
     my @values = .values.grep({ .value.value.defined });
-    my @bind = @values.map: *.value.get-value;
+    # TODO: User translation
+    my @bind = @values.map: {
+        do given .value.get-value {
+            when .HOW ~~ Metamodel::EnumHOW { .value }
+            default { $_ }
+        }
+    }
     "INSERT INTO {
         self.table-name-wrapper: .into.^table
     }(\n{

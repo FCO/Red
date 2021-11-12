@@ -738,6 +738,7 @@ multi method translate(Red::AST::Unique $_, $context?) {
 multi method translate(Red::AST::Insert $_, $context?) {
     my @values = .values.grep({ .value.value.defined });
     return "INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES" => [] unless @values;
+    # TODO: Use translation
     my @bind = @values.map: *.value.get-value;
     "INSERT INTO {
         self.table-name-wrapper: .into.^table
