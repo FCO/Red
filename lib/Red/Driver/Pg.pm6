@@ -94,6 +94,13 @@ multi method translate(Red::Column $_, "column-comment") {
     (.comment ?? "COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'" !! "") => []
 }
 
+multi method translate(Red::Column $_, "column-type")           {
+    if !.auto-increment && .attr.type =:= Mu && !.type.defined {
+        return self.type-by-name("string") => []
+    }
+    (.type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_) => []
+}
+
 multi method translate(Red::AST::TableComment $_, $context?) {
     "COMMENT ON TABLE { .table } IS '{ .msg }'" => []
 }
@@ -126,12 +133,12 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
 
-multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime                    --> Str:D) {"timestamp"}
-multi method default-type-for(Red::Column $ where { .attr.type ~~ Int and .auto-increment } --> Str:D) {"serial"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)              --> Str:D) {"integer"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Bool                        --> Str:D) {"boolean"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ UUID                        --> Str:D) {"uuid"}
-multi method default-type-for(Red::Column $                                                 --> Str:D) {"varchar(255)"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime       --> Str:D) {"timestamp"}
+multi method default-type-for(Red::Column $ where .auto-increment              --> Str:D) {"serial"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> Str:D) {"integer"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> Str:D) {"boolean"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ UUID           --> Str:D) {"uuid"}
+multi method default-type-for(Red::Column $                                    --> Str:D) {"varchar(255)"}
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
 
