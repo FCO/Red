@@ -108,9 +108,15 @@ subtest "#521" => {
         has     @.bs is relationship({ .c-id }, model => "B" );
     }
 
+    schema(A, B, C).drop;
+
     A.^create-table;
     C.^create-table;
     B.^create-table;
+
+    B.^all.delete;
+    C.^all.delete;
+    A.^all.delete;
 
     my $a = A.^create( :id<FOO>, :bs[{ :c{ :d<a> }, :!d }, { :c{ :d<b> }, :!d }, { :c{ :d<c> }, :!d }, { :c{ :d<d> }, :!d }, ] );
 

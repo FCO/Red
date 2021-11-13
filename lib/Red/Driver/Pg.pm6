@@ -42,12 +42,25 @@ method wildcard { "\${ ++$*bind-counter }" }
 multi method translate(Red::Column $_, "column-auto-increment") {}
 
 multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined) {
-    my Int $*bind-counter;
-    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
+    my $bind-counter = $*bind-counter // 0;
+    {
+        my Int $*bind-counter = $bind-counter;
+        self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
+    }
 }
 multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined) {
     my Int $*bind-counter;
     self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
+}
+
+multi method translate(Red::AST::Value $_, "update-rval") {
+    self.wildcard => [
+        do given .get-value {
+            when .HOW ~~ Metamodel::EnumHOW { .value }
+            when Bool { .Int }
+            default { $_ }
+        }
+    ]
 }
 
 multi method translate(Red::AST::RowId $_, $context?) { "OID" => [] }
@@ -64,6 +77,7 @@ multi method translate(Red::AST::Insert $_, $context?) {
     my @bind = @values.map: {
         do given .value.get-value {
             when .HOW ~~ Metamodel::EnumHOW { .value }
+            when Bool { .Int }
             default { $_ }
         }
     }
