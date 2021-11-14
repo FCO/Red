@@ -109,12 +109,12 @@ multi method optimize(GeGt $left, LeLt $right, 1) {
 }
 
 #| a.b OR NOT(a.b) ==> True
-multi method optimize($left where Red::Column, $right where Red::AST::Not, 1) {
-    return ast-value True if $left eqv $right.value
+multi method optimize($left where Red::Column, $right where Red::AST::Not && $left eqv $right.value<>, 1) {
+    return ast-value True
 }
 
 #| NOT(a.b) AND a.b ==> True
-multi method optimize($left where Red::AST::Not, $right where Red::Column, 1) {
+multi method optimize($left where Red::AST::Not, $right where Red::Column && $right<> =:= $left.value<>, 1) {
     self.optimize: $right, $left, 1
 }
 
