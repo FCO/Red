@@ -69,6 +69,8 @@ is-deeply (t OR C.a), t;
 is-deeply (C.a OR t), t;
 is-deeply ((C.a) OR not (C.a)), t;
 
+is-deeply ((C.a) OR not (C.a)), ((C.a) OR not (C.a));
+
 is-deeply ((C.a > 1)  OR (C.a > 10) ), (C.a > 10);
 is-deeply ((C.a >= 1) OR (C.a > 10) ), (C.a > 10);
 is-deeply ((C.a > 1)  OR (C.a >= 10)), (C.a >= 10);
