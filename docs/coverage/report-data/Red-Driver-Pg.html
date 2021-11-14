@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::Pg 3.8%</h1>
+				<h1>Red::Driver::Pg 3.3%</h1>
 			</div>
 		</div>
 	</div>
@@ -52,6 +52,7 @@
 <span class="coverage-no">use Red::Driver;</span>
 <span class="coverage-no">use Red::Driver::CommonSQL;</span>
 <span class="coverage-no">use Red::Statement;</span>
+<span class="coverage-no">use Red::AST::Unary;</span>
 <span class="coverage-no">use Red::AST::Infixes;</span>
 <span class="coverage-no">use X::Red::Exceptions;</span>
 <span class="coverage-no">use Red::AST::TableComment;</span>
@@ -88,6 +89,30 @@
 <span class="coverage-no"></span>
 <span class="coverage-no"></span>
 <span class="coverage-red">method wildcard { &quot;\${ ++$*bind-counter }&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Not $_ where .value ~~ Red::Column, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::Cast.new(.value, &quot;boolean&quot;).not</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::AND $_ where .left ~~ Red::Column, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::AND.new: Red::AST::Cast.new(.left, &quot;boolean&quot;), .right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::AND $_ where .right ~~ Red::Column, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::AND.new: .left, Red::AST::Cast.new(.right, &quot;boolean&quot;)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::OR $_ where .left ~~ Red::Column, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::OR.new: Red::AST::Cast.new(.left, &quot;boolean&quot;), .right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::OR $_ where .right ~~ Red::Column, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::OR.new: .left, Red::AST::Cast.new(.right, &quot;boolean&quot;)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Cast $_ where { .type eq &quot;boolean&quot; &amp;&amp; .value.?returns ~~ DateTime }, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::IsDefined.new: .value;</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method translate(Red::Column $_, &quot;column-auto-increment&quot;) {}</span>
 <span class="coverage-no"></span>
