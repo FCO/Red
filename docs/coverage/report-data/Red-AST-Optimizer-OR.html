@@ -159,12 +159,12 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| a.b OR NOT(a.b) ==&gt; True</span>
-<span class="coverage-green">multi method optimize($left where Red::Column, $right where Red::AST::Not, 1) {</span>
-<span class="coverage-green">    return ast-value True if $left eqv $right.value</span>
+<span class="coverage-green">multi method optimize($left where Red::Column, $right where Red::AST::Not &amp;&amp; $left eqv $right.value&lt;&gt;, 1) {</span>
+<span class="coverage-green">    return ast-value True</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| NOT(a.b) AND a.b ==&gt; True</span>
-<span class="coverage-red">multi method optimize($left where Red::AST::Not, $right where Red::Column, 1) {</span>
+<span class="coverage-red">multi method optimize($left where Red::AST::Not, $right where Red::Column &amp;&amp; $right&lt;&gt; =:= $left.value&lt;&gt;, 1) {</span>
 <span class="coverage-red">    self.optimize: $right, $left, 1</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
