@@ -2,6 +2,7 @@ use DB::Pg;
 use Red::Driver;
 use Red::Driver::CommonSQL;
 use Red::Statement;
+use Red::AST::Unary;
 use Red::AST::Infixes;
 use X::Red::Exceptions;
 use Red::AST::TableComment;
@@ -38,6 +39,30 @@ method new-connection {
 
 
 method wildcard { "\${ ++$*bind-counter }" }
+
+multi method translate(Red::AST::Not $_ where .value ~~ Red::Column, $context?) {
+    self.translate: Red::AST::Cast.new(.value, "boolean").not
+}
+
+multi method translate(Red::AST::AND $_ where .left ~~ Red::Column, $context?) {
+    self.translate: Red::AST::AND.new: Red::AST::Cast.new(.left, "boolean"), .right
+}
+
+multi method translate(Red::AST::AND $_ where .right ~~ Red::Column, $context?) {
+    self.translate: Red::AST::AND.new: .left, Red::AST::Cast.new(.right, "boolean")
+}
+
+multi method translate(Red::AST::OR $_ where .left ~~ Red::Column, $context?) {
+    self.translate: Red::AST::OR.new: Red::AST::Cast.new(.left, "boolean"), .right
+}
+
+multi method translate(Red::AST::OR $_ where .right ~~ Red::Column, $context?) {
+    self.translate: Red::AST::OR.new: .left, Red::AST::Cast.new(.right, "boolean")
+}
+
+multi method translate(Red::AST::Cast $_ where { .type eq "boolean" && .value.?returns ~~ DateTime }, $context?) {
+    self.translate: Red::AST::IsDefined.new: .value;
+}
 
 multi method translate(Red::Column $_, "column-auto-increment") {}
 
