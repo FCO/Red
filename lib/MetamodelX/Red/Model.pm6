@@ -544,6 +544,7 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
             }
         }
         self.apply-row-phasers($obj, AfterCreate);
+        .return with $no;
         return-rw Proxy.new:
                 STORE => -> | {
                     die X::Assignment::RO.new(value => $obj)
@@ -552,9 +553,7 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
                     $ //= do {
                         my $obj;
                         my $*RED-DB = $RED-DB;
-                        if $no {
-                            $obj = $no
-                        } elsif !$data.elems {
+                        if !$data.elems {
                             $obj = model.^find: $filter
                         } else {
                             $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);

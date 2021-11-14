@@ -112,6 +112,10 @@ subtest "#521" => {
     C.^create-table: :if-not-exists;
     B.^create-table: :if-not-exists;
 
+    B.^all.delete;
+    C.^all.delete;
+    A.^all.delete;
+
     my $a = A.^create( :id<FOO>, :bs[{ :c{ :d<a> }, :!d }, { :c{ :d<b> }, :!d }, { :c{ :d<c> }, :!d }, { :c{ :d<d> }, :!d }, ] );
 
     is B.^all.grep({ not .d }).map(*.c.d).Seq, <a b c d>;
