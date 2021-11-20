@@ -55,6 +55,7 @@ has $.table;
 has Bool $!temporary;
 has Bool $!default-null;
 has %!alias-cache;
+has $!alias-cache-lock = Lock.new;
 
 multi method emit(Mu $model, Red::Event $event) {
     start try get-RED-DB.emit: $event.clone: :model($model.WHAT)
@@ -219,9 +220,10 @@ multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name
 
 my UInt $alias_num = 1;
 method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type)) {
-    return %!alias-cache{$name} if %!alias-cache{$name}:exists;
-    my \alias = ::?CLASS.new_type(:$name);
-    %!alias-cache{$name} := alias;
+    my \alias := $!alias-cache-lock.protect({
+        return %!alias-cache{$name} if %!alias-cache{$name}:exists;
+        %!alias-cache{$name} = ::?CLASS.new_type(:$name);
+    });
     my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
         method columns(|)     { @cols }
         method table(|)       { rtype.^table }
