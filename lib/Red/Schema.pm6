@@ -56,7 +56,6 @@ method model(Str $name) {
 method drop {
     for %!models.values {
         my $drop = "DROP TABLE IF EXISTS { get-RED-DB.table-name-wrapper: .^table } { "CASCADE" if get-RED-DB.should-drop-cascade }";
-        # say $drop;
         get-RED-DB.execute($drop);
     }
     self
@@ -64,8 +63,7 @@ method drop {
 
 method create(:$where) {
     red-do (:$where with $where), :transaction, {
-        #.say for %!models;
-        |.create-schema(%!models)
+        |.create-schema(%!models);
     }
     self
 }

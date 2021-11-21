@@ -15,7 +15,7 @@ has Str $!password;
 has Str $!host;
 has Int $!port;
 has Str $!dbname;
-has DB::Pg $!dbh;
+has $.dbh;
 
 
 method schema-reader {}
@@ -26,17 +26,45 @@ method schema-reader {}
 #| host    : To be connected to
 #| port    : What port to connect
 #| dbname  : Database name
-submethod BUILD(DB::Pg :$!dbh, Str :$!user, Str :$!password, Str :$!host = "127.0.0.1", Int :$!port = 5432, Str :$!dbname) {
+submethod BUILD(:$!dbh, Str :$!user, Str :$!password, Str :$!host = "127.0.0.1", Int :$!port = 5432, Str :$!dbname) {
 }
 
 submethod TWEAK() {
-    $!dbh //= DB::Pg.new: conninfo => "{ "user=$_" with $!user } { "password=$_" with $!password } { "host=$_" with $!host } { "port=$_" with $!port } { "dbname=$_" with $!dbname }";
+    $!dbh //= DB::Pg.new:
+        conninfo => "{
+            "user=$_" with $!user
+        } {
+            "password=$_" with $!password
+        } {
+            "host=$_" with $!host
+        } {
+            "port=$_" with $!port
+        } {
+            "dbname=$_" with $!dbname
+        }"
+    ;
 }
 
-method new-connection {
-    self.WHAT.new: |self.^attributes.grep( *.name ne '$!dbh').map({ .name.substr(2) => .get_value: self }).Hash
+method new-connection($dbh = $!dbh) {
+    self.clone: dbh => $dbh
 }
 
+method begin {
+    my $dbh = $!dbh.db;
+    $dbh.begin;
+    self.new-connection: $dbh
+}
+
+method commit {
+    #die "Not in a transaction!" unless $*RED-TRANSCTION-RUNNING;
+    $!dbh.commit.finish;
+}
+
+method rollback {
+    #die "Deu ruim!!!";
+    #die "Not in a transaction!" unless $*RED-TRANSCTION-RUNNING;
+    $!dbh.rollback;
+}
 
 method wildcard { "\${ ++$*bind-counter }" }
 
@@ -121,10 +149,10 @@ class Statement does Red::Statement {
     has Str $.query;
     method stt-exec($stt, *@bind) {
         $!driver.debug: $!query, @bind || @!binds;
-        my $db = $stt.db;
+        my $db = $stt ~~ DB::Pg ?? $stt.db !! $stt;
         my $sth = $db.prepare($!query);
         my $s = $sth.execute(|(@bind or @!binds));
-        $db.finish;
+        $db.finish if $stt ~~ DB::Pg;
         do if $s ~~ DB::Pg::Results {
             $s.hashes
         } else {
@@ -145,12 +173,12 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
 
-multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime                    --> Str:D) {"timestamp"}
-multi method default-type-for(Red::Column $ where { .attr.type ~~ Int and .auto-increment } --> Str:D) {"serial"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)              --> Str:D) {"integer"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Bool                        --> Str:D) {"boolean"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ UUID                        --> Str:D) {"uuid"}
-multi method default-type-for(Red::Column $                                                 --> Str:D) {"varchar(255)"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime                               --> Str:D) {"timestamp"}
+multi method default-type-for(Red::Column $ where { .auto-increment }                                  --> Str:D) {"serial"}
+multi method default-type-for(Red::Column $ where { .attr.type ~~ one(Int, Bool) && !.auto-increment } --> Str:D) {"integer"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Bool                                   --> Str:D) {"boolean"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ UUID                                   --> Str:D) {"uuid"}
+multi method default-type-for(Red::Column $                                                            --> Str:D) {"varchar(255)"}
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
 
