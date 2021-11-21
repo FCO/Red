@@ -341,22 +341,11 @@ X == Y # Where X is castable to Numeric and read only
 ```raku
 multi sub infix:<!=>(
     Red::AST $a,
-    Red::AST $b
-) returns Mu
-```
-
-X != Y # Where Y is castable to Numeric and writable
-
-### multi sub infix:<!=>
-
-```raku
-multi sub infix:<!=>(
-    Red::AST $a,
     Numeric(Any) $b is rw
 ) returns Mu
 ```
 
-X != Y # Where Y is castable to Numeric and read only
+X != Y # Where Y is castable to Numeric and writable
 
 ### multi sub infix:<!=>
 

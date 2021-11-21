@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Operators 35.9%</h1>
+				<h1>Red::Operators 36.1%</h1>
 			</div>
 		</div>
 	</div>
@@ -220,11 +220,6 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| X != Y # Where Y is castable to Numeric and writable</span>
-<span class="coverage-red">multi infix:&lt;!=&gt;(Red::AST $a, Red::AST $b) is export {</span>
-<span class="coverage-red">    Red::AST::Ne.new: $a, $b, :cast&lt;num&gt;</span>
-<span class="coverage-no">}</span>
-<span class="coverage-no"></span>
-<span class="coverage-no">#| X != Y # Where Y is castable to Numeric and read only</span>
 <span class="coverage-green">multi infix:&lt;!=&gt;(Red::AST $a, Numeric() $b is rw) is export {</span>
 <span class="coverage-green">    Red::AST::Ne.new: $a, ast-value($b), :cast&lt;num&gt;, :bind-right</span>
 <span class="coverage-no">}</span>
