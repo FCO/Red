@@ -170,11 +170,6 @@ multi infix:<==>(Red::AST $a where .returns ~~ DateTime, Date $b) is export {
 }
 
 #| X != Y # Where Y is castable to Numeric and writable
-multi infix:<!=>(Red::AST $a, Red::AST $b) is export {
-    Red::AST::Ne.new: $a, $b, :cast<num>
-}
-
-#| X != Y # Where Y is castable to Numeric and read only
 multi infix:<!=>(Red::AST $a, Numeric() $b is rw) is export {
     Red::AST::Ne.new: $a, ast-value($b), :cast<num>, :bind-right
 }
