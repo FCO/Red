@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.53  2021-11-22T02:17:40Z
     - Separate the Model generation for changing attributes
     - Make join on update use subselect
     - Teaching AST new dance moves (.replace)
