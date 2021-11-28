@@ -95,12 +95,25 @@ multi method translate(Red::AST::Cast $_ where { .type eq "boolean" && .value.?r
 multi method translate(Red::Column $_, "column-auto-increment") {}
 
 multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined) {
-    my Int $*bind-counter;
-    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
+    my $bind-counter = $*bind-counter // 0;
+    {
+        my Int $*bind-counter = $bind-counter;
+        self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
+    }
 }
 multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined) {
     my Int $*bind-counter;
     self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
+}
+
+multi method wildcard-value(@val) { @val.map: { self.wildcard-value: $_ } }
+multi method wildcard-value($_) { $_ }
+multi method wildcard-value(Red::AST::Value $_) {
+    do given .get-value {
+        when .HOW ~~ Metamodel::EnumHOW { .value }
+        when Bool { .Int }
+        default { $_ }
+    }
 }
 
 multi method translate(Red::AST::RowId $_, $context?) { "OID" => [] }
@@ -113,7 +126,8 @@ multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined)
 multi method translate(Red::AST::Insert $_, $context?) {
     my Int $*bind-counter;
     my @values = .values.grep({ .value.value.defined });
-    my @bind = @values.map: *.value.get-value;
+    # TODO: User translation
+    my @bind = @values.map: { self.wildcard-value: .value }
     "INSERT INTO {
         self.table-name-wrapper: .into.^table
     }(\n{
@@ -139,6 +153,13 @@ multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {
 
 multi method translate(Red::Column $_, "column-comment") {
     (.comment ?? "COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'" !! "") => []
+}
+
+multi method translate(Red::Column $_, "column-type")           {
+    if !.auto-increment && .attr.type =:= Mu && !.type.defined {
+        return self.type-by-name("string") => []
+    }
+    (.type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_) => []
 }
 
 multi method translate(Red::AST::TableComment $_, $context?) {
@@ -173,12 +194,12 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
 
-multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime                               --> Str:D) {"timestamp"}
-multi method default-type-for(Red::Column $ where { .auto-increment }                                  --> Str:D) {"serial"}
-multi method default-type-for(Red::Column $ where { .attr.type ~~ one(Int, Bool) && !.auto-increment } --> Str:D) {"integer"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Bool                                   --> Str:D) {"boolean"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ UUID                                   --> Str:D) {"uuid"}
-multi method default-type-for(Red::Column $                                                            --> Str:D) {"varchar(255)"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime       --> Str:D) {"timestamp"}
+multi method default-type-for(Red::Column $ where .auto-increment              --> Str:D) {"serial"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> Str:D) {"integer"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> Str:D) {"boolean"}
+multi method default-type-for(Red::Column $ where .attr.type ~~ UUID           --> Str:D) {"uuid"}
+multi method default-type-for(Red::Column $                                    --> Str:D) {"varchar(255)"}
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
 

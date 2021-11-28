@@ -145,6 +145,11 @@ multi infix:<==>(Red::AST $a, Red::AST $b) is export {
 }
 
 #| X == Y # Where Y is castable to Numeric and writable
+multi infix:<==>(Red::AST $a, Enumeration $b) is export {
+    Red::AST::Eq.new: $a, ast-value($b), :cast<num>, :bind-right
+}
+
+#| X == Y # Where Y is castable to Numeric and writable
 multi infix:<==>(Red::AST $a, Numeric() $b is rw) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<num>, :bind-right
 }
@@ -152,6 +157,11 @@ multi infix:<==>(Red::AST $a, Numeric() $b is rw) is export {
 #| X == Y # Where Y is castable to Numeric and read only
 multi infix:<==>(Red::AST $a, Numeric() $b is readonly) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<num>
+}
+
+#| X == Y # Where X is castable to Numeric and writable
+multi infix:<==>(Enumeration $a, Red::AST $b) is export {
+    Red::AST::Eq.new: ast-value($a), $b, :cast<num>, :bind-left
 }
 
 #| X == Y # Where X is castable to Numeric and writable
@@ -169,7 +179,12 @@ multi infix:<==>(Red::AST $a where .returns ~~ DateTime, Date $b) is export {
     Red::AST::Eq.new: $a.yyyy-mm-dd, ast-value($b), :cast<num>;
 }
 
-#| X != Y # Where Y is castable to Numeric and writable
+#| X != Y # Where Y is castable to Numeric and read only
+multi infix:<!=>(Red::AST $a, Enumeration $b) is export {
+    Red::AST::Ne.new: $a, ast-value($b), :cast<num>, :bind-right
+}
+
+#| X != Y # Where Y is castable to Numeric and read only
 multi infix:<!=>(Red::AST $a, Numeric() $b is rw) is export {
     Red::AST::Ne.new: $a, ast-value($b), :cast<num>, :bind-right
 }
@@ -177,6 +192,11 @@ multi infix:<!=>(Red::AST $a, Numeric() $b is rw) is export {
 #| X != Y # Where Y is castable to Numeric and read only
 multi infix:<!=>(Red::AST $a, Numeric() $b is readonly) is export {
     Red::AST::Ne.new: $a, ast-value($b), :cast<num>
+}
+
+#| X != Y # Where X is castable to Numeric and writable
+multi infix:<!=>(Enumeration $a, Red::AST $b) is export {
+    Red::AST::Ne.new: ast-value($a), $b, :cast<num>, :bind-left
 }
 
 #| X != Y # Where X is castable to Numeric and writable
