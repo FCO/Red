@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::Config</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::Config 90.9%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">my @exp;</span>
+<span class="coverage-green">sub EXPORT(*@experimentals--&gt; Map()) {</span>
+<span class="coverage-green">    |Red.exports(@experimentals)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">proto red-config(| --&gt; Map()) is export {*}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi red-config(:@schema, |c --&gt; Map()) {</span>
+<span class="coverage-green">    red-config :schema(schema @schema), |c</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi red-config(</span>
+<span class="coverage-no">    Red::Schema :$schema,</span>
+<span class="coverage-no">    Str         :$schema-name   = &quot;Schema&quot;,</span>
+<span class="coverage-no">    Red::Driver :$database,</span>
+<span class="coverage-no">    Bool        :$export-schema = True,</span>
+<span class="coverage-no">    Bool        :$export-models = True,</span>
+<span class="coverage-no">    Bool        :$debug,</span>
+<span class="coverage-no">    +@experimentals,</span>
+<span class="coverage-no">    --&gt; Map()</span>
+<span class="coverage-no">) {</span>
+<span class="coverage-green">    |Red.exports(@experimentals),</span>
+<span class="coverage-green">    |('$*RED-DB'    =&gt; $_ with $database),</span>
+<span class="coverage-green">    |('$*RED-DEBUG' =&gt; $_ with $debug),</span>
+<span class="coverage-no">    |($schema-name  =&gt; $schema if $export-schema),</span>
+<span class="coverage-no">    |(|$schema.models if $schema &amp;&amp; $export-models),</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

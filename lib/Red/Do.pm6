@@ -124,16 +124,19 @@ multi red-do(&block, Str:D :$with = "default", :$async! where so *) is export {
 }
 
 multi red-do(
-        *@blocks,
-        Bool :$async,
-        Bool :$transaction! where so *,
-        *%pars where *.none.key eq "with"
+    *@blocks,
+    Bool :$async,
+    Bool :$transaction! where so *,
+    *%pars where *.none.key eq "with"
 ) is export {
-    my $conn = get-RED-DB.begin;
-    KEEP $conn.commit;
-    UNDO $conn.rollback;
-    my $*RED-TRANSCTION-RUNNING = True;
-    red-do |@blocks, :$async, |%pars, :with($conn);
+    red-do |@blocks, :$async, |%pars, :with(get-RED-DB) if $*RED-TRANSCTION-RUNNING;
+    {
+        my $with = get-RED-DB.begin;
+        my $*RED-TRANSCTION-RUNNING = True;
+        KEEP $with.commit;
+        UNDO $with.rollback;
+        red-do |@blocks, :$async, |%pars, :$with;
+    }
 }
 
 #| Receives list of pairs with connection name and block

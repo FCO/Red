@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red 64.8%</h1>
+				<h1>Red 66%</h1>
 			</div>
 		</div>
 	</div>
@@ -82,6 +82,15 @@
 <span class="coverage-red">        do for (%GLOBAL::RED-DEFULT-DRIVERS || :default(get-RED-DB)).kv -&gt; $key, $conn {</span>
 <span class="coverage-red">            $key =&gt; $conn.ping</span>
 <span class="coverage-no">        }.Map</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-green">    method exports(@experimentals --&gt; Map()) {</span>
+<span class="coverage-green">        %Red::experimentals{$_} = True for @experimentals;</span>
+<span class="coverage-green">        Red::Do::EXPORT::ALL::,</span>
+<span class="coverage-no">        Red::Traits::EXPORT::ALL::,</span>
+<span class="coverage-no">        Red::Operators::EXPORT::ALL::,</span>
+<span class="coverage-no">        Red::Schema::EXPORT::ALL::,</span>
+<span class="coverage-no">        ‘&amp;database’ =&gt; &amp;database,</span>
+<span class="coverage-green">        |@experimentals.map(-&gt; $feature { |experimental( $feature ) })</span>
 <span class="coverage-no">    }</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
@@ -167,15 +176,7 @@
 <span class="coverage-no">    	#} else {</span>
 <span class="coverage-no">    	#        @experimentals .= grep: { $_ ne $no }</span>
 <span class="coverage-no">    	#}</span>
-<span class="coverage-green">    %Red::experimentals{$_} = True for @experimentals;</span>
-<span class="coverage-green">    Map(</span>
-<span class="coverage-no">        Red::Do::EXPORT::ALL::,</span>
-<span class="coverage-no">        Red::Traits::EXPORT::ALL::,</span>
-<span class="coverage-no">        Red::Operators::EXPORT::ALL::,</span>
-<span class="coverage-no">        Red::Schema::EXPORT::ALL::,</span>
-<span class="coverage-no">        ‘&amp;database’ =&gt; &amp;database,</span>
-<span class="coverage-green">        |@experimentals.map(-&gt; $feature { |experimental( $feature ) })</span>
-<span class="coverage-no">    )</span>
+<span class="coverage-green">    Red.exports(@experimentals)</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">=begin pod</span>

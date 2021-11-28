@@ -30,12 +30,14 @@ method begin {
 
 #| Commit transaction
 method commit {
+    #die "Not in a transaction!" unless $*RED-TRANSCTION-RUNNING;
     self.prepare(Red::AST::CommitTransaction.new).map: *.execute;
     self
 }
 
 #| Rollback transaction
 method rollback {
+    #die "Not in a transaction!" unless $*RED-TRANSCTION-RUNNING;
     self.prepare(Red::AST::RollbackTransaction.new).map: *.execute;
     self
 }

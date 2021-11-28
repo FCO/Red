@@ -106,7 +106,6 @@
 <span class="coverage-green">method drop {</span>
 <span class="coverage-green">    for %!models.values {</span>
 <span class="coverage-green">        my $drop = &quot;DROP TABLE IF EXISTS { get-RED-DB.table-name-wrapper: .^table } { &quot;CASCADE&quot; if get-RED-DB.should-drop-cascade }&quot;;</span>
-<span class="coverage-no">        # say $drop;</span>
 <span class="coverage-green">        get-RED-DB.execute($drop);</span>
 <span class="coverage-no">    }</span>
 <span class="coverage-red">    self</span>
@@ -114,8 +113,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">method create(:$where) {</span>
 <span class="coverage-green">    red-do (:$where with $where), :transaction, {</span>
-<span class="coverage-no">        #.say for %!models;</span>
-<span class="coverage-green">        |.create-schema(%!models)</span>
+<span class="coverage-green">        |.create-schema(%!models);</span>
 <span class="coverage-no">    }</span>
 <span class="coverage-red">    self</span>
 <span class="coverage-no">}</span>

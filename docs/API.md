@@ -46,6 +46,7 @@ API Pages
 - [Red::AST::Unary](api/Red/AST/Unary)
 - [Red::AST::Update](api/Red/AST/Update)
 - [Red::AST::Value](api/Red/AST/Value)
+- [Red::Class](api/Red/Class)
 - [Red::Cli](api/Red/Cli)
 - [Red::Column](api/Red/Column)
 - [Red::ColumnMethods](api/Red/ColumnMethods)

@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::Pg 7.6%</h1>
+				<h1>Red::Driver::Pg 2.7%</h1>
 			</div>
 		</div>
 	</div>
@@ -52,6 +52,7 @@
 <span class="coverage-no">use Red::Driver;</span>
 <span class="coverage-no">use Red::Driver::CommonSQL;</span>
 <span class="coverage-no">use Red::Statement;</span>
+<span class="coverage-no">use Red::AST::Unary;</span>
 <span class="coverage-no">use Red::AST::Infixes;</span>
 <span class="coverage-no">use X::Red::Exceptions;</span>
 <span class="coverage-no">use Red::AST::TableComment;</span>
@@ -64,7 +65,7 @@
 <span class="coverage-no">has Str $!host;</span>
 <span class="coverage-no">has Int $!port;</span>
 <span class="coverage-no">has Str $!dbname;</span>
-<span class="coverage-no">has DB::Pg $!dbh;</span>
+<span class="coverage-no">has $.dbh;</span>
 <span class="coverage-no"></span>
 <span class="coverage-no"></span>
 <span class="coverage-red">method schema-reader {}</span>
@@ -75,19 +76,71 @@
 <span class="coverage-no">#| host    : To be connected to</span>
 <span class="coverage-no">#| port    : What port to connect</span>
 <span class="coverage-no">#| dbname  : Database name</span>
-<span class="coverage-green">submethod BUILD(DB::Pg :$!dbh, Str :$!user, Str :$!password, Str :$!host = &quot;127.0.0.1&quot;, Int :$!port = 5432, Str :$!dbname) {</span>
+<span class="coverage-red">submethod BUILD(:$!dbh, Str :$!user, Str :$!password, Str :$!host = &quot;127.0.0.1&quot;, Int :$!port = 5432, Str :$!dbname) {</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-green">submethod TWEAK() {</span>
-<span class="coverage-green">    $!dbh //= DB::Pg.new: conninfo =&gt; &quot;{ &quot;user=$_&quot; with $!user } { &quot;password=$_&quot; with $!password } { &quot;host=$_&quot; with $!host } { &quot;port=$_&quot; with $!port } { &quot;dbname=$_&quot; with $!dbname }&quot;;</span>
+<span class="coverage-red">submethod TWEAK() {</span>
+<span class="coverage-red">    $!dbh //= DB::Pg.new:</span>
+<span class="coverage-red">        conninfo =&gt; &quot;{</span>
+<span class="coverage-red">            &quot;user=$_&quot; with $!user</span>
+<span class="coverage-red">        } {</span>
+<span class="coverage-red">            &quot;password=$_&quot; with $!password</span>
+<span class="coverage-red">        } {</span>
+<span class="coverage-red">            &quot;host=$_&quot; with $!host</span>
+<span class="coverage-red">        } {</span>
+<span class="coverage-red">            &quot;port=$_&quot; with $!port</span>
+<span class="coverage-red">        } {</span>
+<span class="coverage-red">            &quot;dbname=$_&quot; with $!dbname</span>
+<span class="coverage-no">        }&quot;</span>
+<span class="coverage-no">    ;</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">method new-connection {</span>
-<span class="coverage-red">    self.WHAT.new: |self.^attributes.grep( *.name ne '$!dbh').map({ .name.substr(2) =&gt; .get_value: self }).Hash</span>
+<span class="coverage-red">method new-connection($dbh = $!dbh) {</span>
+<span class="coverage-red">    self.clone: dbh =&gt; $dbh</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
+<span class="coverage-red">method begin {</span>
+<span class="coverage-red">    my $dbh = $!dbh.db;</span>
+<span class="coverage-red">    $dbh.begin;</span>
+<span class="coverage-red">    self.new-connection: $dbh</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method commit {</span>
+<span class="coverage-no">    #die &quot;Not in a transaction!&quot; unless $*RED-TRANSCTION-RUNNING;</span>
+<span class="coverage-red">    $!dbh.commit.finish;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method rollback {</span>
+<span class="coverage-no">    #die &quot;Deu ruim!!!&quot;;</span>
+<span class="coverage-no">    #die &quot;Not in a transaction!&quot; unless $*RED-TRANSCTION-RUNNING;</span>
+<span class="coverage-red">    $!dbh.rollback;</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">method wildcard { &quot;\${ ++$*bind-counter }&quot; }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Not $_ where .value ~~ Red::Column, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::Cast.new(.value, &quot;boolean&quot;).not</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::AND $_ where .left ~~ Red::Column, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::AND.new: Red::AST::Cast.new(.left, &quot;boolean&quot;), .right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::AND $_ where .right ~~ Red::Column, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::AND.new: .left, Red::AST::Cast.new(.right, &quot;boolean&quot;)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::OR $_ where .left ~~ Red::Column, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::OR.new: Red::AST::Cast.new(.left, &quot;boolean&quot;), .right</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::OR $_ where .right ~~ Red::Column, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::OR.new: .left, Red::AST::Cast.new(.right, &quot;boolean&quot;)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Cast $_ where { .type eq &quot;boolean&quot; &amp;&amp; .value.?returns ~~ DateTime }, $context?) {</span>
+<span class="coverage-red">    self.translate: Red::AST::IsDefined.new: .value;</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method translate(Red::Column $_, &quot;column-auto-increment&quot;) {}</span>
 <span class="coverage-no"></span>
@@ -146,10 +199,10 @@
 <span class="coverage-red">    has Str $.query;</span>
 <span class="coverage-red">    method stt-exec($stt, *@bind) {</span>
 <span class="coverage-red">        $!driver.debug: $!query, @bind || @!binds;</span>
-<span class="coverage-red">        my $db = $stt.db;</span>
+<span class="coverage-red">        my $db = $stt ~~ DB::Pg ?? $stt.db !! $stt;</span>
 <span class="coverage-red">        my $sth = $db.prepare($!query);</span>
 <span class="coverage-red">        my $s = $sth.execute(|(@bind or @!binds));</span>
-<span class="coverage-red">        $db.finish;</span>
+<span class="coverage-red">        $db.finish if $stt ~~ DB::Pg;</span>
 <span class="coverage-red">        do if $s ~~ DB::Pg::Results {</span>
 <span class="coverage-red">            $s.hashes</span>
 <span class="coverage-no">        } else {</span>
@@ -170,12 +223,12 @@
 <span class="coverage-red">    Statement.new: :driver(self), :statement($!dbh), :$query</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime                    --&gt; Str:D) {&quot;timestamp&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where { .attr.type ~~ Int and .auto-increment } --&gt; Str:D) {&quot;serial&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)              --&gt; Str:D) {&quot;integer&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Bool                        --&gt; Str:D) {&quot;boolean&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ UUID                        --&gt; Str:D) {&quot;uuid&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $                                                 --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime                               --&gt; Str:D) {&quot;timestamp&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where { .auto-increment }                                  --&gt; Str:D) {&quot;serial&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where { .attr.type ~~ one(Int, Bool) &amp;&amp; !.auto-increment } --&gt; Str:D) {&quot;integer&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Bool                                   --&gt; Str:D) {&quot;boolean&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ UUID                                   --&gt; Str:D) {&quot;uuid&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $                                                            --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }</span>
 <span class="coverage-no"></span>

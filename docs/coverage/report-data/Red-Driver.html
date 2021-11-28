@@ -80,12 +80,14 @@
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Commit transaction</span>
 <span class="coverage-green">method commit {</span>
+<span class="coverage-no">    #die &quot;Not in a transaction!&quot; unless $*RED-TRANSCTION-RUNNING;</span>
 <span class="coverage-green">    self.prepare(Red::AST::CommitTransaction.new).map: *.execute;</span>
 <span class="coverage-red">    self</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Rollback transaction</span>
 <span class="coverage-green">method rollback {</span>
+<span class="coverage-no">    #die &quot;Not in a transaction!&quot; unless $*RED-TRANSCTION-RUNNING;</span>
 <span class="coverage-green">    self.prepare(Red::AST::RollbackTransaction.new).map: *.execute;</span>
 <span class="coverage-red">    self</span>
 <span class="coverage-no">}</span>

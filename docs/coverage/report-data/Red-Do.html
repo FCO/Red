@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Do 94.6%</h1>
+				<h1>Red::Do 94.8%</h1>
 			</div>
 		</div>
 	</div>
@@ -174,16 +174,19 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi red-do(</span>
-<span class="coverage-no">        *@blocks,</span>
-<span class="coverage-no">        Bool :$async,</span>
-<span class="coverage-no">        Bool :$transaction! where so *,</span>
-<span class="coverage-no">        *%pars where *.none.key eq &quot;with&quot;</span>
+<span class="coverage-no">    *@blocks,</span>
+<span class="coverage-no">    Bool :$async,</span>
+<span class="coverage-no">    Bool :$transaction! where so *,</span>
+<span class="coverage-no">    *%pars where *.none.key eq &quot;with&quot;</span>
 <span class="coverage-no">) is export {</span>
-<span class="coverage-green">    my $conn = get-RED-DB.begin;</span>
-<span class="coverage-green">    KEEP $conn.commit;</span>
-<span class="coverage-red">    UNDO $conn.rollback;</span>
-<span class="coverage-green">    my $*RED-TRANSCTION-RUNNING = True;</span>
-<span class="coverage-green">    red-do |@blocks, :$async, |%pars, :with($conn);</span>
+<span class="coverage-green">    red-do |@blocks, :$async, |%pars, :with(get-RED-DB) if $*RED-TRANSCTION-RUNNING;</span>
+<span class="coverage-green">    {</span>
+<span class="coverage-green">        my $with = get-RED-DB.begin;</span>
+<span class="coverage-green">        my $*RED-TRANSCTION-RUNNING = True;</span>
+<span class="coverage-green">        KEEP $with.commit;</span>
+<span class="coverage-red">        UNDO $with.rollback;</span>
+<span class="coverage-green">        red-do |@blocks, :$async, |%pars, :$with;</span>
+<span class="coverage-no">    }</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Receives list of pairs with connection name and block</span>

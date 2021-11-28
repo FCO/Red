@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>MetamodelX::Red::Model 78.8%</h1>
+				<h1>MetamodelX::Red::Model 77.8%</h1>
 			</div>
 		</div>
 	</div>
@@ -105,6 +105,7 @@
 <span class="coverage-no">has Bool $!temporary;</span>
 <span class="coverage-no">has Bool $!default-null;</span>
 <span class="coverage-no">has %!alias-cache;</span>
+<span class="coverage-green">has $!alias-cache-lock = Lock.new;</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method emit(Mu $model, Red::Event $event) {</span>
 <span class="coverage-green">    start try get-RED-DB.emit: $event.clone: :model($model.WHAT)</span>
@@ -269,9 +270,10 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">my UInt $alias_num = 1;</span>
 <span class="coverage-green">method alias(|c (Red::Model:U \type, Str $name = &quot;{type.^name}_{$alias_num++}&quot;, :$base, :$relationship, :$join-type)) {</span>
-<span class="coverage-green">    return %!alias-cache{$name} if %!alias-cache{$name}:exists;</span>
-<span class="coverage-green">    my \alias = ::?CLASS.new_type(:$name);</span>
-<span class="coverage-red">    %!alias-cache{$name} := alias;</span>
+<span class="coverage-green">    my \alias := $!alias-cache-lock.protect({</span>
+<span class="coverage-green">        return %!alias-cache{$name} if %!alias-cache{$name}:exists;</span>
+<span class="coverage-green">        %!alias-cache{$name} = ::?CLASS.new_type(:$name);</span>
+<span class="coverage-no">    });</span>
 <span class="coverage-green">    my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {</span>
 <span class="coverage-green">        method columns(|)     { @cols }</span>
 <span class="coverage-green">        method table(|)       { rtype.^table }</span>
@@ -493,12 +495,12 @@
 <span class="coverage-no">    }</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">multi method create(Red::Driver :$with!, |c) is hidden-from-backtrace {</span>
+<span class="coverage-red">multi method create($, Red::Driver :$with!, |c) is hidden-from-backtrace {</span>
 <span class="coverage-red">    my $*RED-DB = $with;</span>
 <span class="coverage-red">    self.create: |c</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">multi method create(Str :$with!, |c) is hidden-from-backtrace {</span>
+<span class="coverage-red">multi method create($, Str :$with!, |c) is hidden-from-backtrace {</span>
 <span class="coverage-red">    self.create: :with(%GLOBAL::RED-DEFAULT-DRIVERS{$with}), |c</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
@@ -508,9 +510,9 @@
 <span class="coverage-green">multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {</span>
 <span class="coverage-green">    my $RED-DB = get-RED-DB;</span>
 <span class="coverage-green">    my $trans  = so $*RED-TRANSCTION-RUNNING;</span>
-<span class="coverage-green">    $RED-DB   .= begin    unless $trans;</span>
-<span class="coverage-green">    KEEP $RED-DB.commit   unless $trans;</span>
-<span class="coverage-green">    UNDO $RED-DB.rollback unless $trans;</span>
+<span class="coverage-green">    $RED-DB   .= begin        unless $trans;</span>
+<span class="coverage-green">    KEEP $RED-DB.commit       unless $trans;</span>
+<span class="coverage-green">    UNDO try $RED-DB.rollback unless $trans;</span>
 <span class="coverage-green">    {</span>
 <span class="coverage-green">        my $*RED-DB = $RED-DB;</span>
 <span class="coverage-green">        my $*RED-TRANSCTION-RUNNING = True;</span>
@@ -555,9 +557,9 @@
 <span class="coverage-green">        my $filter = do if @ids {</span>
 <span class="coverage-green">            model.^id-filter: |do if $data.defined and not $data.elems {</span>
 <span class="coverage-green">                $*RED-DB.execute(Red::AST::LastInsertedRow.new: model).row{|@ids}:kv</span>
-<span class="coverage-green">            } else {</span>
-<span class="coverage-green">                do for @ids-col.kv -&gt; $i, $k {</span>
-<span class="coverage-green">                    @ids[$i] =&gt; $data{$k}</span>
+<span class="coverage-red">            } else {</span>
+<span class="coverage-red">                do for @ids-col.kv -&gt; $i, $k {</span>
+<span class="coverage-red">                    @ids[$i] =&gt; $data{$k}</span>
 <span class="coverage-no">                }</span>
 <span class="coverage-no">            }.Hash</span>
 <span class="coverage-green">        } else {</span>
@@ -565,22 +567,36 @@
 <span class="coverage-green">                Red::AST::Eq.new: %cols{$key}, ast-value $value</span>
 <span class="coverage-no">            })</span>
 <span class="coverage-green">                .reduce: { Red::AST::AND.new: $^a, $^b }</span>
-<span class="coverage-no">        }</span>
+<span class="coverage-no">        } unless $data&lt;&gt;;</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">        my $no;</span>
-<span class="coverage-green">        for %positionals.kv -&gt; $name, @val {</span>
-<span class="coverage-green">            FIRST $no = model.^find($filter);</span>
-<span class="coverage-green">            $no.&quot;$name&quot;().create: |$_ for @val</span>
-<span class="coverage-no">        }</span>
+<span class="coverage-green">        if %positionals || %has-one {</span>
+<span class="coverage-green">            $no = do {</span>
+<span class="coverage-no">                my $obj;</span>
+<span class="coverage-green">                if !$data.elems {</span>
+<span class="coverage-green">                    $obj = model.^find: $filter</span>
+<span class="coverage-no">                } else {</span>
+<span class="coverage-red">                    $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);</span>
+<span class="coverage-red">                    $obj.^saved-on-db;</span>
+<span class="coverage-red">                    $obj.^clean-up;</span>
+<span class="coverage-green">                    $obj.^populate-ids;</span>
+<span class="coverage-no">                }</span>
+<span class="coverage-red">                $obj</span>
+<span class="coverage-no">            }</span>
+<span class="coverage-green">            for %positionals.kv -&gt; $name, @val {</span>
+<span class="coverage-green">                my \rs = $no.&quot;$name&quot;();</span>
+<span class="coverage-green">                rs.create: |$_ for @val;</span>
+<span class="coverage-no">            }</span>
 <span class="coverage-no"></span>
-<span class="coverage-green">        for %has-one.kv -&gt; %val, \attr {</span>
-<span class="coverage-green">            FIRST $no //= model.^find($filter);</span>
-<span class="coverage-green">            my $type = attr.relationship-model;</span>
-<span class="coverage-green">            my $id-name = attr.rel.attr-name;</span>
-<span class="coverage-no">            #TODO: What to do when there is more than one id???</span>
-<span class="coverage-green">            $type.^create: |%( |%val, $id-name =&gt; $no.^id-values.head )</span>
+<span class="coverage-green">            for %has-one.kv -&gt; %val, \attr {</span>
+<span class="coverage-green">                my $type = attr.relationship-model;</span>
+<span class="coverage-green">                my $id-name = attr.rel.attr-name;</span>
+<span class="coverage-no">                #TODO: What to do when there is more than one id???</span>
+<span class="coverage-green">                $type.^create: |%( |%val, $id-name =&gt; $no.^id-values.head )</span>
+<span class="coverage-no">            }</span>
 <span class="coverage-no">        }</span>
 <span class="coverage-green">        self.apply-row-phasers($obj, AfterCreate);</span>
+<span class="coverage-green">        .return with $no;</span>
 <span class="coverage-green">        return-rw Proxy.new:</span>
 <span class="coverage-red">                STORE =&gt; -&gt; | {</span>
 <span class="coverage-red">                    die X::Assignment::RO.new(value =&gt; $obj)</span>

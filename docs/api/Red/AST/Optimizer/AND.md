@@ -54,7 +54,7 @@ x < 1 AND x > 10 ==> False
 ```raku
 method optimize(
     Red::Column $left,
-    Red::AST::Not $right,
+    Red::AST::Not $right where { ... },
     1
 ) returns Mu
 ```

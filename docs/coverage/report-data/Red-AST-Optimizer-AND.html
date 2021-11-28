@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::AST::Optimizer::AND 88.1%</h1>
+				<h1>Red::AST::Optimizer::AND 84.7%</h1>
 			</div>
 		</div>
 	</div>
@@ -113,8 +113,8 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| a.b AND NOT(a.b) ==&gt; True</span>
-<span class="coverage-green">multi method optimize(Red::Column $left, Red::AST::Not $right, 1) {</span>
-<span class="coverage-green">    return ast-value True if compare $left, $right.value</span>
+<span class="coverage-red">multi method optimize(Red::Column $left, Red::AST::Not $right where $left&lt;&gt; =:= $right.value&lt;&gt;, 1) {</span>
+<span class="coverage-red">    return ast-value False if compare $left, $right.value</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| NOT(a.b) AND a.b ==&gt; True</span>

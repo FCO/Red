@@ -2,6 +2,7 @@ use DB::Pg;
 use Red::Driver;
 use Red::Driver::CommonSQL;
 use Red::Statement;
+use Red::AST::Unary;
 use Red::AST::Infixes;
 use X::Red::Exceptions;
 use Red::AST::TableComment;
@@ -14,7 +15,7 @@ has Str $!password;
 has Str $!host;
 has Int $!port;
 has Str $!dbname;
-has DB::Pg $!dbh;
+has $.dbh;
 
 
 method schema-reader {}
@@ -25,19 +26,71 @@ method schema-reader {}
 #| host    : To be connected to
 #| port    : What port to connect
 #| dbname  : Database name
-submethod BUILD(DB::Pg :$!dbh, Str :$!user, Str :$!password, Str :$!host = "127.0.0.1", Int :$!port = 5432, Str :$!dbname) {
+submethod BUILD(:$!dbh, Str :$!user, Str :$!password, Str :$!host = "127.0.0.1", Int :$!port = 5432, Str :$!dbname) {
 }
 
 submethod TWEAK() {
-    $!dbh //= DB::Pg.new: conninfo => "{ "user=$_" with $!user } { "password=$_" with $!password } { "host=$_" with $!host } { "port=$_" with $!port } { "dbname=$_" with $!dbname }";
+    $!dbh //= DB::Pg.new:
+        conninfo => "{
+            "user=$_" with $!user
+        } {
+            "password=$_" with $!password
+        } {
+            "host=$_" with $!host
+        } {
+            "port=$_" with $!port
+        } {
+            "dbname=$_" with $!dbname
+        }"
+    ;
 }
 
-method new-connection {
-    self.WHAT.new: |self.^attributes.grep( *.name ne '$!dbh').map({ .name.substr(2) => .get_value: self }).Hash
+method new-connection($dbh = $!dbh) {
+    self.clone: dbh => $dbh
 }
 
+method begin {
+    my $dbh = $!dbh.db;
+    $dbh.begin;
+    self.new-connection: $dbh
+}
+
+method commit {
+    #die "Not in a transaction!" unless $*RED-TRANSCTION-RUNNING;
+    $!dbh.commit.finish;
+}
+
+method rollback {
+    #die "Deu ruim!!!";
+    #die "Not in a transaction!" unless $*RED-TRANSCTION-RUNNING;
+    $!dbh.rollback;
+}
 
 method wildcard { "\${ ++$*bind-counter }" }
+
+multi method translate(Red::AST::Not $_ where .value ~~ Red::Column, $context?) {
+    self.translate: Red::AST::Cast.new(.value, "boolean").not
+}
+
+multi method translate(Red::AST::AND $_ where .left ~~ Red::Column, $context?) {
+    self.translate: Red::AST::AND.new: Red::AST::Cast.new(.left, "boolean"), .right
+}
+
+multi method translate(Red::AST::AND $_ where .right ~~ Red::Column, $context?) {
+    self.translate: Red::AST::AND.new: .left, Red::AST::Cast.new(.right, "boolean")
+}
+
+multi method translate(Red::AST::OR $_ where .left ~~ Red::Column, $context?) {
+    self.translate: Red::AST::OR.new: Red::AST::Cast.new(.left, "boolean"), .right
+}
+
+multi method translate(Red::AST::OR $_ where .right ~~ Red::Column, $context?) {
+    self.translate: Red::AST::OR.new: .left, Red::AST::Cast.new(.right, "boolean")
+}
+
+multi method translate(Red::AST::Cast $_ where { .type eq "boolean" && .value.?returns ~~ DateTime }, $context?) {
+    self.translate: Red::AST::IsDefined.new: .value;
+}
 
 multi method translate(Red::Column $_, "column-auto-increment") {}
 
@@ -117,10 +170,10 @@ class Statement does Red::Statement {
     has Str $.query;
     method stt-exec($stt, *@bind) {
         $!driver.debug: $!query, @bind || @!binds;
-        my $db = $stt.db;
+        my $db = $stt ~~ DB::Pg ?? $stt.db !! $stt;
         my $sth = $db.prepare($!query);
         my $s = $sth.execute(|(@bind or @!binds));
-        $db.finish;
+        $db.finish if $stt ~~ DB::Pg;
         do if $s ~~ DB::Pg::Results {
             $s.hashes
         } else {

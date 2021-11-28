@@ -63,8 +63,8 @@ multi method optimize(LeLt $left, GeGt $right, 1) {
 }
 
 #| a.b AND NOT(a.b) ==> True
-multi method optimize(Red::Column $left, Red::AST::Not $right, 1) {
-    return ast-value True if compare $left, $right.value
+multi method optimize(Red::Column $left, Red::AST::Not $right where $left<> =:= $right.value<>, 1) {
+    return ast-value False if compare $left, $right.value
 }
 
 #| NOT(a.b) AND a.b ==> True
