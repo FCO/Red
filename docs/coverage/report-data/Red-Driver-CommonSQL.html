@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::CommonSQL 57.6%</h1>
+				<h1>Red::Driver::CommonSQL 57.7%</h1>
 			</div>
 		</div>
 	</div>
@@ -616,8 +616,12 @@
 <span class="coverage-no">    }] =&gt; @bind</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
+<span class="coverage-green">multi method wildcard-value(Red::AST::Value $_) { nextwith .value }</span>
+<span class="coverage-red">multi method wildcard-value(@val) { @val.map: { self.wildcard-value: $_ } }</span>
+<span class="coverage-green">multi method wildcard-value($_) { $_ }</span>
+<span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Value $_, &quot;bind&quot;) {</span>
-<span class="coverage-green">    self.wildcard =&gt; [ .value ]</span>
+<span class="coverage-green">    self.wildcard =&gt; [ self.wildcard-value: $_ ]</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Divisable $_, $context?) {</span>
@@ -672,7 +676,7 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Value $_ where .type ~~ Positional, $context?) {</span>
-<span class="coverage-green">    '( ' ~ .get-value.map( -&gt; $v { self.wildcard } ).join(', ') ~ ' )' =&gt; .get-value;</span>
+<span class="coverage-green">    '( ' ~ .get-value.map( -&gt; $v { self.wildcard } ).join(', ') ~ ' )' =&gt; .get-value.map: { self.wildcard-value: $_ };</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW, $context?) {</span>
@@ -788,6 +792,7 @@
 <span class="coverage-green">multi method translate(Red::AST::Insert $_, $context?) {</span>
 <span class="coverage-green">    my @values = .values.grep({ .value.value.defined });</span>
 <span class="coverage-green">    return &quot;INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES&quot; =&gt; [] unless @values;</span>
+<span class="coverage-no">    # TODO: Use translation</span>
 <span class="coverage-green">    my @bind = @values.map: *.value.get-value;</span>
 <span class="coverage-green">    &quot;INSERT INTO {</span>
 <span class="coverage-green">        self.table-name-wrapper: .into.^table</span>
@@ -847,7 +852,7 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Value $_, &quot;update-rval&quot;) {</span>
-<span class="coverage-green">    self.wildcard =&gt; [.get-value]</span>
+<span class="coverage-green">    self.wildcard =&gt; [ self.wildcard-value: $_ ]</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method translate(Red::AST::LastInsertedRow $_, $context?) { &quot;&quot; =&gt; [] }</span>

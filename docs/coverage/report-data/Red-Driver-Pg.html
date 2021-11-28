@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::Pg 2.7%</h1>
+				<h1>Red::Driver::Pg 2.4%</h1>
 			</div>
 		</div>
 	</div>
@@ -145,12 +145,25 @@
 <span class="coverage-red">multi method translate(Red::Column $_, &quot;column-auto-increment&quot;) {}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined) {</span>
-<span class="coverage-red">    my Int $*bind-counter;</span>
-<span class="coverage-red">    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);</span>
+<span class="coverage-red">    my $bind-counter = $*bind-counter // 0;</span>
+<span class="coverage-red">    {</span>
+<span class="coverage-red">        my Int $*bind-counter = $bind-counter;</span>
+<span class="coverage-red">        self.Red::Driver::CommonSQL::translate($_, $context, :gambi);</span>
+<span class="coverage-no">    }</span>
 <span class="coverage-no">}</span>
 <span class="coverage-red">multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined) {</span>
 <span class="coverage-red">    my Int $*bind-counter;</span>
 <span class="coverage-red">    self.Red::Driver::CommonSQL::translate($_, $context, :gambi);</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method wildcard-value(@val) { @val.map: { self.wildcard-value: $_ } }</span>
+<span class="coverage-red">multi method wildcard-value($_) { $_ }</span>
+<span class="coverage-red">multi method wildcard-value(Red::AST::Value $_) {</span>
+<span class="coverage-red">    do given .get-value {</span>
+<span class="coverage-red">        when .HOW ~~ Metamodel::EnumHOW { .value }</span>
+<span class="coverage-red">        when Bool { .Int }</span>
+<span class="coverage-red">        default { $_ }</span>
+<span class="coverage-no">    }</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method translate(Red::AST::RowId $_, $context?) { &quot;OID&quot; =&gt; [] }</span>
@@ -163,7 +176,8 @@
 <span class="coverage-red">multi method translate(Red::AST::Insert $_, $context?) {</span>
 <span class="coverage-red">    my Int $*bind-counter;</span>
 <span class="coverage-red">    my @values = .values.grep({ .value.value.defined });</span>
-<span class="coverage-red">    my @bind = @values.map: *.value.get-value;</span>
+<span class="coverage-no">    # TODO: User translation</span>
+<span class="coverage-red">    my @bind = @values.map: { self.wildcard-value: .value }</span>
 <span class="coverage-red">    &quot;INSERT INTO {</span>
 <span class="coverage-red">        self.table-name-wrapper: .into.^table</span>
 <span class="coverage-red">    }(\n{</span>
@@ -189,6 +203,13 @@
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method translate(Red::Column $_, &quot;column-comment&quot;) {</span>
 <span class="coverage-red">    (.comment ?? &quot;COMMENT ON COLUMN { self.translate: $_, &quot;table-dot-column&quot; } IS '{ .comment }'&quot; !! &quot;&quot;) =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::Column $_, &quot;column-type&quot;)           {</span>
+<span class="coverage-red">    if !.auto-increment &amp;&amp; .attr.type =:= Mu &amp;&amp; !.type.defined {</span>
+<span class="coverage-red">        return self.type-by-name(&quot;string&quot;) =&gt; []</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    (.type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_) =&gt; []</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method translate(Red::AST::TableComment $_, $context?) {</span>
@@ -223,12 +244,12 @@
 <span class="coverage-red">    Statement.new: :driver(self), :statement($!dbh), :$query</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime                               --&gt; Str:D) {&quot;timestamp&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where { .auto-increment }                                  --&gt; Str:D) {&quot;serial&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where { .attr.type ~~ one(Int, Bool) &amp;&amp; !.auto-increment } --&gt; Str:D) {&quot;integer&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Bool                                   --&gt; Str:D) {&quot;boolean&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ UUID                                   --&gt; Str:D) {&quot;uuid&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $                                                            --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime       --&gt; Str:D) {&quot;timestamp&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .auto-increment              --&gt; Str:D) {&quot;serial&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --&gt; Str:D) {&quot;integer&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --&gt; Str:D) {&quot;boolean&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ UUID           --&gt; Str:D) {&quot;uuid&quot;}</span>
+<span class="coverage-red">multi method default-type-for(Red::Column $                                    --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }</span>
 <span class="coverage-no"></span>
