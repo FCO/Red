@@ -53,14 +53,14 @@ multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined)
     self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
 }
 
-multi method translate(Red::AST::Value $_, "update-rval") {
-    self.wildcard => [
-        do given .get-value {
-            when .HOW ~~ Metamodel::EnumHOW { .value }
-            when Bool { .Int }
-            default { $_ }
-        }
-    ]
+multi method wildcard-value(@val) { @val.map: { self.wildcard-value: $_ } }
+multi method wildcard-value($_) { $_ }
+multi method wildcard-value(Red::AST::Value $_) {
+    do given .get-value {
+        when .HOW ~~ Metamodel::EnumHOW { .value }
+        when Bool { .Int }
+        default { $_ }
+    }
 }
 
 multi method translate(Red::AST::RowId $_, $context?) { "OID" => [] }
@@ -74,13 +74,7 @@ multi method translate(Red::AST::Insert $_, $context?) {
     my Int $*bind-counter;
     my @values = .values.grep({ .value.value.defined });
     # TODO: User translation
-    my @bind = @values.map: {
-        do given .value.get-value {
-            when .HOW ~~ Metamodel::EnumHOW { .value }
-            when Bool { .Int }
-            default { $_ }
-        }
-    }
+    my @bind = @values.map: { self.wildcard-value: .value }
     "INSERT INTO {
         self.table-name-wrapper: .into.^table
     }(\n{

@@ -3,6 +3,7 @@ use Red;
 use Red::AST::CreateTable;
 use Red::AST::Insert;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 plan 21;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
