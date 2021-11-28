@@ -2,8 +2,8 @@ use Test;
 use Red;
 
 model Bla {
-    has UInt $!id is serial;
-    has Str $.bla is column;
+    has UInt $!id  is serial;
+    has Str  $.bla is column;
 }
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
@@ -28,7 +28,11 @@ is %b<test1>.elems, 2;
 is %b<test2>.elems, 1;
 my %c := Bla.^all.map(*.bla).classify(* eq "test1");
 is %c.elems, 2;
-is %c.keys.Seq.sort, (0, 1);
+is %c.keys.Seq.sort.map({
+    when "True"  { True      }
+    when "False" { False     }
+    default      { .Int.Bool }
+}), (False, True);
 without %*ENV<RED_DATABASE> {
     is %c{1}.elems, 2;
     is %c{0}.elems, 1;

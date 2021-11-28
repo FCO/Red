@@ -566,8 +566,12 @@ multi method translate(Red::Column $col, "select") {
     }] => @bind
 }
 
+multi method wildcard-value(Red::AST::Value $_) { nextwith .value }
+multi method wildcard-value(@val) { @val.map: { self.wildcard-value: $_ } }
+multi method wildcard-value($_) { $_ }
+
 multi method translate(Red::AST::Value $_, "bind") {
-    self.wildcard => [ .value ]
+    self.wildcard => [ self.wildcard-value: $_ ]
 }
 
 multi method translate(Red::AST::Divisable $_, $context?) {
@@ -622,7 +626,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $cont
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Positional, $context?) {
-    '( ' ~ .get-value.map( -> $v { self.wildcard } ).join(', ') ~ ' )' => .get-value;
+    '( ' ~ .get-value.map( -> $v { self.wildcard } ).join(', ') ~ ' )' => .get-value.map: { self.wildcard-value: $_ };
 }
 
 multi method translate(Red::AST::Value $_ where .type.HOW ~~ Metamodel::EnumHOW, $context?) {
@@ -738,6 +742,7 @@ multi method translate(Red::AST::Unique $_, $context?) {
 multi method translate(Red::AST::Insert $_, $context?) {
     my @values = .values.grep({ .value.value.defined });
     return "INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES" => [] unless @values;
+    # TODO: Use translation
     my @bind = @values.map: *.value.get-value;
     "INSERT INTO {
         self.table-name-wrapper: .into.^table
@@ -797,7 +802,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ Pair, "update") {
 }
 
 multi method translate(Red::AST::Value $_, "update-rval") {
-    self.wildcard => [.get-value]
+    self.wildcard => [ self.wildcard-value: $_ ]
 }
 
 multi method translate(Red::AST::LastInsertedRow $_, $context?) { "" => [] }

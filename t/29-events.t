@@ -3,6 +3,7 @@ use Red;
 use Red::AST::CreateTable;
 use Red::AST::Insert;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 plan 21;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
@@ -57,7 +58,7 @@ my $s = start react whenever Red.events -> $event {
                 is $event.db-name, "Red::Driver::SQLite";
             }
         }
-	when 5 {
+        when 5 {
             is-deeply $event.metadata, {:bla<ble>}
             is-deeply $event.db, $*RED-DB;
             with %*ENV<RED_DATABASE> {
@@ -65,7 +66,7 @@ my $s = start react whenever Red.events -> $event {
             } else {
                 is $event.db-name, "Red::Driver::SQLite";
             }
-	}
+        }
         default {
             is-deeply $event.metadata, {:bli<blo>}
             done
