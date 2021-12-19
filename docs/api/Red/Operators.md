@@ -286,6 +286,17 @@ X == Y
 ```raku
 multi sub infix:<==>(
     Red::AST $a,
+    Enumeration $b
+) returns Mu
+```
+
+X == Y # Where Y is castable to Numeric and writable
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Red::AST $a,
     Numeric(Any) $b is rw
 ) returns Mu
 ```
@@ -302,6 +313,17 @@ multi sub infix:<==>(
 ```
 
 X == Y # Where Y is castable to Numeric and read only
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Enumeration $a,
+    Red::AST $b
+) returns Mu
+```
+
+X == Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:<==>
 
@@ -341,11 +363,22 @@ X == Y # Where X is castable to Numeric and read only
 ```raku
 multi sub infix:<!=>(
     Red::AST $a,
+    Enumeration $b
+) returns Mu
+```
+
+X != Y # Where Y is castable to Numeric and read only
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    Red::AST $a,
     Numeric(Any) $b is rw
 ) returns Mu
 ```
 
-X != Y # Where Y is castable to Numeric and writable
+X != Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:<!=>
 
@@ -357,6 +390,17 @@ multi sub infix:<!=>(
 ```
 
 X != Y # Where Y is castable to Numeric and read only
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    Enumeration $a,
+    Red::AST $b
+) returns Mu
+```
+
+X != Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:<!=>
 
