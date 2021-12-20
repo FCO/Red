@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>MetamodelX::Red::Dirtable 60.2%</h1>
+				<h1>MetamodelX::Red::Dirtable 60.5%</h1>
 			</div>
 		</div>
 	</div>
@@ -181,6 +181,7 @@
 <span class="coverage-red">    my \meta = self;</span>
 <span class="coverage-no">    #state &amp;build //= self.^find_private_method(&quot;TWEAK_pr&quot;);</span>
 <span class="coverage-green">    my &amp;build = method (\instance: *%data) is rw {</span>
+<span class="coverage-green">        my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">        my @columns = instance.^columns;</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">        my %new = |@columns.map: {</span>

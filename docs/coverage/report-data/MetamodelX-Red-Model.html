@@ -239,11 +239,13 @@
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Creates a new unique constraint.</span>
 <span class="coverage-green">method add-unique-constraint(Mu:U \type, &amp;columns) {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    @!constraints.push: &quot;unique&quot; =&gt; columns(type)</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Creates a new primary key constraint.</span>
 <span class="coverage-red">multi method add-pk-constraint(Mu:U \type, &amp;columns) {</span>
+<span class="coverage-red">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-red">    nextwith type, columns(type)</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
@@ -282,6 +284,7 @@
 <span class="coverage-green">        method join-type(|)   { join-type }</span>
 <span class="coverage-green">        method tables(|)      { [ |base.^tables, alias ] }</span>
 <span class="coverage-green">        method join-on(|)     {</span>
+<span class="coverage-green">            my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">            do given rel {</span>
 <span class="coverage-green">                when Red::AST {</span>
 <span class="coverage-green">                    $_</span>
@@ -433,6 +436,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Applies phasers</span>
 <span class="coverage-green">method apply-row-phasers($obj, Mu:U $phase ) {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    for (|$obj.^methods.grep($phase), |$obj.^private_method_table.values.grep($phase)) -&gt; $meth {</span>
 <span class="coverage-green">        $obj.$meth(|($meth.count &gt; 1 ?? $obj !! Empty));</span>
 <span class="coverage-no">    }</span>
@@ -704,6 +708,7 @@
 <span class="coverage-no">#| Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter</span>
 <span class="coverage-no">#| Usualy passed unique values as IDs or columns with unique counstraint</span>
 <span class="coverage-green">multi method search(Red::Model:U \model, *%filter, :$with where not .defined) {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    samewith</span>
 <span class="coverage-no">        model,</span>
 <span class="coverage-no">        %filter.kv</span>

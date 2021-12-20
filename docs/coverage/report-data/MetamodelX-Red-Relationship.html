@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>MetamodelX::Red::Relationship 82.8%</h1>
+				<h1>MetamodelX::Red::Relationship 83.5%</h1>
 			</div>
 		</div>
 	</div>
@@ -77,6 +77,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">method !sel-scalar($attr, $name) {</span>
 <span class="coverage-green">    my method (Mu:U \SELF:) {</span>
+<span class="coverage-green">        my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">        SELF.^join(</span>
 <span class="coverage-no">            $attr.has-lazy-relationship</span>
 <span class="coverage-no">                    ?? $attr.relationship-model</span>
@@ -91,6 +92,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">method !sel-positional($attr) {</span>
 <span class="coverage-green">    my method (Mu:U \SELF:) {</span>
+<span class="coverage-green">        my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">        my $ast = $attr.relationship-ast: SELF;</span>
 <span class="coverage-green">        ($attr.relationship-model ~~ Positional</span>
 <span class="coverage-no">            ?? $attr.relationship-model.of</span>
@@ -102,6 +104,7 @@
 <span class="coverage-green">method !get-build {</span>
 <span class="coverage-no">    #&amp; //= self.^find_private_method('BUILD_pr')</span>
 <span class="coverage-green">    method (*%data) {</span>
+<span class="coverage-green">        my $*RED-INTERNAL = True;</span>
 <span class="coverage-red">        my \instance = self;</span>
 <span class="coverage-green">        for self.^relationships.keys -&gt; $rel {</span>
 <span class="coverage-green">            $rel.build-relationship: instance</span>

@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Attr::Relationship 87.9%</h1>
+				<h1>Red::Attr::Relationship 87.5%</h1>
 			</div>
 		</div>
 	</div>
@@ -97,6 +97,7 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">method rel {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    rel1 self.has-one ?? $!relationship-model !! self.package</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
@@ -130,6 +131,7 @@
 <span class="coverage-no">    use nqp;</span>
 <span class="coverage-green">    nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:</span>
 <span class="coverage-green">        FETCH =&gt; method () {</span>
+<span class="coverage-green">            my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">            my \ret = do if type ~~ Positional || attr.has-one {</span>
 <span class="coverage-green">                rel-model.^rs.where: rel1(rel-model).map(-&gt; $rel {</span>
 <span class="coverage-green">                    X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;</span>
@@ -164,6 +166,7 @@
 <span class="coverage-green">	    ret</span>
 <span class="coverage-no">        },</span>
 <span class="coverage-red">        STORE =&gt; method ($value where type) {</span>
+<span class="coverage-red">            my $*RED-INTERNAL = True;</span>
 <span class="coverage-red">            die X::Assignment::RO.new(value =&gt; attr.type) unless attr.rw;</span>
 <span class="coverage-red">            if type !~~ Positional {</span>
 <span class="coverage-red">                attr.set-data: instance, $value</span>
@@ -184,6 +187,7 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">method relationship-ast($type = Nil) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    my \type = self.relationship-argument-type;</span>
 <span class="coverage-green">    my @col1 = |rel1 type;</span>
 <span class="coverage-green">    @col1.map({</span>
@@ -194,6 +198,7 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">method join-type {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    with $!optional {</span>
 <span class="coverage-red">        return $!optional</span>
 <span class="coverage-no">                ?? :left</span>

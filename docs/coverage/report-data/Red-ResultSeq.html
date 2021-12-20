@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::ResultSeq 84.9%</h1>
+				<h1>Red::ResultSeq 85.3%</h1>
 			</div>
 		</div>
 	</div>
@@ -136,6 +136,7 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">method iterator(--&gt; Red::ResultSeq::Iterator) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&amp;.post, |(:driver($_) with $!with)</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
@@ -164,6 +165,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Adds a new filter on the query (does not run the query)</span>
 <span class="coverage-green">method grep(&amp;filter) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    self.create-comment-to-caller;</span>
 <span class="coverage-green">    CATCH {</span>
 <span class="coverage-green">        default {</span>
@@ -236,6 +238,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Change what will be returned (does not run the query)</span>
 <span class="coverage-green">method map(\SELF: &amp;filter) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    SELF.create-comment-to-caller;</span>
 <span class="coverage-green">    CATCH {</span>
 <span class="coverage-green">        default {</span>
@@ -274,6 +277,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Defines the order of the query (does not run the query)</span>
 <span class="coverage-green">method sort(&amp;order --&gt; Red::ResultSeq) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    self.create-comment-to-caller;</span>
 <span class="coverage-green">    my @order = order self.of;</span>
 <span class="coverage-green">    self.clone: :chain($!chain.clone: :@order)</span>
@@ -297,6 +301,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Returns a ResultAssociative classified by the passed code (does not run the query)</span>
 <span class="coverage-green">method classify(\SELF: &amp;func, :&amp;as = { $_ } --&gt; Red::ResultAssociative) is hidden-from-sql-commenting {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    SELF.create-comment-to-caller;</span>
 <span class="coverage-green">    do if self.?last-rs.DEFINITE {</span>
 <span class="coverage-green">        self.last-rs.classify(&amp;func o self.last-filter, :as{ ast-value True })</span>
@@ -417,6 +422,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Create a custom join (SQL join)</span>
 <span class="coverage-green">method join-model(Red::Model \model, &amp;on, :$name = &quot;{ self.^shortname }_{ model.^shortname }&quot;, *%pars where { .elems == 0 || ( .elems == 1 &amp;&amp; so .values.head ) }) {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    do with self.obj {</span>
 <span class="coverage-green">        my $filter = do given what-does-it-do(&amp;on.assuming($_), model) {</span>
 <span class="coverage-green">            do if [eqv] .values {</span>

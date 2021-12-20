@@ -63,6 +63,7 @@
 <span class="coverage-green">    unless $!added-method{&quot;{ type.^name }|$attr&quot;} {</span>
 <span class="coverage-green">        if $attr.rw {</span>
 <span class="coverage-green">            type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) is rw {</span>
+<span class="coverage-green">                die &quot;Cannot look up attributes in a { type.^name } type object&quot; without $*RED-INTERNAL;</span>
 <span class="coverage-green">                Proxy.new:</span>
 <span class="coverage-green">                FETCH =&gt; -&gt; $ { $attr.column },</span>
 <span class="coverage-green">                STORE =&gt; -&gt; $, $value {</span>
@@ -78,6 +79,7 @@
 <span class="coverage-no">            }</span>
 <span class="coverage-green">        } else {</span>
 <span class="coverage-green">            type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) {</span>
+<span class="coverage-green">                die &quot;Cannot look up attributes in a { type.^name } type object&quot; without $*RED-INTERNAL;</span>
 <span class="coverage-green">                $attr.column</span>
 <span class="coverage-no">            }</span>
 <span class="coverage-no">        }</span>

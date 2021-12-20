@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Column 88%</h1>
+				<h1>Red::Column 88.2%</h1>
 			</div>
 		</div>
 	</div>
@@ -189,6 +189,7 @@
 <span class="coverage-no">    }</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">    method CALL-ME($alias = Nil) {</span>
+<span class="coverage-green">        my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">        if &amp;!references {</span>
 <span class="coverage-green">            my $model = self.model($alias);</span>
 <span class="coverage-green">            my $ret = &amp;!references.($model);</span>
@@ -231,6 +232,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Returns the column that is referenced by this one.</span>
 <span class="coverage-green">method ref($model = $!model-type !=== Red::Model ?? $!model-type !! Nil) {</span>
+<span class="coverage-green">    my $*RED-INTERNAL = True;</span>
 <span class="coverage-green">    .($model) with self.references</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
