@@ -139,6 +139,7 @@ class ReferencesProxy does Callable {
     }
 
     method CALL-ME($alias = Nil) {
+        my $*RED-INTERNAL = True;
         if &!references {
             my $model = self.model($alias);
             my $ret = &!references.($model);
@@ -181,6 +182,7 @@ method references(--> Callable) is rw {
 
 #| Returns the column that is referenced by this one.
 method ref($model = $!model-type !=== Red::Model ?? $!model-type !! Nil) {
+    my $*RED-INTERNAL = True;
     .($model) with self.references
 }
 

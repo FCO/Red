@@ -106,6 +106,7 @@ EOSQL
 lives-ok { Foo.^create-table }
 
 $*RED-DB.verify;
+my $*RED-INTERNAL = True;
 
 isa-ok Ble.a, Red::Column;
 isa-ok Bli.a, Red::Column;

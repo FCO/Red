@@ -47,6 +47,7 @@ method transfer(Mu:U $package) {
 }
 
 method rel {
+    my $*RED-INTERNAL = True;
     rel1 self.has-one ?? $!relationship-model !! self.package
 }
 
@@ -80,6 +81,7 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
     use nqp;
     nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:
         FETCH => method () {
+            my $*RED-INTERNAL = True;
             my \ret = do if type ~~ Positional || attr.has-one {
                 rel-model.^rs.where: rel1(rel-model).map(-> $rel {
                     X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;
@@ -114,6 +116,7 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
 	    ret
         },
         STORE => method ($value where type) {
+            my $*RED-INTERNAL = True;
             die X::Assignment::RO.new(value => attr.type) unless attr.rw;
             if type !~~ Positional {
                 attr.set-data: instance, $value
@@ -134,6 +137,7 @@ method relationship-argument-type {
 }
 
 method relationship-ast($type = Nil) is hidden-from-sql-commenting {
+    my $*RED-INTERNAL = True;
     my \type = self.relationship-argument-type;
     my @col1 = |rel1 type;
     @col1.map({
@@ -144,6 +148,7 @@ method relationship-ast($type = Nil) is hidden-from-sql-commenting {
 }
 
 method join-type {
+    my $*RED-INTERNAL = True;
     with $!optional {
         return $!optional
                 ?? :left
