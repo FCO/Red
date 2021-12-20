@@ -131,6 +131,7 @@ method compose-dirtable(Mu \type) {
     my \meta = self;
     #state &build //= self.^find_private_method("TWEAK_pr");
     my &build = method (\instance: *%data) is rw {
+        my $*RED-INTERNAL = True;
         my @columns = instance.^columns;
 
         my %new = |@columns.map: {

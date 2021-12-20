@@ -13,6 +13,7 @@ method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr --> Empty) {
     unless $!added-method{"{ type.^name }|$attr"} {
         if $attr.rw {
             type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) is rw {
+                die "Cannot look up attributes in a { type.^name } type object" without $*RED-INTERNAL;
                 Proxy.new:
                 FETCH => -> $ { $attr.column },
                 STORE => -> $, $value {
@@ -28,6 +29,7 @@ method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr --> Empty) {
             }
         } else {
             type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) {
+                die "Cannot look up attributes in a { type.^name } type object" without $*RED-INTERNAL;
                 $attr.column
             }
         }

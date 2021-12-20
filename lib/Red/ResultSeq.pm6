@@ -86,6 +86,7 @@ multi method with(Str $with) {
 }
 
 method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {
+    my $*RED-INTERNAL = True;
     Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post, |(:driver($_) with $!with)
 }
 
@@ -114,6 +115,7 @@ method transform-item(*%data) is hidden-from-sql-commenting {
 
 #| Adds a new filter on the query (does not run the query)
 method grep(&filter) is hidden-from-sql-commenting {
+    my $*RED-INTERNAL = True;
     self.create-comment-to-caller;
     CATCH {
         default {
@@ -186,6 +188,7 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
 
 #| Change what will be returned (does not run the query)
 method map(\SELF: &filter) is hidden-from-sql-commenting {
+    my $*RED-INTERNAL = True;
     SELF.create-comment-to-caller;
     CATCH {
         default {
@@ -224,6 +227,7 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
 
 #| Defines the order of the query (does not run the query)
 method sort(&order --> Red::ResultSeq) is hidden-from-sql-commenting {
+    my $*RED-INTERNAL = True;
     self.create-comment-to-caller;
     my @order = order self.of;
     self.clone: :chain($!chain.clone: :@order)
@@ -247,6 +251,7 @@ multi method pick() is hidden-from-sql-commenting {
 
 #| Returns a ResultAssociative classified by the passed code (does not run the query)
 method classify(\SELF: &func, :&as = { $_ } --> Red::ResultAssociative) is hidden-from-sql-commenting {
+    my $*RED-INTERNAL = True;
     SELF.create-comment-to-caller;
     do if self.?last-rs.DEFINITE {
         self.last-rs.classify(&func o self.last-filter, :as{ ast-value True })
@@ -367,6 +372,7 @@ multi method join(Str() $sep) {
 
 #| Create a custom join (SQL join)
 method join-model(Red::Model \model, &on, :$name = "{ self.^shortname }_{ model.^shortname }", *%pars where { .elems == 0 || ( .elems == 1 && so .values.head ) }) {
+    my $*RED-INTERNAL = True;
     do with self.obj {
         my $filter = do given what-does-it-do(&on.assuming($_), model) {
             do if [eqv] .values {

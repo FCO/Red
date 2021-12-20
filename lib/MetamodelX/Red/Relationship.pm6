@@ -27,6 +27,7 @@ method create-rel-name(Mu \instance, $name) { "{ instance.^as }_{ $name }" }
 
 method !sel-scalar($attr, $name) {
     my method (Mu:U \SELF:) {
+        my $*RED-INTERNAL = True;
         SELF.^join(
             $attr.has-lazy-relationship
                     ?? $attr.relationship-model
@@ -41,6 +42,7 @@ method !sel-scalar($attr, $name) {
 
 method !sel-positional($attr) {
     my method (Mu:U \SELF:) {
+        my $*RED-INTERNAL = True;
         my $ast = $attr.relationship-ast: SELF;
         ($attr.relationship-model ~~ Positional
             ?? $attr.relationship-model.of
@@ -52,6 +54,7 @@ method !sel-positional($attr) {
 method !get-build {
     #& //= self.^find_private_method('BUILD_pr')
     method (*%data) {
+        my $*RED-INTERNAL = True;
         my \instance = self;
         for self.^relationships.keys -> $rel {
             $rel.build-relationship: instance

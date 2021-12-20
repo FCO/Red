@@ -189,11 +189,13 @@ method add-reference($name, Red::Column $col) {
 
 #| Creates a new unique constraint.
 method add-unique-constraint(Mu:U \type, &columns) {
+    my $*RED-INTERNAL = True;
     @!constraints.push: "unique" => columns(type)
 }
 
 #| Creates a new primary key constraint.
 multi method add-pk-constraint(Mu:U \type, &columns) {
+    my $*RED-INTERNAL = True;
     nextwith type, columns(type)
 }
 
@@ -232,6 +234,7 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
         method join-type(|)   { join-type }
         method tables(|)      { [ |base.^tables, alias ] }
         method join-on(|)     {
+            my $*RED-INTERNAL = True;
             do given rel {
                 when Red::AST {
                     $_
@@ -383,6 +386,7 @@ multi method create-table(\model, :$with where not .defined, :if-not-exists($unl
 
 #| Applies phasers
 method apply-row-phasers($obj, Mu:U $phase ) {
+    my $*RED-INTERNAL = True;
     for (|$obj.^methods.grep($phase), |$obj.^private_method_table.values.grep($phase)) -> $meth {
         $obj.$meth(|($meth.count > 1 ?? $obj !! Empty));
     }
@@ -654,6 +658,7 @@ multi method search(Red::Model:U \model, Red::AST $filter, :$with where not .def
 #| Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter
 #| Usualy passed unique values as IDs or columns with unique counstraint
 multi method search(Red::Model:U \model, *%filter, :$with where not .defined) {
+    my $*RED-INTERNAL = True;
     samewith
         model,
         %filter.kv

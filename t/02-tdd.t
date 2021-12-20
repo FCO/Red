@@ -92,6 +92,7 @@ given model {
     has $!b is column;
     has $!c is column{:id, :name<column_c>, :!nullable};
 } {
+    my $*RED-INTERNAL = True;
     use Red::Column;
     use Red::AST::Value;
     isa-ok .a, Red::Column;
@@ -238,6 +239,8 @@ model Person {
     has Str  $.name  is column;
     has Post @.posts is relationship{ .author-id };
 }
+
+my $*RED-INTERNAL = True;
 
 is Post.^id>>.name, < $!id >;
 is Post.new(:42id).^id-values, < 42 >;
