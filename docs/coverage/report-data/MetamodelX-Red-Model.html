@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>MetamodelX::Red::Model 77.8%</h1>
+				<h1>MetamodelX::Red::Model 77.9%</h1>
 			</div>
 		</div>
 	</div>
@@ -782,8 +782,10 @@
 <span class="coverage-green">    if %pre {</span>
 <span class="coverage-green">        for |$obj.^has-one-relationships -&gt; $rel {</span>
 <span class="coverage-green">            with %pre{ $rel.rel-name } {</span>
-<span class="coverage-green">                $rel.set_value: $obj, $_</span>
-<span class="coverage-no">                        with $rel.relationship-model.^new-from-data: $_</span>
+<span class="coverage-green">                with $rel.relationship-model.^new-from-data: $_ {</span>
+<span class="coverage-green">                    .^saved-on-db;</span>
+<span class="coverage-green">                    $rel.set_value: $obj, $_</span>
+<span class="coverage-no">                }</span>
 <span class="coverage-no">            }</span>
 <span class="coverage-no">        }</span>
 <span class="coverage-no">    }</span>
