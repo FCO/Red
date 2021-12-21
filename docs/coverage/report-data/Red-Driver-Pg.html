@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::Pg 13.2%</h1>
+				<h1>Red::Driver::Pg 2.4%</h1>
 			</div>
 		</div>
 	</div>
@@ -76,21 +76,21 @@
 <span class="coverage-no">#| host    : To be connected to</span>
 <span class="coverage-no">#| port    : What port to connect</span>
 <span class="coverage-no">#| dbname  : Database name</span>
-<span class="coverage-green">submethod BUILD(:$!dbh, Str :$!user, Str :$!password, Str :$!host = &quot;127.0.0.1&quot;, Int :$!port = 5432, Str :$!dbname) {</span>
+<span class="coverage-red">submethod BUILD(:$!dbh, Str :$!user, Str :$!password, Str :$!host = &quot;127.0.0.1&quot;, Int :$!port = 5432, Str :$!dbname) {</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-green">submethod TWEAK() {</span>
-<span class="coverage-green">    $!dbh //= DB::Pg.new:</span>
-<span class="coverage-green">        conninfo =&gt; &quot;{</span>
-<span class="coverage-green">            &quot;user=$_&quot; with $!user</span>
-<span class="coverage-green">        } {</span>
-<span class="coverage-green">            &quot;password=$_&quot; with $!password</span>
-<span class="coverage-green">        } {</span>
-<span class="coverage-green">            &quot;host=$_&quot; with $!host</span>
-<span class="coverage-green">        } {</span>
-<span class="coverage-green">            &quot;port=$_&quot; with $!port</span>
-<span class="coverage-green">        } {</span>
-<span class="coverage-green">            &quot;dbname=$_&quot; with $!dbname</span>
+<span class="coverage-red">submethod TWEAK() {</span>
+<span class="coverage-red">    $!dbh //= DB::Pg.new:</span>
+<span class="coverage-red">        conninfo =&gt; &quot;{</span>
+<span class="coverage-red">            &quot;user=$_&quot; with $!user</span>
+<span class="coverage-red">        } {</span>
+<span class="coverage-red">            &quot;password=$_&quot; with $!password</span>
+<span class="coverage-red">        } {</span>
+<span class="coverage-red">            &quot;host=$_&quot; with $!host</span>
+<span class="coverage-red">        } {</span>
+<span class="coverage-red">            &quot;port=$_&quot; with $!port</span>
+<span class="coverage-red">        } {</span>
+<span class="coverage-red">            &quot;dbname=$_&quot; with $!dbname</span>
 <span class="coverage-no">        }&quot;</span>
 <span class="coverage-no">    ;</span>
 <span class="coverage-no">}</span>
