@@ -2,6 +2,10 @@ Revision history for Red
 
 {{$NEXT}}
 
+0.1.54  2021-12-21T00:47:26Z
+    - Break when accessing a column on a Type object
+    - .^saved-on-db on prefetched relationships
+
 0.1.53  2021-11-22T02:17:40Z
     - Separate the Model generation for changing attributes
     - Make join on update use subselect
