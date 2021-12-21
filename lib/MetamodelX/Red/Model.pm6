@@ -732,8 +732,10 @@ method new-from-data(\of, $data) is hidden-from-backtrace {
     if %pre {
         for |$obj.^has-one-relationships -> $rel {
             with %pre{ $rel.rel-name } {
-                $rel.set_value: $obj, $_
-                        with $rel.relationship-model.^new-from-data: $_
+                with $rel.relationship-model.^new-from-data: $_ {
+                    .^saved-on-db;
+                    $rel.set_value: $obj, $_
+                }
             }
         }
     }
