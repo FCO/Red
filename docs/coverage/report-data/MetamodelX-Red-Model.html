@@ -370,10 +370,11 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Returns the ResultSeq</span>
-<span class="coverage-green">multi method rs(Mu:U --&gt; Red::ResultSeq)          { $.rs-class.new }</span>
-<span class="coverage-red">multi method rs(Mu:U, :$with! --&gt; Red::ResultSeq) { $.rs-class.new.with: $with }</span>
+<span class="coverage-green">multi method rs(Mu:U --&gt; Red::ResultSeq)               { $.rs-class.new }</span>
+<span class="coverage-red">multi method rs(Mu:U, :$with! --&gt; Red::ResultSeq)      { $.rs-class.new.with: $with }</span>
 <span class="coverage-green">multi method rs(Mu:D $obj --&gt; Red::ResultSeq)          { $.rs-class.new: :$obj }</span>
 <span class="coverage-red">multi method rs(Mu:D $obj, :$with! --&gt; Red::ResultSeq) { $.rs-class.new(:$obj).with($with) }</span>
+<span class="coverage-no"></span>
 <span class="coverage-no">#| Alias for C&lt;.rs()&gt;</span>
 <span class="coverage-green">multi method all($obj --&gt; Red::ResultSeq)          { $obj.^rs }</span>
 <span class="coverage-red">multi method all($obj, :$with! --&gt; Red::ResultSeq) { $obj.^rs(:$with) }</span>

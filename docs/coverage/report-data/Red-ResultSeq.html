@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::ResultSeq 85.3%</h1>
+				<h1>Red::ResultSeq 84.9%</h1>
 			</div>
 		</div>
 	</div>
@@ -126,6 +126,8 @@
 <span class="coverage-no">has Red::Driver       $.with;</span>
 <span class="coverage-no">has                   $.obj;</span>
 <span class="coverage-green">has Red::AST::Chained $.chain handles &lt;filter limit offset post order group table-list&gt; .= new: |(:filter(.^id-filter) with $!obj);</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method with { $!with }</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method with(Red::Driver $with) {</span>
 <span class="coverage-red">    self.clone: :$with</span>

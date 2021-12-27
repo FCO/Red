@@ -125,6 +125,7 @@
 <span class="coverage-green">sub red-tap(Str() $name, &amp;func, :$red-db = $*RED-DB) is export {</span>
 <span class="coverage-green">    Red::Class.instance.events.grep({ $_ eq $name with .name }).tap: -&gt; Red::Event $_ {</span>
 <span class="coverage-green">        my $*RED-DB = $red-db;</span>
+<span class="coverage-green">        $GLOBAL::RED-DB //= $red-db;</span>
 <span class="coverage-green">        func .data</span>
 <span class="coverage-no">    }</span>
 <span class="coverage-no">}</span>
