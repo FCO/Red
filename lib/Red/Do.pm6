@@ -75,6 +75,7 @@ sub red-emit(Str() $name, $data) is export {
 sub red-tap(Str() $name, &func, :$red-db = $*RED-DB) is export {
     Red::Class.instance.events.grep({ $_ eq $name with .name }).tap: -> Red::Event $_ {
         my $*RED-DB = $red-db;
+        $GLOBAL::RED-DB //= $red-db;
         func .data
     }
 }

@@ -320,10 +320,11 @@ method compose-columns(Red::Model:U \type) {
 }
 
 #| Returns the ResultSeq
-multi method rs(Mu:U --> Red::ResultSeq)          { $.rs-class.new }
-multi method rs(Mu:U, :$with! --> Red::ResultSeq) { $.rs-class.new.with: $with }
+multi method rs(Mu:U --> Red::ResultSeq)               { $.rs-class.new }
+multi method rs(Mu:U, :$with! --> Red::ResultSeq)      { $.rs-class.new.with: $with }
 multi method rs(Mu:D $obj --> Red::ResultSeq)          { $.rs-class.new: :$obj }
 multi method rs(Mu:D $obj, :$with! --> Red::ResultSeq) { $.rs-class.new(:$obj).with($with) }
+
 #| Alias for C<.rs()>
 multi method all($obj --> Red::ResultSeq)          { $obj.^rs }
 multi method all($obj, :$with! --> Red::ResultSeq) { $obj.^rs(:$with) }
