@@ -95,7 +95,7 @@ multi method DELETE-KEY(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Str
     $obj
 }
 
-#! Returns a value from a json array index
+#| Returns a value from a json array index
 method AT-POS(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Int or ( $_ ~~ Red::AST and .returns ~~ Int )}) is rw {
     my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);
     Proxy.new:
