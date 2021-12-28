@@ -98,3 +98,13 @@ method DELETE-KEY(
 
 Delete and return a value from a json hash key
 
+### method AT-POS
+
+```raku
+method AT-POS(
+    $key where { ... }
+) returns Mu
+```
+
+Returns a value from a json array index
+

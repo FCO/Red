@@ -77,7 +77,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">method !sel-scalar($attr, $name) {</span>
 <span class="coverage-green">    my method (Mu:U \SELF:) {</span>
-<span class="coverage-green">        my $*RED-INTERNAL = True;</span>
+<span class="coverage-green">        die &quot;Cannot look up relationships in a { SELF.^name } type object&quot; without $*RED-INTERNAL;</span>
 <span class="coverage-green">        SELF.^join(</span>
 <span class="coverage-no">            $attr.has-lazy-relationship</span>
 <span class="coverage-no">                    ?? $attr.relationship-model</span>
@@ -92,7 +92,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">method !sel-positional($attr) {</span>
 <span class="coverage-green">    my method (Mu:U \SELF:) {</span>
-<span class="coverage-green">        my $*RED-INTERNAL = True;</span>
+<span class="coverage-green">        die &quot;Cannot look up relationships in a { SELF.^name } type object&quot; without $*RED-INTERNAL;</span>
 <span class="coverage-green">        my $ast = $attr.relationship-ast: SELF;</span>
 <span class="coverage-green">        ($attr.relationship-model ~~ Positional</span>
 <span class="coverage-no">            ?? $attr.relationship-model.of</span>

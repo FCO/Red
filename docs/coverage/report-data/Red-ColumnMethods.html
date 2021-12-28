@@ -145,7 +145,7 @@
 <span class="coverage-green">    $obj</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-no">#! Returns a value from a json array index</span>
+<span class="coverage-no">#| Returns a value from a json array index</span>
 <span class="coverage-red">method AT-POS(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Int or ( $_ ~~ Red::AST and .returns ~~ Int )}) is rw {</span>
 <span class="coverage-red">    my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);</span>
 <span class="coverage-red">    Proxy.new:</span>
