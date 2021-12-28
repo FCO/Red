@@ -27,7 +27,7 @@ method create-rel-name(Mu \instance, $name) { "{ instance.^as }_{ $name }" }
 
 method !sel-scalar($attr, $name) {
     my method (Mu:U \SELF:) {
-        my $*RED-INTERNAL = True;
+        die "Cannot look up relationships in a { SELF.^name } type object" without $*RED-INTERNAL;
         SELF.^join(
             $attr.has-lazy-relationship
                     ?? $attr.relationship-model
@@ -42,7 +42,7 @@ method !sel-scalar($attr, $name) {
 
 method !sel-positional($attr) {
     my method (Mu:U \SELF:) {
-        my $*RED-INTERNAL = True;
+        die "Cannot look up relationships in a { SELF.^name } type object" without $*RED-INTERNAL;
         my $ast = $attr.relationship-ast: SELF;
         ($attr.relationship-model ~~ Positional
             ?? $attr.relationship-model.of
