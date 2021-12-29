@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::CommonSQL 57.7%</h1>
+				<h1>Red::Driver::CommonSQL 57.3%</h1>
 			</div>
 		</div>
 	</div>
@@ -230,7 +230,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-red">method create-schema(%models where .values.all ~~ Red::Model) {</span>
 <span class="coverage-red">    for %models.kv -&gt; Str() $name, Red::Model \model {</span>
-<span class="coverage-red">        self.execute: Red::AST::CreateTable.new:</span>
+<span class="coverage-red">        self.execute: my $data = Red::AST::CreateTable.new:</span>
 <span class="coverage-no">            :name(model.^table),</span>
 <span class="coverage-no">            :temp(model.^temp),</span>
 <span class="coverage-no">            :columns(model.^columns.map(*.column.clone: :references(Callable), :class(model))),</span>
@@ -247,11 +247,14 @@
 <span class="coverage-no">                    }</span>
 <span class="coverage-no">                }</span>
 <span class="coverage-no">            ],</span>
+<span class="coverage-no">        ;</span>
+<span class="coverage-red">        model.emit: $data</span>
 <span class="coverage-no">    }</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">    for %models.kv -&gt; Str() $name, Red::Model \model {</span>
 <span class="coverage-red">        my @fks = model.^columns&gt;&gt;.column.grep({ .ref.defined });</span>
-<span class="coverage-red">        self.execute: Red::AST::AddForeignKeyOnTable.new:</span>
+<span class="coverage-red">        if @fks {</span>
+<span class="coverage-red">            self.execute: my $data = Red::AST::AddForeignKeyOnTable.new:</span>
 <span class="coverage-no">                :table(model.^table),</span>
 <span class="coverage-red">                :foreigns[@fks.map: {</span>
 <span class="coverage-red">                    %(</span>
@@ -267,8 +270,10 @@
 <span class="coverage-no">                            :from($_),</span>
 <span class="coverage-no">                            :to(.ref),</span>
 <span class="coverage-no">                    )</span>
-<span class="coverage-no">                }]</span>
-<span class="coverage-no">        if @fks</span>
+<span class="coverage-no">                }],</span>
+<span class="coverage-no">            ;</span>
+<span class="coverage-red">            model.emit: $data</span>
+<span class="coverage-no">        }</span>
 <span class="coverage-no">    }</span>
 <span class="coverage-red">    %models.keys Z=&gt; True xx *</span>
 <span class="coverage-no">}</span>
