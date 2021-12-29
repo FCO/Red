@@ -180,7 +180,7 @@ method ping {
 
 method create-schema(%models where .values.all ~~ Red::Model) {
     for %models.kv -> Str() $name, Red::Model \model {
-        self.execute: Red::AST::CreateTable.new:
+        self.execute: my $data = Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
             :columns(model.^columns.map(*.column.clone: :references(Callable), :class(model))),
@@ -197,11 +197,14 @@ method create-schema(%models where .values.all ~~ Red::Model) {
                     }
                 }
             ],
+        ;
+        model.emit: $data
     }
 
     for %models.kv -> Str() $name, Red::Model \model {
         my @fks = model.^columns>>.column.grep({ .ref.defined });
-        self.execute: Red::AST::AddForeignKeyOnTable.new:
+        if @fks {
+            self.execute: my $data = Red::AST::AddForeignKeyOnTable.new:
                 :table(model.^table),
                 :foreigns[@fks.map: {
                     %(
@@ -217,8 +220,10 @@ method create-schema(%models where .values.all ~~ Red::Model) {
                             :from($_),
                             :to(.ref),
                     )
-                }]
-        if @fks
+                }],
+            ;
+            model.emit: $data
+        }
     }
     %models.keys Z=> True xx *
 }

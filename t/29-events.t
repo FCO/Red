@@ -4,7 +4,7 @@ use Red::AST::CreateTable;
 use Red::AST::Insert;
 
 plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
-plan 21;
+plan 29;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
@@ -89,3 +89,37 @@ Bla.^create: :name<bla>;
     Red.emit;
 }
 await $s;
+
+schema(Bla).drop;
+
+model Ble { has $.id is serial; has $!bla-id is referencing(*.id, :model(Bla)) }
+
+my $t = start react whenever Red.events -> $event {
+    given ++$ {
+        when 1 {
+            isa-ok $event.data, Red::AST::CreateTable;
+            is-deeply $event.metadata, {:bla<ble>}
+            is-deeply $event.db, $*RED-DB;
+            with %*ENV<RED_DATABASE> {
+                skip "It's not using SQLite"
+            } else {
+                is $event.db-name, "Red::Driver::SQLite";
+            }
+        }
+        when 2 {
+            isa-ok $event.data, Red::AST::CreateTable;
+            is-deeply $event.metadata, {:bla<ble>}
+            is-deeply $event.db, $*RED-DB;
+            with %*ENV<RED_DATABASE> {
+                skip "It's not using SQLite"
+            } else {
+                is $event.db-name, "Red::Driver::SQLite";
+            }
+            done
+        }
+    }
+}
+
+schema(Bla, Ble).create;
+
+await $t;
