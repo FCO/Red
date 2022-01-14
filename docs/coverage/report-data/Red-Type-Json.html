@@ -52,7 +52,7 @@
 <span class="coverage-no">use Red::Type;</span>
 <span class="coverage-green">unit class Json is Str does Red::Type;</span>
 <span class="coverage-no"></span>
-<span class="coverage-green">method inflator { -&gt; $data { try { from-json $data } // $data } }</span>
+<span class="coverage-green">method inflator { -&gt; $data { $data ~~ Str ?? try { from-json $data } // $data !! $data } }</span>
 <span class="coverage-green">method deflator { -&gt; $data { try { to-json $data   } // $data } }</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">method red-type-accepts(Any:U --&gt; Bool) { True }</span>
