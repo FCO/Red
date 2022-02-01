@@ -376,9 +376,9 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
         |$ast.of."{.name.substr: 2}"().^columns.map: {
             my $class = .package;
             @pre-join.push: $class;
-            my $*RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;
+            my $RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;
             my ($s, @b) := do given self.translate:
-                    (.column but ColClass[$class]), "select" { .key, .value }
+                    (.column but ColClass[$class]), "select", :$RED-OVERRIDE-COLUMN-AS-PREFIX { .key, .value }
             @bind.push: |@b;
             $s
         }
@@ -558,16 +558,16 @@ multi method translate(Red::AST::So $_, $context?) {
     self.translate: .value, .bind ?? "bind" !! $context;
 }
 
-multi method translate(Red::Column $col, "select") {
+multi method translate(Red::Column $col, "select", Str :$RED-OVERRIDE-COLUMN-AS-PREFIX) {
     my ($str, @bind) := do with $col.computation {
         do given self.translate: $_ { .key, .value }
     } else {
         "{ self.table-name-wrapper: $col.model.^as }.{ $col.name }", []
     }
-    qq[$str {qq<as "{ "{$*RED-OVERRIDE-COLUMN-AS-PREFIX}." if $*RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }"> if
+    qq[$str {qq<as "{ "{$RED-OVERRIDE-COLUMN-AS-PREFIX}." if $RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }"> if
             $col.computation
             or $col.name ne $col.attr-name
-            or $*RED-OVERRIDE-COLUMN-AS-PREFIX
+            or $RED-OVERRIDE-COLUMN-AS-PREFIX
     }] => @bind
 }
 

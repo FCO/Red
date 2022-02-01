@@ -222,67 +222,69 @@ multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name
 
 my UInt $alias_num = 1;
 method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type)) {
-    my \alias := $!alias-cache-lock.protect({
-        return %!alias-cache{$name} if %!alias-cache{$name}:exists;
-        %!alias-cache{$name} = ::?CLASS.new_type(:$name);
-    });
-    my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
-        method columns(|)     { @cols }
-        method table(|)       { rtype.^table }
-        method as(|)          { self.table-formatter: $rname }
-        method orig(|)        { rtype }
-        method join-type(|)   { join-type }
-        method tables(|)      { [ |base.^tables, alias ] }
-        method join-on(|)     {
-            my $*RED-INTERNAL = True;
-            do given rel {
-                when Red::AST {
-                    $_
-                }
-                when Callable {
-                    my $filter = do given what-does-it-do($_, alias) {
-                        do if [eqv] .values {
-                            .values.head
-                        } else {
-                            .kv.map(-> $test, $ret {
-                                do with $test {
-                                    Red::AST::AND.new: $test, ast-value $ret
-                                } else {
-                                    $ret
-                                }
-                            }).reduce: { Red::AST::OR.new: $^agg, $^fil }
-                        }
-                    }
-                    with $*RED-GREP-FILTER {
-                        $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
-                    }
-                    $filter
-                }
-                default {
-                    .relationship-ast(alias)
+    return %!alias-cache{$name} if %!alias-cache{$name}:exists;
+    my \alias = ::?CLASS.new_type(:$name);
 
+    $!alias-cache-lock.protect: {
+        my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
+            method columns(|)     { @cols }
+            method table(|)       { rtype.^table }
+            method as(|)          { self.table-formatter: $rname }
+            method orig(|)        { rtype }
+            method join-type(|)   { join-type }
+            method tables(|)      { [ |base.^tables, alias ] }
+            method join-on(|)     {
+                my $*RED-INTERNAL = True;
+                do given rel {
+                    when Red::AST {
+                        $_
+                    }
+                    when Callable {
+                        my $filter = do given what-does-it-do($_, alias) {
+                            do if [eqv] .values {
+                                .values.head
+                            } else {
+                                .kv.map(-> $test, $ret {
+                                    do with $test {
+                                        Red::AST::AND.new: $test, ast-value $ret
+                                    } else {
+                                        $ret
+                                    }
+                                }).reduce: { Red::AST::OR.new: $^agg, $^fil }
+                            }
+                        }
+                        with $*RED-GREP-FILTER {
+                            $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
+                        }
+                        $filter
+                    }
+                    default {
+                        .relationship-ast(alias)
+
+                    }
                 }
             }
         }
+    #    alias.^add_role: Red::Model;
+        my @cols = do for @!columns -> $col {
+            my $new-col = Attribute.new:
+                :name($col.name),
+                :package(alias),
+                :type($col.type),
+                :has_acessor($col.has_accessor),
+                :build($col.build)
+            ;
+            $new-col does Red::Attr::Column($col.column.Hash);
+            alias.^add-comparate-methods: $new-col;
+            $new-col
+        }
+        alias.HOW does RAlias[type, $name, alias, $relationship, $base, $join-type, @cols];
+        for self.relationships.keys -> $rel {
+            alias.^add-relationship: $rel.transfer: alias
+        }
+        alias.^compose;
+        %!alias-cache{$name} = alias;
     }
-#    alias.^add_role: Red::Model;
-    my @cols = do for @!columns -> $col {
-        my $new-col = Attribute.new:
-            :name($col.name),
-            :package(alias),
-            :type($col.type),
-            :has_acessor($col.has_accessor),
-            :build($col.build)
-        ;
-        $new-col does Red::Attr::Column($col.column.Hash);
-        alias.^add-comparate-methods: $new-col;
-        $new-col
-    }
-    alias.HOW does RAlias[type, $name, alias, $relationship, $base, $join-type, @cols];
-    for self.relationships.keys -> $rel {
-        alias.^add-relationship: $rel.transfer: alias
-    }
-    alias.^compose;
     alias
 }
 
