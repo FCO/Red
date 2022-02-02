@@ -426,9 +426,9 @@
 <span class="coverage-green">        |$ast.of.&quot;{.name.substr: 2}&quot;().^columns.map: {</span>
 <span class="coverage-green">            my $class = .package;</span>
 <span class="coverage-green">            @pre-join.push: $class;</span>
-<span class="coverage-green">            my $*RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;</span>
+<span class="coverage-green">            my $RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;</span>
 <span class="coverage-green">            my ($s, @b) := do given self.translate:</span>
-<span class="coverage-green">                    (.column but ColClass[$class]), &quot;select&quot; { .key, .value }</span>
+<span class="coverage-green">                    (.column but ColClass[$class]), &quot;select&quot;, :$RED-OVERRIDE-COLUMN-AS-PREFIX { .key, .value }</span>
 <span class="coverage-green">            @bind.push: |@b;</span>
 <span class="coverage-red">            $s</span>
 <span class="coverage-no">        }</span>
@@ -608,16 +608,16 @@
 <span class="coverage-red">    self.translate: .value, .bind ?? &quot;bind&quot; !! $context;</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-green">multi method translate(Red::Column $col, &quot;select&quot;) {</span>
+<span class="coverage-green">multi method translate(Red::Column $col, &quot;select&quot;, Str :$RED-OVERRIDE-COLUMN-AS-PREFIX) {</span>
 <span class="coverage-green">    my ($str, @bind) := do with $col.computation {</span>
 <span class="coverage-green">        do given self.translate: $_ { .key, .value }</span>
 <span class="coverage-green">    } else {</span>
 <span class="coverage-green">        &quot;{ self.table-name-wrapper: $col.model.^as }.{ $col.name }&quot;, []</span>
 <span class="coverage-no">    }</span>
-<span class="coverage-green">    qq[$str {qq&lt;as &quot;{ &quot;{$*RED-OVERRIDE-COLUMN-AS-PREFIX}.&quot; if $*RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }&quot;&gt; if</span>
+<span class="coverage-green">    qq[$str {qq&lt;as &quot;{ &quot;{$RED-OVERRIDE-COLUMN-AS-PREFIX}.&quot; if $RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }&quot;&gt; if</span>
 <span class="coverage-no">            $col.computation</span>
 <span class="coverage-no">            or $col.name ne $col.attr-name</span>
-<span class="coverage-no">            or $*RED-OVERRIDE-COLUMN-AS-PREFIX</span>
+<span class="coverage-no">            or $RED-OVERRIDE-COLUMN-AS-PREFIX</span>
 <span class="coverage-no">    }] =&gt; @bind</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>

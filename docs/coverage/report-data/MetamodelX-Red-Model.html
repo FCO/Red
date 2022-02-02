@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>MetamodelX::Red::Model 77.9%</h1>
+				<h1>MetamodelX::Red::Model 78%</h1>
 			</div>
 		</div>
 	</div>
@@ -272,67 +272,69 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">my UInt $alias_num = 1;</span>
 <span class="coverage-green">method alias(|c (Red::Model:U \type, Str $name = &quot;{type.^name}_{$alias_num++}&quot;, :$base, :$relationship, :$join-type)) {</span>
-<span class="coverage-green">    my \alias := $!alias-cache-lock.protect({</span>
-<span class="coverage-green">        return %!alias-cache{$name} if %!alias-cache{$name}:exists;</span>
-<span class="coverage-green">        %!alias-cache{$name} = ::?CLASS.new_type(:$name);</span>
-<span class="coverage-no">    });</span>
-<span class="coverage-green">    my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {</span>
-<span class="coverage-green">        method columns(|)     { @cols }</span>
-<span class="coverage-green">        method table(|)       { rtype.^table }</span>
-<span class="coverage-green">        method as(|)          { self.table-formatter: $rname }</span>
-<span class="coverage-green">        method orig(|)        { rtype }</span>
-<span class="coverage-green">        method join-type(|)   { join-type }</span>
-<span class="coverage-green">        method tables(|)      { [ |base.^tables, alias ] }</span>
-<span class="coverage-green">        method join-on(|)     {</span>
-<span class="coverage-green">            my $*RED-INTERNAL = True;</span>
-<span class="coverage-green">            do given rel {</span>
-<span class="coverage-green">                when Red::AST {</span>
-<span class="coverage-green">                    $_</span>
-<span class="coverage-no">                }</span>
-<span class="coverage-green">                when Callable {</span>
-<span class="coverage-green">                    my $filter = do given what-does-it-do($_, alias) {</span>
-<span class="coverage-green">                        do if [eqv] .values {</span>
-<span class="coverage-green">                            .values.head</span>
-<span class="coverage-green">                        } else {</span>
-<span class="coverage-green">                            .kv.map(-&gt; $test, $ret {</span>
-<span class="coverage-green">                                do with $test {</span>
-<span class="coverage-green">                                    Red::AST::AND.new: $test, ast-value $ret</span>
-<span class="coverage-no">                                } else {</span>
-<span class="coverage-red">                                    $ret</span>
-<span class="coverage-no">                                }</span>
-<span class="coverage-green">                            }).reduce: { Red::AST::OR.new: $^agg, $^fil }</span>
-<span class="coverage-no">                        }</span>
-<span class="coverage-no">                    }</span>
-<span class="coverage-green">                    with $*RED-GREP-FILTER {</span>
-<span class="coverage-red">                        $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&amp;ast-value), $filter</span>
-<span class="coverage-no">                    }</span>
-<span class="coverage-red">                    $filter</span>
-<span class="coverage-no">                }</span>
-<span class="coverage-green">                default {</span>
-<span class="coverage-green">                    .relationship-ast(alias)</span>
+<span class="coverage-green">    return %!alias-cache{$name} if %!alias-cache{$name}:exists;</span>
+<span class="coverage-green">    my \alias = ::?CLASS.new_type(:$name);</span>
 <span class="coverage-no"></span>
+<span class="coverage-green">    $!alias-cache-lock.protect: {</span>
+<span class="coverage-green">        my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {</span>
+<span class="coverage-green">            method columns(|)     { @cols }</span>
+<span class="coverage-green">            method table(|)       { rtype.^table }</span>
+<span class="coverage-green">            method as(|)          { self.table-formatter: $rname }</span>
+<span class="coverage-green">            method orig(|)        { rtype }</span>
+<span class="coverage-green">            method join-type(|)   { join-type }</span>
+<span class="coverage-green">            method tables(|)      { [ |base.^tables, alias ] }</span>
+<span class="coverage-green">            method join-on(|)     {</span>
+<span class="coverage-green">                my $*RED-INTERNAL = True;</span>
+<span class="coverage-green">                do given rel {</span>
+<span class="coverage-green">                    when Red::AST {</span>
+<span class="coverage-green">                        $_</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-green">                    when Callable {</span>
+<span class="coverage-green">                        my $filter = do given what-does-it-do($_, alias) {</span>
+<span class="coverage-green">                            do if [eqv] .values {</span>
+<span class="coverage-green">                                .values.head</span>
+<span class="coverage-green">                            } else {</span>
+<span class="coverage-green">                                .kv.map(-&gt; $test, $ret {</span>
+<span class="coverage-green">                                    do with $test {</span>
+<span class="coverage-green">                                        Red::AST::AND.new: $test, ast-value $ret</span>
+<span class="coverage-no">                                    } else {</span>
+<span class="coverage-red">                                        $ret</span>
+<span class="coverage-no">                                    }</span>
+<span class="coverage-green">                                }).reduce: { Red::AST::OR.new: $^agg, $^fil }</span>
+<span class="coverage-no">                            }</span>
+<span class="coverage-no">                        }</span>
+<span class="coverage-green">                        with $*RED-GREP-FILTER {</span>
+<span class="coverage-red">                            $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&amp;ast-value), $filter</span>
+<span class="coverage-no">                        }</span>
+<span class="coverage-red">                        $filter</span>
+<span class="coverage-no">                    }</span>
+<span class="coverage-green">                    default {</span>
+<span class="coverage-green">                        .relationship-ast(alias)</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">                    }</span>
 <span class="coverage-no">                }</span>
 <span class="coverage-no">            }</span>
 <span class="coverage-no">        }</span>
+<span class="coverage-no">    #    alias.^add_role: Red::Model;</span>
+<span class="coverage-green">        my @cols = do for @!columns -&gt; $col {</span>
+<span class="coverage-green">            my $new-col = Attribute.new:</span>
+<span class="coverage-no">                :name($col.name),</span>
+<span class="coverage-no">                :package(alias),</span>
+<span class="coverage-no">                :type($col.type),</span>
+<span class="coverage-no">                :has_acessor($col.has_accessor),</span>
+<span class="coverage-no">                :build($col.build)</span>
+<span class="coverage-no">            ;</span>
+<span class="coverage-green">            $new-col does Red::Attr::Column($col.column.Hash);</span>
+<span class="coverage-green">            alias.^add-comparate-methods: $new-col;</span>
+<span class="coverage-red">            $new-col</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        alias.HOW does RAlias[type, $name, alias, $relationship, $base, $join-type, @cols];</span>
+<span class="coverage-green">        for self.relationships.keys -&gt; $rel {</span>
+<span class="coverage-green">            alias.^add-relationship: $rel.transfer: alias</span>
+<span class="coverage-no">        }</span>
+<span class="coverage-green">        alias.^compose;</span>
+<span class="coverage-green">        %!alias-cache{$name} = alias;</span>
 <span class="coverage-no">    }</span>
-<span class="coverage-no">#    alias.^add_role: Red::Model;</span>
-<span class="coverage-green">    my @cols = do for @!columns -&gt; $col {</span>
-<span class="coverage-green">        my $new-col = Attribute.new:</span>
-<span class="coverage-no">            :name($col.name),</span>
-<span class="coverage-no">            :package(alias),</span>
-<span class="coverage-no">            :type($col.type),</span>
-<span class="coverage-no">            :has_acessor($col.has_accessor),</span>
-<span class="coverage-no">            :build($col.build)</span>
-<span class="coverage-no">        ;</span>
-<span class="coverage-green">        $new-col does Red::Attr::Column($col.column.Hash);</span>
-<span class="coverage-green">        alias.^add-comparate-methods: $new-col;</span>
-<span class="coverage-red">        $new-col</span>
-<span class="coverage-no">    }</span>
-<span class="coverage-green">    alias.HOW does RAlias[type, $name, alias, $relationship, $base, $join-type, @cols];</span>
-<span class="coverage-green">    for self.relationships.keys -&gt; $rel {</span>
-<span class="coverage-green">        alias.^add-relationship: $rel.transfer: alias</span>
-<span class="coverage-no">    }</span>
-<span class="coverage-green">    alias.^compose;</span>
 <span class="coverage-green">    alias</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
