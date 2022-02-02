@@ -107,14 +107,12 @@ multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined)
 }
 
 multi method wildcard-value(@val) { @val.map: { self.wildcard-value: $_ } }
-multi method wildcard-value($_) { $_ }
+multi method wildcard-value($_ where { .HOW ~~ Metamodel::EnumHOW }) { .value }
 multi method wildcard-value(Red::AST::Value $_) {
-    do given .get-value {
-        when .HOW ~~ Metamodel::EnumHOW { .value }
-        when Bool { .Int }
-        default { $_ }
-    }
+    self.wildcard-value: .get-value
 }
+multi method wildcard-value(Bool $_) { .Int }
+multi method wildcard-value($_) { $_ }
 
 multi method translate(Red::AST::RowId $_, $context?) { "OID" => [] }
 
