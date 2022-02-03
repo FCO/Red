@@ -198,7 +198,7 @@ method create-schema(%models where .values.all ~~ Red::Model) {
                 }
             ],
         ;
-        model.emit: $data
+        model.^emit: $data
     }
 
     for %models.kv -> Str() $name, Red::Model \model {
