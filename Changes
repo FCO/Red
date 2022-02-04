@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix Red::Schema.create's emit
+    - Fix several AST translations with enum
 
 0.1.54  2021-12-21T00:47:26Z
     - Break when accessing a column on a Type object
