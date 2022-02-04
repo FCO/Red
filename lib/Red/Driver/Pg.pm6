@@ -200,6 +200,7 @@ multi method default-type-for(Red::Column $ where .attr.type ~~ UUID           -
 multi method default-type-for(Red::Column $                                    --> Str:D) {"varchar(255)"}
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
+multi method deflate(DateTime $value) { ~$value.utc }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /"duplicate key value violates unique constraint " \"$<field>=(\w+)\"/) {
     X::Red::Driver::Mapped::Unique.new:
