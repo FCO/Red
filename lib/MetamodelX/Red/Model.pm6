@@ -222,10 +222,10 @@ multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name
 
 my UInt $alias_num = 1;
 method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type)) {
-    return %!alias-cache{$name} if %!alias-cache{$name}:exists;
-    my \alias = ::?CLASS.new_type(:$name);
-
     $!alias-cache-lock.protect: {
+        return %!alias-cache{$name} if %!alias-cache{$name}:exists;
+        my \alias = ::?CLASS.new_type(:$name);
+
         my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
             method columns(|)     { @cols }
             method table(|)       { rtype.^table }
@@ -284,8 +284,9 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
         }
         alias.^compose;
         %!alias-cache{$name} = alias;
+
+        return alias;
     }
-    alias
 }
 
 #| Creates a new column and adds it to the model.
