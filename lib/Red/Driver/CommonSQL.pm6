@@ -777,7 +777,7 @@ multi method translate(Red::AST::Update $_, $context?) {
 
     with $filter {
         die "Internal error" unless $model ~~ Red::Model;
-        if .tables.any ~~ -> Any $_ { .HOW.?join-on($_) } {
+        if .tables.map({ .HOW.?join-on($_) }).any {
             $filter = Red::AST::In.new:
                 $model.^id».column.head,
                 Red::AST::Select.new:

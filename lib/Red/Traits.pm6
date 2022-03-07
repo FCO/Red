@@ -94,7 +94,7 @@ multi trait_mod:<is>(Attribute $attr, Bool :$serial! where $_ == True --> Empty)
 #| * nullable - marks a column as NULLABLE
 #| * TBD
 multi trait_mod:<is>(Attribute $attr, :%column! --> Empty) is export {
-    if %column<references>:exists and (%column{<model-name model-type>.all}:!exists) {
+    if %column<references>:exists && (%column{<model-name model-type>.none}:exists) {
         die "On Red:api<2> references must declaire :model-name (or :model-type) and the references block must receive the model as reference"
     }
     $attr does Red::Attr::Column(%column);
