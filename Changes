@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.55  2022-03-07T21:48:40Z
     - Fix Red::Schema.create's emit
     - Fix several AST translations with enum
 
