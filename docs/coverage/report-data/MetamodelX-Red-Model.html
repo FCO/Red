@@ -272,10 +272,10 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">my UInt $alias_num = 1;</span>
 <span class="coverage-green">method alias(|c (Red::Model:U \type, Str $name = &quot;{type.^name}_{$alias_num++}&quot;, :$base, :$relationship, :$join-type)) {</span>
-<span class="coverage-green">    return %!alias-cache{$name} if %!alias-cache{$name}:exists;</span>
-<span class="coverage-green">    my \alias = ::?CLASS.new_type(:$name);</span>
-<span class="coverage-no"></span>
 <span class="coverage-green">    $!alias-cache-lock.protect: {</span>
+<span class="coverage-green">        return %!alias-cache{$name} if %!alias-cache{$name}:exists;</span>
+<span class="coverage-green">        my \alias = ::?CLASS.new_type(:$name);</span>
+<span class="coverage-no"></span>
 <span class="coverage-green">        my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {</span>
 <span class="coverage-green">            method columns(|)     { @cols }</span>
 <span class="coverage-green">            method table(|)       { rtype.^table }</span>
@@ -334,8 +334,9 @@
 <span class="coverage-no">        }</span>
 <span class="coverage-green">        alias.^compose;</span>
 <span class="coverage-green">        %!alias-cache{$name} = alias;</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">        return alias;</span>
 <span class="coverage-no">    }</span>
-<span class="coverage-green">    alias</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Creates a new column and adds it to the model.</span>

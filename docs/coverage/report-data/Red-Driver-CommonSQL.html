@@ -827,7 +827,7 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">    with $filter {</span>
 <span class="coverage-green">        die &quot;Internal error&quot; unless $model ~~ Red::Model;</span>
-<span class="coverage-green">        if .tables.any ~~ -&gt; Any $_ { .HOW.?join-on($_) } {</span>
+<span class="coverage-green">        if .tables.map({ .HOW.?join-on($_) }).any {</span>
 <span class="coverage-green">            $filter = Red::AST::In.new:</span>
 <span class="coverage-no">                $model.^id».column.head,</span>
 <span class="coverage-no">                Red::AST::Select.new:</span>
