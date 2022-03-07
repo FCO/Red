@@ -144,7 +144,7 @@
 <span class="coverage-no">#| * nullable - marks a column as NULLABLE</span>
 <span class="coverage-no">#| * TBD</span>
 <span class="coverage-green">multi trait_mod:&lt;is&gt;(Attribute $attr, :%column! --&gt; Empty) is export {</span>
-<span class="coverage-green">    if %column&lt;references&gt;:exists and (%column{&lt;model-name model-type&gt;.all}:!exists) {</span>
+<span class="coverage-green">    if %column&lt;references&gt;:exists &amp;&amp; (%column{&lt;model-name model-type&gt;.none}:exists) {</span>
 <span class="coverage-green">        die &quot;On Red:api&lt;2&gt; references must declaire :model-name (or :model-type) and the references block must receive the model as reference&quot;</span>
 <span class="coverage-no">    }</span>
 <span class="coverage-green">    $attr does Red::Attr::Column(%column);</span>
