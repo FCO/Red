@@ -849,7 +849,13 @@ multi method inflate(Num $value, Duration :$to!) { $to.new:        $value }
 multi method inflate(Int $value, Duration :$to!) { $to.new:        $value }
 multi method inflate(Str $value, Version  :$to!) { $to.new:        $value }
 multi method inflate(Str $value, Duration :$to!) { $to.new: [+] $value.comb(/\d+/).reverse Z[*] (1, 10, 100 ... *) }
-multi method inflate(@value, :@to!) { Array[@to.of].new: @value }
+multi method inflate(@value, :@to!) {
+    do if @to.of =:= Mu {
+        @value
+    } else {
+        Array[@to.of].new: @value
+    }
+}
 
 multi method deflate(Instant  $value) { +$value }
 multi method deflate(Date     $value) { ~$value }
