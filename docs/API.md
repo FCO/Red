@@ -58,7 +58,6 @@ API Pages
 - [Red::Driver::SQLite](api/Red/Driver/SQLite)
 - [Red::Driver::SQLite::SchemaReader](api/Red/Driver/SQLite/SchemaReader)
 - [Red::Event](api/Red/Event)
-- [Red::HiddenFromSQLCommenting](api/Red/HiddenFromSQLCommenting)
 - [Red::Model](api/Red/Model)
 - [Red::Operators](api/Red/Operators)
 - [Red::Phaser](api/Red/Phaser)

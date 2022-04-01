@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::SQLite 79.7%</h1>
+				<h1>Red::Driver::SQLite 83.5%</h1>
 			</div>
 		</div>
 	</div>
@@ -209,14 +209,26 @@
 <span class="coverage-green">method comment-on-same-statement { True }</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#multi method default-type-for(Red::Column $ where .attr.type ~~ Mu             --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
-<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ Bool            --&gt; Str:D) {&quot;integer&quot;}</span>
-<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)  --&gt; Str:D) {&quot;integer&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ UUID            --&gt; Str:D) {&quot;varchar(36)&quot;}</span>
-<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ Json            --&gt; Str:D) {&quot;json&quot;}</span>
+<span class="coverage-green">multi method default-type-for-type(Bool --&gt; Str:D) {&quot;integer&quot;}</span>
+<span class="coverage-green">multi method default-type-for-type(Int  --&gt; Str:D) {&quot;integer&quot;}</span>
+<span class="coverage-red">multi method default-type-for-type(UUID --&gt; Str:D) {&quot;varchar(36)&quot;}</span>
+<span class="coverage-green">multi method default-type-for-type(Json --&gt; Str:D) {&quot;json&quot;}</span>
 <span class="coverage-no">#multi method default-type-for(Red::Column $ where .attr.type ~~ Any             --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $                                     --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
-<span class="coverage-red">multi method default-type-for($ --&gt; Str:D) is default {&quot;varchar(255)&quot;}</span>
+<span class="coverage-green">multi method default-type-for-type($ --&gt; Str:D) is default {&quot;varchar(255)&quot;}</span>
 <span class="coverage-no"></span>
+<span class="coverage-green">multi method inflate(Str $value, :@to!) {</span>
+<span class="coverage-no">    use JSON::Fast;</span>
+<span class="coverage-green">    do if @to.of =:= Mu {</span>
+<span class="coverage-green">        $value.&amp;from-json</span>
+<span class="coverage-no">    } else {</span>
+<span class="coverage-green">        Array[@to.of].new: $value.&amp;from-json</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method deflate(@value) {</span>
+<span class="coverage-no">    use JSON::Fast;</span>
+<span class="coverage-green">    @value.&amp;to-json: :!pretty</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method map-exception(X::DBDish::DBError $x where { (.?code == 19 or .?code == 1555 or .?code == 2067) and .native-message.starts-with: &quot;UNIQUE constraint failed:&quot; }) {</span>
 <span class="coverage-green">    X::Red::Driver::Mapped::Unique.new:</span>

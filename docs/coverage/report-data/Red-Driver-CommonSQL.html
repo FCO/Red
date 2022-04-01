@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::CommonSQL 57.3%</h1>
+				<h1>Red::Driver::CommonSQL 57.4%</h1>
 			</div>
 		</div>
 	</div>
@@ -864,18 +864,20 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST:U $_, $context?) { &quot;&quot; =&gt; [] }</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Json        --&gt; Str:D) {&quot;json&quot;}</span>
-<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ Rat         --&gt; Str:D) {&quot;real&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Num         --&gt; Str:D) {&quot;real&quot;}</span>
-<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ Numeric     --&gt; Str:D) {&quot;real&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --&gt; Str:D) {&quot;real&quot;}</span>
-<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --&gt; Str:D) {&quot;varchar(32)&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Duration    --&gt; Str:D) {&quot;interval&quot;}</span>
-<span class="coverage-green">multi method default-type-for(Red::Column $ where .attr.type ~~ Mu          --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Str         --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --&gt; Str:D) {&quot;integer&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --&gt; Str:D) {&quot;boolean&quot;}</span>
-<span class="coverage-red">multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --&gt; Str:D) {&quot;varchar(36)&quot;}</span>
+<span class="coverage-green">multi method default-type-for(Red::Column $_ --&gt; Str:D) { self.default-type-for-type: .attr.type }</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method default-type-for-type(Json     --&gt; Str:D) {&quot;json&quot;}</span>
+<span class="coverage-green">multi method default-type-for-type(Rat      --&gt; Str:D) {&quot;real&quot;}</span>
+<span class="coverage-red">multi method default-type-for-type(Num      --&gt; Str:D) {&quot;real&quot;}</span>
+<span class="coverage-red">multi method default-type-for-type(Numeric  --&gt; Str:D) {&quot;real&quot;}</span>
+<span class="coverage-green">multi method default-type-for-type(Instant  --&gt; Str:D) {&quot;real&quot;}</span>
+<span class="coverage-green">multi method default-type-for-type(DateTime --&gt; Str:D) {&quot;varchar(32)&quot;}</span>
+<span class="coverage-green">multi method default-type-for-type(Duration --&gt; Str:D) {&quot;interval&quot;}</span>
+<span class="coverage-red">multi method default-type-for-type(Mu       --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-green">multi method default-type-for-type(Str      --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-red">multi method default-type-for-type(Int      --&gt; Str:D) {&quot;integer&quot;}</span>
+<span class="coverage-red">multi method default-type-for-type(Bool     --&gt; Str:D) {&quot;boolean&quot;}</span>
+<span class="coverage-red">multi method default-type-for-type(UUID     --&gt; Str:D) {&quot;varchar(36)&quot;}</span>
 <span class="coverage-no">#multi method default-type-for(Red::Column                                   --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method type-for-sql(&quot;real&quot;     --&gt; &quot;Num&quot;     ) {}</span>
@@ -893,10 +895,17 @@
 <span class="coverage-green">multi method inflate(Num $value, Instant  :$to!) { $to.from-posix: $value }</span>
 <span class="coverage-red">multi method inflate(Str $value, DateTime :$to!) { $to.new:        $value }</span>
 <span class="coverage-red">multi method inflate(Str $value, Date     :$to!) { $to.new:        $value }</span>
-<span class="coverage-green">multi method inflate(Num $value, Duration :$to!) { $to.new:        $value }</span>
-<span class="coverage-red">multi method inflate(Int $value, Duration :$to!) { $to.new:        $value }</span>
+<span class="coverage-red">multi method inflate(Num $value, Duration :$to!) { $to.new:        $value }</span>
+<span class="coverage-green">multi method inflate(Int $value, Duration :$to!) { $to.new:        $value }</span>
 <span class="coverage-red">multi method inflate(Str $value, Version  :$to!) { $to.new:        $value }</span>
 <span class="coverage-red">multi method inflate(Str $value, Duration :$to!) { $to.new: [+] $value.comb(/\d+/).reverse Z[*] (1, 10, 100 ... *) }</span>
+<span class="coverage-green">multi method inflate(@value, :@to!) {</span>
+<span class="coverage-green">    do if @to.of =:= Mu {</span>
+<span class="coverage-red">        @value</span>
+<span class="coverage-red">    } else {</span>
+<span class="coverage-red">        Array[@to.of].new: @value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method deflate(Instant  $value) { +$value }</span>
 <span class="coverage-red">multi method deflate(Date     $value) { ~$value }</span>
