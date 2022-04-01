@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Moving Red to zef ecosystem
     - Make auto detect array types
 
 0.1.55  2022-03-07T21:48:40Z
