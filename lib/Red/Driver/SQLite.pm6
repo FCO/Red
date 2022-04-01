@@ -166,6 +166,19 @@ multi method default-type-for-type(Json --> Str:D) {"json"}
 #multi method default-type-for(Red::Column $ where .attr.type ~~ Any             --> Str:D) {"varchar(255)"}
 multi method default-type-for-type($ --> Str:D) is default {"varchar(255)"}
 
+multi method inflate(Str $value, :@to!) {
+    use JSON::Fast;
+    do if @to.of =:= Mu {
+        $value.&from-json
+    } else {
+        Array[@to.of].new: $value.&from-json
+    }
+}
+
+multi method deflate(@value) {
+    use JSON::Fast;
+    @value.&to-json: :!pretty
+}
 
 multi method map-exception(X::DBDish::DBError $x where { (.?code == 19 or .?code == 1555 or .?code == 2067) and .native-message.starts-with: "UNIQUE constraint failed:" }) {
     X::Red::Driver::Mapped::Unique.new:
