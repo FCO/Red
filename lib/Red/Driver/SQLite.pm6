@@ -159,13 +159,12 @@ multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" => []
 method comment-on-same-statement { True }
 
 #multi method default-type-for(Red::Column $ where .attr.type ~~ Mu             --> Str:D) {"varchar(255)"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Bool            --> Str:D) {"integer"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool)  --> Str:D) {"integer"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ UUID            --> Str:D) {"varchar(36)"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Json            --> Str:D) {"json"}
+multi method default-type-for-type(Bool --> Str:D) {"integer"}
+multi method default-type-for-type(Int  --> Str:D) {"integer"}
+multi method default-type-for-type(UUID --> Str:D) {"varchar(36)"}
+multi method default-type-for-type(Json --> Str:D) {"json"}
 #multi method default-type-for(Red::Column $ where .attr.type ~~ Any             --> Str:D) {"varchar(255)"}
-multi method default-type-for(Red::Column $                                     --> Str:D) {"varchar(255)"}
-multi method default-type-for($ --> Str:D) is default {"varchar(255)"}
+multi method default-type-for-type($ --> Str:D) is default {"varchar(255)"}
 
 
 multi method map-exception(X::DBDish::DBError $x where { (.?code == 19 or .?code == 1555 or .?code == 2067) and .native-message.starts-with: "UNIQUE constraint failed:" }) {

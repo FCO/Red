@@ -814,18 +814,20 @@ multi method translate(Red::AST::LastInsertedRow $_, $context?) { "" => [] }
 
 multi method translate(Red::AST:U $_, $context?) { "" => [] }
 
-multi method default-type-for(Red::Column $ where .attr.type ~~ Json        --> Str:D) {"json"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Rat         --> Str:D) {"real"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Num         --> Str:D) {"real"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Numeric     --> Str:D) {"real"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Instant     --> Str:D) {"real"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime    --> Str:D) {"varchar(32)"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Duration    --> Str:D) {"interval"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Mu          --> Str:D) {"varchar(255)"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Str         --> Str:D) {"varchar(255)"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Int         --> Str:D) {"integer"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Bool        --> Str:D) {"boolean"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ UUID        --> Str:D) {"varchar(36)"}
+multi method default-type-for(Red::Column $_ --> Str:D) { self.default-type-for-type: .attr.type }
+
+multi method default-type-for-type(Json     --> Str:D) {"json"}
+multi method default-type-for-type(Rat      --> Str:D) {"real"}
+multi method default-type-for-type(Num      --> Str:D) {"real"}
+multi method default-type-for-type(Numeric  --> Str:D) {"real"}
+multi method default-type-for-type(Instant  --> Str:D) {"real"}
+multi method default-type-for-type(DateTime --> Str:D) {"varchar(32)"}
+multi method default-type-for-type(Duration --> Str:D) {"interval"}
+multi method default-type-for-type(Mu       --> Str:D) {"varchar(255)"}
+multi method default-type-for-type(Str      --> Str:D) {"varchar(255)"}
+multi method default-type-for-type(Int      --> Str:D) {"integer"}
+multi method default-type-for-type(Bool     --> Str:D) {"boolean"}
+multi method default-type-for-type(UUID     --> Str:D) {"varchar(36)"}
 #multi method default-type-for(Red::Column                                   --> Str:D) {"varchar(255)"}
 
 multi method type-for-sql("real"     --> "Num"     ) {}

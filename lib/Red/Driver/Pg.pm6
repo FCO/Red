@@ -192,12 +192,14 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
 
-multi method default-type-for(Red::Column $ where .attr.type ~~ DateTime       --> Str:D) {"timestamp"}
-multi method default-type-for(Red::Column $ where .auto-increment              --> Str:D) {"serial"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ one(Int, Bool) --> Str:D) {"integer"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ Bool           --> Str:D) {"boolean"}
-multi method default-type-for(Red::Column $ where .attr.type ~~ UUID           --> Str:D) {"uuid"}
-multi method default-type-for(Red::Column $                                    --> Str:D) {"varchar(255)"}
+multi method default-type-for(Red::Column $ where .auto-increment --> Str:D) {"serial"}
+
+multi method default-type-for-type(Positional $_ --> Str:D) {"{ self.default-type-for-type: .of }[]"}
+multi method default-type-for-type(DateTime      --> Str:D) {"timestamp"}
+multi method default-type-for-type(Bool          --> Str:D) {"boolean"}
+multi method default-type-for-type(Int           --> Str:D) {"integer"}
+multi method default-type-for-type(UUID          --> Str:D) {"uuid"}
+multi method default-type-for-type(Red::Column $ --> Str:D) {"varchar(255)"}
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
 multi method deflate(DateTime $value) { ~$value.utc }
