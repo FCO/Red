@@ -132,6 +132,11 @@ method new(|c) {
     nextsame
 }
 
+method submodel(\model, Str $name, &refinement) {
+    use MetamodelX::Red::SubsetHOW;
+    MetamodelX::Red::SubsetHOW.new_type: :$name, :refinee(model), :&refinement;
+}
+
 #| Compose
 method compose(Mu \type) {
 
