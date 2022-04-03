@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix coersion test
     - Create .^submodel
 
 0.1.55  2022-04-01T21:23:35+01:00
