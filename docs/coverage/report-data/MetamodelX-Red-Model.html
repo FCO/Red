@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>MetamodelX::Red::Model 78.1%</h1>
+				<h1>MetamodelX::Red::Model 78.2%</h1>
 			</div>
 		</div>
 	</div>
@@ -182,7 +182,11 @@
 <span class="coverage-green">    nextsame</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-green">method submodel(\model, Str $name, &amp;refinement) {</span>
+<span class="coverage-green">multi method submodel(\model, &amp;refinement) {</span>
+<span class="coverage-green">    self.submodel: model, model.^name, &amp;refinement</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">multi method submodel(\model, Str $name, &amp;refinement) {</span>
 <span class="coverage-no">    use MetamodelX::Red::SubsetHOW;</span>
 <span class="coverage-green">    MetamodelX::Red::SubsetHOW.new_type: :$name, :refinee(model), :&amp;refinement;</span>
 <span class="coverage-no">}</span>

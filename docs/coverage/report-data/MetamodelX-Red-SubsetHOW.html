@@ -52,8 +52,6 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">method all(\model, |c) { model.^refinee.^all(|c).grep: model.^refinement }</span>
 <span class="coverage-no"></span>
-<span class="coverage-no"># TODO: create, delete, update</span>
-<span class="coverage-no"></span>
 <span class="coverage-red">method load(\model, |ids) {</span>
 <span class="coverage-red">    my $filter = model.^refinee.^id-filter: |ids;</span>
 <span class="coverage-red">    model.^all.grep({ $filter }).head</span>
