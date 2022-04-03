@@ -132,7 +132,11 @@ method new(|c) {
     nextsame
 }
 
-method submodel(\model, Str $name, &refinement) {
+multi method submodel(\model, &refinement) {
+    self.submodel: model, model.^name, &refinement
+}
+
+multi method submodel(\model, Str $name, &refinement) {
     use MetamodelX::Red::SubsetHOW;
     MetamodelX::Red::SubsetHOW.new_type: :$name, :refinee(model), :&refinement;
 }

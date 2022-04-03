@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - submodel do not need a name
 
 0.1.57  2022-04-03T18:44:25+01:00
     - Fix dependency

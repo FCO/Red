@@ -419,7 +419,7 @@ FROM
 BIND: []
 
 SQL : SELECT
-   student.id , student.name , student.class 
+   student.id , student.name , student.class
 FROM
    student
 WHERE
@@ -482,6 +482,48 @@ CREATE TABLE b_b_b(
    UNIQUE (a2),
    UNIQUE (a1, a2, a3)
 )
+```
+
+## Submodel
+
+If there is a model that can be divided into several different types, you can create submodels for that.
+
+```raku
+use Red;
+
+model User {
+   has Int $.id   is serial;
+   has Str $.name is column;
+   has Str $.role is column;
+}
+
+red-defaults "SQLite";
+
+User.^create-table;
+
+for <user admin root> -> $role {
+	User.^create(:name("user " ~ ++$), :$role)
+}
+
+# Someday it will become:
+# submodel Admin of User where *.role eq "admin";
+my \Admin = User.^submodel: *.role eq "admin";
+
+# Use as subset
+say User.new(:role<admin>) ~~ Admin; # True
+say User.new(:role<user>) ~~ Admin; # False
+
+# List all admins
+.say for Admin.^all;
+
+# Create with right role
+Admin.^create: :name("new admin");
+
+# Load with the right role
+say Admin.^load: 2;
+
+# Delete filtering with right role
+Admin.^delete;
 ```
 
 ## events

@@ -18,9 +18,13 @@ my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=
 schema(User).drop.create;
 
 my \Admin = User.^submodel: "Admin", *.role eq "admin";
+my \Root = User.^submodel: *.role eq "root";
 
 ok User.new(:name<bla>, :role<admin>) ~~ Admin;
 ok not (User.new(:name<bla>, :role<user>) ~~ Admin);
+
+ok User.new(:name<ble>, :role<root>) ~~ Root;
+ok not (User.new(:name<ble>, :role<user>) ~~ Admin);
 
 for <user admin root> -> Str $role {
     User.^create: :name("user " ~ ++$), :$role
