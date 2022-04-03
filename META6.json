@@ -9,7 +9,8 @@
   "depends": [
     "DBIish",
     "DB::Pg",
-    "UUID"
+    "UUID",
+    "JSON::Fast"
   ],
   "description": "A Raku ORM",
   "license": "Artistic-2.0",

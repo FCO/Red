@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix dependency
 
 0.1.56  2022-04-03T01:09:36+01:00
     - Fix coersion test
