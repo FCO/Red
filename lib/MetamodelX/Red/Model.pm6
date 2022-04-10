@@ -137,8 +137,14 @@ multi method submodel(\model, &refinement) {
 }
 
 multi method submodel(\model, Str $name, &refinement) {
-    use MetamodelX::Red::SubsetHOW;
-    MetamodelX::Red::SubsetHOW.new_type: :$name, :refinee(model), :&refinement;
+    use MetamodelX::Red::SubModelHOW;
+    (
+        Metamodel::SubsetHOW but MetamodelX::Red::SubModelHOW
+    ).new_type: :$name, :refinee(model), :&refinement;
+}
+
+method SubsetHOW(|) {
+    MetamodelX::Red::SubsetHOW
 }
 
 #| Compose

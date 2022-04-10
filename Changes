@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - add `is sub-model` to `subset`
 
 0.1.57  2022-04-03T20:10:00+01:00
     - submodel do not need a name

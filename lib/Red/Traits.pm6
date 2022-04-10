@@ -231,3 +231,12 @@ multi trait_mod:<is>(Method $m, :$before-delete! --> Empty) {
 multi trait_mod:<is>(Method $m, :$after-delete! --> Empty) {
     $m does AfterDelete;
 }
+
+=head is sub-module
+
+#| Trait to transform subset into sub-model
+multi trait_mod:<is>($subset where { .HOW ~~ Metamodel::SubsetHOW }, Bool :$sub-model) {
+    use MetamodelX::Red::SubModelHOW;
+    $subset.HOW does MetamodelX::Red::SubModelHOW;
+    $subset
+}

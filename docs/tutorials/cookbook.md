@@ -507,7 +507,7 @@ for <user admin root> -> $role {
 
 # Someday it will become:
 # submodel Admin of User where *.role eq "admin";
-my \Admin = User.^submodel: *.role eq "admin";
+subset Admin is sub-model of User where *.role eq "admin";
 
 # Use as subset
 say User.new(:role<admin>) ~~ Admin; # True

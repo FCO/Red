@@ -20,23 +20,31 @@ schema(User).drop.create;
 my \Admin = User.^submodel: "Admin", *.role eq "admin";
 my \Root = User.^submodel: *.role eq "root";
 
+subset Administrator is sub-model of User where *.role eq "admin";
+
 ok User.new(:name<bla>, :role<admin>) ~~ Admin;
 ok not (User.new(:name<bla>, :role<user>) ~~ Admin);
 
 ok User.new(:name<ble>, :role<root>) ~~ Root;
 ok not (User.new(:name<ble>, :role<user>) ~~ Admin);
 
+ok User.new(:name<bla>, :role<admin>) ~~ Administrator;
+ok not (User.new(:name<bla>, :role<user>) ~~ Administrator);
+
 for <user admin root> -> Str $role {
     User.^create: :name("user " ~ ++$), :$role
 }
 
 is Admin.^all.map(*.name).Seq, "user 2";
+is Administrator.^all.map(*.name).Seq, "user 2";
 
-lives-ok {
-    Admin.^create: :name<anotherAdmin>
-}
-
+lives-ok { Admin.^create: :name<anotherAdmin> }
 
 is Admin.^all.map(*.name).Seq, <<"user 2" anotherAdmin>>;
+
+lives-ok { Administrator.^create: :name<anotherAdminSubset> }
+
+is Administrator.^all.map(*.name).Seq, <<"user 2" anotherAdmin anotherAdminSubset>>;
+
 
 done-testing

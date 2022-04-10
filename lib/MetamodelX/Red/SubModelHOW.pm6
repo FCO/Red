@@ -1,4 +1,4 @@
-unit class MetamodelX::Red::SubsetHOW is Metamodel::SubsetHOW;
+unit role MetamodelX::Red::SubModelHOW is Metamodel::SubsetHOW;
 
 method all(\model, |c) { model.^refinee.^all(|c).grep: model.^refinement }
 
@@ -9,5 +9,3 @@ method load(\model, |ids) {
 method search(\model, |c) { model.^all.grep:   |c }
 method create(\model, |c) { model.^all.create: |c }
 method delete(\model, |c) { model.^all.delete: |c }
-
-#method FALLBACK(Str $name, \model, |c) { model.^refinee.HOW."$name"(model.^refinee, |c) }

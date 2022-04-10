@@ -29,7 +29,7 @@
     "MetamodelX::Red::Refreshable": "lib/MetamodelX/Red/Refreshable.pm6",
     "MetamodelX::Red::Relationship": "lib/MetamodelX/Red/Relationship.pm6",
     "MetamodelX::Red::Specialisable": "lib/MetamodelX/Red/Specialisable.pm6",
-    "MetamodelX::Red::SubsetHOW": "lib/MetamodelX/Red/SubsetHOW.pm6",
+    "MetamodelX::Red::SubModelHOW": "lib/MetamodelX/Red/SubModelHOW.pm6",
     "MetamodelX::Red::Supply": "lib/MetamodelX/Red/Supply.pm6",
     "Red": "lib/Red.pm6",
     "Red::AST": "lib/Red/AST.pm6",
