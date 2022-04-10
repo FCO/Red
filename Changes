@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.58  2022-04-10T23:01:15+01:00
     - add `is sub-model` to `subset`
 
 0.1.57  2022-04-03T20:10:00+01:00
