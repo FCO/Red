@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Traits 85.5%</h1>
+				<h1>Red::Traits 86.1%</h1>
 			</div>
 		</div>
 	</div>
@@ -280,6 +280,15 @@
 <span class="coverage-no">#| Trait to define a phaser to run after delete a record</span>
 <span class="coverage-green">multi trait_mod:&lt;is&gt;(Method $m, :$after-delete! --&gt; Empty) {</span>
 <span class="coverage-green">    $m does AfterDelete;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">=head is sub-module</span>
+<span class="coverage-no"></span>
+<span class="coverage-no">#| Trait to transform subset into sub-model</span>
+<span class="coverage-green">multi trait_mod:&lt;is&gt;($subset where { .HOW ~~ Metamodel::SubsetHOW }, Bool :$sub-model) {</span>
+<span class="coverage-no">    use MetamodelX::Red::SubModelHOW;</span>
+<span class="coverage-green">    $subset.HOW does MetamodelX::Red::SubModelHOW;</span>
+<span class="coverage-green">    $subset</span>
 <span class="coverage-no">}</span>
 			</pre>
 		</div>

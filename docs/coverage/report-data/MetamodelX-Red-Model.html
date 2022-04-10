@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>MetamodelX::Red::Model 78.2%</h1>
+				<h1>MetamodelX::Red::Model 77.8%</h1>
 			</div>
 		</div>
 	</div>
@@ -187,8 +187,14 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method submodel(\model, Str $name, &amp;refinement) {</span>
-<span class="coverage-no">    use MetamodelX::Red::SubsetHOW;</span>
-<span class="coverage-green">    MetamodelX::Red::SubsetHOW.new_type: :$name, :refinee(model), :&amp;refinement;</span>
+<span class="coverage-no">    use MetamodelX::Red::SubModelHOW;</span>
+<span class="coverage-green">    (</span>
+<span class="coverage-no">        Metamodel::SubsetHOW but MetamodelX::Red::SubModelHOW</span>
+<span class="coverage-no">    ).new_type: :$name, :refinee(model), :&amp;refinement;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method SubsetHOW(|) {</span>
+<span class="coverage-red">    MetamodelX::Red::SubsetHOW</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Compose</span>

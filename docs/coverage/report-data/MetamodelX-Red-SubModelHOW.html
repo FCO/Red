@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="UTF-8">
-	<title>RaCoCo result: MetamodelX::Red::SubsetHOW</title>
+	<title>RaCoCo result: MetamodelX::Red::SubModelHOW</title>
 	<link rel="stylesheet"
 				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
 				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
@@ -41,14 +41,14 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>MetamodelX::Red::SubsetHOW 37.5%</h1>
+				<h1>MetamodelX::Red::SubModelHOW 37.5%</h1>
 			</div>
 		</div>
 	</div>
 	<div class="row justify-content-md-center">
 		<div class="col-md-10">
 			<pre class="code">
-<span class="coverage-green">unit class MetamodelX::Red::SubsetHOW is Metamodel::SubsetHOW;</span>
+<span class="coverage-green">unit role MetamodelX::Red::SubModelHOW is Metamodel::SubsetHOW;</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">method all(\model, |c) { model.^refinee.^all(|c).grep: model.^refinement }</span>
 <span class="coverage-no"></span>
@@ -59,8 +59,6 @@
 <span class="coverage-red">method search(\model, |c) { model.^all.grep:   |c }</span>
 <span class="coverage-green">method create(\model, |c) { model.^all.create: |c }</span>
 <span class="coverage-red">method delete(\model, |c) { model.^all.delete: |c }</span>
-<span class="coverage-no"></span>
-<span class="coverage-no">#method FALLBACK(Str $name, \model, |c) { model.^refinee.HOW.&quot;$name&quot;(model.^refinee, |c) }</span>
 			</pre>
 		</div>
 	</div>
