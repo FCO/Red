@@ -1,0 +1,16 @@
+init:
+
+  variables:
+    RED_DATABASE: "Pg host=localhost port=5432 user=testuser password=testpass dbname=redtest"
+    
+  services:
+    postgresql:
+      db_name: redtest
+      db_user: testuser
+      db_pass: testpass
+
+  script: |
+    env | grep RED_DATABASE
+main:
+
+  with-code-coverage: false
