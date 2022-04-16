@@ -21,7 +21,7 @@ my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
-red-defaults default    => database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
+red-defaults default    => database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
 schema(AAA, BBB).drop.create;
 
