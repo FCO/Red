@@ -1,6 +1,7 @@
 use Test;
 use Red;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 enum Bla <a e i o u>;
 
 model TestModel {

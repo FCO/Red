@@ -1,6 +1,7 @@
 #!/usr/bin/env raku
 use Test;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
@@ -12,7 +13,7 @@ my $test-set;
 
 lives-ok {
     use Red:api<2>;
-    $*RED-DB = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => .[1] } } );
+    $*RED-DB = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
     $test-set = model CITestSet is rw is table<citest_set> {
         has UInt $.id    is serial;

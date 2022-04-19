@@ -1,6 +1,7 @@
 use Red;
 use Test;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 model Foo is rw {
     has Int $.id    is serial;
     has Str $.name  is column;

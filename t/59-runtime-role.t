@@ -2,6 +2,7 @@
 
 use Test;
 
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 use Red;
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
