@@ -1,8 +1,6 @@
 use Red;
 use Test;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
-
 class X::Tree::ExistsInTheSameArea is Exception {
     has Rat $.longitude;
     has Rat $.latitude;

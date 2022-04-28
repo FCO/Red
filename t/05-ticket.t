@@ -12,8 +12,7 @@ model TicketStatus {
     has Str  $.name     is column{ :unique };
 }
 
-schema(TicketStatus).drop;
-TicketStatus.^create-table;
+schema(TicketStatus).drop.create;
 
 my $new     = TicketStatus.^create: :name<new>;
 my $opened  = TicketStatus.^create: :name<opened>;

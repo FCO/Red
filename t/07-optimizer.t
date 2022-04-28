@@ -2,7 +2,6 @@ use Test;
 use Red::AST::Value;
 use Red;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 my $*RED-INTERNAL = True;
 
 model C {
