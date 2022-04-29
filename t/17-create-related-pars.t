@@ -1,7 +1,7 @@
 use Test;
 use Red;
 
-plan :skip-all("Pg do not accept minus") with %*ENV<RED_DATABASE>;
+#plan :skip-all("Pg do not accept minus") with %*ENV<RED_DATABASE>;
 
 model State is rw is table('foo') {
     has Int $.id            is serial;

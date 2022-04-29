@@ -1,7 +1,6 @@
 use Red;
 use Test;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 model Foo is rw {
     has Int $.id    is serial;
     has Str $.name  is column;
@@ -89,12 +88,12 @@ todo "What's happening here???" with %*ENV<RED_DATABASE>;
 is-deeply MultiFoo.^rs.grep(*.bar-id in MultiBar.^rs.grep( *.name eq 'one' ).map( *.id ) ).Seq, (@multifoos[0], ), "in with different table in sub-select (no cartesian join)";
 
 subtest "#521" => {
-    model A {
+    model A is table<aaa> {
         has Str $.id is id;
         has     @.bs is relationship({ .a-id }, model => "B" );
     }
 
-    model B {
+    model B is table<bbb> {
         has Int  $.id   is serial;
         has Str  $.a-id is column({ name => "a", model-name => "A", column-name => "id" });
         has      $.a    is relationship({ .a-id }, model => "A");

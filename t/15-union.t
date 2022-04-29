@@ -1,7 +1,8 @@
 use Test;
 use Red;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+plan 18;
+#plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
 model M is table<mmm> {
     has Int $.a is column
@@ -38,7 +39,7 @@ isa-ok $intersect2, M::ResultSeq;
 isa-ok $intersect2.ast, Red::AST::Intersect;
 is-deeply $intersect2.map(*.a).Seq.sort, eager 10 ^..^ 20;
 
-plan :skip-all("Pg do not accept minus") with %*ENV<RED_DATABASE>;
+skip-rest("Pg do not accept minus"), exit with %*ENV<RED_DATABASE>;
 my $minus1 = M.^all (-) M.^all.grep(*.a >= 20);
 isa-ok $minus1, M::ResultSeq;
 isa-ok $minus1.ast, Red::AST::Minus;
@@ -48,5 +49,3 @@ my $minus2 = M.^all ⊖ M.^all.grep(*.a >= 20);
 isa-ok $minus2, M::ResultSeq;
 isa-ok $minus2.ast, Red::AST::Minus;
 is-deeply $minus2.map(*.a).Seq.sort, eager ^20;
-
-done-testing

@@ -2,8 +2,6 @@ use Test;
 use Red;
 use Red::Column;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
-
 my $*RED-DB             = database "Mock";
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;

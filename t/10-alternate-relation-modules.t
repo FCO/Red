@@ -1,7 +1,5 @@
 use v6;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
-
 # This is the same as the t/09-alternate-relation.t
 # except the model classes are in separate modules
 # this is to discover precomp issues.

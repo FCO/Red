@@ -1,8 +1,6 @@
 use Test;
 use Red <has-one>;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
-
 model Bla {
     has UInt $.id      is serial;
     has Str  $.value   is column;

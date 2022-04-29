@@ -180,10 +180,11 @@ method ping {
 
 method create-schema(%models where .values.all ~~ Red::Model) {
     for %models.kv -> Str() $name, Red::Model \model {
-        self.execute: my $data = Red::AST::CreateTable.new:
+        my $*RED-IGNORE-REFERENCE = True;
+        my $data = Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
-            :columns(model.^columns.map(*.column.clone: :references(Callable), :class(model))),
+            :columns(model.^columns.map: *.column),
             |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY),
             :constraints[
                 |do given model.^constraints {
@@ -198,6 +199,7 @@ method create-schema(%models where .values.all ~~ Red::Model) {
                 }
             ],
         ;
+        self.execute: $data;
         model.^emit: $data
     }
 
@@ -580,12 +582,12 @@ multi method translate(Red::AST::Value $_, "bind") {
 }
 
 multi method translate(Red::AST::Divisable $_, $context?) {
-    return self.translate:
-            Red::AST::Eq.new(
-                Red::AST::Mod.new(.left, .right),
-                ast-value(0),
-            ),
-            $context
+    self.translate:
+        Red::AST::Eq.new(
+            Red::AST::Mod.new(.left, .right),
+            ast-value(0),
+        ),
+        $context
 }
 
 multi method translate(Red::AST::Mul $_ where .left.?value == -1, "order") {
@@ -674,7 +676,7 @@ multi method translate(Red::Column $_, "create-table") {
             "column-pk",
             "column-auto-increment",
         ) if .class.^id <= 1),
-        "column-references",
+        |("column-references" unless $*RED-IGNORE-REFERENCE),
         |("column-comment" if self.comment-on-same-statement),
     )
         .map(-> $context {
