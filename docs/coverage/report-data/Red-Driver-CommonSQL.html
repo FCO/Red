@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::CommonSQL 57.4%</h1>
+				<h1>Red::Driver::CommonSQL 57%</h1>
 			</div>
 		</div>
 	</div>
@@ -230,10 +230,11 @@
 <span class="coverage-no"></span>
 <span class="coverage-red">method create-schema(%models where .values.all ~~ Red::Model) {</span>
 <span class="coverage-red">    for %models.kv -&gt; Str() $name, Red::Model \model {</span>
-<span class="coverage-red">        self.execute: my $data = Red::AST::CreateTable.new:</span>
+<span class="coverage-red">        my $*RED-IGNORE-REFERENCE = True;</span>
+<span class="coverage-red">        my $data = Red::AST::CreateTable.new:</span>
 <span class="coverage-no">            :name(model.^table),</span>
 <span class="coverage-no">            :temp(model.^temp),</span>
-<span class="coverage-no">            :columns(model.^columns.map(*.column.clone: :references(Callable), :class(model))),</span>
+<span class="coverage-no">            :columns(model.^columns.map: *.column),</span>
 <span class="coverage-red">            |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY),</span>
 <span class="coverage-red">            :constraints[</span>
 <span class="coverage-red">                |do given model.^constraints {</span>
@@ -248,6 +249,7 @@
 <span class="coverage-no">                }</span>
 <span class="coverage-no">            ],</span>
 <span class="coverage-no">        ;</span>
+<span class="coverage-red">        self.execute: $data;</span>
 <span class="coverage-red">        model.^emit: $data</span>
 <span class="coverage-no">    }</span>
 <span class="coverage-no"></span>
@@ -630,12 +632,12 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Divisable $_, $context?) {</span>
-<span class="coverage-green">    return self.translate:</span>
-<span class="coverage-no">            Red::AST::Eq.new(</span>
-<span class="coverage-no">                Red::AST::Mod.new(.left, .right),</span>
-<span class="coverage-no">                ast-value(0),</span>
-<span class="coverage-no">            ),</span>
-<span class="coverage-no">            $context</span>
+<span class="coverage-green">    self.translate:</span>
+<span class="coverage-no">        Red::AST::Eq.new(</span>
+<span class="coverage-no">            Red::AST::Mod.new(.left, .right),</span>
+<span class="coverage-no">            ast-value(0),</span>
+<span class="coverage-no">        ),</span>
+<span class="coverage-no">        $context</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Mul $_ where .left.?value == -1, &quot;order&quot;) {</span>
@@ -724,7 +726,7 @@
 <span class="coverage-no">            &quot;column-pk&quot;,</span>
 <span class="coverage-no">            &quot;column-auto-increment&quot;,</span>
 <span class="coverage-no">        ) if .class.^id &lt;= 1),</span>
-<span class="coverage-no">        &quot;column-references&quot;,</span>
+<span class="coverage-red">        |(&quot;column-references&quot; unless $*RED-IGNORE-REFERENCE),</span>
 <span class="coverage-red">        |(&quot;column-comment&quot; if self.comment-on-same-statement),</span>
 <span class="coverage-no">    )</span>
 <span class="coverage-green">        .map(-&gt; $context {</span>
