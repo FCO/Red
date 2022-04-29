@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::Pg 13.1%</h1>
+				<h1>Red::Driver::Pg 12.9%</h1>
 			</div>
 		</div>
 	</div>
@@ -198,6 +198,11 @@
 <span class="coverage-red">multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {</span>
 <span class="coverage-red">    &quot;'{ .value.Str }'&quot; =&gt; []</span>
 <span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Value $_ where .type ~~ Rat, $context?) {</span>
+<span class="coverage-red">    &quot;'{ .value }'::{ self.default-type-for-type: .type }&quot; =&gt; []</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method translate(Red::Column $_, &quot;column-comment&quot;) {</span>
 <span class="coverage-red">    (.comment ?? &quot;COMMENT ON COLUMN { self.translate: $_, &quot;table-dot-column&quot; } IS '{ .comment }'&quot; !! &quot;&quot;) =&gt; []</span>
