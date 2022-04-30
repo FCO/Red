@@ -124,6 +124,8 @@ multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined)
 multi method translate(Red::AST::Insert $_, $context?) {
     my Int $*bind-counter;
     my @values = .values.grep({ .value.value.defined });
+    return "INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES RETURNING *" => [] unless @values;
+
     # TODO: User translation
     my @bind = @values.map: { self.wildcard-value: .value }
     "INSERT INTO {

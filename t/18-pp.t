@@ -1,7 +1,5 @@
 use Test;
 
-plan :skip-all("Pg do not accept minus") with %*ENV<RED_DATABASE>;
-
 use lib "t/lib";
 use TestRed;
 
