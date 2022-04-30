@@ -3,7 +3,7 @@ use Red;
 use Red::AST::CreateTable;
 use Red::AST::Insert;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+# plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 plan 29;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
@@ -59,13 +59,16 @@ my $s = start react whenever Red.events -> $event {
             }
         }
         when 5 {
+            with %*ENV<RED_DATABASE> {
+                is-deeply $event.metadata, {:bli<blo>}
+                skip("It's not using SQLite") xx 2;
+                is-deeply $event.metadata, {:bli<blo>}
+                last;
+                done
+            }
             is-deeply $event.metadata, {:bla<ble>}
             is-deeply $event.db, $*RED-DB;
-            with %*ENV<RED_DATABASE> {
-                skip "It's not using SQLite"
-            } else {
-                is $event.db-name, "Red::Driver::SQLite";
-            }
+            is $event.db-name, "Red::Driver::SQLite";
         }
         default {
             is-deeply $event.metadata, {:bli<blo>}
@@ -90,9 +93,7 @@ Bla.^create: :name<bla>;
 }
 await $s;
 
-schema(Bla).drop;
-
-model Ble { has $.id is serial; has $!bla-id is referencing(*.id, :model(Bla)) }
+model Ble { has $.id is serial; has UInt $!bla-id is referencing(*.id, :model(Bla)) }
 
 my $t = start react whenever Red.events -> $event {
     given ++$ {
@@ -120,6 +121,6 @@ my $t = start react whenever Red.events -> $event {
     }
 }
 
-schema(Bla, Ble).create;
+schema(Bla, Ble).drop.create;
 
 await $t;
