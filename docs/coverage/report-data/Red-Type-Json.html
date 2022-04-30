@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Type::Json 100%</h1>
+				<h1>Red::Type::Json 84.6%</h1>
 			</div>
 		</div>
 	</div>
@@ -50,10 +50,30 @@
 			<pre class="code">
 <span class="coverage-green">use JSON::Fast;</span>
 <span class="coverage-no">use Red::Type;</span>
+<span class="coverage-no">use Red::DB;</span>
 <span class="coverage-green">unit class Json is Str does Red::Type;</span>
 <span class="coverage-no"></span>
-<span class="coverage-green">method inflator { -&gt; $data { $data ~~ Str ?? try { from-json $data } // $data !! $data } }</span>
-<span class="coverage-green">method deflator { -&gt; $data { try { to-json $data   } // $data } }</span>
+<span class="coverage-green">method inflator {</span>
+<span class="coverage-green">  -&gt; $data {</span>
+<span class="coverage-no">    # TODO: Find a better way of doing this</span>
+<span class="coverage-green">    do if get-RED-DB.?stringify-json  {</span>
+<span class="coverage-green">      $data ~~ Str ?? try { from-json $data } // $data !! $data</span>
+<span class="coverage-no">    } else {</span>
+<span class="coverage-red">      $data</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">  }</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method deflator {</span>
+<span class="coverage-green">  -&gt; $data {</span>
+<span class="coverage-no">    # TODO: Find a better way of doing this</span>
+<span class="coverage-green">    do if get-RED-DB.?stringify-json  {</span>
+<span class="coverage-green">      try { to-json $data } // $data</span>
+<span class="coverage-no">    } else {</span>
+<span class="coverage-red">      $data</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">  }</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">method red-type-accepts(Any:U --&gt; Bool) { True }</span>
 			</pre>

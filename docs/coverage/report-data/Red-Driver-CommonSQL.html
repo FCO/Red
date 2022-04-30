@@ -253,6 +253,7 @@
 <span class="coverage-red">        model.^emit: $data</span>
 <span class="coverage-no">    }</span>
 <span class="coverage-no"></span>
+<span class="coverage-no">    # TODO: Fix for Pg with fk multi column</span>
 <span class="coverage-red">    for %models.kv -&gt; Str() $name, Red::Model \model {</span>
 <span class="coverage-red">        my @fks = model.^columns&gt;&gt;.column.grep({ .ref.defined });</span>
 <span class="coverage-red">        if @fks {</span>

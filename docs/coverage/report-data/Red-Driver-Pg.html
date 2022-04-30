@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::Pg 12.9%</h1>
+				<h1>Red::Driver::Pg 12.5%</h1>
 			</div>
 		</div>
 	</div>
@@ -56,6 +56,7 @@
 <span class="coverage-no">use Red::AST::Infixes;</span>
 <span class="coverage-no">use X::Red::Exceptions;</span>
 <span class="coverage-no">use Red::AST::TableComment;</span>
+<span class="coverage-no">use Red::Type::Json;</span>
 <span class="coverage-no">need UUID;</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">unit class Red::Driver::Pg does Red::Driver::CommonSQL;</span>
@@ -174,6 +175,8 @@
 <span class="coverage-red">multi method translate(Red::AST::Insert $_, $context?) {</span>
 <span class="coverage-red">    my Int $*bind-counter;</span>
 <span class="coverage-red">    my @values = .values.grep({ .value.value.defined });</span>
+<span class="coverage-red">    return &quot;INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES RETURNING *&quot; =&gt; [] unless @values;</span>
+<span class="coverage-no"></span>
 <span class="coverage-no">    # TODO: User translation</span>
 <span class="coverage-red">    my @bind = @values.map: { self.wildcard-value: .value }</span>
 <span class="coverage-red">    &quot;INSERT INTO {</span>
@@ -250,11 +253,14 @@
 <span class="coverage-red">multi method default-type-for(Red::Column $ where .auto-increment --&gt; Str:D) {&quot;serial&quot;}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method default-type-for-type(Positional $_ --&gt; Str:D) {&quot;{ self.default-type-for-type: .of }[]&quot;}</span>
+<span class="coverage-red">multi method default-type-for-type(Json          --&gt; Str:D) {&quot;jsonb&quot;}</span>
 <span class="coverage-red">multi method default-type-for-type(DateTime      --&gt; Str:D) {&quot;timestamp&quot;}</span>
 <span class="coverage-red">multi method default-type-for-type(Bool          --&gt; Str:D) {&quot;boolean&quot;}</span>
 <span class="coverage-red">multi method default-type-for-type(Int           --&gt; Str:D) {&quot;integer&quot;}</span>
 <span class="coverage-red">multi method default-type-for-type(UUID          --&gt; Str:D) {&quot;uuid&quot;}</span>
 <span class="coverage-red">multi method default-type-for-type(Red::Column $ --&gt; Str:D) {&quot;varchar(255)&quot;}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method type-for-sql(&quot;jsonb&quot;     --&gt; &quot;Json&quot;    ) {}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }</span>
 <span class="coverage-red">multi method deflate(DateTime $value) { ~$value.utc }</span>
