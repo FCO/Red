@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.59  2022-04-30T15:52:08+01:00
     - fix schema.create
 
 0.1.58  2022-04-10T23:01:15+01:00
