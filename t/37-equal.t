@@ -1,6 +1,10 @@
 use Test;
 use Red;
 
+# TODO: Fix bug:
+# # Failed test at t/37-equal.t line 59
+# Too few positionals passed to 'translate'; expected 2 arguments but got 0
+
 plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
 model Bla { has UInt $.id is serial; has Int $.bla is column }

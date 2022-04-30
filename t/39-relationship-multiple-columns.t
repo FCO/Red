@@ -1,6 +1,7 @@
 use Test;
 use Red:api<2>;
 
+# TODO: Fix Fk with multiple columns for Pg
 plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
 model AAA {

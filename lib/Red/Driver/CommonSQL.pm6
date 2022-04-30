@@ -203,6 +203,7 @@ method create-schema(%models where .values.all ~~ Red::Model) {
         model.^emit: $data
     }
 
+    # TODO: Fix for Pg with fk multi column
     for %models.kv -> Str() $name, Red::Model \model {
         my @fks = model.^columns>>.column.grep({ .ref.defined });
         if @fks {

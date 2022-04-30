@@ -43,6 +43,8 @@ class Statement does Red::Statement {
     method stt-row($stt) { $stt.row: :hash }
 }
 
+method stringify-json { True }
+
 #| Begin transaction
 method begin {
     self.prepare(Red::AST::BeginTransaction.new).map: *.execute;

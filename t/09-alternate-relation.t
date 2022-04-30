@@ -1,7 +1,5 @@
 use v6;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
-
 # This is the same as the 04-blog.t except it exercises the
 # alternative relation trait style
 use Test;

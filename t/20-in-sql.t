@@ -135,7 +135,7 @@ subtest "#521" => {
         $a.bs.grep(*.c.d ⊂ <a b c>).map({ .d = False }).save;
     }
 
-    is B.^all.grep({ not .d }).map(*.c.d).Seq, <a b c d>
+    is B.^all.grep({ not .d }).map(*.c.d).Seq.sort, <a b c d>
 }
 
 done-testing;

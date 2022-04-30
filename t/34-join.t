@@ -1,8 +1,6 @@
 use Test;
 use Red;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
-
 model Bla { ... }
 model Ble { ... }
 

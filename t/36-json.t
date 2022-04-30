@@ -2,7 +2,7 @@ use Test;
 use Red;
 use Red::Type::Json;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+plan 6;
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
@@ -21,6 +21,12 @@ Bla.^create-table;
 Bla.^create: :num1{:42bla};
 is Bla.^all.map({ .num1<bla> }).head, 42;
 
+if $driver eq "Pg" {
+    skip-rest "Pg not accepting update on json yet";
+    exit
+}
+
+# TODO: use jsonb_set for Pg
 Bla.^all.map({ .num1<ble> = 13 }).save;
 is Bla.^all.map({ .num1<ble> }).head, 13;
 
@@ -35,5 +41,3 @@ is-deeply Bla.^all.map({ .num1<blu> }).head, [1, 2, 3];
 
 Bla.^all.map({ .num1<ble>:delete }).save;
 is Bla.^all.map({ .num1<ble> }).head, Json;
-
-done-testing;
