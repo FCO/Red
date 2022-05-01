@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>MetamodelX::Red::Model 77.8%</h1>
+				<h1>MetamodelX::Red::Model 77.9%</h1>
 			</div>
 		</div>
 	</div>
@@ -531,6 +531,7 @@
 <span class="coverage-no">#| It accepts a list os pairs (the same as C&lt;.new&gt;)</span>
 <span class="coverage-no">#| And Lists and/or Hashes for relationships</span>
 <span class="coverage-green">multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {</span>
+<span class="coverage-green">    die &quot;Cannot call .^create on a defined model.&quot; if model.DEFINITE;</span>
 <span class="coverage-green">    my $RED-DB = get-RED-DB;</span>
 <span class="coverage-green">    my $trans  = so $*RED-TRANSCTION-RUNNING;</span>
 <span class="coverage-green">    $RED-DB   .= begin        unless $trans;</span>
