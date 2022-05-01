@@ -22,7 +22,7 @@ model Sentence {
 
     method ^populate($model) {
         for "t/sentences.csv".IO.lines {
-            $model.^create: |(<id lang sentence> Z=> .split("\t").map({ /^\d+$/ ?? .Int !! .self })).Hash
+            $model.^create: |(<lang sentence> Z=> .split("\t").map({ /^\d+$/ ?? .Int !! .self })).Hash
         }
     }
 }

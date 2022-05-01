@@ -1,8 +1,6 @@
 use Test;
 use Red:api<2>;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
-
 model Bla {
     has $!id    is serial;
     has $.value is column;

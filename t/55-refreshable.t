@@ -1,9 +1,8 @@
 use Test;
 use Red <refreshable>;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 model TestModel {
-    has Int $.id   is id;
+    has Int $.id   is serial;
     has Int $.num  is column is rw;
     has Str $.str  is column is rw;
     has     $.num2 is column is rw;
@@ -18,7 +17,7 @@ my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
 red-defaults "SQLite";
-TestModel.^create-table;
+schema(TestModel).drop.create;
 my $a = TestModel.^create: :num(-1), :str<pla>, :num2(-99);
 
 sub change($a) {

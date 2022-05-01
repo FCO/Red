@@ -481,6 +481,7 @@ multi method create($, Str :$with!, |c) is hidden-from-backtrace {
 #| It accepts a list os pairs (the same as C<.new>)
 #| And Lists and/or Hashes for relationships
 multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {
+    die "Cannot call .^create on a defined model." if model.DEFINITE;
     my $RED-DB = get-RED-DB;
     my $trans  = so $*RED-TRANSCTION-RUNNING;
     $RED-DB   .= begin        unless $trans;

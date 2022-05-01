@@ -3,7 +3,6 @@ use Red;
 use Red::Schema;
 use lib "t/lib";
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 my $*RED-FALLBACK       = $_ with %*ENV<RED_FALLBACK>;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;

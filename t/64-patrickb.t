@@ -1,7 +1,6 @@
 #!/usr/bin/env raku
 use Test;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
@@ -20,7 +19,7 @@ lives-ok {
         has Str $.status is column;
     }
 
-    schema($test-set).create;
+    schema($test-set).drop.create;
 }
 
 my $ts = $test-set.^create: :status<NEW>;

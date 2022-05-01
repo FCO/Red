@@ -1,7 +1,7 @@
 use Test;
 use Red:api<2>;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+#plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
 model Login is table<logged_user> {
     has         $.id        is serial;

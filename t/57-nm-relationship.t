@@ -1,7 +1,6 @@
 use Test;
 use Red;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 model PostTag {...}
 
 model Post {
@@ -32,7 +31,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
-schema(PostTag, Post, Tag).create;
+schema(PostTag, Post, Tag).drop.create;
 
 my $a = Post.^create: :title<bla>, :post-tags[{ :tag{ :name<a> } }, { :tag{ :name<b> } }];
 my $b = Post.^create: :title<ble>, :post-tags[{ :tag{ :name<a> } }, { :tag{ :name<c> } }];

@@ -3,7 +3,6 @@
 use Red;
 use Test;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
@@ -28,9 +27,7 @@ model C {
     has     @.bs is relationship({ .c-id }, model => 'B' );
 }
 
-A.^create-table;
-C.^create-table;
-B.^create-table;
+schema(A, B, C).drop.create;
 
 A.^create( id => 'FOO');
 

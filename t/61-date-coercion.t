@@ -2,7 +2,6 @@
 
 use Test;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 use Red;
 
 my DateTime $now .= now;
@@ -20,7 +19,7 @@ model Foo {
 	has DateTime $.foo-date is column = $now;
 }
 
-Foo.^create-table;
+schema(Foo).drop.create;
 
 Foo.^create;
 

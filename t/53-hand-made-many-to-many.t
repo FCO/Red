@@ -1,7 +1,6 @@
 use Test;
 use Red:api<2>;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 model AABB { ... }
 model BB { ... }
 model AA is table<aa> {
@@ -22,12 +21,12 @@ model BB is table<bb> {
     has $.bb-name is column;
 }
 model AABB is table<aabb> {
-    has $.aa-id is column{
+    has UInt $.aa-id is column{
         :id
         :references(*.aa-id),
         :model-name<AA>,
     };
-    has $.bb-id is column{
+    has UInt $.bb-id is column{
         :id,
         :references(*.bb-id),
         :model-name<BB>,
@@ -42,7 +41,7 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
-schema(AA, BB, AABB).create;
+schema(AA, BB, AABB).drop.create;
 
 my $aa1 = AA.^create: :aa-name<aa1>;
 my $bb1 = BB.^create: :bb-name<bb1>;

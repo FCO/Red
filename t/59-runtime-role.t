@@ -2,7 +2,6 @@
 
 use Test;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 use Red;
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
@@ -20,7 +19,7 @@ subtest {
         has Int $.id is serial;
     }
 
-    BarMixin.^create-table;
+    schema(BarMixin).drop.create;
 
     my $bar = BarMixin.^create;
 
@@ -45,7 +44,7 @@ subtest {
         has Int $.id is serial;
     }
 
-    BarDoes.^create-table;
+    schema(BarDoes).drop.create;
 
     my $bar = BarDoes.^create;
 

@@ -16,6 +16,7 @@ my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=
 schema(TestModel).drop;
 TestModel.^create-table;
 
+# TODO: fix: sort column should be on group by as well on Pg
 my $b = TestModel.^all.sort(*.count).classify(*.name).Bag;
 
 pass('sort + classify should produce correct SQL');
