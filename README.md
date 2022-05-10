@@ -2,6 +2,8 @@
 
 [![Build Status](https://github.com/FCO/Red/workflows/ecosystem/badge.svg)](https://github.com/FCO/Red/actions)
 
+[![SparkyCI](http://sparrowhub.io:2222/project/gh-FCO-Red/badge)](http://sparrowhub.io:2222)
+
 Red
 ===
 
