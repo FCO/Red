@@ -61,7 +61,7 @@ my @todo =
 
 my $*RED-FALLBACK = False;
 lives-ok {
-        is-deeply .(Bla.^all).Seq, .(@bla).Seq for @tests;
+        quietly is-deeply .(Bla.^all).Seq, .(@bla).Seq for @tests;
 }
 
 #lives-ok {

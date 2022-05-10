@@ -24,12 +24,15 @@ use Red::HiddenFromSQLCommenting;
 use X::Red::Exceptions;
 use Red::PrepareCode;
 use Red::Phaser;
+use Red::ResultSeqMethods;
 
 =head2 Red::ResultSeq
 
 #| Class that represents a Seq of query results
-unit role Red::ResultSeq[Mu $of = Any] does Sequence;
+unit role Red::ResultSeq[Mu $of = Any];
+also does Sequence;
 also does Positional;
+also does Red::ResultSeqMethods;
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
     use Red::DefaultResultSeq;

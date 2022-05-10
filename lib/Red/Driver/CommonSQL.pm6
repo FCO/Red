@@ -561,9 +561,14 @@ multi method translate(Red::AST::So $_, $context?) {
     self.translate: .value, .bind ?? "bind" !! $context;
 }
 
+multi method translate(Red::AST::Select $sel, "select") {
+    my ($str, @bind) := do given self.translate: $sel, "" { .key, .value }
+    "( { $str } )" => @bind
+}
+
 multi method translate(Red::Column $col, "select", Str :$RED-OVERRIDE-COLUMN-AS-PREFIX) {
     my ($str, @bind) := do with $col.computation {
-        do given self.translate: $_ { .key, .value }
+        do given self.translate: $_, "select" { .key, .value }
     } else {
         "{ self.table-name-wrapper: $col.model.^as }.{ $col.name }", []
     }
@@ -631,6 +636,17 @@ multi method translate(Red::AST::Value $_ where not .value.defined, "update" ) {
 multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $context? ) {
     my ( :$key, :$value ) = self.translate(.value, $context );
     '( ' ~ $key ~ ' )' => $value ;
+}
+
+multi method translate(Red::AST::Value $_ where .type ~~ Positional, "select") {
+    my @sql;
+    my @bind;
+    .get-value.map: {
+        my ( :$key, :@value) = self.translate: $_, "select";
+        @sql.push: $key;
+        @bind.append: @value
+    }
+    @sql.join(", ") => @bind
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Positional, $context?) {

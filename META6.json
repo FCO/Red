@@ -115,6 +115,7 @@
     "Red::ResultAssociative": "lib/Red/ResultAssociative.pm6",
     "Red::ResultSeq": "lib/Red/ResultSeq.pm6",
     "Red::ResultSeq::Iterator": "lib/Red/ResultSeq/Iterator.pm6",
+    "Red::ResultSeqMethods": "lib/Red/ResultSeqMethods.pm6",
     "Red::ResultSeqSeq": "lib/Red/ResultSeqSeq.pm6",
     "Red::Schema": "lib/Red/Schema.pm6",
     "Red::SchemaReader": "lib/Red/SchemaReader.pm6",
