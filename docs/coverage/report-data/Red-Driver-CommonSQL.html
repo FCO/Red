@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Driver::CommonSQL 57%</h1>
+				<h1>Red::Driver::CommonSQL 56%</h1>
 			</div>
 		</div>
 	</div>
@@ -611,9 +611,14 @@
 <span class="coverage-red">    self.translate: .value, .bind ?? &quot;bind&quot; !! $context;</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Select $sel, &quot;select&quot;) {</span>
+<span class="coverage-red">    my ($str, @bind) := do given self.translate: $sel, &quot;&quot; { .key, .value }</span>
+<span class="coverage-red">    &quot;( { $str } )&quot; =&gt; @bind</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::Column $col, &quot;select&quot;, Str :$RED-OVERRIDE-COLUMN-AS-PREFIX) {</span>
 <span class="coverage-green">    my ($str, @bind) := do with $col.computation {</span>
-<span class="coverage-green">        do given self.translate: $_ { .key, .value }</span>
+<span class="coverage-green">        do given self.translate: $_, &quot;select&quot; { .key, .value }</span>
 <span class="coverage-green">    } else {</span>
 <span class="coverage-green">        &quot;{ self.table-name-wrapper: $col.model.^as }.{ $col.name }&quot;, []</span>
 <span class="coverage-no">    }</span>
@@ -681,6 +686,17 @@
 <span class="coverage-red">multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $context? ) {</span>
 <span class="coverage-red">    my ( :$key, :$value ) = self.translate(.value, $context );</span>
 <span class="coverage-red">    '( ' ~ $key ~ ' )' =&gt; $value ;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">multi method translate(Red::AST::Value $_ where .type ~~ Positional, &quot;select&quot;) {</span>
+<span class="coverage-no">    my @sql;</span>
+<span class="coverage-no">    my @bind;</span>
+<span class="coverage-red">    .get-value.map: {</span>
+<span class="coverage-red">        my ( :$key, :@value) = self.translate: $_, &quot;select&quot;;</span>
+<span class="coverage-red">        @sql.push: $key;</span>
+<span class="coverage-red">        @bind.append: @value</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-red">    @sql.join(&quot;, &quot;) =&gt; @bind</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">multi method translate(Red::AST::Value $_ where .type ~~ Positional, $context?) {</span>

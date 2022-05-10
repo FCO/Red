@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<title>RaCoCo result: Red::ResultSeqMethods</title>
+	<link rel="stylesheet"
+				href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css"
+				integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh"
+				crossorigin="anonymous">
+	<style>
+      pre.code::before {
+          counter-reset: listing;
+      }
+
+      pre.code span {
+          counter-increment: listing;
+      }
+
+      pre.code span::before {
+          content: counter(listing) ". ";
+      }
+
+      .coverage-green {
+          background-color: #32CD32;
+          /*color-blind
+          background-color: #00CED1;
+          /**/
+      }
+
+      .coverage-red {
+          background-color: #fa8072;
+      }
+
+      .coverage-purple {
+          background-color: #9370DB;
+      }
+	</style>
+</head>
+<body>
+<div class="container">
+	<div class="row mt-5 mb-3">
+		<div class="col-12">
+			<div class="page-header">
+				<h1>Red::ResultSeqMethods 15.3%</h1>
+			</div>
+		</div>
+	</div>
+	<div class="row justify-content-md-center">
+		<div class="col-md-10">
+			<pre class="code">
+<span class="coverage-green">use Red::AST::Function;</span>
+<span class="coverage-green">unit role Red::ResultSeqMethods;</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method !agg(Str $func, &amp;block) {</span>
+<span class="coverage-red">  my $*RED-FALLBACK = False;</span>
+<span class="coverage-red">  self.map({</span>
+<span class="coverage-red">    my @args = block $_;</span>
+<span class="coverage-red">    Red::AST::Function.new: :$func, :@args</span>
+<span class="coverage-no">  }).ast</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method min(&amp;block) {</span>
+<span class="coverage-red">  self!agg(&quot;min&quot;, &amp;block)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method max(&amp;block) {</span>
+<span class="coverage-red">  self!agg(&quot;max&quot;, &amp;block)</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-red">method sum(&amp;block) {</span>
+<span class="coverage-red">  self!agg(&quot;sum&quot;, &amp;block)</span>
+<span class="coverage-no">}</span>
+			</pre>
+		</div>
+	</div>
+</div>
+</body>
+</html>

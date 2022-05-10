@@ -74,12 +74,15 @@
 <span class="coverage-no">use X::Red::Exceptions;</span>
 <span class="coverage-no">use Red::PrepareCode;</span>
 <span class="coverage-no">use Red::Phaser;</span>
+<span class="coverage-no">use Red::ResultSeqMethods;</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">=head2 Red::ResultSeq</span>
 <span class="coverage-no"></span>
 <span class="coverage-no">#| Class that represents a Seq of query results</span>
-<span class="coverage-green">unit role Red::ResultSeq[Mu $of = Any] does Sequence;</span>
+<span class="coverage-green">unit role Red::ResultSeq[Mu $of = Any];</span>
+<span class="coverage-no">also does Sequence;</span>
 <span class="coverage-no">also does Positional;</span>
+<span class="coverage-no">also does Red::ResultSeqMethods;</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">sub create-resultseq($rs-class-name, Mu \type) is export is raw {</span>
 <span class="coverage-no">    use Red::DefaultResultSeq;</span>
