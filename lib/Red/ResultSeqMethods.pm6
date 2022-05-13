@@ -6,7 +6,7 @@ method !agg(Str $func, &block) {
   self.map({
     my @args = block $_;
     Red::AST::Function.new: :$func, :@args
-  }).ast
+  }).ast.as-sub-select
 }
 
 method min(&block) {

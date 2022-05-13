@@ -46,9 +46,23 @@ method transfer(Mu:U $package) {
     $attr but Red::Attr::Relationship[&rel1, &rel2, :$model, :$require]
 }
 
+method !to-use-with-rel {
+	do if self.has-one || self.type ~~ Positional {
+		do if $!relationship-model<> =:= Mu {
+			self.type.of
+		} else {
+			$!relationship-model<>
+		}
+	} else {
+		self.package
+	}
+}
+
 method rel {
     my $*RED-INTERNAL = True;
-    rel1 self.has-one ?? $!relationship-model !! self.package
+    my \type = self!to-use-with-rel;
+    say type.^name;
+    rel1 type
 }
 
 method relationship-model(--> Mu:U) is hidden-from-sql-commenting {

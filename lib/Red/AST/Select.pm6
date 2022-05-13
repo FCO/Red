@@ -20,7 +20,13 @@ has Red::AST::Comment   @.comments;
 has Bool                $.sub-select;
 has                     @.prefetch;
 
-method returns { Red::Model }
+method returns {
+    do if $.of.^columns == 1 {
+        $.of.^columns.first.type
+    } else {
+        Red::Model
+    }
+}
 
 method args { $!sub-select ?? () !! ( $!of, $!filter, |@!order ) }
 
@@ -33,7 +39,7 @@ method gist {
 }
 
 method tables(::?CLASS:D:) {
-    |(|@!table-list, |(.?tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique
+    |(|@!table-list, |(.?tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique unless $!sub-select
 }
 method find-column-name {}
 
@@ -60,5 +66,10 @@ method minus($sel) {
 
 method as-sub-select {
     $!sub-select = True;
+    self;
+}
+
+method as-select {
+    $!sub-select = False;
     self;
 }

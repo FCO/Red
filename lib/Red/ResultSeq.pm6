@@ -224,6 +224,7 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
     my \ast = Red::AST::Case.new(:%when);
     #die "Map returning Red::Model is NYI" if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
     return seq.create-map: ast.value, :&filter if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
+    return seq.create-map: ast.value, :&filter if ast ~~ Red::AST::Value and ast.type ~~ Positional;
     seq.create-map: ast, :&filter
 }
 #method flatmap(&filter) {

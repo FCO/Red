@@ -502,7 +502,9 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
             my \attr-type = attr.type;
             with %relationships{ $name } {
                 my \attr-model = attr.relationship-model;
-                if $val ~~ Positional && attr-type ~~ Positional {
+                if $val ~~ Seq {
+                    %positionals{$name} = $val.Array
+                } elsif $val ~~ Positional && attr-type ~~ Positional {
                     %positionals{$name} = $val
                 } elsif .has-one {
                     die "Value of '$name' should be Associative" unless $val ~~ Associative;

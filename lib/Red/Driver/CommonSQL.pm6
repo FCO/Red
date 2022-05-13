@@ -336,7 +336,7 @@ multi method translate(Red::AST::Comment $_, $context?) {
 
 multi method translate(Red::AST::Infix $_ where { (.right | .right.?value) ~~ Red::AST::Select }, $context?) {
     my ($lstr, @lbind) := do given self.translate: .left,  .bind-left  ?? "bind" !! $context { .key, .value }
-    my ($rstr, @rbind) := do given self.translate: .right, .bind-right ?? "bind" !! $context { .key, .value }
+    my ($rstr, @rbind) := do given self.translate: .right.?as-select // .right, .bind-right ?? "bind" !! $context { .key, .value }
 
     "$lstr { .op } ( $rstr )" => [|@lbind, |@rbind]
 }
@@ -562,7 +562,7 @@ multi method translate(Red::AST::So $_, $context?) {
 }
 
 multi method translate(Red::AST::Select $sel, "select") {
-    my ($str, @bind) := do given self.translate: $sel, "" { .key, .value }
+    my ($str, @bind) := do given self.translate: $sel.as-select, "" { .key, .value }
     "( { $str } )" => @bind
 }
 
@@ -572,7 +572,10 @@ multi method translate(Red::Column $col, "select", Str :$RED-OVERRIDE-COLUMN-AS-
     } else {
         "{ self.table-name-wrapper: $col.model.^as }.{ $col.name }", []
     }
-    qq[$str {qq<as "{ "{$RED-OVERRIDE-COLUMN-AS-PREFIX}." if $RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }"> if
+    my $as = do if $col.computation.?type !~~ Positional {
+        qq<as "{ "{$RED-OVERRIDE-COLUMN-AS-PREFIX}." if $RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }">;
+    }
+    qq[$str { $as if
             $col.computation
             or $col.name ne $col.attr-name
             or $RED-OVERRIDE-COLUMN-AS-PREFIX
@@ -634,7 +637,7 @@ multi method translate(Red::AST::Value $_ where not .value.defined, "update" ) {
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $context? ) {
-    my ( :$key, :$value ) = self.translate(.value, $context );
+    my ( :$key, :$value ) = self.translate(.value.as-select, $context );
     '( ' ~ $key ~ ' )' => $value ;
 }
 
@@ -646,7 +649,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ Positional, "select") {
         @sql.push: $key;
         @bind.append: @value
     }
-    @sql.join(", ") => @bind
+    @sql.map({ "$_ as data_" ~ ++$ }).join(", ") => @bind
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Positional, $context?) {

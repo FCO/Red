@@ -3,6 +3,7 @@ Revision history for Red
 {{$NEXT}}
     - fix Pg select json (missing update)
     - add relationship agregations #514
+    - fix .^create with Seq
 
 0.1.59  2022-04-30T15:52:08+01:00
     - fix schema.create
