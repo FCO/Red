@@ -472,7 +472,7 @@ multi method translate(Red::AST::DateTimeFunction $_, $context?) {
 multi method translate(Red::AST::Function $_, $context?) {
     my @bind;
     "{ .func }({ .args.map({
-        my ($s, @b) := do given self.translate: $_, $context { .key, .value }
+        my ($s, @b) := do given self.translate: $_, 'func' { .key, .value }
         @bind.append: @b;
         $s
     }).join: ", " })" => @bind
