@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::ResultSeqMethods 15.3%</h1>
+				<h1>Red::ResultSeqMethods 84.6%</h1>
 			</div>
 		</div>
 	</div>
@@ -51,20 +51,20 @@
 <span class="coverage-green">use Red::AST::Function;</span>
 <span class="coverage-green">unit role Red::ResultSeqMethods;</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">method !agg(Str $func, &amp;block) {</span>
-<span class="coverage-red">  my $*RED-FALLBACK = False;</span>
-<span class="coverage-red">  self.map({</span>
-<span class="coverage-red">    my @args = block $_;</span>
-<span class="coverage-red">    Red::AST::Function.new: :$func, :@args</span>
-<span class="coverage-no">  }).ast</span>
+<span class="coverage-green">method !agg(Str $func, &amp;block) {</span>
+<span class="coverage-green">  my $*RED-FALLBACK = False;</span>
+<span class="coverage-green">  self.map({</span>
+<span class="coverage-green">    my @args = block $_;</span>
+<span class="coverage-green">    Red::AST::Function.new: :$func, :@args</span>
+<span class="coverage-no">  }).ast.as-sub-select</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">method min(&amp;block) {</span>
-<span class="coverage-red">  self!agg(&quot;min&quot;, &amp;block)</span>
+<span class="coverage-green">method min(&amp;block) {</span>
+<span class="coverage-green">  self!agg(&quot;min&quot;, &amp;block)</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">method max(&amp;block) {</span>
-<span class="coverage-red">  self!agg(&quot;max&quot;, &amp;block)</span>
+<span class="coverage-green">method max(&amp;block) {</span>
+<span class="coverage-green">  self!agg(&quot;max&quot;, &amp;block)</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-red">method sum(&amp;block) {</span>
