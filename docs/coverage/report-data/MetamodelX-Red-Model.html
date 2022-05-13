@@ -552,7 +552,9 @@
 <span class="coverage-green">            my \attr-type = attr.type;</span>
 <span class="coverage-green">            with %relationships{ $name } {</span>
 <span class="coverage-green">                my \attr-model = attr.relationship-model;</span>
-<span class="coverage-green">                if $val ~~ Positional &amp;&amp; attr-type ~~ Positional {</span>
+<span class="coverage-green">                if $val ~~ Seq {</span>
+<span class="coverage-green">                    %positionals{$name} = $val.Array</span>
+<span class="coverage-no">                } elsif $val ~~ Positional &amp;&amp; attr-type ~~ Positional {</span>
 <span class="coverage-green">                    %positionals{$name} = $val</span>
 <span class="coverage-no">                } elsif .has-one {</span>
 <span class="coverage-green">                    die &quot;Value of '$name' should be Associative&quot; unless $val ~~ Associative;</span>

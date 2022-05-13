@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::ResultSeq 84.9%</h1>
+				<h1>Red::ResultSeq 85%</h1>
 			</div>
 		</div>
 	</div>
@@ -274,6 +274,7 @@
 <span class="coverage-green">    my \ast = Red::AST::Case.new(:%when);</span>
 <span class="coverage-no">    #die &quot;Map returning Red::Model is NYI&quot; if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;</span>
 <span class="coverage-green">    return seq.create-map: ast.value, :&amp;filter if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;</span>
+<span class="coverage-green">    return seq.create-map: ast.value, :&amp;filter if ast ~~ Red::AST::Value and ast.type ~~ Positional;</span>
 <span class="coverage-green">    seq.create-map: ast, :&amp;filter</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no">#method flatmap(&amp;filter) {</span>

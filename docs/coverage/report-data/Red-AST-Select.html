@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::AST::Select 76.6%</h1>
+				<h1>Red::AST::Select 77.7%</h1>
 			</div>
 		</div>
 	</div>
@@ -70,7 +70,13 @@
 <span class="coverage-no">has Bool                $.sub-select;</span>
 <span class="coverage-red">has                     @.prefetch;</span>
 <span class="coverage-no"></span>
-<span class="coverage-red">method returns { Red::Model }</span>
+<span class="coverage-green">method returns {</span>
+<span class="coverage-green">    do if $.of.^columns == 1 {</span>
+<span class="coverage-green">        $.of.^columns.first.type</span>
+<span class="coverage-no">    } else {</span>
+<span class="coverage-red">        Red::Model</span>
+<span class="coverage-no">    }</span>
+<span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">method args { $!sub-select ?? () !! ( $!of, $!filter, |@!order ) }</span>
 <span class="coverage-no"></span>
@@ -83,7 +89,7 @@
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">method tables(::?CLASS:D:) {</span>
-<span class="coverage-green">    |(|@!table-list, |(.?tables with $!filter), callsame).grep(-&gt; \v { v !=:= Nil }).unique</span>
+<span class="coverage-green">    |(|@!table-list, |(.?tables with $!filter), callsame).grep(-&gt; \v { v !=:= Nil }).unique unless $!sub-select</span>
 <span class="coverage-no">}</span>
 <span class="coverage-green">method find-column-name {}</span>
 <span class="coverage-no"></span>
@@ -110,6 +116,11 @@
 <span class="coverage-no"></span>
 <span class="coverage-green">method as-sub-select {</span>
 <span class="coverage-green">    $!sub-select = True;</span>
+<span class="coverage-red">    self;</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
+<span class="coverage-green">method as-select {</span>
+<span class="coverage-green">    $!sub-select = False;</span>
 <span class="coverage-red">    self;</span>
 <span class="coverage-no">}</span>
 			</pre>

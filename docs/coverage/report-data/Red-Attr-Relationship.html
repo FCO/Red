@@ -41,7 +41,7 @@
 	<div class="row mt-5 mb-3">
 		<div class="col-12">
 			<div class="page-header">
-				<h1>Red::Attr::Relationship 87.5%</h1>
+				<h1>Red::Attr::Relationship 86.7%</h1>
 			</div>
 		</div>
 	</div>
@@ -96,9 +96,23 @@
 <span class="coverage-green">    $attr but Red::Attr::Relationship[&amp;rel1, &amp;rel2, :$model, :$require]</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
+<span class="coverage-green">method !to-use-with-rel {</span>
+<span class="coverage-green">	do if self.has-one || self.type ~~ Positional {</span>
+<span class="coverage-green">		do if $!relationship-model&lt;&gt; =:= Mu {</span>
+<span class="coverage-green">			self.type.of</span>
+<span class="coverage-red">		} else {</span>
+<span class="coverage-green">			$!relationship-model&lt;&gt;</span>
+<span class="coverage-no">		}</span>
+<span class="coverage-red">	} else {</span>
+<span class="coverage-green">		self.package</span>
+<span class="coverage-no">	}</span>
+<span class="coverage-no">}</span>
+<span class="coverage-no"></span>
 <span class="coverage-green">method rel {</span>
 <span class="coverage-green">    my $*RED-INTERNAL = True;</span>
-<span class="coverage-green">    rel1 self.has-one ?? $!relationship-model !! self.package</span>
+<span class="coverage-green">    my \type = self!to-use-with-rel;</span>
+<span class="coverage-green">    say type.^name;</span>
+<span class="coverage-green">    rel1 type</span>
 <span class="coverage-no">}</span>
 <span class="coverage-no"></span>
 <span class="coverage-green">method relationship-model(--&gt; Mu:U) is hidden-from-sql-commenting {</span>
