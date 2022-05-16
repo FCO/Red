@@ -32,26 +32,27 @@ Red models use `model` keyword instead of `class`:
 
 ```raku
 model Person {
-    has Int $.id is serial;
+    has Int $.id   is serial;
     has Str $.name is column is rw;
 }
 
-my $*RED-DB = database “SQLite”;
+red-defaults “SQLite”;
 ```
 
 We described a model called `Person`. The first attribute `$.id` is typed to be `Int`
-and is marked with [is serial](../api/Red/Traits) trait. This trait marks the column as a primary one with
+and is marked with [is serial](../api/Red/Traits) trait. This trait marks the column as a primary key with
 autoincrement enabled. The next attribute `$.name` is marked with [is column](../api/Red/Traits) trait, which
-means this attribute will be mapped onto a column in the table, and is typed as Str.
+means this attribute will be mapped onto a column in the table, and is typed as Str. Also, setting this column
+as `is rw` let Raku create setter for that attribute/class.
 
 Note we don't need to specify that the column is not nullable, as it is the default.
 
-The second statement specifies a database to work with. In this case,
+The second statement ([red-defaults](https://fco.github.io/Red/api/Red/Do)) specifies a database to work with. In this case,
 an in-memory SQLite database is used, which means all changes will be lost after
 the script termination. To avoid this, we can specify a name for the database file:
 
 ```raku
-my $*RED-DB = database “SQLite”, database => 'test.sqlite3'; # Now a file `test.sqlite3` will be created
+red-defaults “SQLite”, database => 'test.sqlite3'; # Now a file `test.sqlite3` will be created
 ```
 
 Next, we need to create a table itself:
