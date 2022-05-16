@@ -47,8 +47,10 @@ as `is rw` let Raku create setter for that attribute/class.
 
 Note we don't need to specify that the column is not nullable, as it is the default.
 
-The second statement ([red-defaults](https://fco.github.io/Red/api/Red/Do)) specifies a database to work with. In this case,
-an in-memory SQLite database is used, which means all changes will be lost after
+The second statement ([red-defaults](https://fco.github.io/Red/api/Red/Do)) specifies a database to work with.
+[red-defaults](https://fco.github.io/Red/api/Red/Do) receives a Red::Driver name and arguments that will be passed
+to that driver. Currently Red has native support for SQLite and Postgres (`Pg`) and a [MySQL](https://github.com/FCO/Red-Driver-MySQL)
+driver is being developed. In this case, an in-memory SQLite database is used, which means all changes will be lost after
 the script termination. To avoid this, we can specify a name for the database file:
 
 ```raku
