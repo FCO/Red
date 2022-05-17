@@ -93,6 +93,10 @@ method columns(|) is rw {
     @!columns
 }
 
+method column-values(\model --> Hash()) {
+    self.columns(model).map: { .column.attr-name => .get_value: model }
+}
+
 #| Returns a hash with the migration hash
 method migration-hash(\model --> Hash()) {
     columns => @!columns>>.column>>.migration-hash,

@@ -25,6 +25,8 @@ use X::Red::Exceptions;
 use Red::PrepareCode;
 use Red::Phaser;
 use Red::ResultSeqMethods;
+use Red::Formatter::ResultSeq;
+use Red::Formatter::ResultSeq::Vertical;
 
 =head2 Red::ResultSeq
 
@@ -33,6 +35,10 @@ unit role Red::ResultSeq[Mu $of = Any];
 also does Sequence;
 also does Positional;
 also does Red::ResultSeqMethods;
+
+method format(Red::Formatter::ResultSeq:U $formatter = $*RED-FORMATTER-RESULTSEQ // Red::Formatter::ResultSeq::Vertical) {
+    $formatter.new(:rs(self)).format
+}
 
 sub create-resultseq($rs-class-name, Mu \type) is export is raw {
     use Red::DefaultResultSeq;
