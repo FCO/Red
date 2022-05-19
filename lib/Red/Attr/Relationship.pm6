@@ -61,7 +61,6 @@ method !to-use-with-rel {
 method rel {
     my $*RED-INTERNAL = True;
     my \type = self!to-use-with-rel;
-    say type.^name;
     rel1 type
 }
 
