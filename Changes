@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fix aggreg methods race condition
+    - fix test 61
 
 0.1.60  2022-05-14T16:09:15+01:00
     - fix Pg select json (missing update)

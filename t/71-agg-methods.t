@@ -30,4 +30,9 @@ Location.^create(
 
 is Location.^all.map({ .name, .temps.min(*.temperature), .temps.max(*.temperature) }).Seq.flat, " location1 0 9  location2 0 9  location3 0 9";
 
+lives-ok {
+  my @all := Location.^all.map({ .temps.max(*.temperature) });
+  await start { is @all.Seq.flat, "9 9 9" } xx 30
+}
+
 done-testing

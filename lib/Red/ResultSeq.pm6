@@ -85,6 +85,7 @@ has Red::AST::Comment @.comments;
 has Red::Driver       $.with;
 has                   $.obj;
 has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new: |(:filter(.^id-filter) with $!obj);
+has Lock::Async       $!lock .= new;
 
 multi method with { $!with }
 
@@ -103,8 +104,10 @@ method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {
 
 #| Returns a Seq with the result of the SQL query
 method Seq is hidden-from-sql-commenting {
-    self.create-comment-to-caller;
-    Seq.new: self.iterator
+    $!lock.protect: {
+        self.create-comment-to-caller;
+        Seq.new: self.iterator
+    }
 }
 
 method do-it(*%pars) is hidden-from-sql-commenting {

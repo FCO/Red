@@ -4,7 +4,7 @@ use Test;
 
 use Red;
 
-my DateTime $now .= now;
+my DateTime $now = "1981-05-21T06:00:00".DateTime;
 
 my $*RED-FALLBACK       = $_ with %*ENV<RED_FALLBACK>;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
