@@ -32,7 +32,7 @@ is Location.^all.map({ .name, .temps.min(*.temperature), .temps.max(*.temperatur
 
 lives-ok {
   my @all := Location.^all.map({ .temps.max(*.temperature) });
-  await start { is @all.Seq.flat, "9 9 9" } xx 30
+  is $_, "9 9 9" for await start { @all.Seq.flat } xx 30
 }
 
 done-testing
