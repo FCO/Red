@@ -1,4 +1,5 @@
 use Test;
+use Red::Cli::Table;
 
 plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
@@ -414,5 +415,30 @@ dies-ok  { $x.str = 42 }, "Dies when setting wrong typed value";
 lives-ok { $x.str = "Hi" };
 lives-ok { $x.coerce = "42" };
 lives-ok { $x.coerce = 42 };
+
+my CX::Red::Bool $cx-red-bool .= new: :value;
+
+ok $cx-red-bool.value;
+is $cx-red-bool.message, "<red bool control exception>";
+
+$cx-red-bool .= new: :!value;
+
+ok !$cx-red-bool.value;
+is $cx-red-bool.message, "<red bool control exception>";
+
+lives-ok {
+    ok X.^describe;
+    isa-ok X.^describe, Red::Cli::Table;
+
+    #ok X.^diff-to-db;
+    #ok X.^diff-from-db;
+
+    model Y is table<x> is rw {
+        has Int $.int is column{:nullable}
+        has Str $.str is column{:nullable}
+    }
+
+    ok X.^diff: Y
+}
 
 done-testing;
