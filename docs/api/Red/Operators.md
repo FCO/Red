@@ -318,6 +318,17 @@ X == Y # Where Y is castable to Numeric and read only
 
 ```raku
 multi sub infix:<==>(
+    Red::AST $a,
+    Enumeration $b
+) returns Mu
+```
+
+X == Y # Where LHS is AST and RHS is Enumeration
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
     Enumeration $a,
     Red::AST $b
 ) returns Mu
@@ -588,6 +599,17 @@ multi sub infix:<eq>(
 ```
 
 X eq Y # Where both are AST that returns Str
+
+### multi sub infix:<eq>
+
+```raku
+multi sub infix:<eq>(
+    Red::AST $a,
+    Enumeration $b
+) returns Mu
+```
+
+X eq Y # Where LHS is an AST and RHS is Enumeration
 
 ### multi sub infix:<ne>
 
