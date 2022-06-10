@@ -145,11 +145,6 @@ multi infix:<==>(Red::AST $a, Red::AST $b) is export {
 }
 
 #| X == Y # Where Y is castable to Numeric and writable
-multi infix:<==>(Red::AST $a, Enumeration $b) is export {
-    Red::AST::Eq.new: $a, ast-value($b), :cast<num>, :bind-right
-}
-
-#| X == Y # Where Y is castable to Numeric and writable
 multi infix:<==>(Red::AST $a, Numeric() $b is rw) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<num>, :bind-right
 }
