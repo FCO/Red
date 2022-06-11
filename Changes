@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - add error message on specific raku versions
+    - add == and eq operators for enumerables
     - fix aggreg methods race condition
     - fix test 61
 

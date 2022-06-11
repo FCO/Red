@@ -44,6 +44,14 @@ class Red:ver<0.1.60>:api<2> {
     }
 }
 
+my %unsupported-raku-versions{Version} =
+    v2022.06 => [
+        "2022.06 has a bug that calls `iterator` method on instantiation of a class",
+        "that does `Positional` and `Sequence` roles and have attributes with initialisation,",
+        "making it impossible to use `Red::ResultSeq`. Please update your Raku to use Red.",
+    ],
+;
+
 BEGIN {
     Red::Column.^add_role: Red::ColumnMethods;
     Red::Column.^compose;
@@ -55,6 +63,9 @@ BEGIN {
 }
 
 my package EXPORTHOW {
+    my $ver = $*RAKU.compiler.version;
+    die "\o33[31;1m$ver\o33[m is \o33[1mnot\o33[m supported by \o33[31;1mRed\o33[m:\n" ~ .join("\n").indent: 8 with %unsupported-raku-versions{$ver};
+
     package DECLARE {
         constant model = MetamodelX::Red::Model;
     }
