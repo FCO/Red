@@ -14,3 +14,4 @@ init:
 main:
 
   with-code-coverage: false
+  verbose: true
