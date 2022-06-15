@@ -10,6 +10,7 @@ API Pages
 - [MetamodelX::Red::Model](api/MetamodelX/Red/Model)
 - [MetamodelX::Red::OnDB](api/MetamodelX/Red/OnDB)
 - [MetamodelX::Red::Relationship](api/MetamodelX/Red/Relationship)
+- [Red](api/Red)
 - [Red::AST](api/Red/AST)
 - [Red::AST::BeginTransaction](api/Red/AST/BeginTransaction)
 - [Red::AST::Case](api/Red/AST/Case)
