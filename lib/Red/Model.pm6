@@ -20,7 +20,7 @@ method new(*%pars) is hidden-from-backtrace {
     for @columns -> \col {
         my $name = col.name.substr: 2;
         if %pars{$name}:exists {
-            my \value = %pars{$name};
+            my \value = %pars{$name}<>;
             my $is-rtype = col.type.?is-red-type(col.type);
             die X::TypeCheck::Assignment.new(symbol => col.name, got => value, expected => col.type)
                 unless ( !$is-rtype && value ~~ col.type ) || ( $is-rtype && col.type.red-type-accepts: value.WHAT );
