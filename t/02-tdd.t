@@ -416,6 +416,16 @@ lives-ok { $x.str = "Hi" };
 lives-ok { $x.coerce = "42" };
 lives-ok { $x.coerce = 42 };
 
+lives-ok {
+    $x.int    = Nil;
+    $x.str    = Nil;
+    $x.coerce = Nil;
+}
+
+is $x.int, Int;
+is $x.str, Str;
+is $x.coerce, Str(Int);
+
 my CX::Red::Bool $cx-red-bool .= new: :value;
 
 ok $cx-red-bool.value;

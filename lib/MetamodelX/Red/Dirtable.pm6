@@ -89,15 +89,16 @@ submethod !TWEAK_pr(\instance: *%data) is rw {
                 $col-data-attr.get_value(instance).{ col.column.attr-name }
             },
             STORE => method (\value) is hidden-from-backtrace {
+                dd value;
                 die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
-                die X::TypeCheck::Assignment.new(symbol => col.name, got => value, expected => col.type) unless value ~~ col.type;
+                die X::TypeCheck::Assignment.new(symbol => col.name, got => value, expected => col.type) unless value =:= Nil || value ~~ col.type;
                 if instance.^is-id: col {
                     instance.^set-id: col.name => value
                 }
                 instance.^set-dirty: col;
                 $dirty-old-values-attr.get_value(instance).{ col.column.attr-name } =
                     $col-data-attr.get_value(instance).{ col.column.attr-name };
-                $col-data-attr.get_value(instance).{ col.column.attr-name } = value
+                $col-data-attr.get_value(instance).{ col.column.attr-name } = value =:= Nil ?? col.type !! value # handle default
             }
         #use nqp;
         #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
@@ -159,14 +160,14 @@ method compose-dirtable(Mu \type) {
                 },
                 STORE => method (\value) is hidden-from-backtrace {
                     die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
-                    die X::TypeCheck::Assignment.new(symbol => col.name, got => value, expected => col.type) unless value ~~ col.type;
+                    die X::TypeCheck::Assignment.new(symbol => col.name, got => value, expected => col.type) unless value =:= Nil || value ~~ col.type;
                     if instance.^is-id: col {
                         instance.^set-id: col.name => value
                     }
                     instance.^set-dirty: col;
                     $dirty-old-values-attr.get_value(instance).{ col.column.attr-name } =
                         $col-data-attr.get_value(instance).{ col.column.attr-name };
-                    $col-data-attr.get_value(instance).{ col.column.attr-name } = value
+                    $col-data-attr.get_value(instance).{ col.column.attr-name } = value =:= Nil ?? col.type !! value # handle default
                 }
             #use nqp;
             #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
