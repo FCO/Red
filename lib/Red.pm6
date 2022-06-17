@@ -22,7 +22,7 @@ use Red::Schema;
 use Red::Formatter;
 use Red::AST::Infixes;
 
-class Red:ver<0.1.61>:api<2> {
+class Red:ver<0.1.62>:api<2> {
     our %experimentals;
     our @experimental-roles;
     method events   { Red::Class.instance.events }
