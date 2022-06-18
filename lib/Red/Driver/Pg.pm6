@@ -214,8 +214,8 @@ multi method default-type-for-type(Red::Column $ --> Str:D) {"varchar(255)"}
 multi method type-for-sql("jsonb"     --> "Json"    ) {}
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
-multi method deflate(Instant  $value) { ~$value.DateTime.utc }
-multi method deflate(DateTime $value) { ~$value.utc }
+multi method deflate(Instant:D  $value) { ~$value.DateTime.utc }
+multi method deflate(DateTime:D $value) { ~$value.utc }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /"duplicate key value violates unique constraint " \"$<field>=(\w+)\"/) {
     X::Red::Driver::Mapped::Unique.new:

@@ -1,10 +1,13 @@
+#!/usr/bin/env raku
+#
 use Test;
 use Red;
 use LibUUID;
 
 model Transaction is table<transactions> {
-    has UInt    $.id            is serial;
-    has Bool    $.closed        is column = False;
+    has UInt        $.id            is serial;
+    has Bool        $.closed        is column = False;
+    has DateTime    $.date-time     is rw is column{ :nullable } .= now;
 }
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
@@ -23,5 +26,12 @@ Transaction.^create: :closed;
 is Transaction.^all.sort(*.id).Seq.map(*.closed), (False, True);
 is Transaction.^all.sort(*.id).map(*.closed), (False, True);
 is Transaction.^all.sort(*.id).map(!*.closed), (True, False);
+
+lives-ok {
+    my $t = Transaction.^create;
+    $t.date-time = Nil;
+    is $t.date-time, DateTime;
+    $t.^save;
+}
 
 done-testing;

@@ -1,0 +1,18 @@
+version: '3'
+services:
+  pg:
+    image: bitnami/postgresql:latest
+    restart: always
+    environment:
+      POSTGRES_PASSWORD: red
+      POSTGRES_USERNAME: red
+      POSTGRESQL_DATABASE: red
+  tester:
+    build: .
+    environment:
+      RED_DATABASE: "Pg host=pg user=red dbname=red password=red"
+    # entrypoint: "mi6 test -v"
+    depends_on:
+      - pg
+    volumes:
+      - .:/code
