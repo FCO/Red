@@ -1,5 +1,9 @@
+#!/usr/bin/env raku
 use Test;
 use Red;
+
+# TODO: Is it breaking for Pg?
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
 
 enum E <E1>;
 
