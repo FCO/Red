@@ -119,15 +119,15 @@ method head() returns Mu
 
 Gets the first row returned by the query (run the query)
 
-### method from
+### method skip
 
 ```raku
-method from(
+method skip(
     Int:D $num where { ... }
 ) returns Red::ResultSeq
 ```
 
-Sets the ofset of the query
+Skips the $num first items from ResultSeq (adds a limit on the SQL query)
 
 ### method elems
 
