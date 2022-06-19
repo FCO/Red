@@ -4,6 +4,9 @@ use lib "t/lib";
 use Schema;
 use Test;
 
+# TODO: Is it breaking for Pg?
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 lives-ok {
   bla-schema.drop.create;
 
