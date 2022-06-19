@@ -20,4 +20,4 @@ jobs:
 
       - name: Install rdependencies
         run: |
-          zef rdepends Red  | grep -ve '^Red:ver<' | raku -e '.say for keys lines.classify({ .substr: 0, .index: ":ver<" }).values>>.max (-) ".red-ecosystem-errors".IO.lines' | while read mod; do echo $mod; zef install $mod; done
+          zef rdepends Red  | grep -ve '^Red:ver<' | raku -e '.say for keys lines.classify({ .substr: 0, .index: ":ver<" }).values>>.max (-) ".red-ecosystem-errors".IO.lines>>.&{ .split("#").head.trim }' | while read mod; do echo $mod; zef install $mod; done
