@@ -301,10 +301,15 @@ multi method head(UInt(Numeric) $num) is hidden-from-sql-commenting {
     self.clone: :chain($!chain.clone: :limit(min $num, $.limit))
 }
 
-#| Sets the ofset of the query
-method from(UInt:D $num --> Red::ResultSeq) is hidden-from-sql-commenting {
+#| Skips the $num first items from ResultSeq (adds a limit on the SQL query)
+method skip(UInt:D $num --> Red::ResultSeq) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     self.clone: :chain($!chain.clone: :offset(($.offset // 0) + $num));
+}
+
+# Alias for skip. It's going to be deprecated on a future version
+method from(UInt:D $num --> Red::ResultSeq) is hidden-from-sql-commenting {
+    self.skip: $num
 }
 
 #| Returns the number of rows returned by the query (runs the query)

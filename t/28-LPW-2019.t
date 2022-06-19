@@ -48,6 +48,8 @@ is @posts.map(*.title).Seq, <Bla Bli Pla Pli>;
 is @posts.grep(*.is-published).sort(*.published).map(*.title).Seq, <Bla Pla>;
 is @posts.sort(*.title).batch(2)[0].map(*.title).Seq, <Bla Bli>;
 is @posts.sort(*.title).batch(2)[1].map(*.title).Seq, <Pla Pli>;
+is @posts.sort(*.title).head(2).map(*.title).Seq, <Bla Bli>;
+is @posts.sort(*.title).skip(2).head(2).map(*.title).Seq, <Pla Pli>;
 
 #is @posts.classify(*.published.year).keys.Seq, <2019>;
 
