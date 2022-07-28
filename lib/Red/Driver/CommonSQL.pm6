@@ -104,6 +104,8 @@ method reserved-words {<
     ZEROFILL ZONE
 >}
 
+has &.table-formatter is rw;
+
 method table-name-wrapper($name) { qq["$name"] }
 
 multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
@@ -170,7 +172,11 @@ multi method diff-to-ast(@diff) {
 }
 
 method table-name-formatter($data) {
-    camel-to-snake-case $data
+    do with &!table-formatter {
+        .($data)
+    } else {
+        camel-to-snake-case $data
+    }
 }
 
 method ping {

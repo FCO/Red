@@ -37,4 +37,15 @@ is BleBli.^attributes.head.column.name, "a_e_i_o_u";
 	is Bla.table-formatter("bla-ble-bli"), "not-bla";
 }
 
+{
+    my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+    my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+    my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+    my $driver              = @conf.shift;
+    my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+	$*RED-DB.table-formatter = -> $ { "something_else" }
+	is Bla.table-formatter("bla-ble-bli"), "something_else";
+}
+
 done-testing;
