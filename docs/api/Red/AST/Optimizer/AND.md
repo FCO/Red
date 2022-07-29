@@ -5,6 +5,18 @@ Red::AST::Optimizer::AND
 
 ```raku
 method optimize(
+    Red::AST::Le $ (Red::AST :left($small), Red::AST :right($columnl), Any |),
+    Red::AST::Le $ (Red::AST :left($columnr), Red::AST :right($big), Any |),
+    1
+) returns Mu
+```
+
+x >= 1 AND x <= 10 ==> x between 1 and 10
+
+### method optimize
+
+```raku
+method optimize(
     Red::AST::Infix $left where { ... },
     Red::AST::Infix $right where { ... },
     1
