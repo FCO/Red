@@ -35,6 +35,7 @@
     "Red::AST": "lib/Red/AST.pm6",
     "Red::AST::AddForeignKeyOnTable": "lib/Red/AST/AddForeignKeyOnTable.pm6",
     "Red::AST::BeginTransaction": "lib/Red/AST/BeginTransaction.pm6",
+    "Red::AST::Between": "lib/Red/AST/Between.pm6",
     "Red::AST::Case": "lib/Red/AST/Case.pm6",
     "Red::AST::Chained": "lib/Red/AST/Chained.pm6",
     "Red::AST::ChangeColumn": "lib/Red/AST/ChangeColumn.pm6",

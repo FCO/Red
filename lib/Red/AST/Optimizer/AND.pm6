@@ -1,6 +1,7 @@
 use Red::AST;
 use Red::AST::Infixes;
 use Red::AST::Value;
+use Red::AST::Between;
 use Red::Utils;
 
 unit role Red::AST::Optimizer::AND;
@@ -12,6 +13,24 @@ my subset AstTrue  of Red::AST::Value where { .value === True  };
 
 my subset GeGt of Red::AST::Infix where Red::AST::Ge|Red::AST::Gt;
 my subset LeLt of Red::AST::Infix where Red::AST::Le|Red::AST::Lt;
+
+#| x >= 1 AND x <= 10 ==> x between 1 and 10
+multi method optimize(
+    Red::AST::Le (
+        Red::AST :left($small),
+        Red::AST :right($columnl),
+        |
+    ),
+    Red::AST::Le (
+        Red::AST :left($columnr),
+        Red::AST :right($big),
+        |
+    ),
+    1
+) {
+    nextsame unless $columnl eqv $columnr;
+    Red::AST::Between.new: :comp($columnl), :args[$small, $big]
+}
 
 
 multi method optimize(Red::AST $left, Red::AST $right where compare($left, .not), 1) {

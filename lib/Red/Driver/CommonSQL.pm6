@@ -11,6 +11,7 @@ use Red::AST::Update;
 use Red::AST::Delete;
 use Red::AST::Infixes;
 use Red::AST::Function;
+use Red::AST::Between;
 use Red::AST::Divisable;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
@@ -482,6 +483,16 @@ multi method translate(Red::AST::Function $_, $context?) {
         @bind.append: @b;
         $s
     }).join: ", " })" => @bind
+}
+
+multi method translate(Red::AST::Between $_, $context?) {
+    my ($comp, @bind) := do given self.translate: .comp, 'func' { .key, .value }
+
+    "$comp BETWEEN { .args.map({
+        my ($s, @b) := do given self.translate: $_, 'func' { .key, .value }
+        @bind.append: @b;
+        $s
+    }).join: " AND " }" => @bind
 }
 
 multi method translate(Red::AST::IsDefined $_, $context?) {
