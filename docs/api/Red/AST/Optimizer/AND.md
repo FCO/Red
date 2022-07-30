@@ -5,21 +5,33 @@ Red::AST::Optimizer::AND
 
 ```raku
 method optimize(
+    Red::AST::Ge $ (Red::AST :left($big), Red::AST :right($columnl), Any |),
+    Red::AST::Ge $ (Red::AST :left($columnr), Red::AST :right($small), Any |),
+    1
+) returns Mu
+```
+
+1 <= x <= 10 x >= 1 AND x <= 10 ==> x between 1 and 10
+
+### method optimize
+
+```raku
+method optimize(
     Red::AST::Le $ (Red::AST :left($small), Red::AST :right($columnl), Any |),
     Red::AST::Le $ (Red::AST :left($columnr), Red::AST :right($big), Any |),
     1
 ) returns Mu
 ```
 
-x >= 1 AND x <= 10 ==> x between 1 and 10
+10 >= x >= 1 x <= 10 AND x >= 1 ==> x between 1 and 10
 
 ### method optimize
 
 ```raku
 method optimize(
-    Red::AST::Infix $left where { ... },
-    Red::AST::Infix $right where { ... },
-    1
+    Red::AST::Infix $left (Red::AST :left($ll), Red::AST :right($lr), Any |) where { ... },
+    Red::AST::Infix $right (Red::AST :left($rl) where { ... }, Red::AST :right($rr), Any |) where { ... },
+    $
 ) returns Mu
 ```
 
@@ -29,9 +41,9 @@ x > 1 AND x > 10 ==> x > 10
 
 ```raku
 method optimize(
-    Red::AST::Infix $left where { ... },
-    Red::AST::Infix $right where { ... },
-    1
+    Red::AST::Infix $left (Red::AST :left($ll), Red::AST :right($lr), Any |) where { ... },
+    Red::AST::Infix $right (Red::AST :left($rl) where { ... }, Red::AST :right($rr), Any |) where { ... },
+    $
 ) returns Mu
 ```
 
@@ -41,9 +53,9 @@ x < 1 AND x < 10 ==> x < 1
 
 ```raku
 method optimize(
-    Red::AST::Infix $left where { ... },
-    Red::AST::Infix $right where { ... },
-    1
+    Red::AST::Infix $left (Red::AST :left($ll), Red::AST :right($lr), Any |) where { ... },
+    Red::AST::Infix $right (Red::AST :left($rl) where { ... }, Red::AST :right($rr), Any |) where { ... },
+    $
 ) returns Mu
 ```
 
@@ -53,9 +65,9 @@ x > 10 AND x < 1 ==> False
 
 ```raku
 method optimize(
-    Red::AST::Infix $left where { ... },
-    Red::AST::Infix $right where { ... },
-    1
+    Red::AST::Infix $left (Red::AST :left($ll), Red::AST :right($lr), Any |) where { ... },
+    Red::AST::Infix $right (Red::AST :left($rl) where { ... }, Red::AST :right($rr), Any |) where { ... },
+    $
 ) returns Mu
 ```
 
