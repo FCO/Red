@@ -14,7 +14,27 @@ my subset AstTrue  of Red::AST::Value where { .value === True  };
 my subset GeGt of Red::AST::Infix where Red::AST::Ge|Red::AST::Gt;
 my subset LeLt of Red::AST::Infix where Red::AST::Le|Red::AST::Lt;
 
+#| 1 <= x <= 10
 #| x >= 1 AND x <= 10 ==> x between 1 and 10
+multi method optimize(
+    Red::AST::Ge (
+        Red::AST :left($big),
+        Red::AST :right($columnl),
+        |
+    ),
+    Red::AST::Ge (
+        Red::AST :left($columnr),
+        Red::AST :right($small),
+        |
+    ),
+    1
+) {
+    nextsame unless compare $columnl, $columnr;
+    Red::AST::Between.new: :comp($columnl), :args[$small, $big]
+}
+
+#| 10 >= x >= 1
+#| x <= 10 AND x >= 1 ==> x between 1 and 10
 multi method optimize(
     Red::AST::Le (
         Red::AST :left($small),
@@ -28,10 +48,9 @@ multi method optimize(
     ),
     1
 ) {
-    nextsame unless $columnl eqv $columnr;
+    nextsame unless compare $columnl, $columnr;
     Red::AST::Between.new: :comp($columnl), :args[$small, $big]
 }
-
 
 multi method optimize(Red::AST $left, Red::AST $right where compare($left, .not), 1) {
     ast-value False
@@ -42,43 +61,99 @@ multi method optimize(Red::AST $left, Red::AST $right where compare($left, $_), 
 }
 
 #| x > 1 AND x > 10 ==> x > 10
-multi method optimize(GeGt $left, GeGt $right, 1) {
-    my $lv = $left.args.first(*.^can: "get-value").get-value;
-    my $rv = $right.args.first(*.^can: "get-value").get-value;
+multi method optimize(
+    GeGt $left (
+        Red::AST :left($ll),
+        Red::AST :right($lr),
+        |
+    ),
+    GeGt $right (
+        Red::AST :left($rl) where { compare $ll, $rl },
+        Red::AST :right($rr),
+        |
+    ),
+    $
+) {
+    my $lv = $lr.get-value;
+    my $rv = $rr.get-value;
     if $lv.defined and $rv.defined {
-        if $rv > $lv {
-            return $right
-        } elsif $rv < $lv {
+        if $lv > $rv {
             return $left
+        } elsif $lv < $rv {
+            return $right
         }
     }
+    nextsame
 }
 
 #| x < 1 AND x < 10 ==> x < 1
-multi method optimize(LeLt $left, LeLt $right, 1) {
-    my $lv = $left.args.first(*.^can: "get-value").get-value;
-    my $rv = $right.args.first(*.^can: "get-value").get-value;
+multi method optimize(
+    LeLt $left (
+        Red::AST :left($ll),
+        Red::AST :right($lr),
+        |
+    ),
+    LeLt $right (
+        Red::AST :left($rl) where { compare $ll, $rl },
+        Red::AST :right($rr),
+        |
+    ),
+    $
+) {
+    my $lv = $lr.get-value;
+    my $rv = $rr.get-value;
     if $lv.defined and $rv.defined {
-        if $rv < $lv {
-            return $right
-        } elsif $rv > $lv {
+        if $lv < $rv {
             return $left
+        } elsif $lv > $rv {
+            return $right
         }
     }
+    nextsame
 }
 
 #| x > 10 AND x < 1 ==> False
-multi method optimize(GeGt $left, LeLt $right, 1) {
-    my $lv = $left.args.first(*.^can: "get-value").get-value;
-    my $rv = $right.args.first(*.^can: "get-value").get-value;
-    return ast-value False if $lv.defined and $rv.defined and $lv > $rv
+multi method optimize(
+    GeGt $left (
+        Red::AST :left($ll),
+        Red::AST :right($lr),
+        |
+    ),
+    LeLt $right (
+        Red::AST :left($rl) where { compare $ll, $rl },
+        Red::AST :right($rr),
+        |
+    ),
+    $
+) {
+    my $lv = $lr.get-value;
+    my $rv = $rr.get-value;
+    if $lv.defined and $rv.defined {
+        return ast-value False if $lv > $rv;
+    }
+    nextsame
 }
 
 #| x < 1 AND x > 10 ==> False
-multi method optimize(LeLt $left, GeGt $right, 1) {
-    my $lv = $left.args.first(*.^can: "get-value").get-value;
-    my $rv = $right.args.first(*.^can: "get-value").get-value;
-    return ast-value False if $lv.defined and $rv.defined and $lv < $rv
+multi method optimize(
+    LeLt $left (
+        Red::AST :left($ll),
+        Red::AST :right($lr),
+        |
+    ),
+    GeGt $right (
+        Red::AST :left($rl) where { compare $ll, $rl },
+        Red::AST :right($rr),
+        |
+    ),
+    $
+) {
+    my $lv = $lr.get-value;
+    my $rv = $rr.get-value;
+    if $lv.defined and $rv.defined {
+        return ast-value False if $lv < $rv;
+    }
+    nextsame
 }
 
 #| a.b AND NOT(a.b) ==> True
