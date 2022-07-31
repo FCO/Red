@@ -12,3 +12,13 @@ class Red::AST::DateTimeCoerce
 
 Coerce a DateTime, timestamp etc to just date for comparisons
 
+class Red::AST::DateTimeNow
+---------------------------
+
+Returns the current time
+
+class Red::AST::DateTimeToday
+-----------------------------
+
+Returns the current date
+

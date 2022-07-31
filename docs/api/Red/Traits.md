@@ -151,7 +151,7 @@ A generic trait used for customizing a column. It accepts a hash of Bool keys. P
 ```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$referencing! (&referencing, Str :$model!, Str :$require = Code.new, Bool :$nullable = Bool::True)
+    :$referencing! (&referencing, Str :$model!, Str :$require = Code.new, Bool :$nullable = Bool::True, *%rest)
 ) returns Empty
 ```
 
@@ -164,7 +164,7 @@ Trait that defines a reference receiving a code block, a model name, optional re
 ```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$referencing! (Str :$model!, Str :$column!, Str :$require = Code.new, Bool :$nullable = Bool::True)
+    :$referencing! (Str :$model!, Str :$column!, Str :$require = Code.new, Bool :$nullable = Bool::True, *%rest)
 ) returns Empty
 ```
 
@@ -177,7 +177,7 @@ Trait that defines a reference receiving a model name, a column name, and option
 ```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$referencing! (&referencing, Mu:U :$model!, Bool :$nullable = Bool::True)
+    :$referencing! (&referencing, Mu:U :$model!, Bool :$nullable = Bool::True, *%rest)
 ) returns Empty
 ```
 
@@ -190,7 +190,7 @@ Trait that defines a reference receiving a code block, a model type object and a
 ```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$referencing! (Mu:U :$model!, Str :$column!, Bool :$nullable = Bool::True)
+    :$referencing! (Mu:U :$model!, Str :$column!, Bool :$nullable = Bool::True, *%rest)
 ) returns Empty
 ```
 
