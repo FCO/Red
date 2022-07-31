@@ -55,6 +55,7 @@ has Str         $.column-name;
 has Str         $.require          = $!model-name;
 has Mu          $.class            = $!attr.package;
 has             @.unique-groups;
+has             &.default;
 
 #multi method WHICH(::?CLASS:D:) {
 #    ValueObjAt.new: self.^name ~ "|" ~ self.migration-hash.pairs.sort.map(-> (:$key, :$value) {

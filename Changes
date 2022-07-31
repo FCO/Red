@@ -2,6 +2,8 @@ Revision history for Red
 
 {{$NEXT}}
     - Add `.table-formatter` to Red::Driver
+    - Add between
+    - Add :default
 
 0.1.63  2022-06-20T02:10:33+01:00
     - Adding `skip` to ResultSeq and make `from` an alias to it

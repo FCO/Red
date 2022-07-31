@@ -67,8 +67,8 @@ method yyyy-mm-dd($base where { .returns ~~ (Date|DateTime|Instant) }:) {
      Red::AST::DateTimeCoerce.new(:$base) but Red::ColumnMethods
 }
 
-method now   { self.attr.type.now   }
-method today { self.attr.type.today }
+method now   { Red::AST::DateTimeNow.new }
+method today { Red::AST::DateTimeToday.new }
 
 #| Return a value from a json hash key
 multi method AT-KEY(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Str or ( $_ ~~ Red::AST and .returns ~~ Str )}) is rw {

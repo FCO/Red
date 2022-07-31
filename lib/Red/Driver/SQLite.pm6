@@ -7,6 +7,7 @@ use Red::AST::Value;
 use Red::AST::Select;
 use Red::AST::Infixes;
 use Red::AST::Function;
+use Red::AST::DateTimeFuncs;
 use Red::Driver::CommonSQL;
 use Red::AST::LastInsertedRow;
 use Red::AST::TableComment;
@@ -77,10 +78,12 @@ multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context? where $
     (.value ?? 1 !! 0) => []
 }
 
+multi method translate(Red::AST::DateTimeNow $_) { "CURRENT_TIMESTAMP" => [] }
+
 multi method translate(Red::AST::Value $_ where { .type ~~ Json }, $context? where { !.defined || $_ ne "bind" }) {
     self.translate:
-            Red::AST::Function.new(:func<JSON>, :args[ ast-value .value, :type(Str) ]),
-            $context
+        Red::AST::Function.new(:func<JSON>, :args[ ast-value .value, :type(Str) ]),
+        $context
 }
 
 multi method translate(Red::AST::Not $_ where { .value ~~ Red::Column and .value.attr.type !~~ Str }, $context?) {

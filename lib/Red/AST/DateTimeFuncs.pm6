@@ -56,3 +56,31 @@ class Red::AST::DateTimeCoerce does Red::AST::DateTimeFunction {
             :args[ $!base ];
     }
 }
+
+#| Returns the current time
+class Red::AST::DateTimeNow does Red::AST::DateTimeFunction {
+
+    method returns { DateTime }
+    method find-column-name { }
+    method args {}
+
+    method default-implementation {
+        Red::AST::Function.new:
+            :func<NOW>,
+            :args[];
+    }
+}
+
+#| Returns the current date
+class Red::AST::DateTimeToday does Red::AST::DateTimeFunction {
+
+    method returns { Date }
+    method find-column-name { }
+    method args {}
+
+    method default-implementation {
+        Red::AST::Function.new:
+            :func<NOW>,
+            :args[];
+    }
+}

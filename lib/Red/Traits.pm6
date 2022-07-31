@@ -107,31 +107,31 @@ multi trait_mod:<is>(Attribute $attr, :&referencing! --> Empty) is export {
 =head3 is referencing
 
 #| Trait that defines a reference receiving a code block, a model name, optional require string and nullable.
-multi trait_mod:<is>(Attribute $attr, :$referencing! (&referencing!, Str :$model!, Str :$require = $model, Bool :$nullable = True ) --> Empty) is export {
-    trait_mod:<is>($attr, :column{ :$nullable, :references(&referencing), model-name  => $model, :$require })
+multi trait_mod:<is>(Attribute $attr, :$referencing! (&referencing!, Str :$model!, Str :$require = $model, Bool :$nullable = True, *%rest ) --> Empty) is export {
+    trait_mod:<is>($attr, :column{ :$nullable, :references(&referencing), model-name  => $model, :$require, |%rest })
 }
 
 =head3 is referencing
 
 #| Trait that defines a reference receiving a model name, a column name, and optional require string and nulabble.
-multi trait_mod:<is>(Attribute $attr, :$referencing! (Str :$model!, Str :$column!, Str :$require = $model, Bool :$nullable = True ) --> Empty) is export {
-    trait_mod:<is>($attr, :column{ :$nullable, model-name => $model, column-name => $column, :$require })
+multi trait_mod:<is>(Attribute $attr, :$referencing! (Str :$model!, Str :$column!, Str :$require = $model, Bool :$nullable = True, *%rest ) --> Empty) is export {
+    trait_mod:<is>($attr, :column{ :$nullable, model-name => $model, column-name => $column, :$require, |%rest })
 }
 
 
 =head3 is referencing
 
 #| Trait that defines a reference receiving a code block, a model type object and an optional nullable.
-multi trait_mod:<is>(Attribute $attr, :$referencing! (&referencing!, Mu:U :$model!, Bool :$nullable = True ) --> Empty) is export {
+multi trait_mod:<is>(Attribute $attr, :$referencing! (&referencing!, Mu:U :$model!, Bool :$nullable = True, *%rest ) --> Empty) is export {
     $model.^add_role: Red::Model;
-    trait_mod:<is>($attr, :column{ :$nullable, :references(&referencing), model-type  => $model })
+    trait_mod:<is>($attr, :column{ :$nullable, :references(&referencing), model-type  => $model, |%rest })
 }
 
 =head3 is referencing
 
 #| Trait that defines a reference receiving a model type object, a column name, and optional nulabble.
-multi trait_mod:<is>(Attribute $attr, :$referencing! (Mu:U :$model!, Str :$column!, Bool :$nullable = True ) --> Empty) is export {
-    trait_mod:<is>($attr, :column{ :$nullable, model-type => $model, column-name => $column })
+multi trait_mod:<is>(Attribute $attr, :$referencing! (Mu:U :$model!, Str :$column!, Bool :$nullable = True, *%rest ) --> Empty) is export {
+    trait_mod:<is>($attr, :column{ :$nullable, model-type => $model, column-name => $column, |%rest })
 }
 
 =head3 is table

@@ -1,6 +1,7 @@
 use Red::AST;
 use Red::Model;
 use Red::Column;
+use Red::ColumnMethods;
 use Red::AST::Case;
 use Red::AST::Infix;
 use Red::AST::Select;
@@ -708,7 +709,11 @@ multi method translate(Red::Column $_, "create-table") {
     (
         "create-table-column-name",
         "column-type",
-        "nullable-column",
+        (
+            .default
+            ?? "column-default"
+            !! "nullable-column"
+        ),
         (|(
             "column-pk",
             "column-auto-increment",
@@ -735,6 +740,18 @@ multi method translate(Red::Column $_, "column-type")           {
 }
 
 multi method translate(Red::Column $_, "nullable-column")       { (.nullable ?? "NULL" !! "NOT NULL") => [] }
+
+multi method translate(Red::Column $_, "column-default")        {
+    my ($str, @bind);
+    :(:key($str), :value(@bind)) := self.translate: do given .default.($_) {
+        do if $_ !~~ Red::AST {
+            .&ast-value 
+        } else {
+            $_
+        }
+    }
+    "DEFAULT $str" => @bind
+}
 
 multi method translate(Red::Column $_, "column-pk")             { (.id ?? "primary key" !! "") => [] }
 
