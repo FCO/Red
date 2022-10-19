@@ -1,0 +1,19 @@
+tasks:
+  -
+    language: Bash
+    name: zef_test
+    code: |
+      set -e
+      export RED_DATABASE="Pg host=localhost port=5432 user=testuser password=testpass dbname=redtest"
+      cd source/
+      zef install --deps-only --/test .
+      zef test .
+      - 
+        name: install_mysql_server   
+  -
+    name: install_mysql_server
+    plugin: sparkyci-service-mysql
+    config:
+      db_name: dbdishtest
+      db_user: testuser
+      db_pass: te
