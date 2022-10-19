@@ -11,11 +11,11 @@ tasks:
       zef test .
     depends:
       -
-        name: install_mysql_server   
+        name: install_pg_server 
   -
-    name: install_mysql_server
-    plugin: sparkyci-service-mysql
+    name: install_pg_server
+    plugin: sparkyci-service-postgresql
     config:
-      db_name: dbdishtest
+      db_name: redtest
       db_user: testuser
-      db_pass: te
+      db_pass: testpass
