@@ -2,6 +2,7 @@ tasks:
   -
     language: Bash
     name: zef_test
+    default: true
     code: |
       set -e
       export RED_DATABASE="Pg host=localhost port=5432 user=testuser password=testpass dbname=redtest"
