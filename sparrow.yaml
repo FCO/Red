@@ -8,7 +8,8 @@ tasks:
       cd source/
       zef install --deps-only --/test .
       zef test .
-      - 
+    depends:
+      -
         name: install_mysql_server   
   -
     name: install_mysql_server
