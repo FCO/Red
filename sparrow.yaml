@@ -8,7 +8,7 @@ tasks:
       export RED_DATABASE="Pg host=localhost port=5432 user=testuser password=testpass dbname=redtest"
       cd source/
       zef install --deps-only --/test .
-      zef test .
+      zef test . --verbose
     depends:
       -
         name: install_pg_server 
