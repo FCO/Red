@@ -5,7 +5,7 @@ tasks:
     default: true
     code: |
       set -e
-      apk add --no-cache sqlite-libs sqlite-dev
+      sudo apk add --no-cache sqlite-libs sqlite-dev
       export RED_DATABASE="Pg host=localhost port=5432 user=testuser password=testpass dbname=redtest"
       cd source/
       raku --version
