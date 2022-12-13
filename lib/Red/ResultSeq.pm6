@@ -27,6 +27,7 @@ use Red::Phaser;
 use Red::ResultSeqMethods;
 use Red::Formatter::ResultSeq;
 use Red::Formatter::ResultSeq::Vertical;
+use Red::LockType;
 
 =head2 Red::ResultSeq
 
@@ -86,6 +87,7 @@ has Red::Driver       $.with;
 has                   $.obj;
 has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new: |(:filter(.^id-filter) with $!obj);
 has Lock::Async       $!lock .= new;
+has Red::LockType     $.for;
 
 multi method with { $!with }
 
@@ -113,6 +115,10 @@ method Seq is hidden-from-sql-commenting {
 method do-it(*%pars) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     self.clone(|%pars, :chain($!chain.clone: |%pars)).Seq
+}
+
+method skip-locked {
+    self.clone: :for(SKIP_LOCKED)
 }
 
 #multi method grep(::?CLASS: &filter) { nextwith :filter( filter self.of.^alias: "me" ) }
@@ -352,7 +358,13 @@ method push(::?CLASS:D: *%pars) is hidden-from-sql-commenting {
 #| Deletes every row on that ResultSeq
 method delete(::?CLASS:D:) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    get-RED-DB.execute: Red::AST::Delete.new: $.of, $.filter
+    my $*RED-INTERNAL = True;
+    my $iter = Red::ResultSeq::Iterator.new: :$.of, :ast(Red::AST::Delete.new: $.of, $.filter), :&.post, |(:driver($_) with $!with);
+
+    $!lock.protect: {
+        self.create-comment-to-caller;
+        Seq.new: $iter
+    }
 }
 
 #| Saves any change on any element of that ResultSet
@@ -422,6 +434,6 @@ method ast(Bool :$sub-select --> Red::AST) is hidden-from-sql-commenting {
         $.filter
     } else {
         my @prefetch = $.of.^has-one-relationships;
-        Red::AST::Select.new: :$.of, :$.filter, :$.limit, :$.offset, :@.order, :@.table-list, :@.group, :@.comments, :@prefetch, :$sub-select;
+        Red::AST::Select.new: :$.of, :$.filter, :$.limit, :$.offset, :@.order, :@.table-list, :@.group, :@.comments, :@prefetch, :$sub-select, :$!for;
     }
 }

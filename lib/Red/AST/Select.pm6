@@ -4,6 +4,7 @@ use Red::AST::Union;
 use Red::AST::Intersect;
 use Red::AST::Minus;
 use Red::AST::Comment;
+use Red::LockType;
 
 #| Represents a Select
 unit class Red::AST::Select does Red::AST;
@@ -19,6 +20,7 @@ has                     @.table-list;
 has Red::AST::Comment   @.comments;
 has Bool                $.sub-select;
 has                     @.prefetch;
+has Red::LockType       $.for;
 
 method returns {
     do if $.of.^columns == 1 {

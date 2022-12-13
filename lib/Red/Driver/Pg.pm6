@@ -7,6 +7,7 @@ use Red::AST::Infixes;
 use X::Red::Exceptions;
 use Red::AST::TableComment;
 use Red::Type::Json;
+use Red::LockType;
 need UUID;
 
 unit class Red::Driver::Pg does Red::Driver::CommonSQL;
@@ -104,6 +105,7 @@ multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined)
 }
 multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined) {
     my Int $*bind-counter;
+    my $*red-subselect-for = UPDATE;
     self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
 }
 
@@ -117,8 +119,12 @@ multi method wildcard-value($_) { $_ }
 
 multi method translate(Red::AST::RowId $_, $context?) { "OID" => [] }
 
+multi method translate($, "delete-returning") {
+    "RETURNING *" => []
+}
 multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined) {
     my Int $*bind-counter;
+    my $*red-subselect-for = UPDATE;
     self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
 }
 

@@ -108,6 +108,7 @@
     "Red::Formatter::ResultSeq::Vertical": "lib/Red/Formatter/ResultSeq/Vertical.pm6",
     "Red::FromRelationship": "lib/Red/FromRelationship.pm6",
     "Red::HiddenFromSQLCommenting": "lib/Red/HiddenFromSQLCommenting.pm6",
+    "Red::LockType": "lib/Red/LockType.pm6",
     "Red::Migration::Column": "lib/Red/Migration/Column.pm6",
     "Red::Migration::Migration": "lib/Red/Migration/Migration.pm6",
     "Red::Migration::Table": "lib/Red/Migration/Table.pm6",

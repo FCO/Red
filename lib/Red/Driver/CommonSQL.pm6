@@ -34,6 +34,7 @@ use Red::FromRelationship;
 use Red::Driver;
 use Red::Type::Json;
 use Red::Utils;
+use Red::LockType;
 
 use UUID;
 unit role Red::Driver::CommonSQL does Red::Driver;
@@ -466,6 +467,17 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
         "\nLIMIT $_" with $limit
     }{
         "\nOFFSET $_" with $offset
+    }{
+        do with $ast.for // $*red-subselect-for {
+            "\nFOR {
+                when UPDATE {
+                    "UPDATE"
+                }
+                when SKIP_LOCKED {
+                    "UPDATE SKIP LOCKED"
+                }
+            }"
+        }
     }" => @bind
 }
 
@@ -814,9 +826,20 @@ multi method translate(Red::AST::Insert $_, $context?) {
     }\n)" => @bind
 }
 
+multi method translate($, "delete-returning") {
+    "" => []
+}
+
 multi method translate(Red::AST::Delete $_, $context?) {
     my ($key, @binds) := do given self.translate(.filter) { .key, .value }
-    "DELETE FROM { .from }{ "\nWHERE { $key }" if $key }" => @binds
+    my ($ret, @rb)    := do given self.translate($, "delete-returning") { .key, .value }
+    "DELETE FROM {
+        .from
+    }{
+        "\nWHERE { $key }" if $key
+    }{
+        "\n$ret"
+    }" => [|@binds, |@rb]
 }
 
 multi method translate(Red::AST::Update $_, $context?) {
