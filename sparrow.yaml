@@ -9,7 +9,7 @@ tasks:
       export RED_DATABASE="Pg host=localhost port=5432 user=testuser password=testpass dbname=redtest"
       cd source/
       raku --version
-      zef install --deps-only --/test .
+      zef install . --deps-only --test-depends --build-depends --/test .
       zef test . --verbose
     depends:
       -
