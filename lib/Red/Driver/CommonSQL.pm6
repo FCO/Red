@@ -830,6 +830,10 @@ multi method translate($, "delete-returning") {
     "" => []
 }
 
+multi method translate($, "update-returning") {
+    "" => []
+}
+
 multi method translate(Red::AST::Delete $_, $context?) {
     my ($key, @binds) := do given self.translate(.filter) { .key, .value }
     my ($ret, @rb)    := do given self.translate($, "delete-returning") { .key, .value }
@@ -838,7 +842,7 @@ multi method translate(Red::AST::Delete $_, $context?) {
     }{
         "\nWHERE { $key }" if $key
     }{
-        "\n$ret"
+        "\n$ret" if $ret
     }" => [|@binds, |@rb]
 }
 
@@ -866,14 +870,17 @@ multi method translate(Red::AST::Update $_, $context?) {
     }
 
     my ($wstr, @wbind) := do given self.translate: $filter { .key, .value };
+    my ($ret, @rb)     := do given self.translate($, "update-returning") { .key, .value }
 
-    qq:to/END/ => [|@bind, |@wbind];
+    qq:to/END/ => [|@bind, |@wbind, |@rb];
     UPDATE {
         .into
     } SET
     $str
     {
         "WHERE $wstr" with .filter
+    }{
+        "\n$ret" if $ret
     }
     END
 

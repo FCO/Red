@@ -373,7 +373,13 @@ method save(::?CLASS:D:) is hidden-from-sql-commenting {
     my @*UPDATE;
     die "You should use a map updating value(s) before saving" unless $.of.^can: "orig-result-seq";
     $.of.orig-result-seq.of.^apply-row-phasers(BeforeUpdate);
-    get-RED-DB.execute: Red::AST::Update.new: :model($.table-list.head), :values[|@!update, |@*UPDATE], :filter($.filter)
+    my $*RED-INTERNAL = True;
+    my $iter = Red::ResultSeq::Iterator.new: :of($.of.orig-result-seq.of), :ast(Red::AST::Update.new: :model($.table-list.head), :values[|@!update, |@*UPDATE], :filter($.filter));
+
+    $!lock.protect: {
+        self.create-comment-to-caller;
+        Seq.new: $iter
+    }
 }
 
 #| unifies 2 ResultSeqs

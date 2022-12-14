@@ -122,6 +122,11 @@ multi method translate(Red::AST::RowId $_, $context?) { "OID" => [] }
 multi method translate($, "delete-returning") {
     "RETURNING *" => []
 }
+
+multi method translate($, "update-returning") {
+    "RETURNING *" => []
+}
+
 multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined) {
     my Int $*bind-counter;
     my $*red-subselect-for = UPDATE;
