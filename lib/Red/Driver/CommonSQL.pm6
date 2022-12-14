@@ -836,7 +836,7 @@ multi method translate($, "update-returning") {
 
 multi method translate(Red::AST::Delete $_, $context?) {
     my ($key, @binds) := do given self.translate(.filter) { .key, .value }
-    my ($ret, @rb)    := do given self.translate($, "delete-returning") { .key, .value }
+    my ($ret, @rb)    := do given self.translate(Red::AST, "delete-returning") { .key, .value }
     "DELETE FROM {
         .from
     }{
@@ -870,7 +870,7 @@ multi method translate(Red::AST::Update $_, $context?) {
     }
 
     my ($wstr, @wbind) := do given self.translate: $filter { .key, .value };
-    my ($ret, @rb)     := do given self.translate($, "update-returning") { .key, .value }
+    my ($ret, @rb)     := do given self.translate(Red::AST, "update-returning") { .key, .value };
 
     qq:to/END/ => [|@bind, |@wbind, |@rb];
     UPDATE {
