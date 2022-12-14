@@ -1,4 +1,4 @@
-[![Build Status](https://github.com/FCO/Red/workflows/test/badge.svg)](https://github.com/FCO/Red/actions) [![Build Status](https://github.com/FCO/Red/workflows/ecosystem/badge.svg)](https://github.com/FCO/Red/actions) [![SparrowCI](https://ci.sparrowhub.io/project/gh-FCO-Red/badge)](https://ci.sparrowhub.io)
+[![Build Status](https://github.com/FCO/Red/workflows/test/badge.svg)](https://github.com/FCO/Red/actions) [![Build Status](https://github.com/FCO/Red/workflows/ecosystem/badge.svg)](https://github.com/FCO/Red/actions) [![SparkyCI](http://sparrowhub.io:2222/project/gh-FCO-Red/badge)](http://sparrowhub.io:2222)
 
 Red
 ===
