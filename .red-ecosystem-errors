@@ -1,1 +1,2 @@
 Mint:ver<0.1>:auth<github:shuppet> # It seems Mint::Exception is being used but each class inside it was specified on META6 but not itself: PR: https://github.com/shuppet/raku-mint/pull/2
+MUGS::Core:ver<0.1.2>:auth<zef:japhb>
