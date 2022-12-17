@@ -671,6 +671,8 @@ multi method search(Str :$with!, |c) {
     self.search: |c
 }
 
+sub __RED_OPERATOR_LOADED__ { True }
+
 #| Receives a `Block` of code and returns a `ResultSeq` using the `Block`'s return as filter
 multi method search(Red::Model:U \model, &filter, :$with where not .defined) {
     model.^rs.grep: &filter

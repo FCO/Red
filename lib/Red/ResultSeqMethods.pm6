@@ -1,6 +1,8 @@
 use Red::AST::Function;
 unit role Red::ResultSeqMethods;
 
+sub __RED_OPERATOR_LOADED__ { True }
+
 method !agg(Str $func, &block) {
   my $*RED-FALLBACK = False;
   self.map({

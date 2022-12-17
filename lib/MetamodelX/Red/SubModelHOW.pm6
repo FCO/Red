@@ -1,5 +1,7 @@
 unit role MetamodelX::Red::SubModelHOW is Metamodel::SubsetHOW;
 
+sub __RED_OPERATOR_LOADED__ { True }
+
 method all(\model, |c) { model.^refinee.^all(|c).grep: model.^refinement }
 
 method load(\model, |ids) {
