@@ -18,6 +18,8 @@ method of     { $of }
 #| type of the key
 method key-of { $!key-of.returns }
 
+sub __RED_OPERATOR_LOADED__ { True }
+
 #| return a list of keys
 #| run a SQL query to get it
 method keys {

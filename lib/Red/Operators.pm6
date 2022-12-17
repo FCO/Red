@@ -8,6 +8,8 @@ use Red::ResultSeq;
 
 unit module Red::Operators;
 
+sub __RED_OPERATOR_LOADED__ is export { True }
+
 # TODO: Diferenciate prefix and postfix
 #| --X
 multi prefix:<-->(Red::Column $a) is export {

@@ -1,6 +1,8 @@
 use Red::Model;
 unit role MetamodelX::Red::Refreshable;
 
+sub __RED_OPERATOR_LOADED__ { True }
+
 multi method refresh(Red::Model:D \model) {
 	nextwith model, |model.^columns>>.column>>.attr-name
 }

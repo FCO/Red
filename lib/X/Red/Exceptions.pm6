@@ -2,6 +2,17 @@ use Red::Column;
 
 class X::Red is Exception {}
 
+class X::Red::NoOperatorsDefined is X::Red {
+    has Str $.meth is required where <first grep map>.any;
+    method message {
+        qq:to/END/
+        Red operators not defined while calling $!meth. It's probably not doing what wou mean.
+        Please use Red (or Red::Operators) before using $!meth on a Red::ResultSet.
+        If that's what you want, please set \$*RED-DONT-FAIL-WITHOUT-OPERATORS to True
+        END
+    }
+}
+
 class X::Red::RedDbNotDefined is X::Red {
     method message { Q[$*RED-DB wasn't defined] }
 }
