@@ -369,7 +369,7 @@ multi method create-table(Red::Driver :$with!, |c) {
 }
 
 #| Creates table unless table already exists
-multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where so *, *%pars) {
+multi method create-table(\model where { .HOW !~~ MetamodelX::Red::View | MetamodelX::Red::VirtualView }, Bool :unless-exists(:$if-not-exists) where so *, *%pars) {
     CATCH {
         when X::Red::Driver::Mapped::TableExists {
             return False
