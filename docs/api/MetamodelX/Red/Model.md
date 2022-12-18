@@ -230,7 +230,7 @@ Sets model as a temporary table
 
 ```raku
 multi method create-table(
-    \model,
+    \model where { ... },
     Bool :unless-exists(:$if-not-exists) where { ... },
     *%pars
 ) returns Mu
