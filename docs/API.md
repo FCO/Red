@@ -21,6 +21,7 @@ API Pages
 - [Red::AST::Constraints](api/Red/AST/Constraints)
 - [Red::AST::CreateColumn](api/Red/AST/CreateColumn)
 - [Red::AST::CreateTable](api/Red/AST/CreateTable)
+- [Red::AST::CreateView](api/Red/AST/CreateView)
 - [Red::AST::DateTimeFuncs](api/Red/AST/DateTimeFuncs)
 - [Red::AST::Delete](api/Red/AST/Delete)
 - [Red::AST::Divisable](api/Red/AST/Divisable)

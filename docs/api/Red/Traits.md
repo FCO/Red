@@ -1,6 +1,41 @@
 Red::Traits
 -----------
 
+### is view
+
+### multi sub trait_mod:<is>
+
+```raku
+multi sub trait_mod:<is>(
+    Mu:U $model,
+    Bool :$virtual-view!
+) returns Empty
+```
+
+This trait marks this model as a virtual view it will use the select defined on the `sql` method while using its ResultSeq
+
+### multi sub trait_mod:<is>
+
+```raku
+multi sub trait_mod:<is>(
+    Mu:U $model,
+    Bool :$view!
+) returns Empty
+```
+
+This trait marks this model as a view
+
+### multi sub trait_mod:<is>
+
+```raku
+multi sub trait_mod:<is>(
+    Mu:U $model,
+    Str :$view!
+) returns Empty
+```
+
+This trait marks this model as a view using the specified name
+
 ### is temp
 
 ### multi sub trait_mod:<is>

@@ -242,7 +242,7 @@ Creates table unless table already exists
 
 ```raku
 multi method create-table(
-    \model,
+    \model where { ... },
     :$with where { ... },
     :if-not-exists($unless-exists) where { ... }
 ) returns Mu
