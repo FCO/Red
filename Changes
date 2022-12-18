@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix test on Pg
 
 0.1.66  2022-12-18T21:55:33Z
     - Add `is view`

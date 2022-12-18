@@ -150,8 +150,8 @@ multi method translate(Red::AST::Insert $_, $context?) {
 }
 
 multi method translate(Red::AST::Mod $_, $context?) {
-    my ($ls, @lb) := self.translate: .left,  $context;
-    my ($rs, @rb) := self.translate: .right, $context;
+    my ($ls, @lb) := do given self.translate: .left,  $context { .key, .value }
+    my ($rs, @rb) := do given self.translate: .right, $context { .key, .value }
     "mod($ls, $rs)" => [|@lb, |@rb]
 }
 
