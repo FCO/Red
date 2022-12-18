@@ -1,9 +1,8 @@
 #!/usr/bin/env raku
 
+use lib "t/lib";
 use Test;
-
 use Red;
-
 
 my $*RED-FALLBACK       = False;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
@@ -25,7 +24,33 @@ my Date $today = Date.today;
 my Date $yesterday = Date.today.earlier(days => 1);
 
 lives-ok {
-    Bar::Foo.^rs.grep(*.foo-date eq $yesterday ).join-model( Bar::Foo, -> $a, $b {  $a.a == $b.a   && $a.b == $b.b && $a.c == $b.c  && $b.foo-date eq $today }, name => "foo_2" ).elems
+    Bar::Foo.^rs.grep(*.foo-date eq $yesterday ).join-model(
+    	Bar::Foo,
+    	-> $a, $b {
+    		$a.a == $b.a && $a.b == $b.b && $a.c == $b.c  && $b.foo-date eq $today
+    	},
+    	name => "foo_2"
+    ).elems
+}, "join-model with nested package name";
+
+lives-ok {
+    Bar::Foo.^rs.grep(*.foo-date eq $yesterday ).join-model(
+    	"Bar::Foo",
+    	-> $a, $b {
+    		$a.a == $b.a && $a.b == $b.b && $a.c == $b.c && $b.foo-date eq $today
+    	},
+    	name => "foo_2"
+    ).elems
+}, "join-model with nested package name";
+
+lives-ok {
+    Bar::Foo.^rs.grep(*.foo-date eq $yesterday ).join-model(
+    	"Foo",
+    	-> $a, $b {
+    		$a.a == $b.a && $a.b == $b.b && $a.c == $b.c && $b.foo-date eq $today
+    	},
+    	name => "foo_2"
+    ).elems
 }, "join-model with nested package name";
 
 done-testing;
