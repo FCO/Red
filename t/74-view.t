@@ -1,0 +1,48 @@
+#!/usr/bin/env raku
+
+use Test;
+use Red;
+
+my $*RED-FALLBACK       = False;
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+
+model VirtualView is virtual-view {
+  has $.id is serial;
+  has $.value is column;
+
+  method sql {
+    q:to/EOS/
+    with val(id, value) as (values (1, 'bla'), (2, 'ble'), (3, 'bli'), (4, 'blo'), (5, 'blu'))
+    select id, value
+    from val
+    EOS
+  }
+}
+
+is VirtualView.^all.grep(*.id %% 2).map(*.value), <ble blo>;
+is VirtualView.^all.grep(*.id %% 3).map(*.value), <bli>;
+
+model View is view {
+  has $.id is serial;
+  has $.value is column;
+
+  method sql {
+    q:to/EOS/
+    with val(id, value) as (values (1, 'bla'), (2, 'ble'), (3, 'bli'), (4, 'blo'), (5, 'blu'))
+    select id, value
+    from val
+    EOS
+  }
+}
+
+lives-ok { View.^create-table };
+
+is VirtualView.^all.grep(*.id %% 2).map(*.value), <ble blo>;
+is VirtualView.^all.grep(*.id %% 3).map(*.value), <bli>;
+
+done-testing

@@ -17,6 +17,7 @@ use Red::AST::CreateTable;
 use Red::AST::Constraints;
 use Red::AST::TableComment;
 use Red::AST::LastInsertedRow;
+use Red::AST::CreateView;
 use MetamodelX::Red::Dirtable;
 use MetamodelX::Red::Comparate;
 use MetamodelX::Red::Migration;
@@ -26,6 +27,8 @@ use MetamodelX::Red::OnDB;
 use MetamodelX::Red::Id;
 use MetamodelX::Red::Populatable;
 use MetamodelX::Red::Specialisable;
+use MetamodelX::Red::View;
+use MetamodelX::Red::VirtualView;
 use Red::Formatter;
 use X::Red::Exceptions;
 use Red::Phaser;
@@ -375,8 +378,34 @@ multi method create-table(\model, Bool :unless-exists(:$if-not-exists) where so 
     self.create-table: model, |%pars
 }
 
+multi method create-table(\model where { .HOW ~~ MetamodelX::Red::VirtualView }, |) {}
+
+multi method create-table(\model where { .HOW ~~ MetamodelX::Red::View }, |) {
+    die X::Red::InvalidTableName.new: :table(model.^table)
+        unless get-RED-DB.is-valid-table-name: model.^table
+    ;
+
+    my $data = Red::AST::CreateView.new:
+        :name(model.^table),
+        :temp(model.^temp),
+        :select(model.?sql),
+        :ast(model.?ast),
+        |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY)
+    ;
+
+    get-RED-DB.execute: |$data;
+    self.emit: model, $data;
+    CATCH {
+        default {
+            self.emit: model, $data, :error($_);
+            proceed
+        }
+    }
+    True
+}
+
 #| Creates table
-multi method create-table(\model, :$with where not .defined, :if-not-exists($unless-exists) where not .defined) {
+multi method create-table(\model where { .HOW !~~ MetamodelX::Red::View | MetamodelX::Red::VirtualView }, :$with where not .defined, :if-not-exists($unless-exists) where not .defined) {
     die X::Red::InvalidTableName.new: :table(model.^table)
         unless get-RED-DB.is-valid-table-name: model.^table
     ;

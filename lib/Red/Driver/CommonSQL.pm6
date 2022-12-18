@@ -16,6 +16,7 @@ use Red::AST::Between;
 use Red::AST::Divisable;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
+use Red::AST::CreateView;
 use Red::AST::LastInsertedRow;
 use Red::AST::CreateColumn;
 use Red::AST::ChangeColumn;
@@ -35,6 +36,7 @@ use Red::Driver;
 use Red::Type::Json;
 use Red::Utils;
 use Red::LockType;
+use MetamodelX::Red::VirtualView;
 
 use UUID;
 unit role Red::Driver::CommonSQL does Red::Driver;
@@ -402,7 +404,9 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     my $tables = %t.kv.map(-> $_, @joins {
         [
             "{
-                self.table-name-wrapper: .^table
+                .HOW ~~ MetamodelX::Red::VirtualView
+                    ?? "( { .sql } ) as { .^table }"
+                    !! self.table-name-wrapper: .^table
             }{
                 do if .^table ne .^as {
                     " as {
@@ -783,6 +787,18 @@ multi method translate(Red::Column $_, "column-comment") {
 
 multi method translate(Red::Column $_, "update-lval") {
     .name // "" => []
+}
+
+multi method translate(Red::AST::CreateView $_, $context?) {
+    my ($select, @sbind) := do given (.?select => []) // self.translate(.ast) { .key, .value };
+    "CREATE{ " TEMPORARY" if .temp } VIEW {
+        self.table-name-wrapper: .name
+    } AS {
+        $select
+    }" => @sbind,
+    |do if not self.comment-on-same-statement {
+        self.translate($_).key => [] with .comment
+    },
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {

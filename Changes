@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add `is view`
+    - Add `is virtual-view`
 
 0.1.65  2022-12-14T21:26:26Z
     - Add `.table-formatter` to Red::Driver

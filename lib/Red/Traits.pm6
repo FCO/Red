@@ -2,9 +2,30 @@ use Red::Column;
 use Red::Attr::Column;
 use Red::ResultSeq;
 use Red::Phaser;
+use MetamodelX::Red::VirtualView;
+use MetamodelX::Red::View;
 unit module Red::Traits;
 
 =head2 Red::Traits
+
+=head3 is view
+
+#| This trait marks this model as a virtual view
+#| it will use the select defined on the `sql` method while using its ResultSeq
+multi trait_mod:<is>(Mu:U $model, Bool :$virtual-view! --> Empty) {
+    $model.HOW does MetamodelX::Red::VirtualView;
+}
+
+#| This trait marks this model as a view
+multi trait_mod:<is>(Mu:U $model, Bool :$view! --> Empty) {
+    $model.HOW does MetamodelX::Red::View;
+}
+
+#| This trait marks this model as a view using the specified name
+multi trait_mod:<is>(Mu:U $model, Str :$view! --> Empty) {
+    trait_mod:<is>($model, :view);
+    trait_mod:<is>($model, :table($view));
+}
 
 =head3 is temp
 
