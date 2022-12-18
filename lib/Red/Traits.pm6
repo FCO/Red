@@ -108,6 +108,13 @@ multi trait_mod:<is>(Attribute $attr, Bool :$serial! where $_ == True --> Empty)
 
 =head3 is column
 
+multi trait_mod:<is>(Red::Attr::Column $attr, :%column! --> Empty) is export {
+    if %column<references>:exists && (%column{<model-name model-type>.none}:exists) {
+        die "On Red:api<2> references must declaire :model-name (or :model-type) and the references block must receive the model as reference"
+    }
+    $attr.args{$_} = %column{$_} for %column.keys
+}
+
 #| A generic trait used for customizing a column. It accepts a hash of Bool keys.
 #| Possible values include:
 #| * id - marks a column PRIMARY KEY
