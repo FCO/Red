@@ -50,7 +50,6 @@ API Pages
 - [Red::AST::Value](api/Red/AST/Value)
 - [Red::Class](api/Red/Class)
 - [Red::Cli](api/Red/Cli)
-- [Red::Column](api/Red/Column)
 - [Red::ColumnMethods](api/Red/ColumnMethods)
 - [Red::DB](api/Red/DB)
 - [Red::Database](api/Red/Database)

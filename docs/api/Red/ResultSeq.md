@@ -235,6 +235,17 @@ Join (Positional join)
 
 ```raku
 method join-model(
+    Str $model,
+    |c
+) returns Mu
+```
+
+Create a custom join (SQL join)
+
+### method join-model
+
+```raku
+method join-model(
     Red::Model \model,
     &on,
     :$name = Code.new,
