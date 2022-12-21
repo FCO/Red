@@ -6,9 +6,9 @@ class X::Red::NoOperatorsDefined is X::Red {
     has Str $.meth is required where <first grep map>.any;
     method message {
         qq:to/END/
-        Red operators not defined while calling $!meth. It's probably not doing what wou mean.
+        Red operators not defined while calling $!meth. It's probably not doing what you mean.
         Please use Red (or Red::Operators) before using $!meth on a Red::ResultSet.
-        If that's what you want, please set \$*RED-DONT-FAIL-WITHOUT-OPERATORS to True
+        If that's what you want, please set \$*RED-DONT-FAIL-WITHOUT-OPERATORS to True.
         END
     }
 }
