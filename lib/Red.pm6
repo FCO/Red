@@ -162,7 +162,7 @@ Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):
 
 =head2 SYNOPSIS
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 
 use Red:api<2>;
 
@@ -205,7 +205,7 @@ CREATE TABLE person(
 )
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 Post.^create-table;
 =end code
 
@@ -223,7 +223,7 @@ CREATE TABLE post(
 )
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 my Post $post1 = Post.^load: :42id;
 =end code
 
@@ -243,7 +243,7 @@ WHERE
     post.id = 42
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 my Post $post1 = Post.^load: 42;
 =end code
 
@@ -263,7 +263,7 @@ WHERE
     post.id = 42
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 my Post $post1 = Post.^load: :title("my title");
 =end code
 
@@ -283,43 +283,8 @@ WHERE
     post.title = ‘my title’
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 my $person = Person.^create: :name<Fernando>;
-=end code
-
-=begin code :lang<sql>
--- Equivalent to the following query:
-INSERT INTO person(
-    name
-)
-VALUES(
-    ?
-)
--- BIND: ["Fernando"]
-
--- SQLite needs an extra select:
-
-SELECT
-    person.id,
-    person.name
-FROM
-    person
-WHERE
-    _rowid_ = last_insert_rowid()
-LIMIT 1
-=end code
-
-=begin code :lang<perl6>
-RETURNS:
-Person.new(name => "Fernando")
-=end code
-
-=begin code :lang<perl6>
-# Using Pg Driver for this block
-{
-    my $*RED-DB = database "Pg";
-    my $person = Person.^create: :name<Fernando>;
-}
 =end code
 
 =begin code :lang<sql>
@@ -333,12 +298,12 @@ VALUES(
 -- BIND: ["Fernando"]
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 RETURNS:
 Person.new(name => "Fernando")
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 say $person.posts;
 =end code
 
@@ -359,7 +324,7 @@ WHERE
 -- BIND: [1]
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 say Person.new(:2id)
     .active-posts
     .grep: { .created > now }
@@ -389,7 +354,7 @@ WHERE
 -- BIND: [2]
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 my $now = now;
 say Person.new(:3id)
     .active-posts
@@ -426,7 +391,7 @@ WHERE
 -- ]
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 Person.^create:
     :name<Fernando>,
     :posts[
@@ -445,18 +410,8 @@ INSERT INTO person(
 )
 VALUES(
     ?
-)
+) RETURNING *
 -- BIND: ["Fernando"]
-
-SELECT
-    person.id,
-    person.name
-FROM
-    person
-WHERE
-    _rowid_ = last_insert_rowid()
-LIMIT 1
--- BIND: []
 
 INSERT INTO post(
     created,
@@ -473,7 +428,7 @@ VALUES(
     ?,
     ?,
     ?
-)
+) RETURNING *
 -- BIND: [
 --   "2019-04-02T22:55:13.658596+01:00",
 --   "My new post",
@@ -482,23 +437,9 @@ VALUES(
 --   Bool::False,
 --   "A long post"
 -- ]
-
-SELECT
-    post.id,
-    post.author_id as "author-id",
-    post.title,
-    post.body,
-    post.deleted,
-    post.created,
-    post.tags
-FROM
-    post
-WHERE
-    _rowid_ = last_insert_rowid()
-LIMIT 1
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 my $post = Post.^load: :title("My new post");
 =end code
 
@@ -519,7 +460,7 @@ WHERE
 -- BIND: []
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 RETURNS:
 Post.new(
    title   => "My new post",
@@ -538,25 +479,25 @@ Post.new(
 )
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 say $post.body;
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 PRINTS:
 A long post
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 my $author = $post.author;
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 RETURNS:
 Person.new(name => "Fernando")
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 $author.name = "John Doe";
 
 $author.^save;
@@ -569,7 +510,7 @@ UPDATE person SET
 WHERE id = 1
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 $author.posts.create:
     :title("Second post"),
     :body("Another long post");
@@ -592,7 +533,7 @@ VALUES(
     ?,
     ?,
     ?
-)
+) RETURNING *
 -- BIND: [
 --   "Second post",
 --   "Another long post",
@@ -603,7 +544,7 @@ VALUES(
 -- ]
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 $author.posts.elems;
 =end code
 
@@ -618,7 +559,7 @@ WHERE
 -- BIND: [1]
 =end code
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 RETURNS:
 2
 =end code
@@ -645,7 +586,7 @@ Red is a *WiP* ORM for Raku.
 
 Red will infer relationship data if you use type constraints on your properties.
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 # Single file e.g. Schema.pm6
 
 model Related { ... }
@@ -667,7 +608,7 @@ model Related {
 If you want to put your schema into multiple files, you can create an "indirect"
 relationship, and Red will look up the related models as necessary.
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 # MyModel.pm6
 model MyModel {
     has Int     $!related-id is referencing{ :model<Related>, :column<id> };
@@ -684,14 +625,14 @@ model Related {
 If Red can’t find where your C<model> is defined you can override where it looks
 with C<require>:
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
     has Int     $!related-id is referencing{ :model<Related>, :column<id>,
                                              :require<MyApp::Schema::Related> };
 =end code
 
 =head4 custom table name
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 
 model MyModel is table<custom_table_name> {}
 
@@ -701,7 +642,7 @@ model MyModel is table<custom_table_name> {}
 
 Red, by default, has not nullable columns, to change it:
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 #| This makes this model’s columns nullable by default
 model MyModel is nullable {
     has Int $.col1 is column;               #= this column is nullable
@@ -711,20 +652,20 @@ model MyModel is nullable {
 
 =head4 load object from database
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 MyModel.^load: 42;
 MyModel.^load: id => 42;
 =end code
 
 =head4 save object on the database
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 $object.^save;
 =end code
 
 =head4 search for a list of object
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 Question.^all.grep: { .answer == 42 }; # returns a result seq
 =end code
 
@@ -739,13 +680,13 @@ Question.^all.grep: { .answer == 42 }; # returns a result seq
 
 =head4 Temporary table
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 model Bla is temp { ... }
 =end code
 
 =head4 Create table
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 Question.^create-table;
 Question.^create-table: :if-not-exists;
 Question.^create-table: :unless-exists;
@@ -753,13 +694,13 @@ Question.^create-table: :unless-exists;
 
 =head4 IN
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 Question.^all.grep: *.answer ⊂ (3.14, 13, 42)
 =end code
 
 =head4 create
 
-=begin code :lang<perl6>
+=begin code :lang<raku>
 
 Post.^create: :body("bla ble bli blo blu"), :title("qwer");
 
