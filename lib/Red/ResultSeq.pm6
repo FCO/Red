@@ -280,15 +280,16 @@ multi method pick() is hidden-from-sql-commenting {
 }
 
 #| Returns a ResultAssociative classified by the passed code (does not run the query)
-method classify(\SELF: &func, :&as = { $_ } --> Red::ResultAssociative) is hidden-from-sql-commenting {
+method classify(\SELF: &func, :&as = { $_ }, :&reduce --> Red::ResultAssociative) is hidden-from-sql-commenting {
     my $*RED-INTERNAL = True;
     SELF.create-comment-to-caller;
     do if self.?last-rs.DEFINITE {
         self.last-rs.classify(&func o self.last-filter, :as{ ast-value True })
     } else {
+        # TODO: use what-does-it-do() for &func, &as and &reduce
         my \key   = func SELF.of;
         my \value = as   SELF.of;
-        Red::ResultAssociative[value, key.head].new: :rs(SELF), |(:next-level(key.skip) if key.elems > 1)
+        Red::ResultAssociative[value, key.head].new: :rs(SELF), |(:next-level(key.skip) if key.elems > 1), |(:&reduce if &reduce)
     }
 }
 

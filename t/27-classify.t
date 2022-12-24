@@ -52,4 +52,21 @@ isa-ok %d<test2>, Red::ResultAssociative;
 is %d<test2>.elems, 1;
 is %d<test2>.keys, <3>;
 
+my %e := Bla.^all.classify({ .bla }, :reduce{ .elems });
+is %e.elems, 2;
+isa-ok %e<test1>, Int;
+is %e<test1>, 2;
+
+isa-ok %e<test2>, Int;
+is %e<test2>, 1;
+
+# TODO: Make it work
+# my %f := Bla.^all.classify({ .bla }, :reduce{ .map: *.id.sum });
+# is %f.elems, 2;
+# isa-ok %f<test1>, Int;
+# is %f<test1>, 2;
+#
+# isa-ok %f<test2>, Int;
+# is %f<test2>, 1;
+
 done-testing;
