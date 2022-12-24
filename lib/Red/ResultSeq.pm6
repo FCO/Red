@@ -288,7 +288,7 @@ method classify(\SELF: &func, :&as = { $_ } --> Red::ResultAssociative) is hidde
     } else {
         my \key   = func SELF.of;
         my \value = as   SELF.of;
-        Red::ResultAssociative[value, key].new: :rs(SELF)
+        Red::ResultAssociative[value, key.head].new: :rs(SELF), |(:next-level(key.skip) if key.elems > 1)
     }
 }
 

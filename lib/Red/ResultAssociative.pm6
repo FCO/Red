@@ -11,6 +11,7 @@ unit role Red::ResultAssociative[$of, Red::AST $key-of] does Associative;
 
 has Red::AST    $!key-of = $key-of;
 has             $.rs is required;
+has             @.next-level;
 
 #| type of the value
 method of     { $of }
@@ -37,7 +38,12 @@ method elems {
 
 #| return a ResultSeq for the given key
 method AT-KEY($key) {
-    $!rs.grep: { Red::AST::Eq.new: $!key-of, ast-value($key), :bind-right }
+    my \resultseq = $!rs.grep: { Red::AST::Eq.new: $!key-of, ast-value($key), :bind-right }
+    do if @!next-level {
+        Red::ResultAssociative[$of, @!next-level.head].new: :rs(resultseq), |(:next-level(@!next-level.skip) if @!next-level.elems > 1)
+    } else {
+        resultseq
+    }
 }
 
 method iterator {

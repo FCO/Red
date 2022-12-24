@@ -42,4 +42,14 @@ is-deeply Bla.^all.classify(*.bla).Set, set(<test1 test2>);
 is-deeply Bla.^all.map(*.bla).Bag, bag(<test1 test1 test2>);
 is-deeply Bla.^all.map(*.bla).Set, set(<test1 test2>);
 
+my %d := Bla.^all.classify({ .bla, .id });
+is %d.elems, 2;
+isa-ok %d<test1>, Red::ResultAssociative;
+is %d<test1>.elems, 2;
+is %d<test1>.keys, <1 2>;
+
+isa-ok %d<test2>, Red::ResultAssociative;
+is %d<test2>.elems, 1;
+is %d<test2>.keys, <3>;
+
 done-testing;
