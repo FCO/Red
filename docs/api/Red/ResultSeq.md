@@ -89,7 +89,8 @@ Sets the query to return the rows in a randomic order (does not run the query)
 ```raku
 method classify(
     &func,
-    :&as = Code.new
+    :&as = Code.new,
+    :&reduce
 ) returns Red::ResultAssociative
 ```
 
