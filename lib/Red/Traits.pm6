@@ -188,7 +188,19 @@ multi trait_mod:<is>(Attribute $attr, :@relationship! where { .all ~~ Callable a
 =head3 is relationship
 
 #| Trait that defines a relationship receiving a code block, a model name, and opitionaly require string, optional, no-prefetch and has-one.
-multi trait_mod:<is>(Attribute $attr, :$relationship! (&relationship, Str :$model, Str :$require = $model, Bool :$optional, Bool :$no-prefetch, Bool :$has-one) --> Empty) is export {
+multi trait_mod:<is>(
+    Attribute $attr,
+    :$relationship! (
+        &relationship,
+        Str  :$model,
+        Str  :$require     = $model,
+        Bool :$optional,
+        Bool :$prefetch,
+        Bool :$no-prefetch = $prefetch.defined && !$prefetch,
+        Bool :$has-one
+    )
+    --> Empty
+) is export {
     die "Please, use the has-one experimental feature (use Red <has-one>) to allow using it on relationships"
     	if $has-one && !%Red::experimentals<has-one>;
     $attr.package.^add-relationship: $attr, &relationship, |(:$model with $model), |(:$require with $require), :$optional, :$no-prefetch, |(:$has-one if $has-one)
@@ -197,7 +209,17 @@ multi trait_mod:<is>(Attribute $attr, :$relationship! (&relationship, Str :$mode
 =head3 is relationship
 
 #| Trait that defines a relationship receiving a code block, a model type object, and opitionaly require string, optional, no-prefetch and has-one.
-multi trait_mod:<is>(Attribute $attr, :$relationship! (&relationship, Mu:U :$model!, Bool :$optional, Bool :$no-prefetch, Bool :$has-one) --> Empty) is export {
+multi trait_mod:<is>(
+    Attribute $attr, :$relationship! (
+        &relationship,
+        Mu:U :$model!,
+        Bool :$optional,
+        Bool :$prefetch,
+        Bool :$no-prefetch = $prefetch.defined && !$prefetch,
+        Bool :$has-one
+    )
+    --> Empty
+) is export {
     die "Please, use the has-one experimental feature (use Red <has-one>) to allow using it on relationships"
         if $has-one && !%Red::experimentals<has-one>;
     $attr.package.^add-relationship: $attr, &relationship, :model-type($model), :$optional, :$no-prefetch, |(:$has-one if $has-one)
@@ -206,13 +228,36 @@ multi trait_mod:<is>(Attribute $attr, :$relationship! (&relationship, Mu:U :$mod
 =head3 is relationship
 
 #| Trait that defines a relationship receiving a column name, a model name and opitionaly a require, optional, no-prefetch and has-one.
-multi trait_mod:<is>(Attribute $attr, :$relationship! (Str :$column!, Str :$model!, Str :$require = $model, Bool :$optional, Bool :$no-prefetch, Bool :$has-one) --> Empty) is export {
+multi trait_mod:<is>(
+    Attribute $attr, :$relationship! (
+        Str  :$column!,
+        Str  :$model!,
+        Str  :$require = $model,
+        Bool :$optional,
+        Bool :$prefetch,
+        Bool :$no-prefetch = $prefetch.defined && !$prefetch,
+        Bool :$has-one
+    )
+    --> Empty
+) is export {
     die "Please, use the has-one experimental feature (use Red <has-one>) to allow using it on relationships"
     	if $has-one && !%Red::experimentals<has-one>;
     $attr.package.^add-relationship: $attr, :$column, :$model, :$require, :$optional, :$no-prefetch, |(:$has-one if $has-one)
 }
 
-multi trait_mod:<is>(Attribute $attr, Callable :$relationship! ( @relationship! where *.elems == 2, Str :$model!, Str :$require = $model, Bool :$optional, Bool :$no-prefetch, Bool :$has-one) --> Empty) {
+multi trait_mod:<is>(
+    Attribute $attr,
+    Callable :$relationship! (
+        @relationship! where *.elems == 2,
+        Str :$model!,
+        Str :$require = $model,
+        Bool :$optional,
+        Bool :$prefetch,
+        Bool :$no-prefetch = $prefetch.defined && !$prefetch,
+        Bool :$has-one
+    )
+    --> Empty
+) {
     die "Please, use the has-one experimental feature (use Red <has-one>) to allow using it on relationships"
     	if $has-one && !%Red::experimentals<has-one>;
     $attr.package.^add-relationship: $attr, |@relationship, :$model, :$require, :$optional, :$no-prefetch, |(:$has-one if $has-one)

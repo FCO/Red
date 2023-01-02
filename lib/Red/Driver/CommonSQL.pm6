@@ -387,12 +387,14 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     }
     my @pre-join;
     my $pre = $ast.prefetch.map({
-        |$ast.of."{.name.substr: 2}"().^columns.map: {
+        my $a = $ast.of."{.name.substr: 2}"();
+        $a = $ast.of.^join($a.of, $_, :oposite, :name(.rel-name)) if $a ~~ Positional;
+        |$a.^columns.map: {
             my $class = .package;
             @pre-join.push: $class;
             my $RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;
             my ($s, @b) := do given self.translate:
-                    (.column but ColClass[$class]), "select", :$RED-OVERRIDE-COLUMN-AS-PREFIX { .key, .value }
+                (.column but ColClass[$class]), "select", :$RED-OVERRIDE-COLUMN-AS-PREFIX { .key, .value }
             @bind.push: |@b;
             $s
         }

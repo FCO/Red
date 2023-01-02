@@ -17,8 +17,11 @@ model Ble {
 #start react whenever Red.events {
 #    .say
 #}
-my $*RED-DEBUG          = ?%*ENV<RED_DEBUG>;
-my $*RED-DEBUG-RESPONSE = ?%*ENV<RED_DEBUG_RESPONSE>;
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+red-defaults default    => database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
 red-defaults default => database "SQLite";
 
