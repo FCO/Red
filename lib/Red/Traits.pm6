@@ -195,7 +195,7 @@ multi trait_mod:<is>(
         Str  :$model,
         Str  :$require     = $model,
         Bool :$optional,
-        Bool :$prefetch,
+        Bool :$prefetch = $attr.type !~~ Positional,
         Bool :$no-prefetch = $prefetch.defined && !$prefetch,
         Bool :$has-one
     )
@@ -214,7 +214,7 @@ multi trait_mod:<is>(
         &relationship,
         Mu:U :$model!,
         Bool :$optional,
-        Bool :$prefetch,
+        Bool :$prefetch = $attr.type !~~ Positional,
         Bool :$no-prefetch = $prefetch.defined && !$prefetch,
         Bool :$has-one
     )
@@ -234,7 +234,7 @@ multi trait_mod:<is>(
         Str  :$model!,
         Str  :$require = $model,
         Bool :$optional,
-        Bool :$prefetch,
+        Bool :$prefetch = $attr.type !~~ Positional,
         Bool :$no-prefetch = $prefetch.defined && !$prefetch,
         Bool :$has-one
     )
@@ -252,7 +252,7 @@ multi trait_mod:<is>(
         Str :$model!,
         Str :$require = $model,
         Bool :$optional,
-        Bool :$prefetch,
+        Bool :$prefetch = $attr.type !~~ Positional,
         Bool :$no-prefetch = $prefetch.defined && !$prefetch,
         Bool :$has-one
     )
