@@ -12,26 +12,18 @@ unit role Red::Attr::Relationship[
 	Bool        :$optional,
 	Bool        :$no-prefetch,
 	Bool        :$has-one,
-    Red::Model  :$model-type,
+  Red::Model  :$model-type,
 ];
 
 has Mu:U $!type;
-
 has Bool $.has-lazy-relationship = ?$model;
-
 has Mu:U $!relationship-model;
-
-has Bool $!loaded-model = False;
-
-has Bool $!optional = $optional;
-
-has Bool $.has-one = $has-one;
-
-has Bool $.no-prefetch = $!has-one // $no-prefetch;
-
+has Bool $!loaded-model          = False;
+has Bool $!optional              = $optional;
+has Bool $.has-one               = $has-one;
+has Bool $.no-prefetch           = $!has-one // $no-prefetch // self.type !~~ Positional;
 has Str $.rel-name is rw;
-
-has $!model-type = $model-type;
+has $!model-type                 = $model-type;
 
 submethod TWEAK(|) {
     if $!model-type !=== Red::Model {
@@ -149,7 +141,22 @@ method relationship-argument-type {
     }
 }
 
-method relationship-ast($type = Nil) is hidden-from-sql-commenting {
+method joined-model {
+	Empty.&return unless self.type ~~ Positional;
+	self.package.^join: self.relationship-argument-type, -> | { self.relationship-ast: self.package }, name => self.rel-name
+}
+
+multi method relationship-ast($type, $oposite) is hidden-from-sql-commenting {
+    my $*RED-INTERNAL = True;
+    my \type = self.relationship-argument-type;
+    my @col1 = |rel1 $type;
+    @col1.map({
+        Red::AST::Eq.new: $_, .ref: $oposite
+    }).reduce: -> $agg, $i {
+        Red::AST::AND.new: $agg, $i
+    }
+}
+multi method relationship-ast($type = Nil) is hidden-from-sql-commenting {
     my $*RED-INTERNAL = True;
     my \type = self.relationship-argument-type;
     my @col1 = |rel1 type;

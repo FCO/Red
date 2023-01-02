@@ -29,6 +29,7 @@ use MetamodelX::Red::Populatable;
 use MetamodelX::Red::Specialisable;
 use MetamodelX::Red::View;
 use MetamodelX::Red::VirtualView;
+use MetamodelX::Red::PreFetch;
 use Red::Formatter;
 use X::Red::Exceptions;
 use Red::Phaser;
@@ -47,6 +48,7 @@ also does MetamodelX::Red::OnDB;
 also does MetamodelX::Red::Id;
 also does MetamodelX::Red::Populatable;
 also does MetamodelX::Red::Specialisable;
+also does MetamodelX::Red::PreFetch;
 also does Red::Formatter;
 
 has Attribute @!columns;
@@ -228,7 +230,7 @@ multi method add-pk-constraint(Mu:U \type, @columns) {
 
 method tables(\model) { [ model ] }
 
-proto method join($, $, $, :$name, *%pars where { .elems == 0 || ( .elems == 1 && get-RED-DB.join-type(.keys.head) && so .values.head ) }) {*}
+proto method join($, $, $, :$name, :$oposite, *%pars where { .elems == 0 || ( .elems == 1 && get-RED-DB.join-type(.keys.head) && so .values.head ) }) {*}
 
 multi method join(\model, \to-join, &on, :$name, *%pars) {
     to-join.^alias: |($_ with $name), :base(model), :relationship(&on.assuming: model), :join-type(%pars.keys.head // "")
@@ -238,12 +240,16 @@ multi method join(\model, \to-join, Red::AST $on, :$name, *%pars) {
     to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type(%pars.keys.head // "")
 }
 
-multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name, *%pars) {
-    to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type(%pars.keys.head // "")
+multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name, :$oposite! where *.so) {
+    to-join.^alias: :oposite, |($_ with $name), :base(model), :relationship($on), :join-type($on.join-type.keys.head // "")
+}
+
+multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name, :$oposite? where { .not }) {
+    to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type($on.join-type.keys.head // "")
 }
 
 my UInt $alias_num = 1;
-method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type)) {
+method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type, Bool :$oposite)) {
     $!alias-cache-lock.protect: {
         return %!alias-cache{$name} if %!alias-cache{$name}:exists;
         my \alias = ::?CLASS.new_type(:$name);
@@ -281,7 +287,7 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
                         $filter
                     }
                     default {
-                        .relationship-ast(alias)
+                        .relationship-ast(alias, |(base if $oposite))
 
                     }
                 }

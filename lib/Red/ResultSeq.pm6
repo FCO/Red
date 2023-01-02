@@ -455,7 +455,10 @@ method ast(Bool :$sub-select --> Red::AST) is hidden-from-sql-commenting {
     if $.filter ~~ Red::AST::MultiSelect {
         $.filter
     } else {
-        my @prefetch = $.of.^has-one-relationships;
+        # my @prefetch = $.of.^has-one-relationships;
+        # dd @prefetch;
+        my @prefetch = $.of.^pre-fetches;
+        # say @prefetch.head.^name;
         Red::AST::Select.new: :$.of, :$.filter, :$.limit, :$.offset, :@.order, :@.table-list, :@.group, :@.comments, :@prefetch, :$sub-select, :$!for;
     }
 }

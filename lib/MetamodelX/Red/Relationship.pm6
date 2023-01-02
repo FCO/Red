@@ -87,7 +87,8 @@ multi method add-relationship(
         &reference,
         Red::Model :$model-type!,
         Bool       :$optional,
-        Bool       :$no-prefetch,
+        Bool       :$prefetch,
+        Bool       :$no-prefetch = !$prefetch,
         Bool       :$has-one,
 ) {
     $attr does Red::Attr::Relationship[&reference, :$model-type, :$optional, :$no-prefetch, :$has-one];
@@ -102,7 +103,8 @@ multi method add-relationship(
         Str  :$model!,
         Str  :$require = $model,
         Bool :$optional,
-        Bool :$no-prefetch,
+        Bool :$prefetch,
+        Bool :$no-prefetch = !$prefetch,
         Bool :$has-one,
 ) {
     self.add-relationship: $self, $attr, { ."$column"() }, :$model, :$require, :$optional, :$no-prefetch, :$has-one
@@ -116,7 +118,8 @@ multi method add-relationship(
         Str  :$model,
         Str  :$require = $model,
         Bool :$optional,
-        Bool :$no-prefetch,
+        Bool :$prefetch,
+        Bool :$no-prefetch = !$prefetch,
 	    Bool :$has-one,
 ) {
     $attr does Red::Attr::Relationship[&reference, :$model, :$require, :$optional, :$no-prefetch, :$has-one];
@@ -132,7 +135,8 @@ multi method add-relationship(
         Str  :$model,
         Str  :$require = $model,
         Bool :$optional,
-        Bool :$no-prefetch,
+        Bool :$prefetch,
+        Bool :$no-prefetch = !$prefetch,
 	    Bool :$has-one,
 ) {
     $attr does Red::Attr::Relationship[&ref1, &ref2, :$model, :$require, :$optional, :$no-prefetch, :$has-one];
