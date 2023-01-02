@@ -74,8 +74,8 @@ multi method optimize(
     ),
     $
 ) {
-    my $lv = $lr.get-value;
-    my $rv = $rr.get-value;
+    my $lv = $lr.?get-value;
+    my $rv = $rr.?get-value;
     if $lv.defined and $rv.defined {
         if $lv > $rv {
             return $left

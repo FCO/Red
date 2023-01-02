@@ -342,7 +342,7 @@ multi infix:<< < >>(Numeric() $a is readonly, Red::AST $b) is export {
 }
 
 #| X > Y # Where Y is any Red::AST that returns a Numeric
-multi infix:<< > >>(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export {
+multi infix:<< > >>(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export is default {
     Red::AST::Gt.new: $a, $b, :cast<num>
 }
 
