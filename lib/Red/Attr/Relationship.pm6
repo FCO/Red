@@ -21,7 +21,7 @@ has Mu:U $!relationship-model;
 has Bool $!loaded-model          = False;
 has Bool $!optional              = $optional;
 has Bool $.has-one               = $has-one;
-has Bool $.no-prefetch           = $!has-one // $no-prefetch // self.type !~~ Positional;
+has Bool $.no-prefetch           = $!has-one // $no-prefetch // self.type ~~ Positional;
 has Str $.rel-name is rw;
 has $!model-type                 = $model-type;
 
