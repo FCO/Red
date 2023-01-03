@@ -385,18 +385,28 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
             $s
         }
     }
+    my $role = role {}
     my @pre-join;
     my $pre = $ast.prefetch.map({
         my $a = $ast.of."{.name.substr: 2}"();
-        $a = $ast.of.^join($a.of, $_, :oposite, :name(.rel-name)) if $a ~~ Positional;
-        |$a.^columns.map: {
-            my $class = .package;
-            @pre-join.push: $class;
-            my $RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;
-            my ($s, @b) := do given self.translate:
-                (.column but ColClass[$class]), "select", :$RED-OVERRIDE-COLUMN-AS-PREFIX { .key, .value }
-            @bind.push: |@b;
-            $s
+        my $positional = $a ~~ Positional;
+        do if $positional {
+            $a = $ast.of.^join($a.of, $_, :oposite, :name(.rel-name));
+            my $relationship = $_;
+            $a.HOW does $role;
+            $a.HOW does role :: { method rel(|) { $relationship.rel } }
+            @pre-join.push: $a;
+            "{ self.table-name-wrapper: .rel-name }.json as { self.table-name-wrapper: .rel-name }"
+        } else {
+            |$a.^columns.map: {
+                my $class = .package;
+                @pre-join.push: $class;
+                my $RED-OVERRIDE-COLUMN-AS-PREFIX = $class.^name;
+                my ($s, @b) := do given self.translate:
+                    (.column but ColClass[$class]), "select", :$RED-OVERRIDE-COLUMN-AS-PREFIX { .key, .value }
+                @bind.push: |@b;
+                $s;
+            }
         }
     }).join: ", ";
     $sel ~= ", $pre" if $pre;
@@ -406,9 +416,11 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     my $tables = %t.kv.map(-> $_, @joins {
         [
             "{
-                .HOW ~~ MetamodelX::Red::VirtualView
-                    ?? "( { .sql } ) as { .^table }"
-                    !! self.table-name-wrapper: .^table
+                do if .HOW ~~ MetamodelX::Red::VirtualView {
+                    "( { .sql } ) as { .^table }"
+                } else {
+                    self.table-name-wrapper: .^table
+                }
             }{
                 do if .^table ne .^as {
                     " as {
@@ -418,7 +430,28 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
             }",
             |@joins.reduce({ |$^a, |$^b }).unique(:as{ .^as }).map({
                 " { self.join-type: .^join-type } JOIN {
-                    self.table-name-wrapper: .^table
+                    do if .HOW ~~ $role {
+                        # TODO: fix!
+                        qq:to/EOS/;
+                        (
+                            SELECT
+                                { .^rel.name },
+                                json_group_array(json_object({
+                                .^columns.map({
+                                    "'{ .column.attr-name }', { self.table-name-wrapper: .package.^table }.{ .column.name }"
+                                }).join: ", "
+                            })) as json
+                            FROM
+                                {
+                                    self.table-name-wrapper: .^table
+                                }
+                            GROUP BY
+                                { .^rel.name }
+                        )
+                        EOS
+                    } else {
+                        self.table-name-wrapper: .^table
+                    }
                 }{
                     " as {
                         .^as

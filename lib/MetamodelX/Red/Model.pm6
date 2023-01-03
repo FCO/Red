@@ -764,10 +764,20 @@ multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
 method new-from-data(\of, $data) is hidden-from-backtrace {
     my %cols-by-attr = of.^columns.map: { .column.attr-name => .column  }
     my %cols-by-col  = of.^columns.map: { .column.name => .column }
+    my %pre-fetches;
     my $obj = of.^orig.new: |(%($data).kv
         .map(-> $c, $v {
             do with $v {
-                unless $c.contains: "." {
+                my $pre-fetch = of.^pre-fetches.first: *.rel-name eq $c;
+                if $pre-fetch {
+                    %pre-fetches{ $c } = do if $v ~~ Str {
+                        use JSON::Fast;
+                        from-json $v
+                    } else {
+                        $v
+                    }
+                    Empty
+                } elsif !$c.contains: "." {
                     my $col = ( %cols-by-col{$c} // %cols-by-attr{$c} );
                     die "Column '$c' not found" without $col;
                     die "Inflator not defined for column '$c'" without $col.inflate;
@@ -801,6 +811,11 @@ method new-from-data(\of, $data) is hidden-from-backtrace {
                 }
             }
         }
+    }
+    # say "cache prefetches: ", %pre-fetches;
+    for %pre-fetches.kv -> $key, @value {
+        my $attr = $obj.^pre-fetches.first(*.rel-name eq $key);
+        $attr.set_value: $obj, @value.map({ $attr.relationship-model.^new-from-data: $_ }).list
     }
     $obj
 }
