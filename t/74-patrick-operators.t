@@ -16,7 +16,7 @@ my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=
 
 my $*RED-FALLBACK = False;
 
-schema(DB::CITestSet).create;
+schema(DB::CITestSet).drop.create;
 
 my CITestSetManager $tsm .= new;
 
