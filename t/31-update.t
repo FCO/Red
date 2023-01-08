@@ -1,9 +1,6 @@
 use Test;
 use Red;
 
-# TODO: Fix bug
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
-
 model Bla {
     has Int $!id   is serial;
     has Int $.num1 is rw is column;
@@ -48,11 +45,11 @@ Ble.^create: :a($_), :bla(%( :num1($_), :num2($_ * 2) )) for ^10;
 # TODO: Remove the quietly
 quietly Ble.^all.grep({ .bla.num1 + .bla.num2 <= 15 }).map({ .a *= 10 }).save;
 
-is Ble.^all.map(*.a).Seq, < 0 10 20 30 40 50 6 7 8 9 >;
+is Ble.^all.map(*.a).Seq.sort, < 0 10 20 30 40 50 6 7 8 9 >.sort;
 
 # TODO: Remove the quietly
 quietly Ble.^all.grep({ .bla.num1 + .bla.num2 <= 15 && .a %% 20 }).map({ .a += 1 }).save;
 
-is Ble.^all.map(*.a).Seq, < 1 10 21 30 41 50 6 7 8 9 >;
+is Ble.^all.map(*.a).Seq.sort, < 1 10 21 30 41 50 6 7 8 9 >.sort;
 
 done-testing;
