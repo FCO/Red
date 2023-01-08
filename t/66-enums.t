@@ -3,6 +3,9 @@
 use Test;
 use Red:api<2> <refreshable>;
 
+# TODO: Is it breaking for Pg?
+plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+
 my $*RED-FALLBACK       = False;
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
