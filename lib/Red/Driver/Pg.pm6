@@ -220,11 +220,13 @@ multi method default-type-for-type(Instant       --> Str:D) {"timestamp"}
 multi method default-type-for-type(Bool          --> Str:D) {"boolean"}
 multi method default-type-for-type(Int           --> Str:D) {"integer"}
 multi method default-type-for-type(UUID          --> Str:D) {"uuid"}
+multi method default-type-for-type(Blob          --> Str:D) {"bytea"}
 multi method default-type-for-type(Red::Column $ --> Str:D) {"varchar(255)"}
 
 multi method type-for-sql("jsonb"     --> "Json"    ) {}
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
+multi method inflate(Blob $value, :$to!)         { $to.new: $value }
 multi method deflate(Instant:D  $value) { ~$value.DateTime.utc }
 multi method deflate(DateTime:D $value) { ~$value.utc }
 
