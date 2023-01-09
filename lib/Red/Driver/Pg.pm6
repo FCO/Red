@@ -104,6 +104,17 @@ multi method translate(Red::AST::Cast $_ where { .type eq "boolean" && .value.?r
     self.translate: Red::AST::IsDefined.new: .value;
 }
 
+multi method translate(Red::AST::Cast $_, $context?) {
+    when Red::AST::Value {
+        .bind ?? self.translate(.value, "bind") !! qq|'{ .value }'| => []
+    }
+    default {
+        my ($str, @bind) := do given self.translate: .value, .bind ?? "bind" !! $context { .key, .value }
+        "({ $str })::{ .type }" => @bind
+    }
+}
+
+
 multi method translate(Red::Column $_, "column-auto-increment") {}
 
 multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined) {
