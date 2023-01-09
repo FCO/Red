@@ -748,6 +748,9 @@ multi method translate(Red::Column $_, "create-table") {
 multi method translate(Red::Column $_, "column-name")           { .name // "" => [] }
 
 multi method translate(Red::Column $_, "column-type")           {
+    if .attr.type.?red-type-column-type -> $type {
+        return self.type-by-name($type) => []
+    }
     if .attr.type =:= Mu && ! .type.defined {
         return self.type-by-name("int")  => [] if .auto-increment;
         return self.type-by-name("string") => []

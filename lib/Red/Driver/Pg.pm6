@@ -173,6 +173,9 @@ multi method translate(Red::Column $_, "column-comment") {
 }
 
 multi method translate(Red::Column $_, "column-type")           {
+    if .attr.type.?red-type-column-type -> $type {
+        return self.type-by-name($type) => []
+    }
     if !.auto-increment && .attr.type =:= Mu && !.type.defined {
         return self.type-by-name("string") => []
     }
