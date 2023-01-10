@@ -68,6 +68,16 @@ method rollback {
     $!dbh.rollback;
 }
 
+multi method agg-prefetch($_) {
+    qq:to/END/;
+    json_agg(json_build_object({
+    .^columns.map({
+        "'{ .column.attr-name }', { self.table-name-wrapper: .package.^table }.{ .column.name }"
+    }).join: ", "
+    })) as json
+    END
+}
+
 method wildcard { "\${ ++$*bind-counter }" }
 
 multi method translate(Red::AST::Not $_ where .value ~~ Red::Column, $context?) {
