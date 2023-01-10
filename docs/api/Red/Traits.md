@@ -277,7 +277,7 @@ DEPRECATED: Trait that defines a relationship receiving 2 code blocks.
 ```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$relationship! (&relationship, Str :$model, Str :$require = Code.new, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
+    :$relationship! (&relationship, Str :$model, Str :$require = Code.new, Bool :$optional, Bool :$prefetch = Code.new, Bool :$no-prefetch = Code.new, Bool :$has-one)
 ) returns Empty
 ```
 
@@ -290,7 +290,7 @@ Trait that defines a relationship receiving a code block, a model name, and opit
 ```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$relationship! (&relationship, Mu:U :$model!, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
+    :$relationship! (&relationship, Mu:U :$model!, Bool :$optional, Bool :$prefetch = Code.new, Bool :$no-prefetch = Code.new, Bool :$has-one)
 ) returns Empty
 ```
 
@@ -303,7 +303,7 @@ Trait that defines a relationship receiving a code block, a model type object, a
 ```raku
 multi sub trait_mod:<is>(
     Attribute $attr,
-    :$relationship! (Str :$column!, Str :$model!, Str :$require = Code.new, Bool :$optional, Bool :$no-prefetch, Bool :$has-one)
+    :$relationship! (Str :$column!, Str :$model!, Str :$require = Code.new, Bool :$optional, Bool :$prefetch = Code.new, Bool :$no-prefetch = Code.new, Bool :$has-one)
 ) returns Empty
 ```
 
