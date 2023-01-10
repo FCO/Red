@@ -388,7 +388,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     my $role = role {}
     my @pre-join;
     my $pre = $ast.prefetch.map({
-        my $a = $ast.of."{.name.substr: 2}"();
+        my $a = $ast.of."{ .name.substr: 2 }"();
         my $positional = $a ~~ Positional;
         do if $positional {
             $a = $ast.of.^join($a.of, $_, :oposite, :name(.rel-name));

@@ -88,6 +88,7 @@ has                   $.obj;
 has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new: |(:filter(.^id-filter) with $!obj);
 has Lock::Async       $!lock .= new;
 has Red::LockType     $.for;
+has                   @.prefetches;
 
 multi method with { $!with }
 
@@ -450,6 +451,10 @@ multi method join-model(Red::Model \model, &on, :$name = "{ self.^shortname }_{ 
     }
 }
 
+method prefetch(+@prefetches) {
+    self.clone: :prefetches[|@!prefetches, |self.of.^relationships.keys.grep: { .name.substr(2) eq @prefetches.any }]
+}
+
 #| Returns the AST that will generate the SQL
 method ast(Bool :$sub-select --> Red::AST) is hidden-from-sql-commenting {
     if $.filter ~~ Red::AST::MultiSelect {
@@ -457,7 +462,7 @@ method ast(Bool :$sub-select --> Red::AST) is hidden-from-sql-commenting {
     } else {
         # my @prefetch = $.of.^has-one-relationships;
         # dd @prefetch;
-        my @prefetch = $.of.^pre-fetches;
+        my @prefetch = |$.of.^pre-fetches, |@!prefetches;
         # say @prefetch.head.^name;
         Red::AST::Select.new: :$.of, :$.filter, :$.limit, :$.offset, :@.order, :@.table-list, :@.group, :@.comments, :@prefetch, :$sub-select, :$!for;
     }
