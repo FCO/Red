@@ -366,6 +366,16 @@ multi method join-type("right" --> "RIGHT") {}
 multi method join-type("") { self.join-type: "inner" }
 multi method join-type($type) { die "'$type' isn't a valid join type" }
 
+multi method agg-prefetch($_) {
+    qq:to/END/;
+    json_group_array(json_object({
+    .^columns.map({
+        "'{ .column.attr-name }', { self.table-name-wrapper: .package.^table }.{ .column.name }"
+    }).join: ", "
+    })) as json
+    END
+}
+
 multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     my role ColClass [Mu:U \c] { method class { c } };
     my @bind;
@@ -436,11 +446,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                         (
                             SELECT
                                 { .^rel.name },
-                                json_group_array(json_object({
-                                .^columns.map({
-                                    "'{ .column.attr-name }', { self.table-name-wrapper: .package.^table }.{ .column.name }"
-                                }).join: ", "
-                            })) as json
+                                { self.agg-prefetch: $_ }
                             FROM
                                 {
                                     self.table-name-wrapper: .^table
