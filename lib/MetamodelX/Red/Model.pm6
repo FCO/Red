@@ -768,7 +768,7 @@ method new-from-data(\of, $data) is hidden-from-backtrace {
     my $obj = of.^orig.new: |(%($data).kv
         .map(-> $c, $v {
             do with $v {
-                my $pre-fetch = of.^pre-fetches.first: *.rel-name eq $c;
+                my $pre-fetch = of.^relationships.keys.first: *.rel-name eq $c;
                 if $pre-fetch {
                     %pre-fetches{ $c } = do if $v ~~ Str {
                         use JSON::Fast;
@@ -814,7 +814,7 @@ method new-from-data(\of, $data) is hidden-from-backtrace {
     }
     # say "cache prefetches: ", %pre-fetches;
     for %pre-fetches.kv -> $key, @value {
-        my $attr = $obj.^pre-fetches.first(*.rel-name eq $key);
+        my $attr = $obj.^relationships.keys.first(*.rel-name eq $key);
         $attr.set_value: $obj, @value.map({ $attr.relationship-model.^new-from-data: $_ }).list
     }
     $obj
