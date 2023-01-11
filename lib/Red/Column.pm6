@@ -213,9 +213,6 @@ method as(Str $name, :$nullable = True) {
 }
 
 submethod TWEAK(:$unique) {
-    if $!attr.type.^find_method: "red-type-db-methods" {
-        self does $!attr.type.red-type-db-methods
-    }
     with $unique {
         when Bool {
             $!attr.package.^add-unique-constraint: { self }
