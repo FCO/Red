@@ -110,12 +110,18 @@ multi method translate(Red::AST::Cast $_ where { .type eq "boolean" && .value.?r
 }
 
 multi method translate(Red::AST::Cast $_, $context?) {
+    my &trans = sub ($_) {
+        when "str" { "TEXT" }
+        when "int" { "INTEGER" }
+        when "num" { "NUMERIC" }
+        default { $_ }
+    }
     when Red::AST::Value {
         .bind ?? self.translate(.value, "bind") !! qq|'{ .value }'| => []
     }
     default {
         my ($str, @bind) := do given self.translate: .value, .bind ?? "bind" !! $context { .key, .value }
-        "({ $str })::{ .type }" => @bind
+        "({ $str })::{ .type.&trans }" => @bind
     }
 }
 
