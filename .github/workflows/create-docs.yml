@@ -12,7 +12,7 @@ jobs:
     - uses: actions/checkout@v2
     - name: Create local changes
       run: |
-        raku tools/make-docs.pl6
+        raku tools/make-docs.raku
     # - name: Run test coverage
     #   run: |
     #     racoco --fail-level=$(cat .coverage) --exec='zef test -v .' --html | raku -ne 'say $<num>.floor if /^ "Coverage:" <.ws> $<num>=[\d+\.\d+] "%" $/' > .coverage
