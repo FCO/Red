@@ -23,6 +23,7 @@ API Pages
 - [Red::AST::CreateTable](api/Red/AST/CreateTable)
 - [Red::AST::CreateView](api/Red/AST/CreateView)
 - [Red::AST::DateTimeFuncs](api/Red/AST/DateTimeFuncs)
+- [Red::AST::Delete](api/Red/AST/Delete)
 - [Red::AST::Divisable](api/Red/AST/Divisable)
 - [Red::AST::DropColumn](api/Red/AST/DropColumn)
 - [Red::AST::Empty](api/Red/AST/Empty)
