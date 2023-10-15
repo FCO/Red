@@ -8,7 +8,6 @@
   ],
   "depends": [
     "DBIish",
-    "DB::Pg",
     "UUID",
     "JSON::Fast"
   ],
