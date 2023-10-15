@@ -67,11 +67,9 @@ method minus($sel) {
 }
 
 method as-sub-select {
-    $!sub-select = True;
-    self;
+    self.clone: :sub-select
 }
 
 method as-select {
-    $!sub-select = False;
-    self;
+    self.clone: :!sub-select
 }
