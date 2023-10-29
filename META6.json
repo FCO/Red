@@ -1,16 +1,9 @@
 {
   "api": "2",
   "auth": "zef:FCO",
-  "authors": [
-    "Fernando Correa de Oliveira"
-  ],
-  "build-depends": [
-  ],
-  "depends": [
-    "DBIish",
-    "UUID",
-    "JSON::Fast"
-  ],
+  "authors": ["Fernando Correa de Oliveira"],
+  "build-depends": [],
+  "depends": ["DBIish", "DB::Pg", "UUID", "JSON::Fast"],
   "description": "A Raku ORM",
   "license": "Artistic-2.0",
   "name": "Red",
@@ -133,18 +126,9 @@
     "Red::Utils": "lib/Red/Utils.rakumod",
     "X::Red::Exceptions": "lib/X/Red/Exceptions.rakumod"
   },
-  "resources": [
-  ],
+  "resources": [],
   "source-url": "https://github.com/FCO/Red.git",
-  "tags": [
-    "ORM",
-    "database",
-    "map",
-    "relational"
-  ],
-  "test-depends": [
-    "Test::META",
-    "App::RaCoCo"
-  ],
+  "tags": ["ORM", "database", "map", "relational"],
+  "test-depends": ["Test::META", "App::RaCoCo"],
   "version": "0.1.66"
 }
