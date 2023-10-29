@@ -9,7 +9,7 @@ sub MAIN (:$filename, :$output = 'API.md') {
       !!
       find
         dir => 'lib',
-        name => /'.pm6' $/;
+        name => /'.rakumod' $/;
 
   my ($docsDir, $apiDocsDir) = ($*CWD, '');
   unless $docsDir.add('lib').e {
@@ -27,7 +27,7 @@ sub MAIN (:$filename, :$output = 'API.md') {
 
     for $*SPEC.splitdir( .relative ).skip(1) {
       $newFile .= add($_);
-      $newFile.mkdir unless $newFile.Str.ends-with('.pm6');
+      $newFile.mkdir unless $newFile.Str.ends-with('.rakumod');
     }
 
     print "Processing { $newFile }...";
