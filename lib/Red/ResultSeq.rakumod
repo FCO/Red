@@ -137,7 +137,7 @@ method transform-item(*%data) is hidden-from-sql-commenting {
 #| Adds a new filter on the query (does not run the query)
 method grep(&filter) is hidden-from-sql-commenting {
     X::Red::NoOperatorsDefined.new(:meth<grep>).throw
-        if !$*from-first && !::CALLER::<&__RED_OPERATOR_LOADED__> && !::CALLER::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
+        if !$*from-first && !::CALLERS::<&__RED_OPERATOR_LOADED__> && !::CALLERS::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
     my $*RED-INTERNAL = True;
     self.create-comment-to-caller;
     CATCH {
@@ -178,7 +178,7 @@ method grep(&filter) is hidden-from-sql-commenting {
 #| Changes the query to return only the first row that matches the condition and run it (.grep(...).head)
 multi method first(&filter --> Red::Model) is hidden-from-sql-commenting {
     X::Red::NoOperatorsDefined.new(:meth<first>).throw
-        if !::CALLER::<&__RED_OPERATOR_LOADED__> && !::CALLER::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
+        if !::CALLERS::<&__RED_OPERATOR_LOADED__> && !::CALLERS::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
     self.create-comment-to-caller;
     my $*from-first = True;
     self.grep(&filter).head
@@ -186,7 +186,7 @@ multi method first(&filter --> Red::Model) is hidden-from-sql-commenting {
 
 multi method first(--> Red::Model) is hidden-from-sql-commenting {
     X::Red::NoOperatorsDefined.new(:meth<grep>).throw
-        if !::CALLER::<&__RED_OPERATOR_LOADED__> && !::CALLER::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
+        if !::CALLERS::<&__RED_OPERATOR_LOADED__> && !::CALLERS::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
     self.create-comment-to-caller;
     self.head
 }
@@ -217,7 +217,7 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
 #| Change what will be returned (does not run the query)
 method map(\SELF: &filter) is hidden-from-sql-commenting {
     X::Red::NoOperatorsDefined.new(:meth<map>).throw
-        if !::CALLER::<&__RED_OPERATOR_LOADED__> && !::CALLER::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
+        if !::CALLERS::<&__RED_OPERATOR_LOADED__> && !::CALLERS::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
     my $*RED-INTERNAL = True;
     SELF.create-comment-to-caller;
     CATCH {
