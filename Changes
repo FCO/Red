@@ -4,6 +4,7 @@ Revision history for Red
     - Fix test on Pg
     - Accept .classify with multiple columns
     - Add raku method to Red::Model
+    - Add DateTime funcs to Pg
 
 0.1.66  2022-12-18T21:55:33Z
     - Add `is view`
