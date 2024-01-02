@@ -29,7 +29,6 @@ API Pages
 - [Red::AST::Empty](api/Red/AST/Empty)
 - [Red::AST::Function](api/Red/AST/Function)
 - [Red::AST::Infix](api/Red/AST/Infix)
-- [Red::AST::Infixes](api/Red/AST/Infixes)
 - [Red::AST::Insert](api/Red/AST/Insert)
 - [Red::AST::Intersect](api/Red/AST/Intersect)
 - [Red::AST::IsDefined](api/Red/AST/IsDefined)
