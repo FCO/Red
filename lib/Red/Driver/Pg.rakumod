@@ -68,6 +68,11 @@ method rollback {
     $!dbh.rollback;
 }
 
+multi method translate(Red::AST::DateTimeFunction $_, $context?) {
+    my ($sql, @bind) = do given self.translate: .base, $context { .key, |.value }
+    "EXTRACT({ .part.key.uc } FROM { $sql })" => @bind # TODO: Make it better and use real function?
+}
+
 multi method agg-prefetch($_) {
     qq:to/END/;
     json_agg(json_build_object({
