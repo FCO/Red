@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.67  2024-01-02T23:19:28Z
     - Fix test on Pg
     - Accept .classify with multiple columns
     - Add raku method to Red::Model
