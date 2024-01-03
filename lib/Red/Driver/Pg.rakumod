@@ -68,7 +68,7 @@ method rollback {
     $!dbh.rollback;
 }
 
-multi method translate(Red::AST::DateTimeFunction $_, $context?) {
+multi method translate(Red::AST::DateTimePart $_, $context?) {
     my ($sql, @bind) = do given self.translate: .base, $context { .key, |.value }
     "EXTRACT({ .part.key.uc } FROM { $sql })" => @bind # TODO: Make it better and use real function?
 }

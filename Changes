@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fix datetime for Pg
 
 0.1.67  2024-01-02T23:19:28Z
     - Fix test on Pg
