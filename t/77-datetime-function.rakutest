@@ -8,7 +8,8 @@ use DB;
 use Red:api<2>;
 
 model Blx {
-  has DateTime $.a is column
+  has DateTime $.a is column;
+  has Date     $.b is column;
 }
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
@@ -23,6 +24,10 @@ schema(Blx).drop.create;
 
 lives-ok {
   .say for Blx.^all.map(*.a.year)
+}
+
+lives-ok {
+  .say for Blx.^all.map(*.b.year)
 }
 
 done-testing

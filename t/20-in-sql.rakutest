@@ -108,6 +108,8 @@ subtest "#521" => {
         has     @.bs is relationship({ .c-id }, model => "B" );
     }
 
+    schema(A, C, B).drop;
+
     A.^create-table: :if-not-exists;
     C.^create-table: :if-not-exists;
     B.^create-table: :if-not-exists;

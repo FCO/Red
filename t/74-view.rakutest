@@ -40,7 +40,7 @@ model View is view {
   }
 }
 
-lives-ok { View.^create-table };
+try View.^create-table: :if-not-exists;
 
 is VirtualView.^all.grep(*.id %% 2).map(*.value), <ble blo>;
 is VirtualView.^all.grep(*.id %% 3).map(*.value), <bli>;

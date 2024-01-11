@@ -235,6 +235,7 @@ multi method default-type-for-type(Positional $_ --> Str:D) {"{ self.default-typ
 multi method default-type-for-type(Json          --> Str:D) {"jsonb"}
 multi method default-type-for-type(DateTime      --> Str:D) {"timestamp"}
 multi method default-type-for-type(Instant       --> Str:D) {"timestamp"}
+multi method default-type-for-type(Date          --> Str:D) {"date"}
 multi method default-type-for-type(Bool          --> Str:D) {"boolean"}
 multi method default-type-for-type(Int           --> Str:D) {"integer"}
 multi method default-type-for-type(UUID          --> Str:D) {"uuid"}
