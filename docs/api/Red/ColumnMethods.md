@@ -39,12 +39,43 @@ Tests if that column value contains a specific sub-string is usually translated 
 
 ```raku
 method substr(
-    Int(Any) $offset = 0,
-    Int(Any) $size?
+    $offset = Code.new,
+    $size?
 ) returns Mu
 ```
 
 Return a substring of the column value
+
+### method substr
+
+```raku
+method substr(
+    $offset = Code.new,
+    $size?
+) returns Mu
+```
+
+Return a substring of the column value
+
+### method index
+
+```raku
+method index(
+    $needle
+) returns Mu
+```
+
+Return a index of the column value
+
+### method index
+
+```raku
+method index(
+    $needle
+) returns Mu
+```
+
+Return a index of the column value
 
 ### method year
 
