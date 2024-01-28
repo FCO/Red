@@ -1,4 +1,5 @@
 use Red::AST::Operator;
+use Red::Type::Map;
 
 class Red::AST::Not { ... }
 
@@ -33,7 +34,7 @@ class Red::AST::Cast does Red::AST::Unary {
 
     method gist { "($!value.gist())::$!type" }
 
-    method returns { $!type }
+    method returns { $!type.&to-raku-type }
 
     method op { "::{$!type}" };
 

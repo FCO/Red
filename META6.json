@@ -131,6 +131,7 @@
     "Red::Traits": "lib/Red/Traits.rakumod",
     "Red::Type": "lib/Red/Type.rakumod",
     "Red::Type::Json": "lib/Red/Type/Json.rakumod",
+    "Red::Type::Map": "lib/Red/Type/Map.rakumod",
     "Red::Utils": "lib/Red/Utils.rakumod",
     "X::Red::Exceptions": "lib/X/Red/Exceptions.rakumod"
   },

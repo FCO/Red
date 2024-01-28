@@ -43,8 +43,23 @@ multi method contains(Str() $text is rw) {
 }
 
 #| Return a substring of the column value
-method substr($base where { .returns ~~ Str }: Int() $offset = 0, Int() $size?) {
+multi method substr($base where { .returns ~~ Str }: $offset = ast-value(0), $size?) {
     Red::AST::Substring.new(:$base, :$offset, |(:$size with $size)) but Red::ColumnMethods
+}
+
+#| Return a substring of the column value
+multi method substr($base: $offset = ast-value(0), $size?) {
+    Red::AST::Substring.new(:base(Red::AST::Cast.new: $base, "str"), :$offset, |(:$size with $size)) but Red::ColumnMethods
+}
+
+#| Return a index of the column value
+multi method index($base where { .returns ~~ Str }: $needle) {
+    Red::AST::Index.new(:$base, :$needle) but Red::ColumnMethods
+}
+
+#| Return a index of the column value
+multi method index($base: $needle) {
+    Red::AST::Index.new(:base(Red::AST::Cast.new: $base, "str"), :$needle) but Red::ColumnMethods
 }
 
 #| Return the year from the date column
