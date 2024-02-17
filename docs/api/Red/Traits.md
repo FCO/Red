@@ -244,6 +244,19 @@ multi sub trait_mod:<is>(
 
 This trait allows setting a custom name for a table corresponding to a model. For example, `model MyModel is table<custom_table_name> {}` will use `custom_table_name` as the name of the underlying database table.
 
+### is database
+
+### multi sub trait_mod:<is>
+
+```raku
+multi sub trait_mod:<is>(
+    Mu:U $model,
+    Str :$database! is copy where { ... }
+) returns Empty
+```
+
+This trait allows setting a custom database to be attached on SQLite
+
 ### is relationship
 
 ### multi sub trait_mod:<is>
