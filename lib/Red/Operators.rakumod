@@ -1,6 +1,6 @@
 use Red::AST;
 use Red::AST::Infixes;
-use Red::AST::Divisable;
+use Red::AST::Divisible;
 use Red::AST::Value;
 use Red::ResultSeq;
 
@@ -746,27 +746,27 @@ multi infix:<%>(Int() $a is readonly, Red::AST $b) is export {
 
 #| X %% Y
 multi infix:<%%>(Red::AST $a, Red::AST $b) is export {
-    Red::AST::Divisable.new: $a, $b, :cast<int>
+    Red::AST::Divisible.new: $a, $b, :cast<int>
 }
 
 #| X %% Y # Where Y is castable to Int and writable
 multi infix:<%%>(Red::AST $a, Int() $b is rw) is export {
-    Red::AST::Divisable.new: $a, ast-value($b), :cast<int>, :bind-right
+    Red::AST::Divisible.new: $a, ast-value($b), :cast<int>, :bind-right
 }
 
 #| X %% Y # Where Y is castable to Int and read only
 multi infix:<%%>(Red::AST $a, Int() $b is readonly) is export {
-    Red::AST::Divisable.new: $a, ast-value($b), :cast<int>
+    Red::AST::Divisible.new: $a, ast-value($b), :cast<int>
 }
 
 #| X %% Y # Where X is castable to Int
 multi infix:<%%>(Int() $a is rw, Red::AST $b) is export {
-    Red::AST::Divisable.new: ast-value($a), $b, :cast<int>, :bind-left
+    Red::AST::Divisible.new: ast-value($a), $b, :cast<int>, :bind-left
 }
 
 #| X %% Y # Where X is read only
 multi infix:<%%>(Int() $a is readonly, Red::AST $b) is export {
-    Red::AST::Divisable.new: ast-value($a), $b, :cast<int>
+    Red::AST::Divisible.new: ast-value($a), $b, :cast<int>
 }
 
 #| X ~ Y

@@ -57,6 +57,7 @@ has %!attr-to-column;
 has $.rs-class;
 has @!constraints;
 has $.table;
+has $.database;
 has Bool $!temporary;
 has Bool $!default-null;
 has %!alias-cache;
@@ -230,7 +231,7 @@ multi method add-pk-constraint(Mu:U \type, @columns) {
 
 method tables(\model) { [ model ] }
 
-proto method join($, $, $, :$name, :$oposite, *%pars where { .elems == 0 || ( .elems == 1 && get-RED-DB.join-type(.keys.head) && so .values.head ) }) {*}
+proto method join($, $, $, :$name, :$opposite, *%pars where { .elems == 0 || ( .elems == 1 && get-RED-DB.join-type(.keys.head) && so .values.head ) }) {*}
 
 multi method join(\model, \to-join, &on, :$name, *%pars) {
     to-join.^alias: |($_ with $name), :base(model), :relationship(&on.assuming: model), :join-type(%pars.keys.head // "")
@@ -240,16 +241,16 @@ multi method join(\model, \to-join, Red::AST $on, :$name, *%pars) {
     to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type(%pars.keys.head // "")
 }
 
-multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name, :$oposite! where *.so) {
-    to-join.^alias: :oposite, |($_ with $name), :base(model), :relationship($on), :join-type($on.join-type.keys.head // "")
+multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name, :$opposite! where *.so) {
+    to-join.^alias: :opposite, |($_ with $name), :base(model), :relationship($on), :join-type($on.join-type.keys.head // "")
 }
 
-multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name, :$oposite? where { .not }) {
+multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name, :$opposite? where { .not }) {
     to-join.^alias: |($_ with $name), :base(model), :relationship($on), :join-type($on.join-type.keys.head // "")
 }
 
 my UInt $alias_num = 1;
-method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type, Bool :$oposite)) {
+method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type, Bool :$opposite)) {
     $!alias-cache-lock.protect: {
         return %!alias-cache{$name} if %!alias-cache{$name}:exists;
         my \alias = ::?CLASS.new_type(:$name);
@@ -287,7 +288,7 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
                         $filter
                     }
                     default {
-                        .relationship-ast(alias, |(base if $oposite))
+                        .relationship-ast(alias, |(base if $opposite))
 
                     }
                 }
@@ -365,7 +366,7 @@ method temp(|) is rw { $!temporary }
 
 
 multi method create-table(Str :$with!, |c) {
-    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    my $*RED-DB = %GLOBAL::RED-DEFAULT-DRIVERS{$with};
     self.create-table: |c
 }
 
@@ -456,7 +457,7 @@ multi method save(Red::Driver :$with!, |c) {
 }
 
 multi method save(Str :$with!, |c) {
-    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    my $*RED-DB = %GLOBAL::RED-DEFAULT-DRIVERS{$with};
     self.save: |c
 }
 
@@ -522,13 +523,13 @@ multi method create($, Str :$with!, |c) is hidden-from-backtrace {
 multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {
     die "Cannot call .^create on a defined model." if model.DEFINITE;
     my $RED-DB = get-RED-DB;
-    my $trans  = so $*RED-TRANSCTION-RUNNING;
+    my $trans  = so $*RED-TRANSACTION-RUNNING;
     $RED-DB   .= begin        unless $trans;
     KEEP $RED-DB.commit       unless $trans;
     UNDO try $RED-DB.rollback unless $trans;
     {
         my $*RED-DB = $RED-DB;
-        my $*RED-TRANSCTION-RUNNING = True;
+        my $*RED-TRANSACTION-RUNNING = True;
         my %relationships = %.relationships.keys.map: {
             .name.substr(2) => $_
         }
@@ -640,7 +641,7 @@ multi method delete(Red::Driver :$with!, |c) {
 }
 
 multi method delete(Str :$with!, |c) {
-    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    my $*RED-DB = %GLOBAL::RED-DEFAULT-DRIVERS{$with};
     self.delete: |c
 }
 
@@ -666,7 +667,7 @@ multi method load(Red::Driver :$with!, |c) {
 }
 
 multi method load(Str :$with!, |c) {
-    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    my $*RED-DB = %GLOBAL::RED-DEFAULT-DRIVERS{$with};
     self.load: |c
 }
 
@@ -687,7 +688,7 @@ multi method new-with-id(Red::Driver :$with!, |c) {
 }
 
 multi method new-with-id(Str :$with!, |c) {
-    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    my $*RED-DB = %GLOBAL::RED-DEFAULT-DRIVERS{$with};
     self.new-with-id: |c
 }
 
@@ -702,7 +703,7 @@ multi method search(Red::Driver :$with!, |c) {
 }
 
 multi method search(Str :$with!, |c) {
-    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    my $*RED-DB = %GLOBAL::RED-DEFAULT-DRIVERS{$with};
     self.search: |c
 }
 
@@ -719,7 +720,7 @@ multi method search(Red::Model:U \model, Red::AST $filter, :$with where not .def
 }
 
 #| Receives a hash of `AST`s of code and returns a `ResultSeq` using that `AST`s as filter
-#| Usualy passed unique values as IDs or columns with unique counstraint
+#| Usually passed unique values as IDs or columns with unique counstraint
 multi method search(Red::Model:U \model, *%filter, :$with where not .defined) {
     my $*RED-INTERNAL = True;
     samewith
@@ -735,7 +736,7 @@ multi method find(Red::Driver :$with!, |c) {
 }
 
 multi method find(Str :$with!, |c) {
-    my $*RED-DB = %GLOBAL::RED-DEFULT-DRIVERS{$with};
+    my $*RED-DB = %GLOBAL::RED-DEFAULT-DRIVERS{$with};
     self.find: |c
 }
 

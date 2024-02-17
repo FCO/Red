@@ -13,7 +13,7 @@ use Red::AST::Delete;
 use Red::AST::Infixes;
 use Red::AST::Function;
 use Red::AST::Between;
-use Red::AST::Divisable;
+use Red::AST::Divisible;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::CreateView;
@@ -665,7 +665,7 @@ multi method translate(Red::AST::Value $_, "bind") {
     self.wildcard => [ self.wildcard-value: $_ ]
 }
 
-multi method translate(Red::AST::Divisable $_, $context?) {
+multi method translate(Red::AST::Divisible $_, $context?) {
     self.translate:
         Red::AST::Eq.new(
             Red::AST::Mod.new(.left, .right),

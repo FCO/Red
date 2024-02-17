@@ -171,6 +171,13 @@ multi trait_mod:<is>(Mu:U $model, Str :$table! is copy where .chars > 0 --> Empt
     $model.HOW.^attributes.first({ .name eq '$!table' }).set_value($model.HOW, $table)
 }
 
+=head3 is database
+
+#| This trait allows setting a custom database to be attached on SQLite
+multi trait_mod:<is>(Mu:U $model, Str :$database! is copy where .chars > 0 --> Empty) {
+    $model.HOW.^attributes.first({ .name eq '$!database' }).set_value($model.HOW, $database)
+}
+
 =head3 is relationship
 
 #| Trait that defines a relationship receiving a code block.

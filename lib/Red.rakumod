@@ -29,7 +29,7 @@ class Red:ver<0.1.69>:api<2> {
     method emit(|c) { get-RED-DB.emit: |c        }
     method experimentals { %experimentals }
     method ping {
-        do for (%GLOBAL::RED-DEFULT-DRIVERS || :default(get-RED-DB)).kv -> $key, $conn {
+        do for (%GLOBAL::RED-DEFAULT-DRIVERS || :default(get-RED-DB)).kv -> $key, $conn {
             $key => $conn.ping
         }.Map
     }

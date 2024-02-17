@@ -97,7 +97,7 @@ multi method with(Red::Driver $with) {
 }
 
 multi method with(Str $with) {
-    self.with: %GLOBAL::RED-DEFULT-DRIVERS{$with}
+    self.with: %GLOBAL::RED-DEFAULT-DRIVERS{$with}
 }
 
 method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {

@@ -2,7 +2,7 @@ use Red::AST::Infix;
 
 #| Represents a "is divisable" operation
 #| usually implemented as (num1 % num2 == 0)
-unit class Red::AST::Divisable does Red::AST::Infix;
+unit class Red::AST::Divisible does Red::AST::Infix;
 has $.op = "%%";
 has Bool $.returns;
 

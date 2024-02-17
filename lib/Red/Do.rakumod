@@ -34,14 +34,14 @@ multi red-defaults-from-config($file where .IO.f) is export {
 
 #| Sets the default connection to be used
 multi red-defaults(Str $driver, |c) is export {
-    %GLOBAL::RED-DEFULT-DRIVERS = default => database $driver, |c
+    %GLOBAL::RED-DEFAULT-DRIVERS = default => database $driver, |c
 }
 
 #| Sets the default connections to be used.
 #| The key is the name of the connection and the value the connection itself
 multi red-defaults(*%drivers) is export {
     my Bool $has-default = False;
-    %GLOBAL::RED-DEFULT-DRIVERS = %drivers.kv.map(-> $name, $_ {
+    %GLOBAL::RED-DEFAULT-DRIVERS = %drivers.kv.map(-> $name, $_ {
         when Capture|Positional {
             my (Str $driver, Bool $default);
             my \c = \();
@@ -96,10 +96,10 @@ proto red-do(|) {
 #| Receives a block and optionally a connection name.
 #| Runs the block with the connection with that name
 multi red-do(*@blocks where .all ~~ Callable, Str :$with = "default", :$async) is export {
-    X::Red::Do::DriverNotDefined.new(:driver($with)).throw unless %GLOBAL::RED-DEFULT-DRIVERS{$with}:exists;
+    X::Red::Do::DriverNotDefined.new(:driver($with)).throw unless %GLOBAL::RED-DEFAULT-DRIVERS{$with}:exists;
     my @ret = do for @blocks {
         my Str $*RED-DO-WITH = $with;
-        red-do :with(%GLOBAL::RED-DEFULT-DRIVERS{$with}), $_, :$async
+        red-do :with(%GLOBAL::RED-DEFAULT-DRIVERS{$with}), $_, :$async
     }
     if $async {
         return start await @ret
@@ -121,7 +121,7 @@ multi red-do(&block, Red::Driver:D :$with, :$async where not *) is export {
 #| asynchronously
 multi red-do(&block, Str:D :$with = "default", :$async! where so *) is export {
     my Str $*RED-DO-WITH = $with;
-    start run-red-do %GLOBAL::RED-DEFULT-DRIVERS{$with}, &block
+    start run-red-do %GLOBAL::RED-DEFAULT-DRIVERS{$with}, &block
 }
 
 multi red-do(
@@ -130,10 +130,10 @@ multi red-do(
     Bool :$transaction! where so *,
     *%pars where *.none.key eq "with"
 ) is export {
-    red-do |@blocks, :$async, |%pars, :with(get-RED-DB) if $*RED-TRANSCTION-RUNNING;
+    red-do |@blocks, :$async, |%pars, :with(get-RED-DB) if $*RED-TRANSACTION-RUNNING;
     {
         my $with = get-RED-DB.begin;
-        my $*RED-TRANSCTION-RUNNING = True;
+        my $*RED-TRANSACTION-RUNNING = True;
         KEEP $with.commit;
         UNDO $with.rollback;
         red-do |@blocks, :$async, |%pars, :$with;

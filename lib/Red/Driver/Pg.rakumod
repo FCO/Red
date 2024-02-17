@@ -58,13 +58,13 @@ method begin {
 }
 
 method commit {
-    #die "Not in a transaction!" unless $*RED-TRANSCTION-RUNNING;
+    #die "Not in a transaction!" unless $*RED-TRANSACTION-RUNNING;
     $!dbh.commit.finish;
 }
 
 method rollback {
     #die "Deu ruim!!!";
-    #die "Not in a transaction!" unless $*RED-TRANSCTION-RUNNING;
+    #die "Not in a transaction!" unless $*RED-TRANSACTION-RUNNING;
     $!dbh.rollback;
 }
 

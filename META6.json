@@ -50,7 +50,7 @@
     "Red::AST::CreateView": "lib/Red/AST/CreateView.rakumod",
     "Red::AST::DateTimeFuncs": "lib/Red/AST/DateTimeFuncs.rakumod",
     "Red::AST::Delete": "lib/Red/AST/Delete.rakumod",
-    "Red::AST::Divisable": "lib/Red/AST/Divisable.rakumod",
+    "Red::AST::Divisible": "lib/Red/AST/Divisible.rakumod",
     "Red::AST::DropColumn": "lib/Red/AST/DropColumn.rakumod",
     "Red::AST::Empty": "lib/Red/AST/Empty.rakumod",
     "Red::AST::Function": "lib/Red/AST/Function.rakumod",
