@@ -974,7 +974,7 @@ multi method default-type-for-type(Instant  --> Str:D) {"real"}
 multi method default-type-for-type(DateTime --> Str:D) {"varchar(32)"}
 multi method default-type-for-type(Duration --> Str:D) {"interval"}
 multi method default-type-for-type(Mu       --> Str:D) {"varchar(255)"}
-multi method default-type-for-type(Str      --> Str:D) {"varchar(255)"}
+multi method default-type-for-type(Str      --> Str:D) {"text"}
 multi method default-type-for-type(Int      --> Str:D) {"integer"}
 multi method default-type-for-type(Bool     --> Str:D) {"boolean"}
 multi method default-type-for-type(UUID     --> Str:D) {"varchar(36)"}
