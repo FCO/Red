@@ -14,7 +14,7 @@ model Ble does Bla {}
 
 $*RED-DB.when: :once, :return[], qq:to/EOSQL/;
     CREATE TABLE "ble" (
-        a varchar(255) NOT NULL
+        a text NOT NULL
     )
 EOSQL
 
@@ -24,8 +24,8 @@ model Bli does Bla { has Str $.b is column }
 
 $*RED-DB.when: :once, :return[], qq:to/EOSQL/;
     CREATE TABLE "bli" (
-        a varchar(255) NOT NULL,
-        b varchar(255) NOT NULL
+        a text NOT NULL,
+        b text NOT NULL
     )
 EOSQL
 
@@ -96,7 +96,7 @@ model Foo does Bar[:opt-in] does Baz {
 $*RED-DB.when: :once, :return[], q:to/EOSQL/;
     create table "foo"(
         id integer not null primary key autoincrement,
-        a varchar ( 255 ) not null,
+        a text not null,
         b integer not null,
         c real not null
     )
