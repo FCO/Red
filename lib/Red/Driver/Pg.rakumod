@@ -111,9 +111,14 @@ multi method translate(Red::AST::Cast $_ where { .type eq "boolean" && .value.?r
 
 multi method translate(Red::AST::Cast $_, $context?) {
     my &trans = sub ($_) {
-        when "str" { "TEXT" }
-        when "int" { "INTEGER" }
-        when "num" { "NUMERIC" }
+        when "str"      { "TEXT"      }
+        when "int"      { "INTEGER"   }
+        when "num"      { "NUMERIC"   }
+        when "datetime" { "TIMESTAMP" }
+        when "date"     { "DATE"      }
+        when "json"     { "JSONB"     }
+        when "uuid"     { "UUID"      }
+        when "blob"     { "BYTEA"     }
         default { $_ }
     }
     when Red::AST::Value {
