@@ -818,7 +818,7 @@ multi sub infix:«>=»(
 ) returns Mu
 ```
 
-X >= Y # Where Y is any Red::AST that returns a DateTime
+X >= Y # Where Y is any Red::AST that returns a Numeric
 
 ### multi sub infix:«>=»
 
