@@ -307,28 +307,6 @@ X == Y # Where Y is castable to Numeric and read only
 
 ```raku
 multi sub infix:<==>(
-    Red::AST $a,
-    Enumeration $b
-) returns Mu
-```
-
-X == Y # Where LHS is AST and RHS is Enumeration
-
-### multi sub infix:<==>
-
-```raku
-multi sub infix:<==>(
-    Enumeration $a,
-    Red::AST $b
-) returns Mu
-```
-
-X == Y # Where X is castable to Numeric and writable
-
-### multi sub infix:<==>
-
-```raku
-multi sub infix:<==>(
     Numeric(Any) $a is rw,
     Red::AST $b
 ) returns Mu
@@ -357,6 +335,28 @@ multi sub infix:<==>(
 ```
 
 X == Y # Where X is castable to Numeric and read only
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Red::AST $a,
+    Enumeration $b
+) returns Mu
+```
+
+X == Y # Where LHS is AST and RHS is Enumeration
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Enumeration $a,
+    Red::AST $b
+) returns Mu
+```
+
+X == Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:<!=>
 
@@ -395,17 +395,6 @@ X != Y # Where Y is castable to Numeric and read only
 
 ```raku
 multi sub infix:<!=>(
-    Enumeration $a,
-    Red::AST $b
-) returns Mu
-```
-
-X != Y # Where X is castable to Numeric and writable
-
-### multi sub infix:<!=>
-
-```raku
-multi sub infix:<!=>(
     Numeric(Any) $a is rw,
     Red::AST $b
 ) returns Mu
@@ -423,6 +412,17 @@ multi sub infix:<!=>(
 ```
 
 X != Y # Where X is castable to Numeric and read only
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    Enumeration $a,
+    Red::AST $b
+) returns Mu
+```
+
+X != Y # Where X is castable to Numeric and writable
 
 ### multi sub infix:<==>
 
@@ -653,7 +653,7 @@ multi sub infix:«<»(
 ) returns Mu
 ```
 
-X < Y # Where Y is any Red::AST that returns a DateTime
+X < Y # Where Y is any Red::AST that returns a Numeric
 
 ### multi sub infix:«<»
 
@@ -864,6 +864,94 @@ multi sub infix:«>=»(
 
 X >= Y # Where X is castable to Numeric and read only
 
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Red::AST $a,
+    DateTime(Any) $b is rw
+) returns Mu
+```
+
+X == Y # Where Y is castable to DateTime and writable
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Red::AST $a,
+    DateTime(Any) $b
+) returns Mu
+```
+
+X == Y # Where Y is castable to DateTime and read only
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    DateTime(Any) $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X == Y # Where X is castable to DateTime and writable
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    DateTime(Any) $a,
+    Red::AST $b
+) returns Mu
+```
+
+X == Y # Where X is castable to DateTime and read only
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    Red::AST $a,
+    DateTime(Any) $b is rw
+) returns Mu
+```
+
+X != Y # Where Y is castable to DateTime and read only
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    Red::AST $a,
+    DateTime(Any) $b
+) returns Mu
+```
+
+X != Y # Where Y is castable to DateTime and read only
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    DateTime(Any) $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X != Y # Where X is castable to DateTime and writable
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    DateTime(Any) $a,
+    Red::AST $b
+) returns Mu
+```
+
+X != Y # Where X is castable to DateTime and read only
+
 ### multi sub infix:«<»
 
 ```raku
@@ -880,7 +968,7 @@ X < Y # Where Y is any Red::AST that returns a DateTime
 ```raku
 multi sub infix:«<»(
     Red::AST $a,
-    DateTime $b is rw
+    DateTime(Any) $b is rw
 ) returns Mu
 ```
 
@@ -891,7 +979,7 @@ X < Y # Where Y is DateTime and writable
 ```raku
 multi sub infix:«<»(
     Red::AST $a,
-    DateTime $b
+    DateTime(Any) $b
 ) returns Mu
 ```
 
@@ -901,7 +989,7 @@ X < Y # Where Y is DateTime and read only
 
 ```raku
 multi sub infix:«<»(
-    DateTime $a is rw,
+    DateTime(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -912,7 +1000,7 @@ X < Y # Where X is DateTime and writable
 
 ```raku
 multi sub infix:«<»(
-    DateTime $a,
+    DateTime(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -935,7 +1023,7 @@ X > Y # Where Y is any Red::AST that returns a DateTime
 ```raku
 multi sub infix:«>»(
     Red::AST $a,
-    DateTime $b is rw
+    DateTime(Any) $b is rw
 ) returns Mu
 ```
 
@@ -946,7 +1034,7 @@ X > Y # Where Y is DateTime and writable
 ```raku
 multi sub infix:«>»(
     Red::AST $a,
-    DateTime $b
+    DateTime(Any) $b
 ) returns Mu
 ```
 
@@ -956,7 +1044,7 @@ X > Y # Where Y is DateTime and read only
 
 ```raku
 multi sub infix:«>»(
-    DateTime $a is rw,
+    DateTime(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -990,7 +1078,7 @@ X <= Y # Where Y is any Red::AST that returns a DateTime
 ```raku
 multi sub infix:«<=»(
     Red::AST $a,
-    DateTime $b is rw
+    DateTime(Any) $b is rw
 ) returns Mu
 ```
 
@@ -1001,7 +1089,7 @@ X <= Y # Where Y is DateTime and writable
 ```raku
 multi sub infix:«<=»(
     Red::AST $a,
-    DateTime $b
+    DateTime(Any) $b
 ) returns Mu
 ```
 
@@ -1022,7 +1110,7 @@ X <= Y # Where X is DateTime and writable
 
 ```raku
 multi sub infix:«<=»(
-    DateTime $a,
+    DateTime(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
@@ -1045,7 +1133,7 @@ X >= Y # Where Y is any Red::AST that returns a DateTime
 ```raku
 multi sub infix:«>=»(
     Red::AST $a,
-    DateTime $b is rw
+    DateTime(Any) $b is rw
 ) returns Mu
 ```
 
@@ -1056,7 +1144,7 @@ X >= Y # Where Y is DateTime and writable
 ```raku
 multi sub infix:«>=»(
     Red::AST $a,
-    DateTime $b
+    DateTime(Any) $b
 ) returns Mu
 ```
 
@@ -1066,7 +1154,7 @@ X >= Y # Where Y is DateTime and read only
 
 ```raku
 multi sub infix:«>=»(
-    DateTime $a is rw,
+    DateTime(Any) $a is rw,
     Red::AST $b
 ) returns Mu
 ```
@@ -1077,12 +1165,100 @@ X >= Y # Where X is DateTime and writable
 
 ```raku
 multi sub infix:«>=»(
-    DateTime $a,
+    DateTime(Any) $a,
     Red::AST $b
 ) returns Mu
 ```
 
 X >= Y # Where X is DateTime and read only
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Red::AST $a,
+    Date(Any) $b is rw
+) returns Mu
+```
+
+X == Y # Where Y is castable to Date and writable
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Red::AST $a,
+    Date(Any) $b
+) returns Mu
+```
+
+X == Y # Where Y is castable to Date and read only
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Date(Any) $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X == Y # Where X is castable to Date and writable
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Date(Any) $a,
+    Red::AST $b
+) returns Mu
+```
+
+X == Y # Where X is castable to Date and read only
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    Red::AST $a,
+    Date(Any) $b is rw
+) returns Mu
+```
+
+X != Y # Where Y is castable to Date and read only
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    Red::AST $a,
+    Date(Any) $b
+) returns Mu
+```
+
+X != Y # Where Y is castable to Date and read only
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    Date(Any) $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X != Y # Where X is castable to Date and writable
+
+### multi sub infix:<!=>
+
+```raku
+multi sub infix:<!=>(
+    Date(Any) $a,
+    Red::AST $b
+) returns Mu
+```
+
+X != Y # Where X is castable to Date and read only
 
 ### multi sub infix:«<»
 
