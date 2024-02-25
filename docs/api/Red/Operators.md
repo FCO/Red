@@ -1480,6 +1480,534 @@ multi sub infix:«>=»(
 
 X >= Y # Where X is Date and read only
 
+### multi sub infix:<eq>
+
+```raku
+multi sub infix:<eq>(
+    Red::AST $a,
+    DateTime $b is rw
+) returns Mu
+```
+
+X eq Y # Where Y is castable to DateTime and writable
+
+### multi sub infix:<eq>
+
+```raku
+multi sub infix:<eq>(
+    Red::AST $a,
+    DateTime $b
+) returns Mu
+```
+
+X eq Y # Where Y is castable to DateTime and read only
+
+### multi sub infix:<eq>
+
+```raku
+multi sub infix:<eq>(
+    DateTime $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X eq Y # Where X is castable to DateTime and writable
+
+### multi sub infix:<eq>
+
+```raku
+multi sub infix:<eq>(
+    DateTime $a,
+    Red::AST $b
+) returns Mu
+```
+
+X eq Y # Where X is castable to DateTime and read only
+
+### multi sub infix:<ne>
+
+```raku
+multi sub infix:<ne>(
+    Red::AST $a,
+    DateTime $b is rw
+) returns Mu
+```
+
+X ne Y # Where Y is castable to DateTime and writable
+
+### multi sub infix:<ne>
+
+```raku
+multi sub infix:<ne>(
+    Red::AST $a,
+    DateTime $b
+) returns Mu
+```
+
+X ne Y # Where Y is castable to DateTime and read only
+
+### multi sub infix:<ne>
+
+```raku
+multi sub infix:<ne>(
+    DateTime $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X ne Y # Where X is castable to DateTime and writable
+
+### multi sub infix:<ne>
+
+```raku
+multi sub infix:<ne>(
+    DateTime $a,
+    Red::AST $b
+) returns Mu
+```
+
+X ne Y # Where X is castable to DateTime and read only
+
+### multi sub infix:<lt>
+
+```raku
+multi sub infix:<lt>(
+    Red::AST $a,
+    DateTime $b is rw
+) returns Mu
+```
+
+X lt Y # Where Y is castable to DateTime and writable
+
+### multi sub infix:<lt>
+
+```raku
+multi sub infix:<lt>(
+    Red::AST $a,
+    DateTime $b
+) returns Mu
+```
+
+X lt Y # Where Y is castable to DateTime and read only
+
+### multi sub infix:<lt>
+
+```raku
+multi sub infix:<lt>(
+    DateTime $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X lt Y # Where X is castable to DateTime and writable
+
+### multi sub infix:<lt>
+
+```raku
+multi sub infix:<lt>(
+    DateTime $a,
+    Red::AST $b
+) returns Mu
+```
+
+X lt Y # Where X is castable to DateTime and read only
+
+### multi sub infix:<gt>
+
+```raku
+multi sub infix:<gt>(
+    Red::AST $a,
+    DateTime $b is rw
+) returns Mu
+```
+
+X gt Y # Where Y is castable to DateTime and writable
+
+### multi sub infix:<gt>
+
+```raku
+multi sub infix:<gt>(
+    Red::AST $a,
+    DateTime $b
+) returns Mu
+```
+
+X gt Y # Where Y is castable to DateTime and read only
+
+### multi sub infix:<gt>
+
+```raku
+multi sub infix:<gt>(
+    DateTime $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X gt Y # Where X is castable to DateTime and writable
+
+### multi sub infix:<gt>
+
+```raku
+multi sub infix:<gt>(
+    DateTime $a,
+    Red::AST $b
+) returns Mu
+```
+
+X gt Y # Where X is castable to DateTime and read only
+
+### multi sub infix:<le>
+
+```raku
+multi sub infix:<le>(
+    Red::AST $a,
+    DateTime $b is rw
+) returns Mu
+```
+
+X le Y # Where Y is castable to DateTime and writable
+
+### multi sub infix:<le>
+
+```raku
+multi sub infix:<le>(
+    Red::AST $a,
+    DateTime $b
+) returns Mu
+```
+
+X le Y # Where Y is castable to DateTime and read only
+
+### multi sub infix:<le>
+
+```raku
+multi sub infix:<le>(
+    DateTime $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X le Y # Where X is castable to DateTime and writable
+
+### multi sub infix:<le>
+
+```raku
+multi sub infix:<le>(
+    DateTime $a,
+    Red::AST $b
+) returns Mu
+```
+
+X le Y # Where X is castable to DateTime and read only
+
+### multi sub infix:<ge>
+
+```raku
+multi sub infix:<ge>(
+    Red::AST $a,
+    DateTime $b is rw
+) returns Mu
+```
+
+X ge Y # Where Y is castable to DateTime and writable
+
+### multi sub infix:<ge>
+
+```raku
+multi sub infix:<ge>(
+    Red::AST $a,
+    DateTime $b
+) returns Mu
+```
+
+X ge Y # Where Y is castable to DateTime and read only
+
+### multi sub infix:<ge>
+
+```raku
+multi sub infix:<ge>(
+    DateTime $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X ge Y # Where X is castable to DateTime and writable
+
+### multi sub infix:<ge>
+
+```raku
+multi sub infix:<ge>(
+    DateTime $a,
+    Red::AST $b
+) returns Mu
+```
+
+X ge Y # Where X is castable to DateTime and read only
+
+### multi sub infix:<eq>
+
+```raku
+multi sub infix:<eq>(
+    Red::AST $a,
+    Date $b is rw
+) returns Mu
+```
+
+X eq Y # Where Y is castable to Date and writable
+
+### multi sub infix:<eq>
+
+```raku
+multi sub infix:<eq>(
+    Red::AST $a,
+    Date $b
+) returns Mu
+```
+
+X eq Y # Where Y is castable to Date and read only
+
+### multi sub infix:<eq>
+
+```raku
+multi sub infix:<eq>(
+    Date $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X eq Y # Where X is castable to Date and writable
+
+### multi sub infix:<eq>
+
+```raku
+multi sub infix:<eq>(
+    Date $a,
+    Red::AST $b
+) returns Mu
+```
+
+X eq Y # Where X is castable to Date and read only
+
+### multi sub infix:<ne>
+
+```raku
+multi sub infix:<ne>(
+    Red::AST $a,
+    Date $b is rw
+) returns Mu
+```
+
+X ne Y # Where Y is castable to Date and writable
+
+### multi sub infix:<ne>
+
+```raku
+multi sub infix:<ne>(
+    Red::AST $a,
+    Date $b
+) returns Mu
+```
+
+X ne Y # Where Y is castable to Date and read only
+
+### multi sub infix:<ne>
+
+```raku
+multi sub infix:<ne>(
+    Date $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X ne Y # Where X is castable to Date and writable
+
+### multi sub infix:<ne>
+
+```raku
+multi sub infix:<ne>(
+    Date $a,
+    Red::AST $b
+) returns Mu
+```
+
+X ne Y # Where X is castable to Date and read only
+
+### multi sub infix:<lt>
+
+```raku
+multi sub infix:<lt>(
+    Red::AST $a,
+    Date $b is rw
+) returns Mu
+```
+
+X lt Y # Where Y is castable to Date and writable
+
+### multi sub infix:<lt>
+
+```raku
+multi sub infix:<lt>(
+    Red::AST $a,
+    Date $b
+) returns Mu
+```
+
+X lt Y # Where Y is castable to Date and read only
+
+### multi sub infix:<lt>
+
+```raku
+multi sub infix:<lt>(
+    Date $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X lt Y # Where X is castable to Date and writable
+
+### multi sub infix:<lt>
+
+```raku
+multi sub infix:<lt>(
+    Date $a,
+    Red::AST $b
+) returns Mu
+```
+
+X lt Y # Where X is castable to Date and read only
+
+### multi sub infix:<gt>
+
+```raku
+multi sub infix:<gt>(
+    Red::AST $a,
+    Date $b is rw
+) returns Mu
+```
+
+X gt Y # Where Y is castable to Date and writable
+
+### multi sub infix:<gt>
+
+```raku
+multi sub infix:<gt>(
+    Red::AST $a,
+    Date $b
+) returns Mu
+```
+
+X gt Y # Where Y is castable to Date and read only
+
+### multi sub infix:<gt>
+
+```raku
+multi sub infix:<gt>(
+    Date $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X gt Y # Where X is castable to Date and writable
+
+### multi sub infix:<gt>
+
+```raku
+multi sub infix:<gt>(
+    Date $a,
+    Red::AST $b
+) returns Mu
+```
+
+X gt Y # Where X is castable to Date and read only
+
+### multi sub infix:<le>
+
+```raku
+multi sub infix:<le>(
+    Red::AST $a,
+    Date $b is rw
+) returns Mu
+```
+
+X le Y # Where Y is castable to Date and writable
+
+### multi sub infix:<le>
+
+```raku
+multi sub infix:<le>(
+    Red::AST $a,
+    Date $b
+) returns Mu
+```
+
+X le Y # Where Y is castable to Date and read only
+
+### multi sub infix:<le>
+
+```raku
+multi sub infix:<le>(
+    Date $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X le Y # Where X is castable to Date and writable
+
+### multi sub infix:<le>
+
+```raku
+multi sub infix:<le>(
+    Date $a,
+    Red::AST $b
+) returns Mu
+```
+
+X le Y # Where X is castable to Date and read only
+
+### multi sub infix:<ge>
+
+```raku
+multi sub infix:<ge>(
+    Red::AST $a,
+    Date $b is rw
+) returns Mu
+```
+
+X ge Y # Where Y is castable to Date and writable
+
+### multi sub infix:<ge>
+
+```raku
+multi sub infix:<ge>(
+    Red::AST $a,
+    Date $b
+) returns Mu
+```
+
+X ge Y # Where Y is castable to Date and read only
+
+### multi sub infix:<ge>
+
+```raku
+multi sub infix:<ge>(
+    Date $a is rw,
+    Red::AST $b
+) returns Mu
+```
+
+X ge Y # Where X is castable to Date and writable
+
+### multi sub infix:<ge>
+
+```raku
+multi sub infix:<ge>(
+    Date $a,
+    Red::AST $b
+) returns Mu
+```
+
+X ge Y # Where X is castable to Date and read only
+
 ### multi sub infix:<lt>
 
 ```raku
