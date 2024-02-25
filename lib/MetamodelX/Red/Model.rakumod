@@ -251,8 +251,9 @@ multi method join(\model, \to-join, $on where *.^can("relationship-ast"), :$name
 
 my UInt $alias_num = 1;
 method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", :$base, :$relationship, :$join-type, Bool :$opposite)) {
+    my $cache-key = c.WHICH;
     $!alias-cache-lock.protect: {
-        return %!alias-cache{$name} if %!alias-cache{$name}:exists;
+        return %!alias-cache{$cache-key} if %!alias-cache{$cache-key}:exists;
         my \alias = ::?CLASS.new_type(:$name);
 
         my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
@@ -312,7 +313,7 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
             alias.^add-relationship: $rel.transfer: alias
         }
         alias.^compose;
-        %!alias-cache{$name} = alias;
+        %!alias-cache{$cache-key} = alias;
 
         return alias;
     }

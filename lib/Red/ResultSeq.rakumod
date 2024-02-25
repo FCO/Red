@@ -447,7 +447,7 @@ multi method join-model(Red::Model \model, &on, :$name = "{ self.^shortname }_{ 
         }
         model.^all.where: $filter
     } else {
-        self.of.^join(model, &on, :$name,  |%pars).^all.clone: :$!chain
+        self.of.^join(model, &on, :$name, |%pars).^all.clone: :$!chain
     }
 }
 
