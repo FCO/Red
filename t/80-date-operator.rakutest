@@ -1,0 +1,71 @@
+#!/usr/bin/env raku
+
+use Red;
+use Test;
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+model Dt {
+    has Int $.id is serial;
+    has DateTime $.created is column = DateTime.now;
+
+}
+
+Dt.^create-table(:if-not-exists);
+
+Dt.^all.delete;
+
+my $earlier = DateTime.now.earlier(days => 1);
+my $even_earlier = DateTime.now.earlier(days => 2);
+
+Dt.^create(created => $earlier);
+
+my $now = DateTime.now;
+
+lives-ok { is Dt.^all.grep(*.created < $now).elems, 1, "$earlier < $now" };
+lives-ok { is Dt.^all.grep(*.created lt $now).elems, 1, "$earlier lt $now" };
+lives-ok { is Dt.^all.grep(*.created < $earlier).elems, 0, "$earlier < $earlier" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created lt $earlier).elems, 0, "$earlier lt $earlier" };
+lives-ok { is Dt.^all.grep(*.created <= $now).elems, 1, "$earlier <= $now" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created le $now).elems, 1, "$earlier le $now" };
+lives-ok { is Dt.^all.grep(*.created <= $earlier).elems, 1, "$earlier <= $earlier" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created le $earlier).elems, 1, "$earlier le $earlier" };
+lives-ok { is Dt.^all.grep(*.created <= $even_earlier).elems, 0, "$earlier <= $even_earlier" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created le $even_earlier).elems, 0, "$earlier le $even_earlier" };
+lives-ok { is Dt.^all.grep(*.created == $now).elems, 0, "$earlier == $now" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created eq $now).elems, 0, "$earlier eq $now" };
+lives-ok { is Dt.^all.grep(*.created == $earlier).elems, 1, "$earlier == $earlier" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created eq $earlier).elems, 1, "$earlier eq $earlier" };
+lives-ok { is Dt.^all.grep(*.created != $earlier).elems, 0, "$earlier != $earlier" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created ne $earlier).elems, 0, "$earlier ne $earlier" };
+lives-ok { is Dt.^all.grep(*.created != $now).elems, 1, "$earlier != $now" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created ne $now).elems, 1, "$earlier ne $now" };
+lives-ok { is Dt.^all.grep(*.created > $now).elems, 0, "$earlier > $now" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created gt $now).elems, 0, "$earlier gt $now" };
+lives-ok { is Dt.^all.grep(*.created > $even_earlier).elems, 1, "$earlier > $even_earlier" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created gt $even_earlier).elems, 1, "$earlier gt $even_earlier" };
+lives-ok { is Dt.^all.grep(*.created >= $even_earlier).elems, 1, "$earlier >= $even_earlier" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created ge $even_earlier).elems, 1, "$earlier ge $even_earlier" };
+lives-ok { is Dt.^all.grep(*.created >= $earlier).elems, 1, "$earlier >= $earlier" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created ge $earlier).elems, 1, "$earlier ge $earlier" };
+lives-ok { is Dt.^all.grep(*.created >= $now).elems, 0, "$earlier >= $now" };
+todo "we should define how string operators should work with DateTime";
+lives-ok { is Dt.^all.grep(*.created ge $now).elems, 0, "$earlier ge $now" };
+
+done-testing

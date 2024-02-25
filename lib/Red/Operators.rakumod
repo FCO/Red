@@ -156,16 +156,6 @@ multi infix:<==>(Red::AST $a, Numeric() $b is readonly) is export {
     Red::AST::Eq.new: $a, ast-value($b), :cast<num>
 }
 
-#| X == Y # Where LHS is AST and RHS is Enumeration
-multi infix:<==>(Red::AST $a, Enumeration $b) is export {
-    Red::AST::Eq.new: $a, ast-value($b.value), :cast<num>, :bind-right
-}
-
-#| X == Y # Where X is castable to Numeric and writable
-multi infix:<==>(Enumeration $a, Red::AST $b) is export {
-    Red::AST::Eq.new: ast-value($a), $b, :cast<num>, :bind-left
-}
-
 #| X == Y # Where X is castable to Numeric and writable
 multi infix:<==>(Numeric() $a is rw, Red::AST $b) is export {
     Red::AST::Eq.new: ast-value($a), $b, :cast<num>, :bind-left
@@ -179,6 +169,16 @@ multi infix:<==>(Numeric() $a is readonly, Red::AST $b) is export {
 #| X == Y # Where X is castable to Numeric and read only
 multi infix:<==>(Red::AST $a where .returns ~~ DateTime, Date $b) is export {
     Red::AST::Eq.new: $a.yyyy-mm-dd, ast-value($b), :cast<num>;
+}
+
+#| X == Y # Where LHS is AST and RHS is Enumeration
+multi infix:<==>(Red::AST $a, Enumeration $b) is export {
+    Red::AST::Eq.new: $a, ast-value($b.value), :cast<num>, :bind-right
+}
+
+#| X == Y # Where X is castable to Numeric and writable
+multi infix:<==>(Enumeration $a, Red::AST $b) is export {
+    Red::AST::Eq.new: ast-value($a), $b, :cast<num>, :bind-left
 }
 
 #| X != Y # Where Y is castable to Numeric and read only
@@ -197,11 +197,6 @@ multi infix:<!=>(Red::AST $a, Numeric() $b is readonly) is export {
 }
 
 #| X != Y # Where X is castable to Numeric and writable
-multi infix:<!=>(Enumeration $a, Red::AST $b) is export {
-    Red::AST::Ne.new: ast-value($a), $b, :cast<num>, :bind-left
-}
-
-#| X != Y # Where X is castable to Numeric and writable
 multi infix:<!=>(Numeric() $a is rw, Red::AST $b) is export {
     Red::AST::Ne.new: ast-value($a), $b, :cast<num>, :bind-left
 }
@@ -209,6 +204,11 @@ multi infix:<!=>(Numeric() $a is rw, Red::AST $b) is export {
 #| X != Y # Where X is castable to Numeric and read only
 multi infix:<!=>(Numeric() $a is readonly, Red::AST $b) is export {
     Red::AST::Ne.new: ast-value($a), $b, :cast<num>
+}
+
+#| X != Y # Where X is castable to Numeric and writable
+multi infix:<!=>(Enumeration $a, Red::AST $b) is export {
+    Red::AST::Ne.new: ast-value($a), $b, :cast<num>, :bind-left
 }
 
 #| X == Y
@@ -316,7 +316,7 @@ multi infix:<ne>(Str() $a is readonly, Red::AST $b) is export {
     Red::AST::Ne.new: ast-value($a), $b, :cast<str>
 }
 
-#| X < Y # Where Y is any Red::AST that returns a DateTime
+#| X < Y # Where Y is any Red::AST that returns a Numeric
 multi infix:<< < >>(Red::AST $a where .returns ~~ Numeric, Red::AST $b) is export is default {
     Red::AST::Lt.new: $a, $b, :cast<num>
 }
@@ -417,28 +417,68 @@ multi infix:<< >= >>(Numeric() $a is readonly, Red::AST $b) is export {
 }
 
 ############################
+#| X == Y # Where Y is castable to DateTime and writable
+multi infix:<==>(Red::AST $a, DateTime() $b is rw) is export {
+    Red::AST::Eq.new: $a, ast-value($b), :cast<datetime>, :bind-right
+}
+
+#| X == Y # Where Y is castable to DateTime and read only
+multi infix:<==>(Red::AST $a, DateTime() $b is readonly) is export {
+    Red::AST::Eq.new: $a, ast-value($b), :cast<datetime>
+}
+
+#| X == Y # Where X is castable to DateTime and writable
+multi infix:<==>(DateTime() $a is rw, Red::AST $b) is export {
+    Red::AST::Eq.new: ast-value($a), $b, :cast<datetime>, :bind-left
+}
+
+#| X == Y # Where X is castable to DateTime and read only
+multi infix:<==>(DateTime() $a is readonly, Red::AST $b) is export {
+    Red::AST::Eq.new: ast-value($a), $b, :cast<datetime>
+}
+
+#| X != Y # Where Y is castable to DateTime and read only
+multi infix:<!=>(Red::AST $a, DateTime() $b is rw) is export {
+    Red::AST::Ne.new: $a, ast-value($b), :cast<datetime>, :bind-right
+}
+
+#| X != Y # Where Y is castable to DateTime and read only
+multi infix:<!=>(Red::AST $a, DateTime() $b is readonly) is export {
+    Red::AST::Ne.new: $a, ast-value($b), :cast<datetime>
+}
+
+#| X != Y # Where X is castable to DateTime and writable
+multi infix:<!=>(DateTime() $a is rw, Red::AST $b) is export {
+    Red::AST::Ne.new: ast-value($a), $b, :cast<datetime>, :bind-left
+}
+
+#| X != Y # Where X is castable to DateTime and read only
+multi infix:<!=>(DateTime() $a is readonly, Red::AST $b) is export {
+    Red::AST::Ne.new: ast-value($a), $b, :cast<datetime>
+}
+
 #| X < Y # Where Y is any Red::AST that returns a DateTime
-multi infix:<< < >>(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is export {
+multi infix:<< < >>(Red::AST $a where .returns ~~ DateTime(), Red::AST $b) is export {
     Red::AST::Lt.new: $a, $b, :cast<datetime>
 }
 
 #| X < Y # Where Y is DateTime and writable
-multi infix:<< < >>(Red::AST $a, DateTime $b is rw) is export {
+multi infix:<< < >>(Red::AST $a, DateTime() $b is rw) is export {
     Red::AST::Lt.new: $a, ast-value($b), :cast<datetime>, :bind-right
 }
 
 #| X < Y # Where Y is DateTime and read only
-multi infix:<< < >>(Red::AST $a, DateTime $b is readonly) is export {
+multi infix:<< < >>(Red::AST $a, DateTime() $b is readonly) is export {
     Red::AST::Lt.new: $a, ast-value($b), :cast<datetime>
 }
 
 #| X < Y # Where X is DateTime and writable
-multi infix:<< < >>(DateTime $a is rw, Red::AST $b) is export {
+multi infix:<< < >>(DateTime() $a is rw, Red::AST $b) is export {
     Red::AST::Lt.new: ast-value($a), $b, :cast<datetime>, :bind-left
 }
 
 #| X < Y # Where X is DateTime and read only
-multi infix:<< < >>(DateTime $a is readonly, Red::AST $b) is export {
+multi infix:<< < >>(DateTime() $a is readonly, Red::AST $b) is export {
     Red::AST::Lt.new: ast-value($a), $b, :cast<datetime>
 }
 
@@ -448,17 +488,17 @@ multi infix:<< > >>(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is expo
 }
 
 #| X > Y # Where Y is DateTime and writable
-multi infix:<< > >>(Red::AST $a, DateTime $b is rw) is export {
+multi infix:<< > >>(Red::AST $a, DateTime() $b is rw) is export {
     Red::AST::Gt.new: $a, ast-value($b), :cast<datetime>, :bind-right
 }
 
 #| X > Y # Where Y is DateTime and read only
-multi infix:<< > >>(Red::AST $a, DateTime $b is readonly) is export {
+multi infix:<< > >>(Red::AST $a, DateTime() $b is readonly) is export {
     Red::AST::Gt.new: $a, ast-value($b), :cast<datetime>
 }
 
 #| X > Y # Where X is DateTime and writable
-multi infix:<< > >>(DateTime $a is rw, Red::AST $b) is export {
+multi infix:<< > >>(DateTime() $a is rw, Red::AST $b) is export {
     Red::AST::Gt.new: ast-value($a), $b, :cast<datetime>, :bind-left
 }
 
@@ -473,12 +513,12 @@ multi infix:<< <= >>(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is exp
 }
 
 #| X <= Y # Where Y is DateTime and writable
-multi infix:<< <= >>(Red::AST $a, DateTime $b is rw) is export {
+multi infix:<< <= >>(Red::AST $a, DateTime() $b is rw) is export {
     Red::AST::Le.new: $a, ast-value($b), :cast<datetime>, :bind-right
 }
 
 #| X <= Y # Where Y is DateTime and read only
-multi infix:<< <= >>(Red::AST $a, DateTime $b is readonly) is export {
+multi infix:<< <= >>(Red::AST $a, DateTime() $b is readonly) is export {
     Red::AST::Le.new: $a, ast-value($b), :cast<datetime>
 }
 
@@ -488,7 +528,7 @@ multi infix:<< <= >>(DateTime $a is rw, Red::AST $b) is export {
 }
 
 #| X <= Y # Where X is DateTime and read only
-multi infix:<< <= >>(DateTime $a is readonly, Red::AST $b) is export {
+multi infix:<< <= >>(DateTime() $a is readonly, Red::AST $b) is export {
     Red::AST::Le.new: ast-value($a), $b, :cast<datetime>
 }
 
@@ -498,26 +538,66 @@ multi infix:<< >= >>(Red::AST $a where .returns ~~ DateTime, Red::AST $b) is exp
 }
 
 #| X >= Y # Where Y is DateTime and writable
-multi infix:<< >= >>(Red::AST $a, DateTime $b is rw) is export {
+multi infix:<< >= >>(Red::AST $a, DateTime() $b is rw) is export {
     Red::AST::Ge.new: $a, ast-value($b), :cast<datetime>, :bind-right
 }
 
 #| X >= Y # Where Y is DateTime and read only
-multi infix:<< >= >>(Red::AST $a, DateTime $b is readonly) is export {
+multi infix:<< >= >>(Red::AST $a, DateTime() $b is readonly) is export {
     Red::AST::Ge.new: $a, ast-value($b), :cast<datetime>
 }
 
 #| X >= Y # Where X is DateTime and writable
-multi infix:<< >= >>(DateTime $a is rw, Red::AST $b) is export {
+multi infix:<< >= >>(DateTime() $a is rw, Red::AST $b) is export {
     Red::AST::Ge.new: ast-value($a), $b, :cast<datetime>, :bind-left
 }
 
 #| X >= Y # Where X is DateTime and read only
-multi infix:<< >= >>(DateTime $a is readonly, Red::AST $b) is export {
+multi infix:<< >= >>(DateTime() $a is readonly, Red::AST $b) is export {
     Red::AST::Ge.new: ast-value($a), $b, :cast<datetime>
 }
 
 ############################
+
+#| X == Y # Where Y is castable to Date and writable
+multi infix:<==>(Red::AST $a, Date() $b is rw) is export {
+    Red::AST::Eq.new: $a, ast-value($b), :cast<date>, :bind-right
+}
+
+#| X == Y # Where Y is castable to Date and read only
+multi infix:<==>(Red::AST $a, Date() $b is readonly) is export {
+    Red::AST::Eq.new: $a, ast-value($b), :cast<date>
+}
+
+#| X == Y # Where X is castable to Date and writable
+multi infix:<==>(Date() $a is rw, Red::AST $b) is export {
+    Red::AST::Eq.new: ast-value($a), $b, :cast<date>, :bind-left
+}
+
+#| X == Y # Where X is castable to Date and read only
+multi infix:<==>(Date() $a is readonly, Red::AST $b) is export {
+    Red::AST::Eq.new: ast-value($a), $b, :cast<date>
+}
+
+#| X != Y # Where Y is castable to Date and read only
+multi infix:<!=>(Red::AST $a, Date() $b is rw) is export {
+    Red::AST::Ne.new: $a, ast-value($b), :cast<date>, :bind-right
+}
+
+#| X != Y # Where Y is castable to Date and read only
+multi infix:<!=>(Red::AST $a, Date() $b is readonly) is export {
+    Red::AST::Ne.new: $a, ast-value($b), :cast<date>
+}
+
+#| X != Y # Where X is castable to Date and writable
+multi infix:<!=>(Date() $a is rw, Red::AST $b) is export {
+    Red::AST::Ne.new: ast-value($a), $b, :cast<date>, :bind-left
+}
+
+#| X != Y # Where X is castable to Date and read only
+multi infix:<!=>(Date() $a is readonly, Red::AST $b) is export {
+    Red::AST::Ne.new: ast-value($a), $b, :cast<date>
+}
 
 #| X < Y # Where Y is any Red::AST that returns a Date
 multi infix:<< < >>(Red::AST $a where .returns ~~ Date, Red::AST $b) is export {
