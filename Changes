@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.69  2024-02-26T00:14:12Z
     - Change Str defaults to text (from varchar(255))
     - Fix Date and DateTime operators
 
