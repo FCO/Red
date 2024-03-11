@@ -1,7 +1,8 @@
-#!env perl6
+#!env raku
 use Red::Cli;
 use Red::Do;
 use Red::Database;
+use Red::Configuration;
 
 my %*SUB-MAIN-OPTS =
   :named-anywhere,
@@ -9,80 +10,117 @@ my %*SUB-MAIN-OPTS =
 
 my $*RED-DEBUG = False;
 
-proto MAIN(Str :$I, Bool :$debug, |) {
+proto MAIN(Str :$I, Bool :$debug, IO() :$config = $*CWD.add("migration.rakuconfig"), |) {
     dyn-lib .split: "," with $I;
+    my $*config = single-config-run :file($config);
     $*RED-DEBUG = $debug;
     {*}
 }
 
-#| List tables in database
 multi MAIN(
-    "list-tables",
-    Str  :$driver!,
-    *%pars
+    "migration",
+    "update"
 ) {
-    my $*RED-DB = database($driver, |%pars);
-    .say for list-tables :$driver, |%pars
+    note "dump DB into { $*config.new-dump-version-path.relative }";
+    note "calculate the differences between the DB and the models and create high level changes file on { $*config.migration-red-path.relative }";
+    note "apply  changes file on { $*config.migration-red-path.relative } on local DB";
+    note "copy changed models files to new dir inside { $*config.model-storage-path.relative }"
+}
+multi MAIN(
+    "migration",
+    "revert-update"
+) {
+    note "restore dump from { $*config.dump-version-path.relative }";
+    note "delete dump from { $*config.dump-version-path.relative }";
+    note "delete high level changes files from { $*config.migration-red-path.relative }";
+    note "delete models from { $*config.model-storage-path.relative }"
 }
 
-#| Generate stub code to access models from database schema
 multi MAIN(
-    "print-stub",
-    Str  :$schema-class,
-    Str  :$driver!,
-    *%pars
+    "migration",
+    "prepare"
 ) {
-    my $*RED-DB = database($driver, |%pars);
-    say gen-stub-code :$schema-class, :$driver, |%pars
+    note "convert high lavel DB change from { $*config.migration-red-path.relative } into SQL on { $*config.drivers.map({ $*config.migration-sql-path($_).relative }).join: " and " }";
+    note "delete all dumps on { $*config.dump-storage-path.relative }";
 }
 
-
-#| Generates migration plan to upgrade database schema
 multi MAIN(
-    "migration-plan",
-    Str :$model!,
-    Str :$require = $model,
-    Str :$driver!,
-    *%pars
+    "migration",
+    "apply",
+    Str :$driver
 ) {
-    my $*RED-DB = database($driver, |%pars);
-    migration-plan :$model, :$require, :$driver, |%pars
+    die "Driver does not exist on configuration (options: { $*config.drivers.join: ", " })" unless $driver ~~ $*config.drivers.any;
+    note "apply SQL from { $*config.migration-sql-path($driver).relative }";
 }
 
-#| Generates models' code from database schema
-multi MAIN(
-    "generate-code",
-    Str  :$path!    where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
-    Str  :$from-sql where { not .defined or .IO.f or $_ eq "-" or fail "SQL $_ do not exist." },
-    Str  :$schema-class,
-    Bool :$print-stub       = False,
-    Bool :$no-relationships = False,
-    #Bool :$stub-only,
-    Str  :$driver!,
-    *%pars
-) {
-    my $*RED-DB = database($driver, |%pars);
-    generate-code
-            :$path,
-            :$from-sql,
-            :$schema-class,
-            :$print-stub,
-            :$no-relationships,
-            :$driver,
-            |%pars
-}
-
-#| Prepare database
-multi MAIN(
-        "prepare-database",
-        Bool :$populate,
-        Str  :$models!,
-        Str  :$driver!,
-        *%pars
-) {
-    $GLOBAL::RED-DB = database $driver, |%pars;
-    prepare-database :$populate, :$models, :$driver, |%pars
-}
+# #| List tables in database
+# multi MAIN(
+#     "list-tables",
+#     Str  :$driver!,
+#     *%pars
+# ) {
+#     my $*RED-DB = database($driver, |%pars);
+#     .say for list-tables :$driver, |%pars
+# }
+#
+# #| Generate stub code to access models from database schema
+# multi MAIN(
+#     "print-stub",
+#     Str  :$schema-class,
+#     Str  :$driver!,
+#     *%pars
+# ) {
+#     my $*RED-DB = database($driver, |%pars);
+#     say gen-stub-code :$schema-class, :$driver, |%pars
+# }
+#
+#
+# #| Generates migration plan to upgrade database schema
+# multi MAIN(
+#     "migration-plan",
+#     Str :$model!,
+#     Str :$require = $model,
+#     Str :$driver!,
+#     *%pars
+# ) {
+#     my $*RED-DB = database($driver, |%pars);
+#     migration-plan :$model, :$require, :$driver, |%pars
+# }
+#
+# #| Generates models' code from database schema
+# multi MAIN(
+#     "generate-code",
+#     Str  :$path!    where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
+#     Str  :$from-sql where { not .defined or .IO.f or $_ eq "-" or fail "SQL $_ do not exist." },
+#     Str  :$schema-class,
+#     Bool :$print-stub       = False,
+#     Bool :$no-relationships = False,
+#     #Bool :$stub-only,
+#     Str  :$driver!,
+#     *%pars
+# ) {
+#     my $*RED-DB = database($driver, |%pars);
+#     generate-code
+#             :$path,
+#             :$from-sql,
+#             :$schema-class,
+#             :$print-stub,
+#             :$no-relationships,
+#             :$driver,
+#             |%pars
+# }
+#
+# #| Prepare database
+# multi MAIN(
+#         "prepare-database",
+#         Bool :$populate,
+#         Str  :$models!,
+#         Str  :$driver!,
+#         *%pars
+# ) {
+#     $GLOBAL::RED-DB = database $driver, |%pars;
+#     prepare-database :$populate, :$models, :$driver, |%pars
+# }
 
 sub dyn-lib(@libs) {
 	qq[use lib "{ $_ }"].EVAL for @libs
