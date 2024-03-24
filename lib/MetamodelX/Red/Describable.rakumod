@@ -33,6 +33,8 @@ method describe(\model --> Red::Cli::Table) {
 
 #| Returns the difference to transform this model to the database version.
 method diff-to-db(\model) {
+    say model.^table;
+    say get-RED-DB.schema-reader.table-definition: model.^table;
     model.^describe.diff: get-RED-DB.schema-reader.table-definition: model.^table
 }
 

@@ -81,6 +81,17 @@ multi MAIN(
     note "delete models from { $*config.model-storage-path.relative }"
 }
 
+#| Create (SQL) migration based on current a previous model version compared to last applied model
+multi MAIN(
+    "migration",
+    "prepare",
+    :$driver!,
+    :$models,
+    :$requires = $models,
+    :$from-model-version!,
+    *%pars,
+) {...}
+
 #| Create (SQL) migration based on current DB state compared to last applied model
 multi MAIN(
     "migration",
@@ -91,12 +102,37 @@ multi MAIN(
     *%pars,
 ) {
     red-defaults $driver, |%pars with $driver;
+    note "create SQL to transform the last version of model into current state of the DB on { $*config.drivers.map({ $*config.migration-sql-path($_).relative }).join: " and " }";
+
+    # Find current model version
+    
+    {
+        use MONKEY-SEE-NO-EVAL;
+        EVAL qq[use lib "{ $*config.model-storage-path.relative }";];
+
+        my $path = $*config.model-path: $models;
+        say $path;
+
+        with $path {
+            my $name = .extension("").basename;
+            require ::($name);
+
+            say ::($models).^ver;
+
+            say ::($models).^diff-to-db;
+            #
+            # for get-RED-DB.diff-to-ast: ::($models).^diff-to-db<> -> @data {
+            #     say @data;
+            # }
+        }
+    }
+
     require ::($requires); # FIXME: loop over @reqs
     note "copy changed models files to new dir inside { $*config.model-storage-path.relative }";
     my $orig-path = ::($models).^methods(:local).head.file.split(/\s/).head;
     $*config.copy-model: $orig-path;
     # note "Model copied to { $new-path.relative }"
-    note "create SQL to transform the last version of model into current state of the DB on { $*config.drivers.map({ $*config.migration-sql-path($_).relative }).join: " and " }";
+
     note "delete all dumps on { $*config.dump-storage-path.relative }";
 }
 

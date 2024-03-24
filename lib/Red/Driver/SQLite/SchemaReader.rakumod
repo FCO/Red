@@ -8,10 +8,10 @@ also does Red::SchemaReader;
 
 method sqlite-master { Red::Driver::SQLite::SQLiteMaster }
 
-#use Grammar::Tracer::Compact;
+# use Grammar::Tracer;
 grammar SQL::CreateTable {
     rule  TOP                      { :i <create-table>+ %% ";" }
-    rule  create-table             { :i CREATE TABLE <table-name=.name> '(' ~ ')' <column>+ %% [ "," ] }
+    rule  create-table             { :i CREATE TABLE (\"?) <table-name=.name> $0 '(' ~ ')' [ <column>+ %% [ <.ws> "," <.ws> ] ] }
     token name                     { :i \w+ }
     rule  type                     { :i <name>["(" ~ ")" \d+]? }
     rule  column                   { :i <column-name=.name> <type> <modifier>? <index-mod>? <auto-increment>? }
@@ -64,6 +64,7 @@ method table-definition($table) {
     $list.head
 }
 multi method table-definition-from-create-table(Str:D $sql) {
+    say $sql;
     SQL::CreateTable.parse($sql, :actions(SQL::CreateTable::Action)).made;
 }
 

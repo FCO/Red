@@ -7,14 +7,13 @@ class Red::Configuration {
   has IO()  $.version-storage-path                = $!migration-base-path.add: "versions";
   has IO()  $.dump-storage-path                   = $!migration-base-path.add: "dumps";
   has UInt  $.current-version                     = self!find-current-version;
+  has       %.versions-cache                      = self!compute-version-cache;
+  has       %.models-cache                        = self!compute-models-cache;
   has UInt  %.model-current-version is default(0) = self!find-all-models-current-version;
   has UInt  $.dump-current-version                = self!find-dump-current-version;
   has Str() $.red-subdir                          = "red";
   has Str() $.sql-subdir                          = "sql";
   has Str() @.drivers                             = <SQLite Pg>;
-
-  has %.versions-cache                            = self!compute-version-cache;
-  has %.models-cache                              = self!compute-models-cache;
 
 
   method !compute-version-cache {
@@ -27,12 +26,13 @@ class Red::Configuration {
     note "prepare a hash with all model versions";
     with $!model-storage-path {
       .mkdir;
-      for .dir -> $file {
+      for .dir.grep: *.basename ne ".precomp" -> $file {
         if $file.slurp ~~ /model <.ws> $<model>=[[\w|"::"|"-"]+ ":ver<" ~ ">" $<version>=[\d+]]/ {
           %cache{$<model>} = $file
         }
       }
     }
+    say %cache;
     %cache
   }
   method !find-current-version {
@@ -41,18 +41,9 @@ class Red::Configuration {
     0
   }
   method !find-all-models-current-version {
-    # TODO: Impment this
     my %ver;
     note "find all models current versions";
-    with $!model-storage-path {
-      .mkdir;
-      for .dir -> $file {
-        if $file.slurp ~~ /model <.ws> $<model>=[[\w|"::"|"-"]+] ":ver<" ~ ">" $<version>=[\d+]/ {
-          %ver{$<model>} max= +$<version>
-        }
-      }
-    }
-    %ver
+    %!models-cache.keys>>.split(/":ver<"/)>>.list.classify(*.head, :as{ .tail.chop.Int }).kv.map(-> $k, @v { $k => @v.max }).Hash;
   }
 
   method !find-dump-current-version(-->UInt()) {
@@ -82,6 +73,10 @@ class Red::Configuration {
   }
 
   method new-model-version(Str() $model-name) {
+    LEAVE {
+      my $key = "{ $model-name }:ver<{ %!model-current-version{$model-name} }>";
+      %!models-cache{$key} //= $!model-storage-path.add(~UUID.new).extension: "rakumod"
+    }
     ++%!model-current-version{$model-name}
   }
 
@@ -90,6 +85,7 @@ class Red::Configuration {
   }
 
   multi method model-path(Str() $model-name) {
+    say %!model-current-version;
     $.model-path: $model-name, %!model-current-version{$model-name}
   }
 
@@ -98,7 +94,10 @@ class Red::Configuration {
   }
 
   multi method model-version-path(Str() $model-name, UInt() $version) {
-    $!model-storage-path.add(%!models-cache{$model-name}{$version} //= ~UUID.new).extension: "rakumod"
+    say %!models-cache;
+    say $version;
+    my $key = "{ $model-name }:ver<{ $version }>";
+    %!models-cache{$key}
   }
 
   multi method model-version-path(Str() $model-name-version) {
