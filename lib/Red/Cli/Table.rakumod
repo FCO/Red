@@ -8,6 +8,7 @@ has Str  $.model-name = try { snake-to-camel-case $!name };
 has      @.columns;
 has      @.relationships;
 has Bool $.exists = True;
+has      $.model;
 
 submethod TWEAK(:@columns) {
     for @columns -> $col {
@@ -39,9 +40,16 @@ method to-code(Str :$schema-class, Bool :$no-relationships) {
 
 method diff(::?CLASS $b) {
     my @diffs;
-    if $!name ne $b.name {
+    if !$!name.defined && !$b.name.defined {
+        die "Should this be happening???";
+    } elsif !$!name.defined {
+        return [[ "+", "table", $b.name, $b.columns<> ],];
+    } elsif !$b.name.defined {
+        return [[ "-", "table", $!name ],];
+    }
+    if $!name // "" ne $b.name // "" {
         @diffs.push: [ $!name, "+", "name", $b.name ];
-        @diffs.push: [ $!name, "-", "name", $!name  ];
+        @diffs.push: [ $!name, "-", "name", $!name  ] without $!name;
     }
     if @!columns != $b.columns {
         @diffs.push: [ $!name, "+", "n-of-cols", $b.columns.elems ];

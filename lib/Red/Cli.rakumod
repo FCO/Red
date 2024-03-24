@@ -1,5 +1,6 @@
 unit class Red::Cli;
 use Red::Database;
+use Red::DB;
 use Red::Do;
 use Red::Schema;
 use Red::Utils;
@@ -13,7 +14,7 @@ multi list-tables(
         Str  :$driver!,
         *%pars
 ) is export {
-    my $schema-reader = $*RED-DB.schema-reader;
+    my $schema-reader = get-RED-DB.schema-reader;
 
     $schema-reader.tables-names.do-it
 }
@@ -38,7 +39,7 @@ multi gen-stub-code(
         Str  :$driver!,
         *%pars
 ) is export {
-    my $schema-reader = $*RED-DB.schema-reader;
+    my $schema-reader = get-RED-DB.schema-reader;
 
     my @includes;
     my @models;
@@ -65,11 +66,11 @@ multi migration-plan(
 ) is export {
     my %steps;
     require ::($require);
-    for $*RED-DB.diff-to-ast: ::($model).^diff-from-db -> @data {
+    for get-RED-DB.diff-to-ast: ::($model).^diff-from-db -> @data {
         say "Step ", ++$, ":";
         #say @data.join("\n").indent: 4
-        #        $*RED-DB.translate($_).key.indent(4).say for Red::AST::ChangeColumn.optimize: @data
-        $*RED-DB.translate($_).key.indent(4).say for @data
+        #        get-RED-DB.translate($_).key.indent(4).say for Red::AST::ChangeColumn.optimize: @data
+        get-RED-DB.translate($_).key.indent(4).say for @data
     }
 }
 
@@ -84,7 +85,7 @@ multi generate-code(
         Str  :$driver!,
         *%pars
 ) is export {
-    my $schema-reader = $*RED-DB.schema-reader;
+    my $schema-reader = get-RED-DB.schema-reader;
 
     my $schema = do if $path eq "-" {
         $*OUT

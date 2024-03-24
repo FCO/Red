@@ -1,6 +1,7 @@
 #!env raku
 use Red::Cli;
 use Red::Do;
+use Red::DB;
 use Red::Database;
 use Red::Configuration;
 
@@ -8,24 +9,68 @@ my %*SUB-MAIN-OPTS =
   :named-anywhere,
 ;
 
-my $*RED-DEBUG = False;
+my $*RED-DEBUG;
 
-proto MAIN(Str :$I, Bool :$debug, IO() :$config = $*CWD.add("migration.rakuconfig"), |) {
+proto MAIN(Str :$I, Bool :$debug,:$driver, IO() :$config = $*CWD.add("migration.rakuconfig"), |) {
     dyn-lib .split: "," with $I;
     my $*config = single-config-run :file($config);
     $*RED-DEBUG = $debug;
     {*}
 }
 
+#| Show model versions
 multi MAIN(
     "migration",
-    "update"
+    "model-versions",
+    *%pars,
 ) {
-    note "dump DB into { $*config.new-dump-version-path.relative }";
-    note "calculate the differences between the DB and the models and create high level changes file on { $*config.migration-red-path.relative }";
-    note "apply  changes file on { $*config.migration-red-path.relative } on local DB";
-    note "copy changed models files to new dir inside { $*config.model-storage-path.relative }"
+    my UInt $size = $*config.models-cache.keys>>.chars.max;
+    say "Models:";
+    for $*config.models-cache.kv -> Str() $model, IO() $path {
+        printf "\t%{ -$size }s => %s\n", $model, $path.relative
+    }
 }
+
+#| Update DB based on the model and create highlevel objects about those changes
+multi MAIN(
+    "migration",
+    "update",
+    :$driver!,
+    :$models,
+    :$requires = $models,
+    *%pars,
+) {
+    red-defaults $driver, |%pars with $driver;
+    my $path = $*config.new-dump-version-path;
+    $path.parent.mkdir;
+    note "dump DB into { $path.relative }";
+    get-RED-DB.dump: $path.relative;
+
+    note "calculate the differences between the DB";
+    my @reqs = $requires.comb(/<-[,]>+/);
+    require ::($requires); # FIXME: loop over @reqs
+
+    my @asts;
+
+    for get-RED-DB.diff-to-ast: ::($models).^diff-from-db<> -> @data {
+        @asts.append: @data;
+    }
+    note "The models and create high level changes file on { $*config.migration-red-path.relative }";
+    # TODO: create high level way
+    note "apply changes file on { $*config.migration-red-path.relative } on local DB";
+    get-RED-DB.execute: $_ for @asts;
+}
+
+#| Redo transformation based on highlevel object (that could have been changed)
+multi MAIN(
+    "migration",
+    "redo-update"
+) {
+    note "restore dump from { $*config.dump-version-path.relative }";
+    note "exec highlevel changes from { $*config.migration-red-path.relative }"
+}
+
+#| Revert to the state before the last update
 multi MAIN(
     "migration",
     "revert-update"
@@ -36,14 +81,26 @@ multi MAIN(
     note "delete models from { $*config.model-storage-path.relative }"
 }
 
+#| Create (SQL) migration based on current DB state compared to last applied model
 multi MAIN(
     "migration",
-    "prepare"
+    "prepare",
+    :$driver!,
+    :$models,
+    :$requires = $models,
+    *%pars,
 ) {
-    note "convert high lavel DB change from { $*config.migration-red-path.relative } into SQL on { $*config.drivers.map({ $*config.migration-sql-path($_).relative }).join: " and " }";
+    red-defaults $driver, |%pars with $driver;
+    require ::($requires); # FIXME: loop over @reqs
+    note "copy changed models files to new dir inside { $*config.model-storage-path.relative }";
+    my $orig-path = ::($models).^methods(:local).head.file.split(/\s/).head;
+    $*config.copy-model: $orig-path;
+    # note "Model copied to { $new-path.relative }"
+    note "create SQL to transform the last version of model into current state of the DB on { $*config.drivers.map({ $*config.migration-sql-path($_).relative }).join: " and " }";
     note "delete all dumps on { $*config.dump-storage-path.relative }";
 }
 
+#| Apply SQL (possibly changed) into prod DB
 multi MAIN(
     "migration",
     "apply",

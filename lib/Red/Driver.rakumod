@@ -17,6 +17,8 @@ has Supplier $!supplier .= new;
 #| Supply of events of that driver
 has Supply   $.events    = $!supplier.Supply;
 
+method dump(IO() $target, |) { NYI "dumper for driver { self.^name }" }
+
 method new-connection {
     self.WHAT.new: |self.^attributes.map({ .name.substr(2) => .get_value: self }).Hash
 }

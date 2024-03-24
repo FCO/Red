@@ -6,11 +6,21 @@ use Red::AST::DateTimeFuncs;
 use Red::AST::JsonItem;
 use Red::AST::JsonRemoveItem;
 use Red::Type::Json;
+use Red::Cli::Column;
 
 =head2 Red::ColumnMethods
 
 #| Red::Column methods
 unit role Red::ColumnMethods;
+
+multi method new(Red::Cli::Column $_) {
+    ::?CLASS.new:
+        :attr(Attribute.new: :name("\$!{.name}"), :package(.model), :type(.perl-type)),
+        :id(.pk),
+        # :references(.references),
+        :nullable(.nullable),
+        :type(.type),
+}
 
 #| Tests if that column value starts with a specific sub-string
 #| is usually translated for SQL as `column like 'substr%'`

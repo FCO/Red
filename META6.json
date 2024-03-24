@@ -91,6 +91,7 @@
     "Red::Column": "lib/Red/Column.rakumod",
     "Red::ColumnMethods": "lib/Red/ColumnMethods.rakumod",
     "Red::Config": "lib/Red/Config.rakumod",
+    "Red::Configuration": "lib/Red/Configuration.rakumod",
     "Red::DB": "lib/Red/DB.rakumod",
     "Red::Database": "lib/Red/Database.rakumod",
     "Red::DefaultResultSeq": "lib/Red/DefaultResultSeq.rakumod",

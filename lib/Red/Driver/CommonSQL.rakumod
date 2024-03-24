@@ -37,6 +37,7 @@ use Red::Type::Json;
 use Red::Utils;
 use Red::LockType;
 use MetamodelX::Red::VirtualView;
+use Red::Cli::Table;
 
 use UUID;
 unit role Red::Driver::CommonSQL does Red::Driver;
@@ -113,6 +114,23 @@ has &.table-formatter is rw;
 
 method table-name-wrapper($name) { qq["$name"] }
 
+# proto method diff-to-ast(|c) {
+#     say c;
+#     {*}
+# }
+#
+multi method diff-to-ast("+", "table", Str $name, @columns --> Hash()) {
+    # dd "create table: $name", @columns
+    # 1 => Red::Cli::Table.new:
+    #     :$name,
+    #     :@columns,
+    
+    # FIXME: Use ::Cli::Table instead of model
+    1 => $.cli-to-ast: Red::Cli::Table.new:
+        :$name,
+        :@columns,
+}
+
 multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
     1 => Red::AST::CreateColumn.new(
         :$table,
@@ -138,6 +156,12 @@ multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
 multi method diff-to-ast(Str, Str, "-", Str, $) {}
 
 #multi method diff-to-ast(Str:D, Str:D, "-", Str:D, Bool:D) {}
+multi method diff-to-ast($table, "+", "name", Str $name --> Hash()) {
+    1 => Red::AST::CreateTable.new:
+        :name($name),
+        # :columns(model.^columns.map: *.column),
+    ;
+}
 multi method diff-to-ast($table, Str $column, "+", "nullable", Bool $nullable --> Hash()) {
     8 => Red::AST::ChangeColumn.new(
             :$table,
@@ -189,55 +213,100 @@ method ping {
     self.execute("SELECT 1 as ping").row<ping> == 1
 }
 
-method create-schema(%models where .values.all ~~ Red::Model) {
-    for %models.kv -> Str() $name, Red::Model \model {
-        my $*RED-IGNORE-REFERENCE = True;
-        my $data = Red::AST::CreateTable.new:
-            :name(model.^table),
-            :temp(model.^temp),
-            :columns(model.^columns.map: *.column),
-            |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY),
-            :constraints[
-                |do given model.^constraints {
-                    |do for .kv -> $k, @v {
-                        my @columns = Array[Red::Column].new: flat |@v;
-                        do if $k eq "unique" {
-                            Red::AST::Unique.new: :@columns
-                        } elsif $k eq "pk" {
-                            Red::AST::Pk.new: :@columns
-                        }
+method cli-to-ast($cli) {
+    # TODO: complete it
+    # my @fks = model.^columns>>.column.grep({ .ref.defined });
+    Red::AST::CreateTable.new(
+        :name($cli.name),
+        :columns($cli.columns),
+        # |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY),
+        # :constraints[
+        #     |do given model.^constraints {
+        #         |do for .kv -> $k, @v {
+        #             my @columns = Array[Red::Column].new: flat |@v;
+        #             do if $k eq "unique" {
+        #                 Red::AST::Unique.new: :@columns
+        #             } elsif $k eq "pk" {
+        #                 Red::AST::Pk.new: :@columns
+        #             }
+        #         }
+        #     }
+        # ],
+    ),
+    # |(Red::AST::AddForeignKeyOnTable.new:
+    #     :table(model.^table),
+    #     :foreigns[@fks.map: {
+    #         %(
+    #                 :name("{
+    #                     .class.^table
+    #                 }_{
+    #                     .name
+    #                 }_{
+    #                     .ref.class.^table
+    #                 }_{
+    #                     .ref.name
+    #                 }_fkey"),
+    #                 :from($_),
+    #                 :to(.ref),
+    #         )
+    #     }],
+    # if @fks);
+}
+
+method model-to-ast(Red::Model \model) {
+    my @fks = model.^columns>>.column.grep({ .ref.defined });
+    Red::AST::CreateTable.new(
+        :name(model.^table),
+        :temp(model.^temp),
+        :columns(model.^columns.map: *.column),
+        |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY),
+        :constraints[
+            |do given model.^constraints {
+                |do for .kv -> $k, @v {
+                    my @columns = Array[Red::Column].new: flat |@v;
+                    do if $k eq "unique" {
+                        Red::AST::Unique.new: :@columns
+                    } elsif $k eq "pk" {
+                        Red::AST::Pk.new: :@columns
                     }
                 }
-            ],
-        ;
+            }
+        ],
+    ),
+    |(Red::AST::AddForeignKeyOnTable.new:
+        :table(model.^table),
+        :foreigns[@fks.map: {
+            %(
+                    :name("{
+                        .class.^table
+                    }_{
+                        .name
+                    }_{
+                        .ref.class.^table
+                    }_{
+                        .ref.name
+                    }_fkey"),
+                    :from($_),
+                    :to(.ref),
+            )
+        }],
+    if @fks);
+}
+
+method create-schema(%models where .values.all ~~ Red::Model) {
+    my @more;
+    for %models.kv -> Str() $name, Red::Model \model {
+        my $*RED-IGNORE-REFERENCE = True;
+        my ($data, $more) = $.model-to-ast: model;
+        @more.push: [model, $_] with $more;
         self.execute: $data;
         model.^emit: $data
     }
 
     # TODO: Fix for Pg with fk multi column
-    for %models.kv -> Str() $name, Red::Model \model {
-        my @fks = model.^columns>>.column.grep({ .ref.defined });
-        if @fks {
-            self.execute: my $data = Red::AST::AddForeignKeyOnTable.new:
-                :table(model.^table),
-                :foreigns[@fks.map: {
-                    %(
-                            :name("{
-                                .class.^table
-                            }_{
-                                .name
-                            }_{
-                                .ref.class.^table
-                            }_{
-                                .ref.name
-                            }_fkey"),
-                            :from($_),
-                            :to(.ref),
-                    )
-                }],
-            ;
-            model.^emit: $data
-        }
+    for @more -> (Red::Model \model, $more) {
+        self.execute: $more;
+        model.^emit: $more
     }
     %models.keys Z=> True xx *
 }
@@ -245,60 +314,60 @@ method create-schema(%models where .values.all ~~ Red::Model) {
 proto method translate(Red::AST, $? --> Pair) {*}
 
 multi method translate(Red::AST::BeginTransaction, $context?) {
-                                    "BEGIN" => []
-                                }
+    "BEGIN" => []
+}
 
 multi method translate(Red::AST::CommitTransaction, $context?) {
-                                    "COMMIT" => []
-                                }
+    "COMMIT" => []
+}
 
 multi method translate(Red::AST::RollbackTransaction, $context?) {
-                                    "ROLLBACK" => []
-                                }
+    "ROLLBACK" => []
+}
 
 multi method translate(Red::AST::DropColumn $_, $context?) {
-                                    "ALTER TABLE {
-                                        .table
-                                    } DROP COLUMN {
-                                        .name
-                                    }" => []
-                                }
+    "ALTER TABLE {
+        .table
+    } DROP COLUMN {
+        .name
+    }" => []
+}
 
 multi method translate(Red::AST::ChangeColumn $_, $context?) {
-                                    "ALTER TABLE {
-                                        .table
-                                    } ALTER COLUMN {
-                                        .name
-                                    } {
-                                        .type // ""
-                                    }{
-                                        " NOT NULL" unless .nullable
-                                    }{
-                                        " UNIQUE" if .unique
-                                    }{
-                                        " REFERENCES { self.table-name-wrapper: .ref-table } ({ .ref-col })" if .ref-table and .ref-col
-                                    }{
-                                        " PRIMARY KEY" if .pk
-                                    }" => []
-                                }
+    "ALTER TABLE {
+        .table
+    } ALTER COLUMN {
+        .name
+    } {
+        .type // ""
+    }{
+        " NOT NULL" unless .nullable
+    }{
+        " UNIQUE" if .unique
+    }{
+        " REFERENCES { self.table-name-wrapper: .ref-table } ({ .ref-col })" if .ref-table and .ref-col
+    }{
+        " PRIMARY KEY" if .pk
+    }" => []
+}
 
 multi method translate(Red::AST::CreateColumn $_, $context?) {
-                                    "ALTER TABLE {
-                                        .table
-                                    } ADD {
-                                        .name
-                                    } {
-                                        .type
-                                    }{
-                                        " NOT NULL" unless .nullable
-                                    }{
-                                        " UNIQUE" if .unique
-                                    }{
-                                        " REFERENCES { self.table-name-wrapper: .ref-table } ({ .ref-col })" if .ref-table and .ref-col
-                                    }{
-                                        " PRIMARY KEY" if .pk
-                                    }" => []
-                                }
+    "ALTER TABLE {
+        .table
+    } ADD {
+        .name
+    } {
+        .type
+    }{
+        " NOT NULL" unless .nullable
+    }{
+        " UNIQUE" if .unique
+    }{
+        " REFERENCES { self.table-name-wrapper: .ref-table } ({ .ref-col })" if .ref-table and .ref-col
+    }{
+        " PRIMARY KEY" if .pk
+    }" => []
+}
 
 multi method translate(Red::AST::AddForeignKeyOnTable $ast, $context?) {
     |$ast.foreigns.map: -> $fk {

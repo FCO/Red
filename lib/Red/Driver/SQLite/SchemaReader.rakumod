@@ -1,3 +1,4 @@
+use Red::Operators;
 use Red::SchemaReader;
 use Red::Driver::SQLite::SQLiteMaster;
 
@@ -68,4 +69,8 @@ multi method table-definition-from-create-table(Str:D $sql) {
 
 multi method table-definition-from-create-table(Any:U) {
     Red::Cli::Table.new
+}
+
+method dump(IO() $target) {
+    $target.spurt: $.sqlite-master.tables.map({ "{ .sql };" }).join: "\n" x 2
 }
