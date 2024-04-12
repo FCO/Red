@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - New incompatible rakudo version
+    - Skiping a test about migrations that's giving error on a specific rakudo version
 
 0.1.70  2024-02-26T00:45:07Z
     - Last release had errors on the release process

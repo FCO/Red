@@ -50,6 +50,9 @@ my %unsupported-raku-versions{Version} =
         "that does `Positional` and `Sequence` roles and have attributes with initialisation,",
         "making it impossible to use `Red::ResultSeq`. Please update your Raku to use Red.",
     ],
+    v2024.03 => [
+        "2024.03 has a bug that breaks ClassHOW does role. Please update your Raku to use Red.",
+    ],
 ;
 
 BEGIN {
