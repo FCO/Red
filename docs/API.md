@@ -7,6 +7,7 @@ API Pages
 - [MetamodelX::Red::Dirtable](api/MetamodelX/Red/Dirtable)
 - [MetamodelX::Red::Id](api/MetamodelX/Red/Id)
 - [MetamodelX::Red::Migration](api/MetamodelX/Red/Migration)
+- [MetamodelX::Red::Model](api/MetamodelX/Red/Model)
 - [MetamodelX::Red::OnDB](api/MetamodelX/Red/OnDB)
 - [MetamodelX::Red::Relationship](api/MetamodelX/Red/Relationship)
 - [Red](api/Red)
