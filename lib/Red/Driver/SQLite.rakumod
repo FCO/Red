@@ -161,6 +161,10 @@ multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~
 
 multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" => [] }
 
+multi method translate(Red::LockType $lock-type --> Str ) {
+    ''
+}
+
 method comment-on-same-statement { True }
 
 #multi method default-type-for(Red::Column $ where .attr.type ~~ Mu             --> Str:D) {"varchar(255)"}
