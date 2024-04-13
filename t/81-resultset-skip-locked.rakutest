@@ -1,0 +1,25 @@
+use Test;
+use Red;
+
+model Foo {
+    has Int $.bar is serial;
+    has Str $.foo is column;
+}
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+schema(Foo).drop;
+Foo.^create-table;
+
+Foo.^create: foo => "babaa";
+
+my @rows;
+lives-ok { @rows = Foo.^rs.skip-locked.all }, 'with skip-locked';
+
+is @rows.elems, 1, "got the right number of rows";
+
+done-testing

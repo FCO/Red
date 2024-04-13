@@ -514,16 +514,22 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
         "\nOFFSET $_" with $offset
     }{
         do with $ast.for // $*red-subselect-for {
-            "\nFOR {
-                when UPDATE {
-                    "UPDATE"
-                }
-                when SKIP_LOCKED {
-                    "UPDATE SKIP LOCKED"
-                }
-            }"
+            self.translate($_);
         }
     }" => @bind
+}
+
+multi method translate(Red::LockType $lock-type --> Str ) {
+    given $lock-type {
+        "\nFOR {
+            when UPDATE {
+                "UPDATE"
+            }
+            when SKIP_LOCKED {
+                "UPDATE SKIP LOCKED"
+            }
+        }"
+     }
 }
 
 multi method translate(Red::AST::StringFunction $_, $context?) {
@@ -805,7 +811,7 @@ multi method translate(Red::Column $_, "column-default")        {
     my ($str, @bind);
     :(:key($str), :value(@bind)) := self.translate: do given .default.($_) {
         do if $_ !~~ Red::AST {
-            .&ast-value 
+            .&ast-value
         } else {
             $_
         }
