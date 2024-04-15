@@ -2,6 +2,9 @@ Revision history for Red
 
 {{$NEXT}}
 
+0.1.72  2024-04-15T19:34:47+01:00
+    - Fix select for on SQLite
+
 0.1.71  2024-04-12T18:39:58+01:00
     - Remove the test skip
 
