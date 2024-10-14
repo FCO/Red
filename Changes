@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.73  2024-10-14T21:52:50+01:00
     - Fix create child with no ids
     - Fix double as on computation + column value
 
