@@ -1,0 +1,63 @@
+use Test;
+use Red:api<2>;
+#use RedX::HashedPassword;
+use UUID;
+
+model User { ... };
+
+model Company is rw is export {
+    has Str $.id is column = ~UUID.new;
+    has Str $.name is column is required;
+    has Str $.official-name is column = "";
+    has Str $.reg-number    is column = "";
+    has Str $.official-addr is column = "";
+    has Str $.email-addr    is column = "";
+    has Str $.main-addr     is column = "";
+    has Str $.skype-nick    is column = "";
+    has Str $.telegram-nick is column = "";
+    has Str $.phone-number  is column = "";
+    has User @.users        is relationship{ .company-id };
+}
+
+model User is rw is export {
+    has Str  $.id            is column = ~UUID.new;
+    has Str  $!company-id    is referencing( *.id, :model(Company));
+    has Str  $.login-name    is column( :unique );
+    #has Str  $.password      is password handles <check-password>;
+    has Bool $.is-admin      is column = False;
+    has Str  $.full-name     is column = "";
+    has Str  $.email-addr    is column = "";
+    has Str  $.skype-nick    is column = "";
+    has Str  $.telegram-nick is column = "";
+    has Str  $.phone-number  is column = "";
+    has Str  $.home-addr     is column = "";
+    has Company $.company    is relationship{ .company-id };
+}
+
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+schema(Company, User).drop;
+
+Company.^create-table: :unless-exists;
+
+my $company = Company.^create(name => 'abc');
+
+is Company.^all.head.name, "abc";
+
+User.^create-table: :unless-exists;
+
+my $admin = $company.users.create(login-name => 'admin', password => 'nimda', full-name => "Administrator", is-admin => True);
+
+$company.users.create(login-name => "fox", password => "xof", full-name => "Jon");
+
+my @users = User.^all.sort(*.login-name).map: { "{ .company.name } - { .login-name }" }
+
+is @users[0], "abc - admin";
+is @users[1], "abc - fox";
+
+done-testing;

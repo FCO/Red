@@ -581,6 +581,8 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
             }.Hash
         } else {
             %pars.kv.map(-> $key, $value {
+		next without $value;
+		next without %cols{$key};
                 Red::AST::Eq.new: %cols{$key}, ast-value $value
             })
                 .reduce: { Red::AST::AND.new: $^a, $^b }

@@ -649,11 +649,12 @@ multi method translate(Red::AST::Select $sel, "select") {
 
 multi method translate(Red::Column $col, "select", Str :$RED-OVERRIDE-COLUMN-AS-PREFIX) {
     my ($str, @bind) := do with $col.computation {
+        my $*RED-INSIDE-COMPUTATION = True;
         do given self.translate: $_, "select" { .key, .value }
     } else {
         "{ self.table-name-wrapper: $col.model.^as }.{ $col.name }", []
     }
-    my $as = do if $col.computation.?type !~~ Positional {
+    my $as = do if $col.computation.?type !~~ Positional and not $*RED-INSIDE-COMPUTATION {
         qq<as "{ "{$RED-OVERRIDE-COLUMN-AS-PREFIX}." if $RED-OVERRIDE-COLUMN-AS-PREFIX }{ $col.attr-name }">;
     }
     qq[$str { $as if
@@ -725,6 +726,7 @@ multi method translate(Red::AST::Value $_ where .type ~~ Red::AST::Select, $cont
 multi method translate(Red::AST::Value $_ where .type ~~ Positional, "select") {
     my @sql;
     my @bind;
+    my $RED-INSIDE-COMPUTATION = True;
     .get-value.map: {
         my ( :$key, :@value) = self.translate: $_, "select";
         @sql.push: $key;

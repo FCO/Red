@@ -64,17 +64,17 @@ multi method index($base: $needle) {
 
 #| Return the year from the date column
 method year($base where { .returns ~~ (Date|DateTime|Instant) }:) {
-    Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::year)) but Red::ColumnMethods
+    Red::AST::Mul.new(ast-value(1), Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::year))) but Red::ColumnMethods
 }
 
 #| Return the month from the date column
 method month($base where { .returns ~~ (Date|DateTime|Instant) }:) {
-    Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::month)) but Red::ColumnMethods
+    Red::AST::Mul.new(ast-value(1), Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::month))) but Red::ColumnMethods
 }
 
 #| Return the day from the date column
 method day($base where { .returns ~~ (Date|DateTime|Instant) }:) {
-    Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::day)) but Red::ColumnMethods
+    Red::AST::Mul.new(ast-value(1), Red::AST::DateTimePart.new(:$base, :part(Red::AST::DateTime::Part::day))) but Red::ColumnMethods
 }
 
 #| Return the date from a datetime, timestamp etc

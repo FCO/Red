@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix create child with no ids
+    - Fix double as on computation + column value
 
 0.1.72  2024-04-15T19:34:47+01:00
     - Fix select for on SQLite
