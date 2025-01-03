@@ -12,3 +12,13 @@ class Red::AST::Index
 
 Represents a index call
 
+class Red::AST::Lowercase
+-------------------------
+
+Represents a lc/fc call
+
+class Red::AST::Uppercase
+-------------------------
+
+Represents a uc call
+

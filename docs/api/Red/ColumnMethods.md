@@ -35,6 +35,30 @@ method contains(
 
 Tests if that column value contains a specific sub-string is usually translated for SQL as `column like %'substr%'`
 
+### method lc
+
+```raku
+method lc() returns Mu
+```
+
+Return a lowercased string
+
+### method fc
+
+```raku
+method fc() returns Mu
+```
+
+Return a lowercased string
+
+### method uc
+
+```raku
+method uc() returns Mu
+```
+
+Return a uppercased string
+
 ### method substr
 
 ```raku
