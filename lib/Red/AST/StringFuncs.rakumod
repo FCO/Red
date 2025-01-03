@@ -41,3 +41,33 @@ class Red::AST::Index does Red::AST::StringFunction {
         Red::AST::Function.new: :func<INSTR>, :args[$!base, ast-value($!needle)]
     }
 }
+
+#| Represents a lc/fc call
+class Red::AST::Lowercase does Red::AST::StringFunction {
+    has Red::AST $.string;
+
+    method returns { Str }
+    method find-column-name {
+        $!string.find-column-name
+    }
+    method args {$!string}
+
+    method default-implementation {
+        Red::AST::Function.new: :func<LOWER>, :args[$!string]
+    }
+}
+
+#| Represents a uc call
+class Red::AST::Uppercase does Red::AST::StringFunction {
+    has Red::AST $.string;
+
+    method returns { Str }
+    method find-column-name {
+        $!string.find-column-name
+    }
+    method args {$!string}
+
+    method default-implementation {
+        Red::AST::Function.new: :func<UPPER>, :args[$!string]
+    }
+}

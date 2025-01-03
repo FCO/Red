@@ -42,6 +42,21 @@ multi method contains(Str() $text is rw) {
     Red::AST::Like.new(self, ast-value("%{ $text }%"), :bind-left) but Red::ColumnMethods
 }
 
+#| Return a lowercased string
+multi method lc($string:) {
+    Red::AST::Lowercase.new(:$string) but Red::ColumnMethods
+}
+
+#| Return a lowercased string
+multi method fc($string:) {
+    Red::AST::Lowercase.new(:$string) but Red::ColumnMethods
+}
+
+#| Return a uppercased string
+multi method uc($string:) {
+    Red::AST::Uppercase.new(:$string) but Red::ColumnMethods
+}
+
 #| Return a substring of the column value
 multi method substr($base where { .returns ~~ Str }: $offset = ast-value(0), $size?) {
     Red::AST::Substring.new(:$base, :$offset, |(:$size with $size)) but Red::ColumnMethods
