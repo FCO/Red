@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Retry releasing it
 
 0.1.73  2025-01-03T17:32:54Z
     - Add uc/lc/fc to column methods
