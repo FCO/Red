@@ -270,6 +270,17 @@ multi sub infix:<div>(
 
 X div Y # Where X is castable to Numeric and writable
 
+### multi sub infix:<eqv>
+
+```raku
+multi sub infix:<eqv>(
+    Red::AST $a,
+    Red::AST $b
+) returns Mu
+```
+
+X eqv Y
+
 ### multi sub infix:<==>
 
 ```raku
@@ -280,6 +291,28 @@ multi sub infix:<==>(
 ```
 
 X == Y
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Red::AST $a,
+    Numeric(Str) $b is rw
+) returns Mu
+```
+
+X == Y # Where Y is castable to Numeric and writable
+
+### multi sub infix:<==>
+
+```raku
+multi sub infix:<==>(
+    Red::AST $a,
+    Numeric(Str) $b
+) returns Mu
+```
+
+X == Y # Where Y is castable to Numeric and read only
 
 ### multi sub infix:<==>
 
