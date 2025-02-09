@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.1.75  2025-02-09T03:17:51Z
     - Add eqv operator
 
 0.1.74  2025-01-04T22:36:15Z
