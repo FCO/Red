@@ -141,9 +141,32 @@ multi infix:<div>(Numeric() $a is rw, Red::AST $b) is export {
     Red::AST::IDiv.new: ast-value($a), $b, :bind-left
 }
 
+#| X eqv Y
+multi infix:<eqv>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Eq.new: $a, $b
+}
+
+multi infix:<eqv>(Red::AST $a, $b) is export {
+    Red::AST::Eq.new: $a, ast-value($b)
+}
+
+multi infix:<eqv>($a, Red::AST $b) is export {
+    Red::AST::Eq.new: ast-value($a), $b
+}
+
 #| X == Y
 multi infix:<==>(Red::AST $a, Red::AST $b) is export {
     Red::AST::Eq.new: $a, $b, :cast<num>
+}
+
+#| X == Y # Where Y is castable to Numeric and writable
+multi infix:<==>(Red::AST $a, Numeric(Str) $b is rw) is default is export {
+    Red::AST::Eq.new: $a, ast-value($b), :cast<num>, :bind-right
+}
+
+#| X == Y # Where Y is castable to Numeric and read only
+multi infix:<==>(Red::AST $a, Numeric(Str) $b is readonly) is default is export {
+    Red::AST::Eq.new: $a, ast-value($b), :cast<num>
 }
 
 #| X == Y # Where Y is castable to Numeric and writable
@@ -294,6 +317,10 @@ multi infix:<eq>(Red::AST $a where .returns ~~ Str, Red::AST $b where .returns ~
 #| X eq Y # Where LHS is an AST and RHS is Enumeration
 multi infix:<eq>(Red::AST $a, Enumeration $b) is export {
     Red::AST::Eq.new: $a, ast-value($b.value), :cast<str>, :bind-right
+}
+
+multi infix:<eq>(Red::AST $a, Red::AST $b) is export {
+    Red::AST::Eq.new: $a, $b, :cast<str>
 }
 
 #| X ne Y # Where Y is castable to Str and writable
