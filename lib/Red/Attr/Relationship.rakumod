@@ -101,8 +101,10 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
                     }
                     my \value = ast-value $val;
                     Red::AST::Eq.new: $rel, value, :bind-right
-                }).reduce: -> $left, $right {
-                    Red::AST::AND.new: $left, $right
+                }).reduce: -> $left, $right? {
+                    $right.DEFINITE
+                    ?? Red::AST::AND.new: $left, $right
+                    !! $left
                 }
             } else {
                 my @models = rel1(instance.WHAT).map(-> $rel {
@@ -113,8 +115,10 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
                     }
                 }).grep(*.defined);
                 return rel-model unless @models;
-                rel-model.^rs.where(@models.reduce(-> $left, $right {
-                    Red::AST::AND.new: $left, $right
+                rel-model.^rs.where(@models.reduce(-> $left, $right? {
+                    $right.DEFINITE
+                    ?? Red::AST::AND.new: $left, $right
+                    !! $left
                 }))
             }
 	    return ret.head if type !~~ Positional || attr.has-one;
@@ -162,8 +166,10 @@ multi method relationship-ast($type = Nil) is hidden-from-sql-commenting {
     my @col1 = |rel1 type;
     @col1.map({
         Red::AST::Eq.new: $_, .ref: $type
-    }).reduce: -> $agg, $i {
-        Red::AST::AND.new: $agg, $i
+    }).reduce: -> $agg, $i? {
+        $i.DEFINITE
+        ?? Red::AST::AND.new: $agg, $i
+        !! $agg
     }
 }
 

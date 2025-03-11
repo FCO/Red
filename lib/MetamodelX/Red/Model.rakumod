@@ -280,7 +280,7 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
                                     } else {
                                         $ret
                                     }
-                                }).reduce: { Red::AST::OR.new: $^agg, $^fil }
+                                }).reduce: -> $agg, $fil? { $fil.DEFINITE ?? Red::AST::OR.new: $agg, $fil !! $agg }
                             }
                         }
                         with $*RED-GREP-FILTER {
@@ -585,7 +585,7 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
 		next without %cols{$key};
                 Red::AST::Eq.new: %cols{$key}, ast-value $value
             })
-                .reduce: { Red::AST::AND.new: $^a, $^b }
+                .reduce: -> $a, $b? { $b.DEFINITE ?? Red::AST::AND.new: $a, $b !! $a }
         } unless $data<>;
 
         my $no;
@@ -730,7 +730,7 @@ multi method search(Red::Model:U \model, *%filter, :$with where not .defined) {
         model,
         %filter.kv
             .map(-> $k, $value { Red::AST::Eq.new: model."$k"(), Red::AST::Value.new: :$value })
-            .reduce: { Red::AST::AND.new: $^a, $^b }
+            .reduce: -> $a, $b? { $b.DEFINITE ?? Red::AST::AND.new: $a, $b !! $a }
 }
 
 multi method find(Red::Driver :$with!, |c) {
@@ -799,8 +799,8 @@ method new-from-data(\of, $data) is hidden-from-backtrace {
             } else { Empty }
         }).Hash
     );
-    my %pre = (%(), |$data.keys).reduce: -> %ag, $key {
-        if $data{ $key }:exists && $data{ $key }.defined {
+    my %pre = (%(), |$data.keys).reduce: -> %ag, $key? {
+        if $key && ($data{ $key }:exists) && $data{ $key }.defined {
             my ($first, *@rest) := $key.split(".");
             %ag{ $first }{ @rest.join(".") } = $data{ $key } if @rest;
         }

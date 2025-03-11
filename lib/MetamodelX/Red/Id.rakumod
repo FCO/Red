@@ -105,7 +105,7 @@ multi method id-filter(Red::Model:D $model) {
                     // self.get-attr: $model, $_
     });
     @a.elems >= 2
-        ?? @a.reduce: { Red::AST::AND.new: $^a, $^b }
+        ?? @a.reduce: -> $a, $b? { $b.DEFINITE ?? Red::AST::AND.new($a, $b) !! $a }
         !! @a[0]
 }
 
@@ -128,8 +128,10 @@ multi method id-filter(Red::Model:U $model, *%data) { # where { .keys.all ~~ $mo
                 .column,
                 ast-value %data{.column.attr-name}
         })
-        .reduce: {
-            Red::AST::AND.new: $^a, $^b
+        .reduce: -> $a, $b? {
+            $b.DEFINITE
+            ?? Red::AST::AND.new: $a, $b
+	    !! $a
         }
     ;
 }

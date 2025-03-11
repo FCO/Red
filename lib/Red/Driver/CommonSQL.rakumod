@@ -438,7 +438,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                     }"
                 }
             }",
-            |@joins.reduce({ |$^a, |$^b }).unique(:as{ .^as }).map({
+            |@joins.reduce(-> $a, $b? { $b.DEFINITE ?? |(|$a, |$b) !! |$a }).unique(:as{ .^as }).map({
                 " { self.join-type: .^join-type } JOIN {
                     do if .HOW ~~ $role {
                         # TODO: fix!
