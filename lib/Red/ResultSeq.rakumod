@@ -172,7 +172,6 @@ method grep(&filter) is hidden-from-sql-commenting {
     with $*RED-GREP-FILTER {
         $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
     }
-    return self.where: ast-value(False) without $filter;
     self.where: $filter;
 }
 
