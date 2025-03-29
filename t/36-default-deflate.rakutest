@@ -2,7 +2,6 @@
 #
 use Test;
 use Red;
-use LibUUID;
 
 model Transaction is table<transactions> {
     has UInt        $.id            is serial;
