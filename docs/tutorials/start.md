@@ -1,7 +1,7 @@
 ## Red starter tutorial
 
 This document is an introduction tutorial which shows the most basic usage examples of Red.
-For more in-depth introduction about Red architecture visit [Red architecture](tutorials/architecture) page.
+For more in-depth introduction about Red architecture visit [Red architecture](/architecture) page.
 
 ### Models and tables
 
