@@ -8,7 +8,7 @@ that represents the related model, a Callable positional parameter that will ret
 - `@` - Represents a `has many` relationship that "stores" a `ResultSeq` of elements. [Red](https://github.com/FCO/Red) will run the callable passing the model
   defined by the `:model` named parameter.
 
-(for the experimental `has-one`, please take a look at [experimental doc](experimental.html))
+(for the experimental `has-one`, please take a look at [experimental doc](experimental.md))
 
 ## So, for example:
 
