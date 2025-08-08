@@ -350,7 +350,7 @@ model Login is table<logged_user> {
 model Buyer {
     has $.id    is serial;
     has $.name  is column;
-    method login {
+    method logins {
         self.^rs.join-model: :name<logged_buyer>, Login, -> $b, $l { $b.id == $l.source-id && $l.source eq "buyer" }
     }
 }
@@ -358,9 +358,48 @@ model Buyer {
 model Seller {
     has $.id    is serial;
     has $.name  is column;
-    method login {
+    method logins {
         self.^rs.join-model: :name<logged_seller>, Login, -> $b, $l { $b.id == $l.source-id && $l.source eq "seller" }
     }
+}
+
+my $comprador = Buyer.^create:  :name<Comprador>;
+my $vendedor  = Seller.^create: :name<Vendedor>;
+
+$comprador.logins.create;
+$vendedor.logins.create;
+
+.say for $comprador.logins;
+.say for $vendedor.logins;
+```
+
+A new (and better) way to do this is using relationship receiving 2 arguments.
+When a relationship receives 2 arguments and returns Red::AST instead of Red::Column,
+it will be used to create a new join type using `join-model`.
+
+```raku
+model Buyer  { ... }
+model Seller { ... }
+
+model Login is table<logged_user> {
+    has         $.id        is serial;
+    has         $.source    is column;
+    has UInt    $.source-id is referencing(*.id, :model<Buyer>);
+    has Instant $.created   is column = now;
+    has Buyer   $.buyer     is relationship{ $^b.id == $^a.source-id && $^a.source eq "buyer"  }
+    has Seller  $.seller    is relationship{ $^b.id == $^a.source-id && $^a.source eq "seller" }
+}
+
+model Buyer {
+    has UInt  $.id     is serial;
+    has Str   $.name   is column;
+    has Login @.logins is relationship{ $^a.id == $^b.source-id && $^b.source eq "buyer" }
+}
+
+model Seller {
+    has UInt  $.id     is serial;
+    has Str   $.name   is column;
+    has Login @.logins is relationship{ $^a.id == $^b.source-id && $^b.source eq "seller" }
 }
 
 my $comprador = Buyer.^create:  :name<Comprador>;
@@ -371,6 +410,8 @@ $vendedor.login.create;
 
 .say for $comprador.login;
 .say for $vendedor.login;
+
+say "Login: { .id }; Buyer: { .name with .buyer }; Seller: { .name with .buyer }" for Login.^all;
 ```
 
 ## union/intersect/minus

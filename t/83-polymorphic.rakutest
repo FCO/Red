@@ -10,32 +10,51 @@ use Red;
 
 use lib $?FILE.IO.parent(1).add('lib');
 
-use Person;
-use Post;
-
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
-schema(Person, Post).drop.create;
+model Post  { ... }
+model Photo { ... }
 
-my $p;
-$p = Person.^create: :name<Fernando>;
-isa-ok $p, Person;
-is $p.name, "Fernando", "and it is the person we expected";
-ok $p.id.defined, "primary key is defined";
-is $p.id, 1, "and it is the value we expected";
+model Comment {
+    has UInt  $.id               is serial;
+    has Str   $.body             is column;
+    has UInt  $.commentable-id   is column;
+    has Str   $.commentable-type is column;
+    has Post  $.post             is relationship{ $^a.commentable-id == $^b.id && $^a.commentable-type eq "post"  }
+    has Photo $.photo            is relationship{ $^a.commentable-id == $^b.id && $^a.commentable-type eq "photo" }
+}
 
-my $post;
+model Post {
+    has UInt    $.id is serial;
+    has Str     $.title is unique;
+    has Comment @.comments is relationship{ $^b.commentable-id == $^a.id && $^b.commentable-type eq "post" }
+}
+
+model Photo {
+    has UInt $.id is serial;
+    has Str  $.path is unique;
+    has Comment @.comments is relationship{ $^b.commentable-id == $^a.id && $^b.commentable-type eq "photo" }
+}
+
+red-defaults "SQLite";
+
+schema(Comment, Post, Photo).create;
+
+lives-ok { Post.^create: :title<bla>, :comments[{ :body<blabla> }, { :body<blablabla> }] };
+
 lives-ok {
-    $post = $p.posts.create: :title("Red's commit"), :body("Merge branch 'master' of https://github.com/FCO/Red");
-}, "create a related post";
-isa-ok $post, Post;
-todo "What's happening here???" with %*ENV<RED_DATABASE>;
-is $post.author-id, $p.id, "and the author-id of the post is the one we expected";
-is $post.title, "Red's commit", "post title is correct";
-is $post.body, "Merge branch 'master' of https://github.com/FCO/Red", "post body is correct";
+    my $photo = Photo.^create: :path<ble>;
+    $photo.comments.create: :body<bleble>;
+}
+
+is Comment.^all.grep(*.post.title eq "bla").map(*.id).Seq.join(" "), <1 2>;
+is Comment.^all.grep(*.photo.path eq "ble").map(*.id).Seq.join(" "), <3>;
+
+is Post.^all .Seq.map(|*.comments>>.id).join(" "), <1 2>;
+is Photo.^all.Seq.map(|*.comments>>.id).join(" "), <3>;
 
 done-testing
