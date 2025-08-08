@@ -33,7 +33,7 @@ lives-ok {
     $post = $p.posts.create: :title("Red's commit"), :body("Merge branch 'master' of https://github.com/FCO/Red") ;
 }, "create a related post";
 isa-ok $post, Post;
-todo "What's happening here???" with %*ENV<RED_DATABESE>;
+todo "What's happening here???" with %*ENV<RED_DATABASE>;
 is $post.author-id, $p.id, "and the author-id of the post is the one we expected";
 is $post.title, "Red's commit", "post title is correct";
 is $post.body, "Merge branch 'master' of https://github.com/FCO/Red", "post body is correct";
