@@ -1,3 +1,4 @@
+use Red::AST;
 use Red::AST::Infixes;
 use Red::AST::Value;
 use Red::HiddenFromSQLCommenting;
@@ -51,6 +52,12 @@ method !to-use-with-rel {
 }
 
 method rel {
+    CATCH {
+        default {
+            note "ERROR running relationship { self.name }: ", .message;
+            .throw
+        }
+    }
     my $*RED-INTERNAL = True;
     my \type = self!to-use-with-rel;
     rel1 type
@@ -87,39 +94,54 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
     nqp::bindattr(nqp::decont(instance), $.package, $.name, Proxy.new:
         FETCH => method () {
             my $*RED-INTERNAL = True;
-            my \ret = do if type ~~ Positional || attr.has-one {
-                rel-model.^rs.where: rel1(rel-model).map(-> $rel {
-                    X::Red::RelationshipNotColumn.new(:relationship(attr), :points-to($rel)).throw unless $rel ~~ Red::Column;
-                    my $ref = $rel.ref;
-                    X::Red::RelationshipNotRelated.new(:relationship(attr), :points-to($rel)).throw unless $ref.DEFINITE;
-                    my $val = do given $ref.attr but role :: {
-                        method package {
-                            instance.WHAT
+            my \ret = do if &rel1.count <= 1 {
+                do if type ~~ Positional || attr.has-one {
+                    my \relation = rel1(rel-model);
+                    rel-model.^rs.where: relation.map(-> $rel {
+                        X::Red::RelationshipNotColumn.new(
+                            :relationship(attr),
+                            :points-to($rel)
+                        ).throw unless $rel ~~ Red::Column;
+
+                        my $ref = $rel.ref;
+                        X::Red::RelationshipNotRelated.new(
+                            :relationship(attr),
+                            :points-to($rel)
+                        ).throw unless $ref.DEFINITE;
+
+                        my $val = do given $ref.attr but role :: {
+                            method package {
+                                instance.WHAT
+                            }
+                        } {
+                            instance.^get-attr: .name.substr: 2
                         }
-                    } {
-                        instance.^get-attr: .name.substr: 2
+                        my \value = ast-value $val;
+                        Red::AST::Eq.new: $rel, value, :bind-right
+                    }).reduce: -> $left, $right? {
+                        $right.DEFINITE
+                        ?? Red::AST::AND.new: $left, $right
+                        !! $left
                     }
-                    my \value = ast-value $val;
-                    Red::AST::Eq.new: $rel, value, :bind-right
-                }).reduce: -> $left, $right? {
-                    $right.DEFINITE
-                    ?? Red::AST::AND.new: $left, $right
-                    !! $left
+                } else {
+                    do if &rel1.count <= 1 {
+                        my @models = rel1(instance.WHAT).map(-> $rel {
+                            my $val = $rel.attr.get_value: instance;
+                            do with $val {
+                                my \value = ast-value $val;
+                                Red::AST::Eq.new: $rel.ref, value, :bind-right
+                            }
+                        }).grep(*.defined);
+                        return rel-model unless @models;
+                        rel-model.^rs.where(@models.reduce(-> $left, $right? {
+                            $right.DEFINITE
+                            ?? Red::AST::AND.new: $left, $right
+                            !! $left
+                        }))
+                    }
                 }
             } else {
-                my @models = rel1(instance.WHAT).map(-> $rel {
-                    my $val = $rel.attr.get_value: instance;
-                    do with $val {
-                        my \value = ast-value $val;
-                        Red::AST::Eq.new: $rel.ref, value, :bind-right
-                    }
-                }).grep(*.defined);
-                return rel-model unless @models;
-                rel-model.^rs.where(@models.reduce(-> $left, $right? {
-                    $right.DEFINITE
-                    ?? Red::AST::AND.new: $left, $right
-                    !! $left
-                }))
+                instance.^all.join-model: :name(attr.name.substr: 2), rel-model, &rel1;
             }
 	    return ret.head if type !~~ Positional || attr.has-one;
 	    ret
@@ -137,11 +159,19 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
     return
 }
 
+method target-type {
+    $model ?? self.relationship-model !! self.type ~~ Positional ?? self.type.of !! self.type
+}
+
+method source-type {
+    self.package
+}
+
 method relationship-argument-type {
     do if self.type ~~ Positional || self.has-one {
-        $model ?? self.relationship-model !! self.type ~~ Positional ?? self.type.of !! self.type
+        $.target-type
     } else {
-        self.package
+        $.source-type
     }
 }
 
@@ -150,42 +180,40 @@ method joined-model {
 	self.package.^join: self.relationship-argument-type, -> | { self.relationship-ast: self.package }, name => self.rel-name
 }
 
-multi method relationship-ast($type, $oposite) is hidden-from-sql-commenting {
+method !relationship-ast($t1, $t2) {
     my $*RED-INTERNAL = True;
-    my \type = self.relationship-argument-type;
-    my @col1 = |rel1 $type;
-    @col1.map({
-        Red::AST::Eq.new: $_, .ref: $oposite
-    }).reduce: -> $agg, $i {
+    return rel1 $.source-type, $.target-type if &rel1.count > 1;
+    my \col1 = |rel1 $t1;
+    return col1 if col1 ~~ Red::AST && col1 !~~ Red::Column;
+
+    col1.map({
+        X::Red::RelationshipNotColumn.new(
+            :relationship(self),
+            :points-to($_)
+        ).throw unless $_ ~~ Red::Column;
+
+        Red::AST::Eq.new: $_, .ref: $t2
+    }).reduce: -> $agg, $i? {
+        return $agg without $i;
         Red::AST::AND.new: $agg, $i
     }
 }
+
+multi method relationship-ast($type, $oposite) is hidden-from-sql-commenting {
+    self!relationship-ast($type, $oposite)
+}
 multi method relationship-ast($type = Nil) is hidden-from-sql-commenting {
-    my $*RED-INTERNAL = True;
-    my \type = self.relationship-argument-type;
-    my @col1 = |rel1 type;
-    @col1.map({
-        Red::AST::Eq.new: $_, .ref: $type
-    }).reduce: -> $agg, $i? {
-        $i.DEFINITE
-        ?? Red::AST::AND.new: $agg, $i
-        !! $agg
-    }
+    self!relationship-ast(self.relationship-argument-type, $type)
 }
 
 method join-type {
     my $*RED-INTERNAL = True;
     with $!optional {
-        return $!optional
-                ?? :left
-                !! :inner
+        return $!optional ?? :left !! :inner
     }
+    return :left if &rel1.count > 1;
     do given rel1 self.relationship-argument-type {
-        when .?nullable {
-            :left
-        }
-        default {
-            :inner
-        }
+        when .?nullable { :left  }
+        default         { :inner }
     }
 }
