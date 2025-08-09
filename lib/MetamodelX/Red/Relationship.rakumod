@@ -87,7 +87,7 @@ multi method add-relationship(
         &reference,
         Red::Model :$model-type!,
         Bool       :$optional,
-        Bool       :$prefetch,
+        Bool       :$prefetch = $attr.type !~~ Positional,
         Bool       :$no-prefetch = !$prefetch,
         Bool       :$has-one,
 ) {
@@ -103,7 +103,7 @@ multi method add-relationship(
         Str  :$model!,
         Str  :$require = $model,
         Bool :$optional,
-        Bool :$prefetch,
+        Bool :$prefetch = $attr.type !~~ Positional,
         Bool :$no-prefetch = !$prefetch,
         Bool :$has-one,
 ) {
@@ -118,7 +118,7 @@ multi method add-relationship(
         Str  :$model,
         Str  :$require = $model,
         Bool :$optional,
-        Bool :$prefetch,
+        Bool :$prefetch = $attr.type !~~ Positional,
         Bool :$no-prefetch = !$prefetch,
 	    Bool :$has-one,
 ) {
@@ -135,7 +135,7 @@ multi method add-relationship(
         Str  :$model,
         Str  :$require = $model,
         Bool :$optional,
-        Bool :$prefetch,
+        Bool :$prefetch = $attr.type !~~ Positional,
         Bool :$no-prefetch = !$prefetch,
 	    Bool :$has-one,
 ) {
