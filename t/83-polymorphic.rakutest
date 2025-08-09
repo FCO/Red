@@ -1,0 +1,54 @@
+use v6;
+use Test;
+use Red;
+
+use lib $?FILE.IO.parent(1).add('lib');
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+model Post  { ... }
+model Photo { ... }
+
+model Comment {
+    has UInt  $.id               is serial;
+    has Str   $.body             is column;
+    has UInt  $.commentable-id   is column;
+    has Str   $.commentable-type is column;
+    has Post  $.post             is relationship{ $^a.commentable-id == $^b.id && $^a.commentable-type eq "post"  }
+    has Photo $.photo            is relationship{ $^a.commentable-id == $^b.id && $^a.commentable-type eq "photo" }
+}
+
+model Post {
+    has UInt    $.id is serial;
+    has Str     $.title is unique;
+    has Comment @.comments is relationship{ $^b.commentable-id == $^a.id && $^b.commentable-type eq "post" }
+}
+
+model Photo {
+    has UInt $.id is serial;
+    has Str  $.path is unique;
+    has Comment @.comments is relationship{ $^b.commentable-id == $^a.id && $^b.commentable-type eq "photo" }
+}
+
+red-defaults "SQLite";
+
+schema(Comment, Post, Photo).create;
+
+lives-ok { Post.^create: :title<bla>, :comments[{ :body<blabla> }, { :body<blablabla> }] };
+
+lives-ok {
+    my $photo = Photo.^create: :path<ble>;
+    $photo.comments.create: :body<bleble>;
+}
+
+is Comment.^all.grep(*.post.title eq "bla").map(*.id).Seq.join(" "), <1 2>;
+is Comment.^all.grep(*.photo.path eq "ble").map(*.id).Seq.join(" "), <3>;
+
+is Post.^all .Seq.map(|*.comments>>.id).join(" "), <1 2>;
+is Photo.^all.Seq.map(|*.comments>>.id).join(" "), <3>;
+
+done-testing
