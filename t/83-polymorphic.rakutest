@@ -1,11 +1,5 @@
 use v6;
-
-# This is the same as the t/09-alternate-relation.t
-# except the model classes are in separate modules
-# this is to discover precomp issues.
-
 use Test;
-
 use Red;
 
 use lib $?FILE.IO.parent(1).add('lib');

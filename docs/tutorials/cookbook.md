@@ -405,13 +405,13 @@ model Seller {
 my $comprador = Buyer.^create:  :name<Comprador>;
 my $vendedor  = Seller.^create: :name<Vendedor>;
 
-$comprador.login.create;
-$vendedor.login.create;
+$comprador.logins.create;
+$vendedor.logins.create;
 
-.say for $comprador.login;
-.say for $vendedor.login;
+.say for $comprador.logins;
+.say for $vendedor.logins;
 
-say "Login: { .id }; Buyer: { .name with .buyer }; Seller: { .name with .buyer }" for Login.^all;
+say "Login: { .id }; Buyer: { .name with .buyer }; Seller: { .name with .seller }" for Login.^all;
 ```
 
 ## union/intersect/minus
