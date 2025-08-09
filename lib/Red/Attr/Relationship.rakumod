@@ -141,6 +141,12 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
                     }
                 }
             } else {
+                my $filter = instance.^all.join-model(:name(attr.name.substr: 2), rel-model, &rel1).ast.filter;
+                # No point of running a query that should return no records...
+                # Maybe it should be on driver
+                if $filter ~~ Red::AST::Value && $filter.value.not {
+                    return Nil
+                }
                 instance.^all.join-model: :name(attr.name.substr: 2), rel-model, &rel1;
             }
 	    return ret.head if type !~~ Positional || attr.has-one;
