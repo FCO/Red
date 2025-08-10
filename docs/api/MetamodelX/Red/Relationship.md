@@ -10,7 +10,7 @@ method add-relationship(
     &reference,
     Red::Model :$model-type!,
     Bool :$optional,
-    Bool :$prefetch,
+    Bool :$prefetch = Code.new,
     Bool :$no-prefetch = Code.new,
     Bool :$has-one
 ) returns Mu
@@ -28,7 +28,7 @@ method add-relationship(
     Str :$model!,
     Str :$require = Code.new,
     Bool :$optional,
-    Bool :$prefetch,
+    Bool :$prefetch = Code.new,
     Bool :$no-prefetch = Code.new,
     Bool :$has-one
 ) returns Mu
@@ -46,7 +46,7 @@ method add-relationship(
     Str :$model,
     Str :$require = Code.new,
     Bool :$optional,
-    Bool :$prefetch,
+    Bool :$prefetch = Code.new,
     Bool :$no-prefetch = Code.new,
     Bool :$has-one
 ) returns Mu
@@ -65,7 +65,7 @@ method add-relationship(
     Str :$model,
     Str :$require = Code.new,
     Bool :$optional,
-    Bool :$prefetch,
+    Bool :$prefetch = Code.new,
     Bool :$no-prefetch = Code.new,
     Bool :$has-one
 ) returns Mu
