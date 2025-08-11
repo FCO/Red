@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Allow 2 parameters on relationship block
 
 0.1.76  2025-03-29T02:06:02Z
     - Retry
