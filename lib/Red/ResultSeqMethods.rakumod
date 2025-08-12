@@ -22,3 +22,11 @@ method max(&block) {
 method sum(&block) {
   self!agg("sum", &block)
 }
+
+method exists {
+    Red::AST::Function.new: args => [$.ast], func => 'EXISTS'
+}
+
+method is-empty {
+  self.map({ 1 }).exists.not
+}
