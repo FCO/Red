@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add .exists and .is-empty methods to ResultSeq
 
 0.2.0  2025-08-11T08:08:18+01:00
     - Allow 2 parameters on relationship block
