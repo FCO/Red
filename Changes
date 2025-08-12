@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.1  2025-08-12T14:46:41+01:00
     - Add .exists and .is-empty methods to ResultSeq
 
 0.2.0  2025-08-11T08:08:18+01:00
