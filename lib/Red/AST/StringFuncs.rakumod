@@ -22,7 +22,17 @@ class Red::AST::Substring does Red::AST::StringFunction {
     method args {$!base, $!offset, $!size}
 
     method default-implementation {
-        Red::AST::Function.new: :func<SUBSTR>, :args[$!base, ($!offset ~~ Red::AST ?? ast-value($!offset) !! ast-value($!offset) + 1), |(.&ast-value - 1 with $!size)]
+        Red::AST::Function.new:
+            :func<SUBSTR>,
+            :args[
+                $!base,
+                (
+                    $!offset ~~ Red::AST
+                        ?? ast-value($!offset)
+                        !! ast-value($!offset) + 1
+                ),
+                |(.&ast-value with $!size)
+            ]
     }
 }
 

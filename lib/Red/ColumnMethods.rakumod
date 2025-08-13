@@ -69,12 +69,16 @@ multi method substr($base: $offset = ast-value(0), $size?) {
 
 #| Return a index of the column value
 multi method index($base where { .returns ~~ Str }: $needle) {
-    Red::AST::Index.new(:$base, :$needle) but Red::ColumnMethods
+    Red::AST::Sub.new:
+        Red::AST::Index.new(:$base, :$needle) but Red::ColumnMethods,
+        ast-value 1
 }
 
 #| Return a index of the column value
 multi method index($base: $needle) {
-    Red::AST::Index.new(:base(Red::AST::Cast.new: $base, "str"), :$needle) but Red::ColumnMethods
+    Red::AST::Sub.new:
+        Red::AST::Index.new(:base(Red::AST::Cast.new: $base, "str"), :$needle) but Red::ColumnMethods,
+        ast-value 1
 }
 
 #| Return the year from the date column

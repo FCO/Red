@@ -1,0 +1,39 @@
+use v6;
+use Test;
+use Red;
+
+use lib $?FILE.IO.parent(1).add('lib');
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+model C {
+    has UInt $.id    is serial;
+    has Str  $.value is column;
+}
+
+C.^create-table;
+
+my $v = C.^create: :value("testing AAA string");
+
+ok  C.^all.first: { .value.starts-with: "test" };
+nok C.^all.first: { .value.starts-with: "bla" };
+
+ok  C.^all.first: { .value.ends-with: "string" };
+nok C.^all.first: { .value.ends-with: "bla" };
+
+ok  C.^all.first: { .value.contains: "ing" };
+nok C.^all.first: { .value.contains: "bla" };
+
+is C.^all.map({ .value.lc }).head, "testing aaa string";
+is C.^all.map({ .value.uc }).head, "TESTING AAA STRING";
+
+is C.^all.map({ .value.substr: 12 }).head, "string";
+is C.^all.map({ .value.substr: 8, 3 }).head, "AAA";
+
+is C.^all.map({ .value.index: "AAA" }).head, 8;
+
+done-testing
