@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.3  2025-09-04T20:41:59+01:00
     - fix join error on relationship with 2 parameters
     - fix precedence of AND and OR
 
