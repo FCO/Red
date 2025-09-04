@@ -290,7 +290,6 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
                     }
                     default {
                         .relationship-ast(alias, |(base if $opposite))
-
                     }
                 }
             }

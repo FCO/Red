@@ -1181,12 +1181,12 @@ multi prefix:<?>(Red::AST $a) is export {
 }
 
 #| X AND Y
-multi infix:<AND>(Red::AST $a, Red::AST $b) is export is tighter(&infix:<==>) {
+multi infix:<AND>(Red::AST $a, Red::AST $b) is export is equiv(&infix:<&&>) {
     Red::AST::AND.new: $a, $b
 }
 
 #| X OR Y
-multi infix:<OR>(Red::AST $a, Red::AST $b) is export {
+multi infix:<OR>(Red::AST $a, Red::AST $b) is export is equiv(&infix:<||>) {
     Red::AST::OR.new: $a, $b
 }
 

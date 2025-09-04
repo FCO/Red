@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fix join error on relationship with 2 parameters
+    - fix precedence of AND and OR
 
 0.2.2  2025-08-13T01:44:39+01:00
     - fix and test string methods

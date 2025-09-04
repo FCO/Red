@@ -124,21 +124,19 @@ method build-relationship(\instance) is hidden-from-sql-commenting {
                         !! $left
                     }
                 } else {
-                    do if &rel1.count <= 1 {
-                        my @models = rel1(instance.WHAT).map(-> $rel {
-                            my $val = $rel.attr.get_value: instance;
-                            do with $val {
-                                my \value = ast-value $val;
-                                Red::AST::Eq.new: $rel.ref, value, :bind-right
-                            }
-                        }).grep(*.defined);
-                        return rel-model unless @models;
-                        rel-model.^rs.where(@models.reduce(-> $left, $right? {
-                            $right.DEFINITE
-                            ?? Red::AST::AND.new: $left, $right
-                            !! $left
-                        }))
-                    }
+                    my @models = rel1(instance.WHAT).map(-> $rel {
+                        my $val = $rel.attr.get_value: instance;
+                        do with $val {
+                            my \value = ast-value $val;
+                            Red::AST::Eq.new: $rel.ref, value, :bind-right
+                        }
+                    }).grep(*.defined);
+                    return rel-model unless @models;
+                    rel-model.^rs.where(@models.reduce(-> $left, $right? {
+                        $right.DEFINITE
+                        ?? Red::AST::AND.new: $left, $right
+                        !! $left
+                    }))
                 }
             } else {
                 my $filter = instance.^all.join-model(:name(attr.name.substr: 2), rel-model, &rel1).ast.filter;
@@ -188,7 +186,7 @@ method joined-model {
 
 method !relationship-ast($t1, $t2) {
     my $*RED-INTERNAL = True;
-    return rel1 $.source-type, $.target-type if &rel1.count > 1;
+    return rel1 $t1, $t2 if &rel1.count > 1;
     my \col1 = |rel1 $t1;
     return col1 if col1 ~~ Red::AST && col1 !~~ Red::Column;
 
