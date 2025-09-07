@@ -15,7 +15,7 @@ jobs:
         run: docker build -t red-test:base -f Dockerfile .
       - name: Run tests (SQLite)
         run: |
-          docker run --rm --entrypoint "" red-test:base sh -lc "raku -V && zef install --/test . && prove6 -lj8 t"
+          docker run --rm --entrypoint "" red-test:base sh -c "raku -V && zef install --/test . && prove6 -lj8 t"
 
   build-and-test-postgres:
     runs-on: ubuntu-latest
@@ -43,4 +43,4 @@ jobs:
         env:
           RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=red_test user=postgres password=postgres"
         run: |
-          docker run --rm --network host --entrypoint "" -e RED_DATABASE="$RED_DATABASE" red-test:pg sh -lc "zef install --/test . && prove6 -l t"
+          docker run --rm --network host --entrypoint "" -e RED_DATABASE="$RED_DATABASE" red-test:pg sh -c "zef install --/test . && prove6 -l t"
