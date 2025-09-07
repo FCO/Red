@@ -1,8 +1,8 @@
-FROM        registry.gitlab.com/tyil/docker-perl6:alpine-latest
-WORKDIR     /code
-COPY        META6.json .
-RUN         apk add git gcc libc-dev libuuid sqlite-libs
-RUN         zef install "NativeLibs:ver<0.0.7>:auth<github:salortiz>" --force-test
-RUN         zef install --deps-only .
-ENTRYPOINT  zef install -v .
-VOLUME      /code
+FROM rakudo-star:alpine
+WORKDIR /code
+COPY . .
+ENV PATH="/usr/share/raku/site/bin:/usr/local/share/raku/site/bin:/usr/share/perl6/site/bin:/usr/local/share/perl6/site/bin:${PATH}"
+RUN apk add --no-cache git gcc libc-dev libuuid sqlite-libs openssl-dev make bash
+RUN zef install --/test App::Prove6 Pod::To::Markdown
+RUN zef install --/test --test-depends --deps-only .
+ENTRYPOINT ["zef","install","-v","."]

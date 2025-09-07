@@ -1,0 +1,46 @@
+name: docker-test
+on:
+  push:
+    branches:
+      - master
+      - "*"
+  pull_request:
+
+jobs:
+  build-and-test-sqlite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build base image
+        run: docker build -t red-test:base -f Dockerfile .
+      - name: Run tests (SQLite)
+        run: |
+          docker run --rm --entrypoint "" red-test:base sh -lc "raku -V && zef install --/test . && prove6 -lj8 t"
+
+  build-and-test-postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+          POSTGRES_DB: red_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 10s --health-timeout 5s --health-retries 5
+    steps:
+      - uses: actions/checkout@v3
+      - name: Build base image
+        run: docker build -t red-test:pg -f Dockerfile .
+      - name: Wait for Postgres
+        run: |
+          for i in {1..10}; do
+            docker run --rm --network host postgres:16 pg_isready -h 127.0.0.1 -U postgres && exit 0 || sleep 3;
+          done
+          exit 1
+      - name: Run tests (PostgreSQL)
+        env:
+          RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=red_test user=postgres password=postgres"
+        run: |
+          docker run --rm --network host --entrypoint "" -e RED_DATABASE="$RED_DATABASE" red-test:pg sh -lc "zef install --/test . && prove6 -l t"

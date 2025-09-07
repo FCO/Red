@@ -1,0 +1,13 @@
+# Docker build context pruning
+.git
+.github
+.idea
+.coverage
+.red-ecosystem-errors
+*.iml
+*.swp
+*.swo
+node_modules
+coverage
+.gitpod*
+# Keep examples and t; they’re needed for tests
