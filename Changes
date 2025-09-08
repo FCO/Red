@@ -6,6 +6,10 @@ Revision history for Red
       - t/82: Company.id marked as primary key to satisfy Pg FK
       - t/83/t/84: schema(...).drop.create to avoid DDL collisions
       - t/85: drop/create C to ensure correct columns for string funcs
+    - ci(pg): add PostgreSQL job to GitHub Actions; run t/ suite against Pg
+    - pg(json): stringify-json; #> (path), #- (remove), and jsonb_set updates with to_jsonb/::jsonb binding
+    - pg: map MINUS to EXCEPT; use $n placeholders for parameters
+    - sql(binding): route AST::Value through wildcard-value; fix INSERT binding to use deflated values
 
 0.2.3  2025-09-04T20:41:59+01:00
     - fix join error on relationship with 2 parameters
