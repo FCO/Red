@@ -56,7 +56,6 @@ API Pages
 - [Red::Database](api/Red/Database)
 - [Red::Do](api/Red/Do)
 - [Red::Driver](api/Red/Driver)
-- [Red::Driver::Pg](api/Red/Driver/Pg)
 - [Red::Driver::SQLite](api/Red/Driver/SQLite)
 - [Red::Driver::SQLite::SchemaReader](api/Red/Driver/SQLite/SchemaReader)
 - [Red::Event](api/Red/Event)
