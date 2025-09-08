@@ -6,7 +6,7 @@ use UUID;
 model User { ... };
 
 model Company is rw is export {
-    has Str $.id is column = ~UUID.new;
+    has Str $.id is id = ~UUID.new;
     has Str $.name is column is required;
     has Str $.official-name is column = "";
     has Str $.reg-number    is column = "";

@@ -15,7 +15,7 @@ model C {
     has Str  $.value is column;
 }
 
-C.^create-table;
+schema(C).drop.create;
 
 my $v = C.^create: :value("testing AAA string");
 

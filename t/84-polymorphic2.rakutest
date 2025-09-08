@@ -35,7 +35,7 @@ model Seller {
 }
 
 red-defaults "SQLite";
-schema(Buyer, Seller, Login).create;
+schema(Buyer, Seller, Login).drop.create;
 
 my $comprador = Buyer.^create:  :name<Comprador>;
 my $vendedor  = Seller.^create: :name<Vendedor>;

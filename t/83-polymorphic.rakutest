@@ -36,7 +36,7 @@ model Photo {
 
 red-defaults "SQLite";
 
-schema(Comment, Post, Photo).create;
+schema(Comment, Post, Photo).drop.create;
 
 lives-ok { Post.^create: :title<bla>, :comments[{ :body<blabla> }, { :body<blablabla> }] };
 
