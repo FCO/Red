@@ -1,6 +1,11 @@
 Revision history for Red
 
 {{$NEXT}}
+    - pg: translate .index to STRPOS() with proper binding (aligns .index/.contains on Postgres)
+    - tests(pg): make t/82–t/85 Pg-safe and idempotent
+      - t/82: Company.id marked as primary key to satisfy Pg FK
+      - t/83/t/84: schema(...).drop.create to avoid DDL collisions
+      - t/85: drop/create C to ensure correct columns for string funcs
 
 0.2.3  2025-09-04T20:41:59+01:00
     - fix join error on relationship with 2 parameters
