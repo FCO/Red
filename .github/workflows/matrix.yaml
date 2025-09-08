@@ -27,3 +27,45 @@ jobs:
           zef install --/test App::Prove6
       - name: Run tests
         run: prove6 -lj8 t
+
+  pg:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: red_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v3
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: "2022.07"
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev postgresql-client
+      - name: Install Raku deps
+        run: |
+          zef install --/test --test-depends --deps-only .
+          zef install --/test App::Prove6 DB::Pg
+      - name: Wait for Postgres
+        run: |
+          for i in {1..30}; do
+            pg_isready -h 127.0.0.1 -p 5432 -U postgres && break
+            sleep 1
+          done
+      - name: Show psql version
+        run: psql --version
+      - name: Run tests (Pg)
+        env:
+          RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=red_test user=postgres password=postgres"
+        run: prove6 -lj8 t
