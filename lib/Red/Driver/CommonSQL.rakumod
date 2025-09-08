@@ -664,7 +664,7 @@ multi method translate(Red::Column $col, "select", Str :$RED-OVERRIDE-COLUMN-AS-
     }] => @bind
 }
 
-multi method wildcard-value(Red::AST::Value $_) { nextwith .value }
+multi method wildcard-value(Red::AST::Value $_) { self.wildcard-value: .get-value }
 multi method wildcard-value(@val) { @val.map: { self.wildcard-value: $_ } }
 multi method wildcard-value($_) { $_ }
 
@@ -883,8 +883,7 @@ multi method translate(Red::AST::Unique $_, $context?) {
 multi method translate(Red::AST::Insert $_, $context?) {
     my @values = .values.grep({ .value.value.defined });
     return "INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES" => [] unless @values;
-    # TODO: Use translation
-    my @bind = @values.map: *.value.get-value;
+    my @bind = @values.map: { self.wildcard-value: .value };
     "INSERT INTO {
         self.table-name-wrapper: .into.^table
     }(\n{

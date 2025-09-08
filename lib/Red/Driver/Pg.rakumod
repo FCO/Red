@@ -20,17 +20,16 @@ has Int $!port;
 has Str $!dbname;
 has $.dbh;
 
-
 method schema-reader {}
-#| Data accepted by the Pg driver constructor:
-#| dbh     : DB::Pg object
-#| user    : User to be used to connect to the database
-#| password: Password to be used to connect to the database
-#| host    : To be connected to
-#| port    : What port to connect
-#| dbname  : Database name
-submethod BUILD(:$!dbh, Str :$!user, Str :$!password, Str :$!host = "127.0.0.1", Int :$!port = 5432, Str :$!dbname) {
-}
+
+# Data accepted by the Pg driver constructor:
+# dbh     : DB::Pg object
+# user    : User to be used to connect to the database
+# password: Password to be used to connect to the database
+# host    : To be connected to
+# port    : What port to connect
+# dbname  : Database name
+submethod BUILD(:$!dbh, Str :$!user, Str :$!password, Str :$!host = "127.0.0.1", Int :$!port = 5432, Str :$!dbname) {}
 
 submethod TWEAK() {
     $!dbh //= DB::Pg.new:
@@ -48,9 +47,10 @@ submethod TWEAK() {
     ;
 }
 
-method new-connection($dbh = $!dbh) {
-    self.clone: dbh => $dbh
-}
+# JSON values are stringified when binding/reading
+method stringify-json { True }
+
+method new-connection($dbh = $!dbh) { self.clone: dbh => $dbh }
 
 method begin {
     my $dbh = $!dbh.db;
@@ -58,20 +58,12 @@ method begin {
     self.new-connection: $dbh
 }
 
-method commit {
-    #die "Not in a transaction!" unless $*RED-TRANSACTION-RUNNING;
-    $!dbh.commit.finish;
-}
-
-method rollback {
-    #die "Deu ruim!!!";
-    #die "Not in a transaction!" unless $*RED-TRANSACTION-RUNNING;
-    $!dbh.rollback;
-}
+method commit { $!dbh.commit.finish }
+method rollback { $!dbh.rollback }
 
 multi method translate(Red::AST::DateTimePart $_, $context?) {
     my ($sql, @bind) = do given self.translate: .base, $context { .key, |.value }
-    "EXTRACT({ .part.key.uc } FROM { $sql })" => @bind # TODO: Make it better and use real function?
+    "EXTRACT({ .part.key.uc } FROM { $sql })" => @bind
 }
 
 multi method agg-prefetch($_) {
@@ -84,7 +76,8 @@ multi method agg-prefetch($_) {
     END
 }
 
-method wildcard { "\${ ++$*bind-counter }" }
+# Postgres uses $1, $2 ... style placeholders
+method wildcard { '$' ~ ++$*bind-counter }
 
 multi method translate(Red::AST::Not $_ where .value ~~ Red::Column, $context?) {
     self.translate: Red::AST::Cast.new(.value, "boolean").not
@@ -136,12 +129,44 @@ multi method translate(Red::AST::Index $_, $context?) {
     my ($base, @bb) := do given self.translate: .base, $context { .key, .value };
     my $needle = do given .needle {
         when Red::AST { $_ }
-        default       { ast-value $_ }
+        default { ast-value $_ }
     };
     my ($needles, @nb) := do given self.translate: $needle, $context { .key, .value };
     "STRPOS($base, $needles)" => [|@bb, |@nb]
 }
 
+# MINUS is EXCEPT in Postgres
+multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" => [] }
+
+# JSONB support
+proto method pg-jsonb-path-item(|) {*}
+multi method pg-jsonb-path-item(@items) { @items.map({ self.pg-jsonb-path-item: $_ }).join(',') }
+multi method pg-jsonb-path-item(Red::AST::Value $_) { self.pg-jsonb-path-item: .value }
+multi method pg-jsonb-path-item(Int $_) { $_ }
+multi method pg-jsonb-path-item(Str $_) { $_ }
+
+multi method translate(Red::AST::JsonItem $_, $context?) {
+    my ($left, @lb) := do given self.translate: .left, $context { .key, .value };
+    my $path = self.pg-jsonb-path-item: .right.value;
+    "($left #> '{ $path }')" => @lb
+}
+
+multi method translate(Red::AST::JsonRemoveItem $_, $context?) {
+    my ($left, @lb) := do given self.translate: .left, $context { .key, .value };
+    my $path = self.pg-jsonb-path-item: .right.value;
+    "($left #- '{ $path }')" => @lb
+}
+
+multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~~ Red::AST::JsonItem }, "update") {
+    my $json-item = .value.key;
+    my $val       = .value.value;
+    my ($col, @cb) := do given self.translate: $json-item.left, 'update-lval' { .key, .value };
+    my $path = self.pg-jsonb-path-item: $json-item.right.value;
+    my $ph = self.wildcard;
+    my @bind = [ self.wildcard-value: $val ];
+    my $newval-sql = $val.?returns ~~ Json ?? "($ph)::jsonb" !! "to_jsonb($ph)";
+    "{ $col } = jsonb_set({ $col }, '{ $path }', { $newval-sql }, true)" => [|@cb, |@bind]
+}
 
 multi method translate(Red::Column $_, "column-auto-increment") {}
 
@@ -152,6 +177,7 @@ multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined)
         self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
     }
 }
+
 multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined) {
     my Int $*bind-counter;
     my $*red-subselect-for = UPDATE;
@@ -160,21 +186,14 @@ multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined)
 
 multi method wildcard-value(@val) { @val.map: { self.wildcard-value: $_ } }
 multi method wildcard-value($_ where { .HOW ~~ Metamodel::EnumHOW }) { .value }
-multi method wildcard-value(Red::AST::Value $_) {
-    self.wildcard-value: .get-value
-}
+multi method wildcard-value(Red::AST::Value $_) { self.wildcard-value: .get-value }
 multi method wildcard-value(Bool $_) { .Int }
 multi method wildcard-value($_) { $_ }
 
 multi method translate(Red::AST::RowId $_, $context?) { "OID" => [] }
 
-multi method translate($, "delete-returning") {
-    "RETURNING *" => []
-}
-
-multi method translate($, "update-returning") {
-    "RETURNING *" => []
-}
+multi method translate($, "delete-returning") { "RETURNING *" => [] }
+multi method translate($, "update-returning") { "RETURNING *" => [] }
 
 multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined) {
     my Int $*bind-counter;
@@ -186,9 +205,7 @@ multi method translate(Red::AST::Insert $_, $context?) {
     my Int $*bind-counter;
     my @values = .values.grep({ .value.value.defined });
     return "INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES RETURNING *" => [] unless @values;
-
-    # TODO: User translation
-    my @bind = @values.map: { self.wildcard-value: .value }
+    my @bind = @values.map: { self.wildcard-value: .value };
     "INSERT INTO {
         self.table-name-wrapper: .into.^table
     }(\n{
@@ -204,36 +221,23 @@ multi method translate(Red::AST::Mod $_, $context?) {
     "mod($ls, $rs)" => [|@lb, |@rb]
 }
 
-multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
-    (.value ?? "'t'" !! "'f'") => []
-}
+multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) { (.value ?? "'t'" !! "'f'") => [] }
 
-multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) {
-    "'{ .value.Str }'" => []
-}
+multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) { "'{ .value.Str }'" => [] }
 
-multi method translate(Red::AST::Value $_ where .type ~~ Rat, $context?) {
-    "'{ .value }'::{ self.default-type-for-type: .type }" => []
-}
-
+multi method translate(Red::AST::Value $_ where .type ~~ Rat, $context?) { "'{ .value }'::{ self.default-type-for-type: .type }" => [] }
 
 multi method translate(Red::Column $_, "column-comment") {
-    (.comment ?? "COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'" !! "") => []
+    (.comment ?? qq[COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'] !! "") => []
 }
 
-multi method translate(Red::Column $_, "column-type")           {
-    if .attr.type.?red-type-column-type -> $type {
-        return self.type-by-name($type) => []
-    }
-    if !.auto-increment && .attr.type =:= Mu && !.type.defined {
-        return self.type-by-name("string") => []
-    }
+multi method translate(Red::Column $_, "column-type") {
+    if .attr.type.?red-type-column-type -> $type { return self.type-by-name($type) => [] }
+    if !.auto-increment && .attr.type =:= Mu && !.type.defined { return self.type-by-name("string") => [] }
     (.type.defined ?? self.type-by-name(.type) !! self.default-type-for: $_) => []
 }
 
-multi method translate(Red::AST::TableComment $_, $context?) {
-    "COMMENT ON TABLE { .table } IS '{ .msg }'" => []
-}
+multi method translate(Red::AST::TableComment $_, $context?) { "COMMENT ON TABLE { .table } IS '{ .msg }'" => [] }
 
 class Statement does Red::Statement {
     has Str $.query;
@@ -243,11 +247,7 @@ class Statement does Red::Statement {
         my $sth = $db.prepare($!query);
         my $s = $sth.execute(|(@bind or @!binds));
         $db.finish if $stt ~~ DB::Pg;
-        do if $s ~~ DB::Pg::Results {
-            $s.hashes
-        } else {
-            []
-        }.iterator
+        do if $s ~~ DB::Pg::Results { $s.hashes } else { [] }.iterator
     }
     method stt-row($stt) { $stt.pull-one }
 }
@@ -255,61 +255,45 @@ class Statement does Red::Statement {
 method comment-on-same-statement { False }
 
 multi method prepare(Str $query) {
-    CATCH {
-        default {
-            self.map-exception($_).throw
-        }
-    }
+    CATCH { default { self.map-exception($_).throw } }
     Statement.new: :driver(self), :statement($!dbh), :$query
 }
 
-multi method default-type-for(Red::Column $ where .auto-increment --> Str:D) {"serial"}
+multi method default-type-for(Red::Column $ where .auto-increment --> Str:D) { "serial" }
 
-multi method default-type-for-type(Positional $_ --> Str:D) {"{ self.default-type-for-type: .of }[]"}
-multi method default-type-for-type(Json          --> Str:D) {"jsonb"}
-multi method default-type-for-type(DateTime      --> Str:D) {"timestamp"}
-multi method default-type-for-type(Instant       --> Str:D) {"timestamp"}
-multi method default-type-for-type(Date          --> Str:D) {"date"}
-multi method default-type-for-type(Bool          --> Str:D) {"boolean"}
-multi method default-type-for-type(Int           --> Str:D) {"integer"}
-multi method default-type-for-type(UUID          --> Str:D) {"uuid"}
-multi method default-type-for-type(Blob          --> Str:D) {"bytea"}
-multi method default-type-for-type(Red::Column $ --> Str:D) {"varchar(255)"}
+multi method default-type-for-type(Positional $_ --> Str:D) { "{ self.default-type-for-type: .of }[]" }
+multi method default-type-for-type(Json          --> Str:D) { "jsonb" }
+multi method default-type-for-type(DateTime      --> Str:D) { "timestamp" }
+multi method default-type-for-type(Instant       --> Str:D) { "timestamp" }
+multi method default-type-for-type(Date          --> Str:D) { "date" }
+multi method default-type-for-type(Bool          --> Str:D) { "boolean" }
+multi method default-type-for-type(Int           --> Str:D) { "integer" }
+multi method default-type-for-type(UUID          --> Str:D) { "uuid" }
+multi method default-type-for-type(Blob          --> Str:D) { "bytea" }
+multi method default-type-for-type(Red::Column $ --> Str:D) { "varchar(255)" }
 
-multi method type-for-sql("jsonb"     --> "Json"    ) {}
+multi method type-for-sql("jsonb" --> "Json") {}
 
 multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
 multi method inflate(Blob $value, :$to!)         { $to.new: $value }
-multi method deflate(Instant:D  $value) { ~$value.DateTime.utc }
+multi method deflate(Instant:D $value) { ~$value.DateTime.utc }
 multi method deflate(DateTime:D $value) { ~$value.utc }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /"duplicate key value violates unique constraint " \"$<field>=(\w+)\"/) {
-    X::Red::Driver::Mapped::Unique.new:
-            :driver<Pg>,
-            :orig-exception($x),
-            :fields($<field>.Str)
+    X::Red::Driver::Mapped::Unique.new: :driver<Pg>, :orig-exception($x), :fields($<field>.Str)
 }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where /"duplicate key value violates unique constraint"/) {
     $x.?message-detail ~~ /"Key (" \s* (\w+)+ % [\s* "," \s*] \s* ")=(" .*? ") already exists."/;
     my @fields = $0 ?? $0>>.Str !! "";
-    X::Red::Driver::Mapped::Unique.new:
-        :driver<Pg>,
-        :orig-exception($x),
-        :@fields,
+    X::Red::Driver::Mapped::Unique.new: :driver<Pg>, :orig-exception($x), :@fields,
 }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where /"duplicate key value violates unique constraint"/) {
     $x.?message ~~ /"DETAIL:  Key (" \s* (\w+)+ % [\s* "," \s*] \s* ")=(" .*? ") already exists."/;
-    X::Red::Driver::Mapped::Unique.new:
-        :driver<Pg>,
-        :orig-exception($x),
-        :fields($0>>.Str)
+    X::Red::Driver::Mapped::Unique.new: :driver<Pg>, :orig-exception($x), :fields($0>>.Str)
 }
 
 multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /relation \s+ \"$<table>=(\w+)\" \s+ already \s+ exists/) {
-    X::Red::Driver::Mapped::TableExists.new:
-            :driver<Pg>,
-            :orig-exception($x),
-            :table($<table>.Str)
+    X::Red::Driver::Mapped::TableExists.new: :driver<Pg>, :orig-exception($x), :table($<table>.Str)
 }
