@@ -4,6 +4,7 @@ use Red::Driver::CommonSQL;
 use Red::Statement;
 use Red::AST::Unary;
 use Red::AST::Infixes;
+use Red::AST::Value;
 use X::Red::Exceptions;
 use Red::AST::TableComment;
 use Red::Type::Json;
@@ -128,6 +129,17 @@ multi method translate(Red::AST::Cast $_, $context?) {
         my ($str, @bind) := do given self.translate: .value, .bind ?? "bind" !! $context { .key, .value }
         "({ $str })::{ .type.&trans }" => @bind
     }
+}
+
+# Translate string functions that differ on Pg
+multi method translate(Red::AST::Index $_, $context?) {
+    my ($base, @bb) := do given self.translate: .base, $context { .key, .value };
+    my $needle = do given .needle {
+        when Red::AST { $_ }
+        default       { ast-value $_ }
+    };
+    my ($needles, @nb) := do given self.translate: $needle, $context { .key, .value };
+    "STRPOS($base, $needles)" => [|@bb, |@nb]
 }
 
 
