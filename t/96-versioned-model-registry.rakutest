@@ -7,22 +7,27 @@ my $*RED-DB = database "SQLite";
 use lib '/home/runner/work/Red/Red/lib';
 use Red "experimental migrations";
 use Red::ModelRegistry;
+use Red::Traits;
 
-# Define different versions using different names
-model UserV01 {
+# Define different versions using trait-based registration
+model UserV01 is model-version('User:0.1') {
     has Str $.name is column;
     has Int $.age is column;
 }
 
-model UserV02 {
+model UserV02 is model-version('User:0.2') {
     has Str $.name is column;
     has Str $.full-name is column;
     has Int $.age is column;
 }
 
-# Register them as versions of the logical "User" model
-register-model-version('User', '0.1', UserV01);
-register-model-version('User', '0.2', UserV02);
+# Alternative hash syntax
+model UserV03 is model-version({ name => 'User', version => '0.3' }) {
+    has Str $.name is column;
+    has Str $.full-name is column;
+    has Str $.email is column;
+    has Int $.age is column;
+}
 
 subtest 'Versioned Model Registry' => {
     plan 4;
@@ -43,7 +48,7 @@ subtest 'Version Listing' => {
     
     my %versions = list-model-versions('User');
     
-    is %versions.elems, 2, 'Correct number of versions';
+    is %versions.elems, 3, 'Correct number of versions (including v0.3)';
     ok %versions<0.1>:exists, 'v0.1 key exists';
     ok %versions<0.2>:exists, 'v0.2 key exists';
 }

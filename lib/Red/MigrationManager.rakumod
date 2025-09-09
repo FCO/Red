@@ -243,3 +243,48 @@ sub list-migration-status() is export {
 sub check-deployment-safety() is export {
     $global-manager.deployment-safety-check()
 }
+
+# Syntactic sugar for migration specifications
+my %*MIGRATION-SPEC;
+
+sub migration(Str $name, &block) is export {
+    %*MIGRATION-SPEC = %();
+    &block();
+    start-multi-step-migration($name, %*MIGRATION-SPEC);
+}
+
+sub description(Str $desc) is export {
+    %*MIGRATION-SPEC<description> = $desc;
+}
+
+sub new-columns(Str $table, %columns) is export {
+    %*MIGRATION-SPEC<new-columns>{$table} = %columns;
+}
+
+sub new-tables(Str $table, %spec) is export {
+    %*MIGRATION-SPEC<new-tables>{$table} = %spec;
+}
+
+sub new-indexes(Str $table, @indexes) is export {
+    %*MIGRATION-SPEC<new-indexes>{$table} = @indexes;
+}
+
+sub populate(Str $table, %transformations) is export {
+    %*MIGRATION-SPEC<population>{$table} = %transformations;
+}
+
+sub make-not-null(%spec) is export {
+    %*MIGRATION-SPEC<make-not-null>.push: %spec;
+}
+
+sub delete-columns(Str $table, @columns) is export {
+    %*MIGRATION-SPEC<delete-columns>{$table} = @columns;
+}
+
+sub delete-indexes(@indexes) is export {
+    %*MIGRATION-SPEC<delete-indexes> = @indexes;
+}
+
+sub delete-tables(@tables) is export {
+    %*MIGRATION-SPEC<delete-tables> = @tables;
+}

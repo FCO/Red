@@ -21,21 +21,25 @@ Instead of trying to use the same model name with different versions, we use dif
 use Red "experimental migrations";
 use Red::ModelRegistry;
 
-# Define different versions using different names
-model UserV01 {
+# Define different versions using different names and register with traits
+model UserV01 is model-version('User:0.1') {
     has Str $.name is column;
     has Int $.age is column;
 }
 
-model UserV02 {
+model UserV02 is model-version('User:0.2') {
     has Str $.name is column;
     has Str $.full-name is column;
     has Int $.age is column;
 }
 
-# Register them as versions of the logical "User" model
-register-model-version('User', '0.1', UserV01);
-register-model-version('User', '0.2', UserV02);
+# Alternative syntax using hash notation
+model UserV03 is model-version({ name => 'User', version => '0.3' }) {
+    has Str $.name is column;
+    has Str $.full-name is column;
+    has Str $.email is column;
+    has Int $.age is column;
+}
 
 # Retrieve models by logical name and version
 my $v01 = get-model-version('User', '0.1');
@@ -95,4 +99,3 @@ This foundation enables future enhancements such as:
 - CLI tooling for migration generation
 - Automatic migration path discovery
 - Schema diffing between versions
-- Database migration execution

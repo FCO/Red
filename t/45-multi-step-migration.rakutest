@@ -31,12 +31,17 @@ subtest "MigrationStatus model", {
 
 # Test 3: MigrationPhase enum
 subtest "Migration phases", {
-    plan 5;
+    plan 10;
     
     ok BEFORE-START.defined, "BEFORE-START phase defined";
+    ok CREATED-TABLES.defined, "CREATED-TABLES phase defined";
     ok CREATED-COLUMNS.defined, "CREATED-COLUMNS phase defined";
+    ok CREATED-INDEXES.defined, "CREATED-INDEXES phase defined";
     ok POPULATED-COLUMNS.defined, "POPULATED-COLUMNS phase defined";
+    ok UPDATED-CONSTRAINTS.defined, "UPDATED-CONSTRAINTS phase defined";
     ok DELETED-COLUMNS.defined, "DELETED-COLUMNS phase defined";
+    ok DELETED-INDEXES.defined, "DELETED-INDEXES phase defined";
+    ok DELETED-TABLES.defined, "DELETED-TABLES phase defined";
     ok COMPLETED.defined, "COMPLETED phase defined";
 };
 
@@ -49,10 +54,16 @@ subtest "handle-migration function", {
 
 # Test 5: Migration manager functions exist
 subtest "Migration manager functions", {
-    plan 4;
+    plan 8;
     
     ok &start-multi-step-migration.defined, "start-multi-step-migration function exported";
     ok &advance-migration.defined, "advance-migration function exported";
     ok &list-migration-status.defined, "list-migration-status function exported";
     ok &check-deployment-safety.defined, "check-deployment-safety function exported";
+    
+    # Test syntactic sugar functions
+    ok &migration.defined, "migration DSL function exported";
+    ok &description.defined, "description DSL function exported";
+    ok &new-columns.defined, "new-columns DSL function exported";
+    ok &populate.defined, "populate DSL function exported";
 };

@@ -11,13 +11,18 @@ Traditional database migrations can cause downtime because they often involve:
 - Data transformations that might fail
 - Incompatible schema changes
 
-Multi-step migrations solve this by breaking changes into 5 phases:
+Multi-step migrations solve this by breaking changes into 9 phases:
 
 1. B<BEFORE-START>: Initial state, no changes yet
-2. B<CREATED-COLUMNS>: New nullable columns added
-3. B<POPULATED-COLUMNS>: New columns populated and made NOT NULL
-4. B<DELETED-COLUMNS>: Old columns removed
-5. B<COMPLETED>: Migration finished
+2. B<CREATED-TABLES>: New tables created
+3. B<CREATED-COLUMNS>: New nullable columns added
+4. B<CREATED-INDEXES>: New indexes created for performance
+5. B<POPULATED-COLUMNS>: New columns populated and made NOT NULL
+6. B<UPDATED-CONSTRAINTS>: Foreign keys and constraints added
+7. B<DELETED-COLUMNS>: Old columns removed
+8. B<DELETED-INDEXES>: Old indexes removed
+9. B<DELETED-TABLES>: Old tables removed
+10. B<COMPLETED>: Migration finished
 
 =head2 Basic Usage
 
@@ -25,6 +30,26 @@ Multi-step migrations solve this by breaking changes into 5 phases:
 
     use Red::MigrationManager;
     
+    # Syntactic sugar approach - using sub to make DSL-like syntax
+    migration "password-migration" => {
+        description "Convert plain text passwords to hashed";
+        
+        new-columns user => {
+            hashed_password => { type => "VARCHAR(255)" },
+            is_active => { type => "BOOLEAN DEFAULT 1" }
+        };
+        
+        populate user => {
+            hashed_password => "CONCAT('hash:', old_password)",
+            is_active => "1"
+        };
+        
+        make-not-null { table => "user", column => "hashed_password" };
+        
+        delete-columns user => ["old_password"];
+    };
+    
+    # Alternative traditional hash approach
     my %migration-spec = {
         description => "Convert plain text passwords to hashed",
         new-columns => {
@@ -111,6 +136,22 @@ A migration specification is a hash with these keys:
 
 Human-readable description of the migration.
 
+=head3 C<new-tables>
+
+Hash defining new tables to create:
+
+    new-tables => {
+        table-name => {
+            columns => {
+                column-name => { 
+                    type => "SQL-TYPE",
+                    nullable => True,  # optional, defaults to True
+                    default => "value" # optional
+                }
+            }
+        }
+    }
+
 =head3 C<new-columns>
 
 Hash defining new columns to add:
@@ -123,6 +164,20 @@ Hash defining new columns to add:
                 default => "value" # optional
             }
         }
+    }
+
+=head3 C<new-indexes>
+
+Hash defining new indexes to create:
+
+    new-indexes => {
+        table-name => [
+            {
+                name => "optional-index-name",
+                columns => ["col1", "col2"],
+                unique => False  # optional, defaults to False
+            }
+        ]
     }
 
 =head3 C<population>
@@ -149,6 +204,32 @@ Array of columns to make NOT NULL after population:
         # ...
     ]
 
+=head3 C<new-foreign-keys>
+
+Array of foreign key constraints to add:
+
+    new-foreign-keys => [
+        {
+            table => "orders",
+            column => "user_id", 
+            ref-table => "users",
+            ref-column => "id",
+            name => "orders_user_fk"  # optional
+        }
+    ]
+
+=head3 C<new-check-constraints>
+
+Array of check constraints to add:
+
+    new-check-constraints => [
+        {
+            table => "users",
+            name => "age_check",
+            condition => "age >= 0 AND age <= 150"
+        }
+    ]
+
 =head3 C<delete-columns>
 
 Hash of columns to delete:
@@ -156,6 +237,20 @@ Hash of columns to delete:
     delete-columns => {
         table-name => ["column1", "column2", ...]
     }
+
+=head3 C<delete-indexes>
+
+Array of indexes to delete:
+
+    delete-indexes => [
+        { name => "old_index_name" }
+    ]
+
+=head3 C<delete-tables>
+
+Array of table names to delete:
+
+    delete-tables => ["old_table1", "old_table2"]
 
 =head2 Safety and Monitoring
 
@@ -207,14 +302,15 @@ Test your migrations thoroughly on a copy of production data:
 =head3 3. Handle Errors in Migration Code
 
     method authenticate(Str $password) {
-        try {
+        {
             handle-migration "password-migration",
                 read-new-return-defined => { ... },
                 read-old => { ... };
-        }
-        CATCH {
-            # Log error and fall back to safe default
-            default { return Nil }
+            
+            CATCH {
+                # Log error and fall back to safe default
+                default { return Nil }
+            }
         }
     }
 
@@ -240,11 +336,31 @@ While the multi-step system minimizes risk, always have a rollback plan:
 
 For complex data transformations, you can use Red's AST system:
 
+    use Red::AST;
+    
     population => {
         user => {
             full_name => {
-                expression => "CONCAT(first_name, ' ', last_name)",
-                where => "first_name IS NOT NULL AND last_name IS NOT NULL"
+                # Using Red AST instead of raw SQL
+                expression => ast-concat(
+                    ast-column('first_name'),
+                    ast-literal(' '),
+                    ast-column('last_name')
+                ),
+                where => ast-and(
+                    ast-is-not-null(ast-column('first_name')),
+                    ast-is-not-null(ast-column('last_name'))
+                )
+            }
+        }
+    }
+    
+    # Alternative: using Red's query builder syntax
+    population => {
+        user => {
+            full_name => {
+                ast => { .first-name ~ ' ' ~ .last-name },
+                where => { .first-name.defined && .last-name.defined }
             }
         }
     }
