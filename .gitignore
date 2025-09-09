@@ -12,3 +12,5 @@
 *.db
 tags
 .racoco
+zef/
+*.sqlite3
