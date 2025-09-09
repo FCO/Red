@@ -21,6 +21,11 @@ use Red::DB;
 use Red::Schema;
 use Red::Formatter;
 use Red::AST::Infixes;
+use Red::ModelRegistry;
+use Red::MigrationStatus;
+use Red::MultiStepMigration;
+use Red::MigrationManager;
+use Red::MigrationPhase;
 
 class Red:ver<0.2.3>:api<2> {
     our %experimentals;

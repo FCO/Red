@@ -1,0 +1,58 @@
+use Test;
+use Red;
+
+plan 15;
+
+# Set up test database using Mock (like other Red tests)
+my $*RED-DB = database "Mock";
+
+# Load migration modules after setting up database
+use Red::MultiStepMigration;
+use Red::MigrationManager;
+use Red::MigrationStatus;
+
+# Test 1: Basic model registry functionality (from existing ModelRegistry)
+subtest "Migration modules load correctly", {
+    plan 3;
+    
+    ok Red::MigrationStatus.defined, "MigrationStatus class loads";
+    ok Red::MigrationManager.defined, "MigrationManager class loads";
+    ok Red::MultiStepMigration.defined, "MultiStepMigration class loads";
+};
+
+# Test 2: MigrationStatus model structure
+subtest "MigrationStatus model", {
+    plan 2;
+    
+    ok Red::MigrationStatus.^table-name eq 'red_migration_status', "Table name is correct";
+    my @columns = Red::MigrationStatus.^columns.map(*.name);
+    ok 'migration-name' ∈ @columns, "Has migration-name column";
+};
+
+# Test 3: MigrationPhase enum
+subtest "Migration phases", {
+    plan 5;
+    
+    ok BEFORE-START.defined, "BEFORE-START phase defined";
+    ok CREATED-COLUMNS.defined, "CREATED-COLUMNS phase defined";
+    ok POPULATED-COLUMNS.defined, "POPULATED-COLUMNS phase defined";
+    ok DELETED-COLUMNS.defined, "DELETED-COLUMNS phase defined";
+    ok COMPLETED.defined, "COMPLETED phase defined";
+};
+
+# Test 4: handle-migration function exists
+subtest "handle-migration function", {
+    plan 1;
+    
+    ok &handle-migration.defined, "handle-migration function is exported";
+};
+
+# Test 5: Migration manager functions exist
+subtest "Migration manager functions", {
+    plan 4;
+    
+    ok &start-multi-step-migration.defined, "start-multi-step-migration function exported";
+    ok &advance-migration.defined, "advance-migration function exported";
+    ok &list-migration-status.defined, "list-migration-status function exported";
+    ok &check-deployment-safety.defined, "check-deployment-safety function exported";
+};
