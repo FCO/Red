@@ -39,7 +39,6 @@ isa-ok $intersect2, M::ResultSeq;
 isa-ok $intersect2.ast, Red::AST::Intersect;
 is-deeply $intersect2.map(*.a).Seq.sort, eager 10 ^..^ 20;
 
-skip-rest("Pg do not accept minus"), exit with %*ENV<RED_DATABASE>;
 my $minus1 = M.^all (-) M.^all.grep(*.a >= 20);
 isa-ok $minus1, M::ResultSeq;
 isa-ok $minus1.ast, Red::AST::Minus;

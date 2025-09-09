@@ -47,8 +47,8 @@ submethod TWEAK() {
     ;
 }
 
-# JSON values are stringified when binding/reading
-method stringify-json { True }
+# JSON values are passed as native structures to DBIish  
+method stringify-json { False }
 
 method new-connection($dbh = $!dbh) { self.clone: dbh => $dbh }
 
@@ -148,13 +148,13 @@ multi method pg-jsonb-path-item(Str $_) { $_ }
 multi method translate(Red::AST::JsonItem $_, $context?) {
     my ($left, @lb) := do given self.translate: .left, $context { .key, .value };
     my $path = self.pg-jsonb-path-item: .right.value;
-    "($left #> '{ $path }')" => @lb
+    "($left #> '\{$path}')" => @lb
 }
 
 multi method translate(Red::AST::JsonRemoveItem $_, $context?) {
     my ($left, @lb) := do given self.translate: .left, $context { .key, .value };
     my $path = self.pg-jsonb-path-item: .right.value;
-    "($left #- '{ $path }')" => @lb
+    "($left #- '\{$path}')" => @lb
 }
 
 multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~~ Red::AST::JsonItem }, "update") {

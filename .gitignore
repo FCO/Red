@@ -12,3 +12,4 @@
 *.db
 tags
 .racoco
+zef/
