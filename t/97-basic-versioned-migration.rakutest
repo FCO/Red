@@ -1,0 +1,64 @@
+#!/usr/bin/env raku
+
+use Test;
+
+my $*RED-DB = database "SQLite";
+
+use lib '/home/runner/work/Red/Red/lib';
+use Red "experimental migrations";
+
+# Simple registry for versioned models
+my %model-versions;
+
+sub register-model-version($logical-name, $version, $model-class) {
+    %model-versions{$logical-name}{$version} = $model-class;
+}
+
+sub get-model-version($logical-name, $version) {
+    %model-versions{$logical-name}{$version}
+}
+
+# Define different versions using different names
+model UserV01 {
+    has Str $.name is column;
+    has Int $.age is column;
+}
+
+model UserV02 {
+    has Str $.name is column;
+    has Str $.full-name is column;
+    has Int $.age is column;
+}
+
+# Register them
+register-model-version('User', '0.1', UserV01);
+register-model-version('User', '0.2', UserV02);
+
+subtest 'Basic Functionality' => {
+    plan 4;
+    
+    my $v01 = get-model-version('User', '0.1');
+    my $v02 = get-model-version('User', '0.2');
+    
+    ok $v01, 'Can retrieve User v0.1';
+    ok $v02, 'Can retrieve User v0.2';
+    
+    is $v01.^name, 'UserV01', 'v0.1 maps to correct model class';
+    is $v02.^name, 'UserV02', 'v0.2 maps to correct model class';
+}
+
+subtest 'Migration Setup' => {
+    plan 1;
+    
+    my $v01 = get-model-version('User', '0.1');
+    my $v02 = get-model-version('User', '0.2');
+    
+    # Test that migration can be set up using existing Red infrastructure
+    lives-ok {
+        $v02.^migration: {
+            .full-name = "{ .name } (migrated)"
+        }
+    }, 'Can setup migration from v0.1 to v0.2';
+}
+
+done-testing;

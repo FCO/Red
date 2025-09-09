@@ -1,0 +1,82 @@
+#!/usr/bin/env raku
+
+use Test;
+
+my $*RED-DB = database "SQLite";
+
+use lib '/home/runner/work/Red/Red/lib';
+use Red "experimental migrations";
+use Red::ModelRegistry;
+
+# Define different versions using different names
+model UserV01 {
+    has Str $.name is column;
+    has Int $.age is column;
+}
+
+model UserV02 {
+    has Str $.name is column;
+    has Str $.full-name is column;
+    has Int $.age is column;
+}
+
+# Register them as versions of the logical "User" model
+register-model-version('User', '0.1', UserV01);
+register-model-version('User', '0.2', UserV02);
+
+subtest 'Versioned Model Registry' => {
+    plan 4;
+    
+    my $v01 = get-model-version('User', '0.1');
+    my $v02 = get-model-version('User', '0.2');
+    
+    # Check if they are the correct type objects
+    ok $v01 ~~ UserV01, 'v0.1 is a UserV01 type';
+    ok $v02 ~~ UserV02, 'v0.2 is a UserV02 type';
+    
+    is $v01.^name, 'UserV01', 'v0.1 maps to correct model class';
+    is $v02.^name, 'UserV02', 'v0.2 maps to correct model class';
+}
+
+subtest 'Version Listing' => {
+    plan 3;
+    
+    my %versions = list-model-versions('User');
+    
+    is %versions.elems, 2, 'Correct number of versions';
+    ok %versions<0.1>:exists, 'v0.1 key exists';
+    ok %versions<0.2>:exists, 'v0.2 key exists';
+}
+
+subtest 'Model Instances' => {
+    plan 3;
+    
+    my $v01 = get-model-version('User', '0.1');
+    my $v02 = get-model-version('User', '0.2');
+    
+    # Test that we can create instances
+    my $instance01 = $v01.new(:name<John>, :age(30));
+    my $instance02 = $v02.new(:name<Jane>, :full-name("Jane Doe"), :age(25));
+    
+    ok $instance01.defined, 'Can create v0.1 instance';
+    ok $instance02.defined, 'Can create v0.2 instance';
+    
+    is $instance01.name, 'John', 'v0.1 instance has correct data';
+}
+
+subtest 'Migration Setup' => {
+    plan 1;
+    
+    my $v01 = get-model-version('User', '0.1');
+    my $v02 = get-model-version('User', '0.2');
+    
+    # Test that migration can be set up using existing Red infrastructure
+    lives-ok {
+        $v02.^migration: {
+            .full-name = "{ .name } (migrated)"
+        };
+        # Note: actual migration execution would require database setup
+    }, 'Can setup migration from v0.1 to v0.2';
+}
+
+done-testing;

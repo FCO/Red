@@ -1,0 +1,66 @@
+#!/usr/bin/env raku
+
+use Test;
+
+my $*RED-DB = database "SQLite";
+
+use lib '/home/runner/work/Red/Red/lib';
+use Red "experimental migrations";
+use Red::Migration::VersionedModel;
+
+# Define different versions of the same logical model using different names
+model UserV01 {
+    has Str $.name is column;
+    has Int $.age is column;
+}
+
+model UserV02 {
+    has Str $.name is column;
+    has Str $.full-name is column;
+    has Int $.age is column;
+}
+
+# Register them as versions of the same logical model
+register-model-version('User', '0.1', UserV01);
+register-model-version('User', '0.2', UserV02);
+
+subtest 'Versioned Model Registration' => {
+    # Test that we can retrieve models by version
+    my $v01 = get-model-version('User', '0.1');
+    my $v02 = get-model-version('User', '0.2');
+    
+    ok $v01, 'Can retrieve User v0.1';
+    ok $v02, 'Can retrieve User v0.2';
+    
+    is $v01.^name, 'UserV01', 'v0.1 maps to correct model class';
+    is $v02.^name, 'UserV02', 'v0.2 maps to correct model class';
+    
+    # Test logical name and version methods
+    is $v01.logical-name, 'User', 'v0.1 has correct logical name';
+    is $v01.logical-version, v0.1, 'v0.1 has correct logical version';
+    
+    is $v02.logical-name, 'User', 'v0.2 has correct logical name';
+    is $v02.logical-version, v0.2, 'v0.2 has correct logical version';
+}
+
+subtest 'Migration Between Versions' => {
+    my $v01 = get-model-version('User', '0.1');
+    my $v02 = get-model-version('User', '0.2');
+    
+    # Test migration setup
+    my $result = $v02.migrate-from-version(v0.1, {
+        .full-name = "{ .name } (migrated)"
+    });
+    
+    like $result, /Migration \s+ setup \s+ from \s+ User \s+ v0\.1 \s+ to \s+ v0\.2/, 'Migration setup works';
+}
+
+subtest 'Version Listing' => {
+    my %versions = list-model-versions('User');
+    
+    ok %versions<0.1>, 'v0.1 is listed';
+    ok %versions<0.2>, 'v0.2 is listed';
+    is %versions.elems, 2, 'Correct number of versions';
+}
+
+done-testing;
