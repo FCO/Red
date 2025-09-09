@@ -104,11 +104,6 @@ multi experimental("supply") {
     Empty
 }
 
-multi experimental($ where "versioned-models" | "versioned models") {
-    require ::('Red::ModelRegistry');
-    ::('Red::ModelRegistry::EXPORT::ALL::')
-}
-
 multi experimental("is-handling") {
     multi trait_mod:<is>(Mu:U $model, :$handling) {
         for $handling<> {
