@@ -95,4 +95,4 @@ jobs:
       - name: Run tests (Pg)
         env:
           RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=red_test user=postgres password=postgres"
-        run: prove6 -lj8 t
+        run: prove6 -lj2 t
