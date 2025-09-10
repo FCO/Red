@@ -14,27 +14,17 @@ multi method migration(\model, &migr) {
     @migration-blocks.push: &migr
 }
 
-#| Executes migrations.
-multi method migrate(\model, Red::Model:U :$from) {
-    my Red::Attr::Column %old-cols = $from.^columns.map: { .name.substr(2) => $_ };
-    my Str               @new-cols = model.^columns.map: { .name.substr(2) };
-
-    my \Type = Metamodel::ClassHOW.new_type: :name(model.^name);
-    for (|%old-cols.keys, |@new-cols) -> $name {
-        Type.^add_method: $name, method () is rw {
-            Proxy.new:
-                FETCH => method {
-                    %old-cols{$name}.column
-                },
-                STORE => method (\data) {
-                    @migrations.push: $name => data
-                }
-            ;
-        }
-    }
-
-    Type.^compose;
-    .(Type) for @migration-blocks
+#| Add migrate method to composed models
+method migrate(\model, Red::Model:U :$from!) {
+    use MetamodelX::Red::MigrationHOW;
+    
+    my $migration-class = MetamodelX::Red::MigrationHOW.new_type(
+        name => "{model.^name}-auto-migration",
+        description => "Auto-generated migration from {$from.^name} to {model.^name}"
+    );
+    
+    $migration-class.HOW.generate-from-models($from, model);
+    $migration-class.HOW.execute-migration();
 }
 
 #| Prints the migrations.

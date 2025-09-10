@@ -25,7 +25,7 @@ use Red::ModelRegistry;
 use Red::MigrationStatus;
 use Red::MultiStepMigration;
 use Red::MigrationManager;
-use Red::MigrationPhase;
+use Red::Migration::DSL;
 
 class Red:ver<0.2.3>:api<2> {
     our %experimentals;
@@ -43,7 +43,7 @@ class Red:ver<0.2.3>:api<2> {
         Red::Do::EXPORT::ALL::,
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
-        Red::Schema::EXPORT::ALL::,
+        Red::Migration::DSL::EXPORT::ALL::,
         ‘&database’ => &database,
         |@experimentals.map(-> $feature { |experimental( $feature ) })
     }
