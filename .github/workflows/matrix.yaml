@@ -21,6 +21,19 @@ jobs:
         with:
           raku-version: ${{ matrix.raku-version }}
       - run: raku -V
+      - name: Cache zef dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.raku
+            ~/.zef
+          key: ${{ runner.os }}-zef-${{ hashFiles('META6.json') }}
+          restore-keys: |
+            ${{ runner.os }}-zef-
+      - name: Pre-install core dependencies
+        run: |
+          # Install dependencies that are commonly needed and cache them
+          zef install --/test Config Config::Parser::json App::Prove6 || true
       - name: Install dependencies
         run: |
           zef install --/test --test-depends --deps-only .
@@ -49,10 +62,24 @@ jobs:
       - uses: Raku/setup-raku@v1
         with:
           raku-version: "2022.07"
+      - name: Cache zef dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.raku
+            ~/.zef
+          key: ${{ runner.os }}-zef-pg-${{ hashFiles('META6.json') }}
+          restore-keys: |
+            ${{ runner.os }}-zef-pg-
+            ${{ runner.os }}-zef-
       - name: Install system deps
         run: |
           sudo apt-get update
           sudo apt-get install -y libpq-dev postgresql-client
+      - name: Pre-install core dependencies
+        run: |
+          # Install dependencies that are commonly needed and cache them
+          zef install --/test Config Config::Parser::json App::Prove6 DB::Pg || true
       - name: Install Raku deps
         run: |
           zef install --/test --test-depends --deps-only .
