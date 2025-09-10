@@ -148,13 +148,13 @@ multi method pg-jsonb-path-item(Str $_) { $_ }
 multi method translate(Red::AST::JsonItem $_, $context?) {
     my ($left, @lb) := do given self.translate: .left, $context { .key, .value };
     my $path = self.pg-jsonb-path-item: .right.value;
-    "($left #> '{ $path }')" => @lb
+    "($left #> '\{$path\}')" => @lb
 }
 
 multi method translate(Red::AST::JsonRemoveItem $_, $context?) {
     my ($left, @lb) := do given self.translate: .left, $context { .key, .value };
     my $path = self.pg-jsonb-path-item: .right.value;
-    "($left #- '{ $path }')" => @lb
+    "($left #- '\{$path\}')" => @lb
 }
 
 multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~~ Red::AST::JsonItem }, "update") {
@@ -165,7 +165,7 @@ multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~
     my $ph = self.wildcard;
     my @bind = [ self.wildcard-value: $val ];
     my $newval-sql = $val.?returns ~~ Json ?? "($ph)::jsonb" !! "to_jsonb($ph)";
-    "{ $col } = jsonb_set({ $col }, '{ $path }', { $newval-sql }, true)" => [|@cb, |@bind]
+    "{ $col } = jsonb_set({ $col }, '\{$path\}', { $newval-sql }, true)" => [|@cb, |@bind]
 }
 
 multi method translate(Red::Column $_, "column-auto-increment") {}
