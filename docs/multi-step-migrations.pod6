@@ -182,7 +182,53 @@ Hash defining new indexes to create:
 
 =head3 C<population>
 
-Hash defining how to populate new columns:
+Hash defining how to populate new columns. Supports multiple formats:
+
+=head4 Using C<^migration> Method (Recommended)
+
+The C<^migration> method generates Red::AST-based SQL for populating columns during migrations:
+
+    # Auto-generate population transformation
+    my $ast = UserV2.^migration(from => UserV1, target-column => "hashed_password");
+    
+    population => {
+        user => {
+            hashed_password => { ast => $ast }
+        }
+    }
+
+Common transformation patterns supported by C<^migration>:
+
+=over 4
+
+=item * B<full_name>: Combines first_name + last_name
+
+=item * B<hashed_password>: Adds hash prefix to plain password
+
+=item * B<email_lower>: Converts email to lowercase
+
+=item * B<is_*> fields: Converts status to boolean
+
+=back
+
+=head4 Manual AST Specifications
+
+For custom transformations using Red::AST:
+
+    population => {
+        user => {
+            full_name => {
+                ast => Red::AST::Function.new(
+                    name => 'CONCAT',
+                    args => [ast-column('first_name'), ast-literal(' '), ast-column('last_name')]
+                )
+            }
+        }
+    }
+
+=head4 String Expressions (Fallback)
+
+Simple SQL expressions as strings:
 
     population => {
         table-name => {
@@ -329,6 +375,33 @@ While the multi-step system minimizes risk, always have a rollback plan:
     # 1. Fix the application code
     # 2. The old columns are still there and working
     # 3. Drop the new columns if needed (manual process)
+
+=head2 CLI Integration with ^migration Method
+
+The CLI migration tooling integrates with the C<^migration> method to auto-generate population SQL:
+
+=head3 Using CLI to Generate Population SQL
+
+    # Generate population SQL for a specific column transformation
+    my $ast = migration-population-sql(UserV1, UserV2, "hashed_password");
+    
+    # Use in migration specification
+    migration "user-password-hashing" => {
+        description "Migrate passwords to secure hashing";
+        new-columns users => { hashed_password => { type => "VARCHAR(255)" } };
+        populate users => { hashed_password => { ast => $ast } };
+        delete-columns users => ["plain_password"];
+    };
+
+=head3 Auto-Generated Migration Templates
+
+When generating migrations with model context:
+
+    migration-generate "password-hashing", 
+        from-model => UserV1, 
+        to-model => UserV2;
+
+This generates a template with C<^migration> method examples for common transformations.
 
 =head2 Advanced Features
 

@@ -178,15 +178,33 @@ method !execute-phase-3(Str $name, %spec) {
 #| Build SQL for populating columns with transformations
 method !build-population-sql($table, $column, $transformation) {
     given $transformation {
+        when Red::AST {
+            # Use Red::AST to generate SQL
+            my $sql = $*RED-DB.translate($transformation).key;
+            "UPDATE $table SET $column = $sql"
+        }
         when Str {
             # Simple string transformation - assumes it's a SQL expression
             "UPDATE $table SET $column = $transformation"
         }
         when Hash {
             # Complex transformation specification
-            my $expression = $transformation<expression> // die "No expression in transformation";
-            my $where = $transformation<where> ?? " WHERE {$transformation<where>}" !! "";
-            "UPDATE $table SET $column = $expression$where"
+            if $transformation<ast> {
+                # AST-based transformation (preferred)
+                my $sql = $*RED-DB.translate($transformation<ast>).key;
+                my $where = $transformation<where> ?? " WHERE {$transformation<where>}" !! "";
+                "UPDATE $table SET $column = $sql$where"
+            } else {
+                # String expression fallback
+                my $expression = $transformation<expression> // die "No expression in transformation";
+                my $where = $transformation<where> ?? " WHERE {$transformation<where>}" !! "";
+                "UPDATE $table SET $column = $expression$where"
+            }
+        }
+        when Callable {
+            # Block-based transformation - evaluate to get AST/SQL
+            my $result = $transformation();
+            return self!build-population-sql($table, $column, $result);
         }
         default {
             die "Unsupported transformation type: {$transformation.^name}";

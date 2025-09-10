@@ -7,11 +7,11 @@ use Red::MigrationManager;
 use Red::MigrationStatus;
 
 #| Generate a new migration template
-method generate-migration(Str $name, Str :$type = 'column-change') {
+method generate-migration(Str $name, Str :$type = 'column-change', :$from-model, :$to-model) {
     my $timestamp = DateTime.now.format('%Y%m%d%H%M%S');
     my $filename = "migrations/{$timestamp}-{$name}.raku";
     
-    my $template = self!get-migration-template($type, $name);
+    my $template = self!get-migration-template($type, $name, :$from-model, :$to-model);
     
     unless $filename.IO.parent.d {
         $filename.IO.parent.mkdir;
@@ -20,6 +20,11 @@ method generate-migration(Str $name, Str :$type = 'column-change') {
     $filename.IO.spurt($template);
     say "Generated migration: $filename";
     $filename
+}
+
+#| Generate population SQL using model ^migration method
+method generate-population-sql(Red::Model:U $from-model, Red::Model:U $to-model, Str $target-column) {
+    return $to-model.^migration(from => $from-model, target-column => $target-column);
 }
 
 #| Start a migration from file
@@ -106,14 +111,26 @@ method safety-check() {
 }
 
 #| Get migration template based on type
-method !get-migration-template(Str $type, Str $name) {
+method !get-migration-template(Str $type, Str $name, :$from-model, :$to-model) {
     given $type {
         when 'column-change' {
+            my $populate-example = "";
+            if $from-model && $to-model {
+                $populate-example = qq:to/POPULATE/;
+                
+                # Auto-generated population using ^migration method
+                # Example for new_column:
+                # my \$ast = {$to-model.^name}.^migration(from => {$from-model.^name}, target-column => "new_column");
+                # populate table_name => \{ new_column => \$ast \};
+                POPULATE
+            }
+            
             return qq:to/TEMPLATE/;
             # Migration: $name
             # Generated: {DateTime.now}
             
             use Red::MigrationManager;
+            use Red::AST;$populate-example
             
             migration "$name" => \{
                 description "Add description here";
@@ -124,8 +141,9 @@ method !get-migration-template(Str $type, Str $name) {
                 \};
                 
                 # Populate new columns (optional)
+                # Use model.^migration() to generate transformation SQL
                 populate table_name => \{
-                    new_column => "old_column"  # or complex expression
+                    new_column => "old_column"  # or use ^migration method for AST
                 \};
                 
                 # Make columns NOT NULL (optional)
@@ -190,8 +208,12 @@ method !extract-migration-name(Str $filename) {
 }
 
 # Export CLI functions
-sub migration-generate(Str $name, Str :$type = 'column-change') is export {
-    Red::Cli::Migration.generate-migration($name, :$type);
+sub migration-generate(Str $name, Str :$type = 'column-change', :$from-model, :$to-model) is export {
+    Red::Cli::Migration.generate-migration($name, :$type, :$from-model, :$to-model);
+}
+
+sub migration-population-sql($from-model, $to-model, Str $target-column) is export {
+    Red::Cli::Migration.generate-population-sql($from-model, $to-model, $target-column);
 }
 
 sub migration-start(Str $filename) is export {
