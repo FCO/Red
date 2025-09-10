@@ -75,3 +75,24 @@ sub get-latest-model-version(Str $logical-name) is export {
 sub list-all-models() is export {
     $global-registry.list-models()
 }
+
+#| Load a versioned model from a separate file using require
+sub require-model-version(Str $model-name, Str $version) is export {
+    my $module-name = "{$model-name}:ver<{$version}>";
+    try {
+        return require ::($module-name);
+    }
+    # Fallback to looking in registry if require fails
+    return get-model-version($model-name, $version);
+}
+
+#| Compare two model versions for migration planning
+sub compare-model-versions(Mu $from-model, Mu $to-model) is export {
+    # This is a placeholder for future schema comparison functionality
+    # Could analyze attributes, relationships, constraints, etc.
+    return { 
+        from => $from-model.^name, 
+        to => $to-model.^name,
+        # Future: detailed diff analysis
+    };
+}

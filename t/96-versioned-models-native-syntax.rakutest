@@ -1,0 +1,75 @@
+use v6;
+use Test;
+use lib 'lib';
+
+plan 12;
+
+# Test the new :ver<> trait support for versioned models
+use Red::Traits;
+use Red::ModelRegistry;
+use Red;
+
+# Test registration with native :ver<> syntax
+{
+    # Simulate models that would be in separate files
+    model TestUser:ver<1.0> is ver<1.0> {
+        has Int $.id is serial;
+        has Str $.name is column;
+    }
+    
+    model TestUser:ver<2.0> is ver<2.0> {
+        has Int $.id is serial;
+        has Str $.name is column;
+        has Str $.email is column;
+    }
+    
+    # Test that models are registered correctly
+    my $v1 = get-model-version('TestUser', '1.0');
+    my $v2 = get-model-version('TestUser', '2.0');
+    
+    ok $v1.defined, 'TestUser v1.0 is registered';
+    ok $v2.defined, 'TestUser v2.0 is registered';
+    
+    is $v1.^name, 'TestUser:ver<1.0>', 'v1.0 has correct name';
+    is $v2.^name, 'TestUser:ver<2.0>', 'v2.0 has correct name';
+}
+
+# Test registration with Version objects
+{
+    model TestProduct:ver<1.5> is ver(v1.5) {
+        has Int $.id is serial;
+        has Str $.name is column;
+    }
+    
+    my $product = get-model-version('TestProduct', '1.5');
+    ok $product.defined, 'TestProduct v1.5 is registered with Version object';
+    is $product.^name, 'TestProduct:ver<1.5>', 'Product has correct name';
+}
+
+# Test listing model versions
+{
+    my %versions = list-model-versions('TestUser');
+    ok %versions.defined, 'Can list TestUser versions';
+    ok %versions<1.0>.defined, 'TestUser v1.0 is in version list';
+    ok %versions<2.0>.defined, 'TestUser v2.0 is in version list';
+}
+
+# Test getting latest version
+{
+    my $latest = get-latest-model-version('TestUser');
+    ok $latest.defined, 'Can get latest TestUser version';
+    is $latest.^name, 'TestUser:ver<2.0>', 'Latest version is v2.0';
+}
+
+# Test compare-model-versions utility
+{
+    my $v1 = get-model-version('TestUser', '1.0');
+    my $v2 = get-model-version('TestUser', '2.0');
+    
+    my %comparison = compare-model-versions($v1, $v2);
+    ok %comparison.defined, 'Can compare model versions';
+    is %comparison<from>, 'TestUser:ver<1.0>', 'Comparison shows correct from model';
+    is %comparison<to>, 'TestUser:ver<2.0>', 'Comparison shows correct to model';
+}
+
+done-testing;
