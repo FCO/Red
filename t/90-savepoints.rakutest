@@ -1,0 +1,194 @@
+use Test;
+use Red:api<2>;
+use Red::AST::Savepoint;
+use Red::AST::RollbackToSavepoint;
+use Red::AST::ReleaseSavepoint;
+
+model TestSavepoint is rw {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+
+# Set up in-memory SQLite database for testing
+my $*RED-DB = database "SQLite";
+
+plan 15;
+
+# Create test table
+TestSavepoint.^create-table;
+
+subtest "Basic savepoint operations", {
+    plan 4;
+    
+    # Test creating a savepoint
+    lives-ok { $*RED-DB.savepoint("test1") }, "Can create savepoint";
+    
+    # Test rolling back to savepoint  
+    lives-ok { $*RED-DB.rollback-to-savepoint("test1") }, "Can rollback to savepoint";
+    
+    # Test creating and releasing savepoint
+    lives-ok { $*RED-DB.savepoint("test2") }, "Can create another savepoint";
+    lives-ok { $*RED-DB.release-savepoint("test2") }, "Can release savepoint";
+};
+
+subtest "Nested transaction with savepoints", {
+    plan 6;
+    
+    # Start main transaction
+    my $db = $*RED-DB.begin;
+    ok $db, "Started main transaction";
+    
+    # Insert some data
+    my $item1;
+    {
+        my $*RED-DB = $db;
+        $item1 = TestSavepoint.^create(:name("item1"));
+    }
+    ok $item1, "Created item1 in main transaction";
+    
+    # Start nested transaction (should create savepoint)
+    my $nested-db = $db.begin;
+    ok $nested-db, "Started nested transaction (savepoint)";
+    
+    # Insert data in nested transaction
+    my $item2;
+    {
+        my $*RED-DB = $nested-db;
+        $item2 = TestSavepoint.^create(:name("item2"));
+    }
+    ok $item2, "Created item2 in nested transaction";
+    
+    # Rollback nested transaction
+    $nested-db.rollback;
+    pass "Rolled back nested transaction";
+    
+    # item2 should not exist, but item1 should
+    {
+        my $*RED-DB = $db;
+        is TestSavepoint.^all.grep(*.name eq "item2").elems, 0, "item2 was rolled back";
+    }
+    
+    # Commit main transaction
+    $db.commit;
+    
+    # Clean up
+    TestSavepoint.^all.delete;
+};
+
+subtest "Multiple nested savepoints", {
+    plan 8;
+    
+    # Start main transaction
+    my $db = $*RED-DB.begin;
+    ok $db, "Started main transaction";
+    
+    my $item1;
+    {
+        my $*RED-DB = $db;
+        $item1 = TestSavepoint.^create(:name("level1"));
+    }
+    ok $item1, "Created item at level 1";
+    
+    # First nested level
+    my $nested1 = $db.begin;
+    ok $nested1, "Started first nested transaction";
+    
+    my $item2;
+    {
+        my $*RED-DB = $nested1;
+        $item2 = TestSavepoint.^create(:name("level2"));
+    }
+    ok $item2, "Created item at level 2";
+    
+    # Second nested level
+    my $nested2 = $nested1.begin;
+    ok $nested2, "Started second nested transaction";
+    
+    my $item3;
+    {
+        my $*RED-DB = $nested2;
+        $item3 = TestSavepoint.^create(:name("level3"));
+    }
+    ok $item3, "Created item at level 3";
+    
+    # Rollback deepest level
+    $nested2.rollback;
+    pass "Rolled back level 3";
+    
+    # Commit level 2
+    $nested1.commit;
+    pass "Committed level 2";
+    
+    # Commit main transaction
+    $db.commit;
+    
+    # Clean up
+    TestSavepoint.^all.delete;
+};
+
+subtest "Savepoint SQL generation", {
+    plan 6;
+    
+    # Test that the correct SQL is generated
+    my $driver = $*RED-DB;
+    
+    # Test savepoint creation
+    my $savepoint-sql = $driver.translate(Red::AST::Savepoint.new(:name("test")));
+    is $savepoint-sql.key, "SAVEPOINT test", "Correct savepoint SQL generated";
+    
+    # Test rollback to savepoint  
+    my $rollback-sql = $driver.translate(Red::AST::RollbackToSavepoint.new(:name("test")));
+    ok $rollback-sql.key ~~ /"ROLLBACK TO"/, "Correct rollback to savepoint SQL generated";
+    
+    # Test release savepoint
+    my $release-sql = $driver.translate(Red::AST::ReleaseSavepoint.new(:name("test")));
+    ok $release-sql.key ~~ /"RELEASE"/, "Correct release savepoint SQL generated";
+    
+    # Verify binds are empty for savepoint operations
+    is $savepoint-sql.value, [], "Savepoint has no bind parameters";
+    is $rollback-sql.value, [], "Rollback to savepoint has no bind parameters";
+    is $release-sql.value, [], "Release savepoint has no bind parameters";
+};
+
+subtest "Transaction isolation with savepoints", {
+    plan 5;
+    
+    my $db = $*RED-DB.begin;
+    ok $db, "Started transaction";
+    
+    my $item1;
+    {
+        my $*RED-DB = $db;
+        $item1 = TestSavepoint.^create(:name("outer"));
+    }
+    ok $item1, "Created item in outer transaction";
+    
+    my $nested = $db.begin;
+    my $item2;
+    {
+        my $*RED-DB = $nested;
+        $item2 = TestSavepoint.^create(:name("inner"));
+    }
+    ok $item2, "Created item in inner savepoint";
+    
+    # Both items should be visible within the transaction
+    {
+        my $*RED-DB = $nested;
+        is TestSavepoint.^all.elems, 2, "Both items visible in nested transaction";
+    }
+    
+    $nested.rollback;
+    
+    # Only outer item should remain
+    {
+        my $*RED-DB = $db;
+        is TestSavepoint.^all.elems, 1, "Only outer item remains after rollback";
+    }
+    
+    $db.rollback;
+    
+    # Clean up
+    TestSavepoint.^all.delete;
+};
+
+done-testing;
