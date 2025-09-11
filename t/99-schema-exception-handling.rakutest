@@ -1,0 +1,40 @@
+use v6;
+use Test;
+use Red;
+
+# Test to ensure schema creation with :if-not-exists works correctly 
+# with the CommonSQL driver path (exception handling)
+
+model TestTable is rw {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+# Clean start
+lives-ok { schema(TestTable).drop }, "drop table if it exists";
+
+# Create table first time
+lives-ok { schema(TestTable).create }, "create table normally";
+
+# Now test that :if-not-exists works when table already exists
+lives-ok { schema(TestTable).create: :if-not-exists }, "create existing table with :if-not-exists works";
+
+# Test multiple times to ensure stability
+lives-ok { schema(TestTable).create: :if-not-exists }, "create existing table with :if-not-exists works (2nd time)";
+lives-ok { schema(TestTable).create: :if-not-exists }, "create existing table with :if-not-exists works (3rd time)";
+
+# Verify the table is actually functional by inserting data
+my $record;
+lives-ok { $record = TestTable.^create: :name("test-record") }, "insert data works";
+is $record.name, "test-record", "data integrity preserved";
+
+# Verify we can still detect failure when not using the flag
+throws-like { schema(TestTable).create }, Exception, "normal create still fails on existing table";
+
+done-testing;
