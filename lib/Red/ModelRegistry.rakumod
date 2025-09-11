@@ -77,11 +77,39 @@ sub list-all-models() is export {
 }
 
 #| Load a versioned model from a separate file using require
+#| Supports predictable file locations without explicit registration
 sub require-model-version(Str $model-name, Str $version) is export {
+    # Try native Raku module loading first
     my $module-name = "{$model-name}:ver<{$version}>";
     try {
         return require ::($module-name);
     }
+    
+    # Try predictable file locations
+    my @search-paths = (
+        "{$model-name}-v{$version}",
+        "Models/{$model-name}-v{$version}",
+        "lib/{$model-name}-v{$version}", 
+        "lib/Models/{$model-name}-v{$version}",
+        "{$model-name}/v{$version}",
+        "Models/{$model-name}/v{$version}",
+        "lib/{$model-name}/v{$version}",
+        "lib/Models/{$model-name}/v{$version}"
+    );
+    
+    for @search-paths -> $path {
+        try {
+            my $result = require ::("{$path}");
+            if $result.^can('HOW') && $result.^name ~~ /:ver/ {
+                # Register it for future use
+                my $logical-name = $result.^name;
+                $logical-name ~~ s/ ':ver<' .* '>' //;
+                register-model-version($logical-name, $version, $result);
+                return $result;
+            }
+        }
+    }
+    
     # Fallback to looking in registry if require fails
     return get-model-version($model-name, $version);
 }

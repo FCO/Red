@@ -22,7 +22,7 @@ model User:ver<0.2> { ... }  # ← Error: Redeclaration of symbol 'User'
 ```raku
 # File: lib/User-v1.rakumod
 use Red;
-model User:ver<1.0> is ver<1.0> {
+model User:ver<1.0> {
     has Int $.id is serial;
     has Str $.name is column;
     has Int $.age is column;
@@ -30,7 +30,7 @@ model User:ver<1.0> is ver<1.0> {
 
 # File: lib/User-v2.rakumod  
 use Red;
-model User:ver<2.0> is ver<2.0> {
+model User:ver<2.0> {
     has Int $.id is serial;
     has Str $.name is column;
     has Str $.email is column;
@@ -103,8 +103,8 @@ $v02.^migration: {
 
 ```raku
 # In separate files
-model User:ver<1.0> is ver<1.0> { ... }    # String version
-model User:ver<2.0> is ver(v2.0) { ... }   # Version object
+model User:ver<1.0> { ... }    # String version
+model User:ver<2.0> { ... }    # String version
 ```
 
 #### Custom Logical Names (For same-file usage)

@@ -338,22 +338,4 @@ multi trait_mod:<is>(Mu:U $model, :%model-version! --> Empty) {
     register-model-version($logical-name, $version, $model);
 }
 
-=head3 is ver
 
-#| This trait registers a model using native Raku :ver<> syntax when declared in separate files
-multi trait_mod:<is>(Mu:U $model, Str :$ver! --> Empty) {
-    use Red::ModelRegistry;
-    my $logical-name = $model.^name;
-    # Remove :ver<> part if present in name (e.g., "User:ver<1.0>" -> "User")
-    $logical-name ~~ s/ ':ver<' .* '>' //;
-    register-model-version($logical-name, $ver, $model);
-}
-
-#| This trait registers a model using native Raku Version object
-multi trait_mod:<is>(Mu:U $model, Version :$ver! --> Empty) {
-    use Red::ModelRegistry;
-    my $logical-name = $model.^name;
-    # Remove :ver<> part if present in name
-    $logical-name ~~ s/ ':ver<' .* '>' //;
-    register-model-version($logical-name, ~$ver, $model);
-}

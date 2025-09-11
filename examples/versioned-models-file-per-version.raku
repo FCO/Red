@@ -13,9 +13,8 @@ use lib 'lib';
 BEGIN {
     EVAL q:to/END/;
         use Red;
-        use Red::Traits;
         
-        model User:ver<1.0> is ver<1.0> {
+        model User:ver<1.0> {
             has Int $.id is serial;
             has Str $.name is column;
             has Int $.age is column;
@@ -27,9 +26,8 @@ BEGIN {
 BEGIN {
     EVAL q:to/END/;
         use Red;
-        use Red::Traits;
         
-        model User:ver<2.0> is ver<2.0> {
+        model User:ver<2.0> {
             has Int $.id is serial;
             has Str $.name is column;
             has Str $.email is column;
