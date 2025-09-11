@@ -1,5 +1,8 @@
 use Test;
 use Red:api<2>;
+use Red::AST::Savepoint;
+use Red::AST::RollbackToSavepoint;
+use Red::AST::ReleaseSavepoint;
 
 model SimpleTest is rw {
     has Int $.id is serial;

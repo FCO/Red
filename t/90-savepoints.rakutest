@@ -1,5 +1,8 @@
 use Test;
 use Red:api<2>;
+use Red::AST::Savepoint;
+use Red::AST::RollbackToSavepoint;
+use Red::AST::ReleaseSavepoint;
 
 model TestSavepoint is rw {
     has Int $.id is serial;
@@ -130,21 +133,21 @@ subtest "Savepoint SQL generation", {
     my $driver = $*RED-DB;
     
     # Test savepoint creation
-    my @savepoint-sql = $driver.translate(Red::AST::Savepoint.new(:name("test")));
-    is @savepoint-sql[0].key, "SAVEPOINT test", "Correct savepoint SQL generated";
+    my $savepoint-sql = $driver.translate(Red::AST::Savepoint.new(:name("test")));
+    is $savepoint-sql.key, "SAVEPOINT test", "Correct savepoint SQL generated";
     
     # Test rollback to savepoint  
-    my @rollback-sql = $driver.translate(Red::AST::RollbackToSavepoint.new(:name("test")));
-    ok @rollback-sql[0].key ~~ /"ROLLBACK TO"/, "Correct rollback to savepoint SQL generated";
+    my $rollback-sql = $driver.translate(Red::AST::RollbackToSavepoint.new(:name("test")));
+    ok $rollback-sql.key ~~ /"ROLLBACK TO"/, "Correct rollback to savepoint SQL generated";
     
     # Test release savepoint
-    my @release-sql = $driver.translate(Red::AST::ReleaseSavepoint.new(:name("test")));
-    ok @release-sql[0].key ~~ /"RELEASE"/, "Correct release savepoint SQL generated";
+    my $release-sql = $driver.translate(Red::AST::ReleaseSavepoint.new(:name("test")));
+    ok $release-sql.key ~~ /"RELEASE"/, "Correct release savepoint SQL generated";
     
     # Verify binds are empty for savepoint operations
-    is @savepoint-sql[0].value, [], "Savepoint has no bind parameters";
-    is @rollback-sql[0].value, [], "Rollback to savepoint has no bind parameters";
-    is @release-sql[0].value, [], "Release savepoint has no bind parameters";
+    is $savepoint-sql.value, [], "Savepoint has no bind parameters";
+    is $rollback-sql.value, [], "Rollback to savepoint has no bind parameters";
+    is $release-sql.value, [], "Release savepoint has no bind parameters";
 };
 
 subtest "Transaction isolation with savepoints", {

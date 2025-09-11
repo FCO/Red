@@ -12,7 +12,6 @@ unit class Red::Driver::TransactionContext does Red::Driver;
 has Red::Driver $.parent is required;
 has Int         $.level is required;
 has Str         $.savepoint-name;
-has Promise     $.promise .= new;
 
 submethod TWEAK() {
     # Start the main transaction or create a savepoint
@@ -69,11 +68,9 @@ method commit {
     if $!level > 1 && $!savepoint-name.defined {
         # We're in a savepoint, release it
         $!parent.prepare(Red::AST::ReleaseSavepoint.new(:name($!savepoint-name))).map: *.execute;
-        $!promise.keep;
     } elsif $!level == 1 {
         # We're in the main transaction, commit it
         $!parent.prepare(Red::AST::CommitTransaction.new).map: *.execute;
-        $!promise.keep;
     }
     self
 }
@@ -82,11 +79,9 @@ method rollback {
     if $!level > 1 && $!savepoint-name.defined {
         # We're in a savepoint, rollback to it
         $!parent.prepare(Red::AST::RollbackToSavepoint.new(:name($!savepoint-name))).map: *.execute;
-        $!promise.break("Transaction rolled back");
     } elsif $!level == 1 {
         # We're in the main transaction, rollback it
         $!parent.prepare(Red::AST::RollbackTransaction.new).map: *.execute;
-        $!promise.break("Transaction rolled back");
     }
     self
 }
