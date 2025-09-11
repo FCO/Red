@@ -46,12 +46,6 @@ class Statement does Red::Statement {
 
 method stringify-json { True }
 
-#| Begin transaction
-method begin {
-    self.prepare(Red::AST::BeginTransaction.new).map: *.execute;
-    self
-}
-
 multi method prepare(Str $query) {
     CATCH {
         default {
@@ -160,6 +154,14 @@ multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~
 }
 
 multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" => [] }
+
+multi method translate(Red::AST::RollbackToSavepoint $_, $context?) {
+    "ROLLBACK TO { .name }" => []
+}
+
+multi method translate(Red::AST::ReleaseSavepoint $_, $context?) {
+    "RELEASE { .name }" => []
+}
 
 multi method translate(Red::LockType $lock-type --> Str ) {
     ''
