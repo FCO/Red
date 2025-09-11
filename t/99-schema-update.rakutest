@@ -1,0 +1,185 @@
+use Test;
+use Red;
+use Red::Schema;
+use lib "t/lib";
+
+my $*RED-FALLBACK       = $_ with %*ENV<RED_FALLBACK>;
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my $*RED-DEBUG-AST      = $_ with %*ENV<RED_DEBUG_AST>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+plan 6;
+
+# Create a simple model for testing schema updates
+model TestUpdatePerson is table<test_update_person> {
+    has Int $.id   is serial;
+    has Str $.name is column;
+}
+
+# Test basic update method functionality
+subtest "Schema update method exists and works", {
+    plan 3;
+    
+    my $schema = schema(TestUpdatePerson);
+    isa-ok $schema, Red::Schema, "Schema created successfully";
+    
+    # Drop and create initial schema
+    $schema.drop;
+    lives-ok { $schema.create }, "Initial schema creation works";
+    
+    # Update should work even when no changes are needed
+    lives-ok { $schema.update }, "Schema update method executes without errors";
+}
+
+# Test that update handles missing tables by creating them
+subtest "Update creates missing tables", {
+    plan 3;
+    
+    # Define a new model for this test
+    model TestMissingTable is table<test_missing_table> {
+        has Int $.id    is serial;
+        has Str $.value is column;
+    }
+    
+    my $schema = schema(TestMissingTable);
+    
+    # Make sure table doesn't exist
+    $schema.drop;
+    
+    # Verify table doesn't exist initially
+    my $table-exists = False;
+    try {
+        TestMissingTable.^all.head;
+        $table-exists = True;
+    }
+    
+    nok $table-exists, "Table doesn't exist initially";
+    
+    # Update should create the missing table
+    lives-ok { $schema.update }, "Update executes successfully";
+    
+    # Verify table now exists and works
+    lives-ok { 
+        TestMissingTable.^create: :value("test");
+        my $count = TestMissingTable.^all.elems;
+    }, "Table was created and is functional";
+    
+    # Cleanup
+    $schema.drop;
+}
+
+# Test update with multiple tables
+subtest "Update works with multiple tables", {
+    plan 2;
+    
+    # Use existing Person and Post models
+    my $schema = schema(Person, Post);
+    
+    # Start fresh
+    $schema.drop;
+    
+    # Create only one table initially (Person)
+    Person.^create-table;
+    
+    # Update should create the missing Post table and handle the foreign key relationship
+    lives-ok { $schema.update }, "Update with multiple related tables works";
+    
+    # Verify both tables exist and relationships work
+    lives-ok {
+        my $person = Person.^create: :name("Test Author");
+        my $post = Post.^create: :title("Test Post"), :body("Test Body"), :author-id($person.id);
+    }, "Both tables exist and relationships work";
+    
+    # Cleanup
+    $schema.drop;
+}
+
+# Test update is idempotent
+subtest "Update is idempotent", {
+    plan 3;
+    
+    model TestIdempotent is table<test_idempotent> {
+        has Int $.id   is serial;
+        has Str $.name is column;
+    }
+    
+    my $schema = schema(TestIdempotent);
+    
+    # Start fresh and create schema
+    $schema.drop;
+    $schema.create;
+    
+    # First update should be safe
+    lives-ok { $schema.update }, "First update on existing schema works";
+    
+    # Second update should also be safe (idempotent)
+    lives-ok { $schema.update }, "Second update is idempotent";
+    
+    # Verify table still works
+    lives-ok {
+        TestIdempotent.^create: :name("test");
+        my $count = TestIdempotent.^all.elems;
+    }, "Table remains functional after multiple updates";
+    
+    # Cleanup
+    $schema.drop;
+}
+
+# Test update with data preservation
+subtest "Update preserves existing data", {
+    plan 3;
+    
+    model TestDataPreservation is table<test_data_preservation> {
+        has Int $.id   is serial;
+        has Str $.name is column;
+    }
+    
+    my $schema = schema(TestDataPreservation);
+    
+    # Start fresh, create schema and add data
+    $schema.drop;
+    $schema.create;
+    TestDataPreservation.^create: :name("existing data");
+    
+    my $initial-count = TestDataPreservation.^all.elems;
+    is $initial-count, 1, "Initial data exists";
+    
+    # Update should preserve data
+    lives-ok { $schema.update }, "Update preserves existing data";
+    
+    # Verify data is still there
+    my $final-count = TestDataPreservation.^all.elems;
+    is $final-count, $initial-count, "Data count preserved after update";
+    
+    # Cleanup
+    $schema.drop;
+}
+
+# Test schema update method can be chained
+subtest "Update method returns schema object for chaining", {
+    plan 2;
+    
+    model TestChaining is table<test_chaining> {
+        has Int $.id   is serial;
+        has Str $.name is column;
+    }
+    
+    my $schema = schema(TestChaining);
+    $schema.drop;
+    
+    # Test method chaining
+    my $result;
+    lives-ok { 
+        $result = $schema.create.update;
+    }, "Schema methods can be chained";
+    
+    isa-ok $result, Red::Schema, "Update returns schema object";
+    
+    # Cleanup
+    $schema.drop;
+}
+
+done-testing;
