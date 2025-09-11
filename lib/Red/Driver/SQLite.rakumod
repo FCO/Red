@@ -62,9 +62,9 @@ multi method prepare(Str $query) {
     Statement.new: :driver(self), :statement($!dbh.prepare: $query);
 }
 
-method create-schema(%models where .values.all ~~ Red::Model) {
+method create-schema(%models where .values.all ~~ Red::Model, Bool :$if-not-exists) {
     do for %models.kv -> Str() $name, Red::Model $model {
-        $name => $model.^create-table
+        $name => $model.^create-table: |(:$if-not-exists with $if-not-exists)
     }
 }
 

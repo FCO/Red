@@ -1,0 +1,47 @@
+use v6;
+use Test;
+use Red;
+
+# Test for schema(...).create :if-not-exists flag
+# This addresses issue #482
+
+model Account is rw {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+
+model Transaction is rw {
+    has Int $.id is serial;
+    has Int $.account-id is referencing(model => 'Account', column => 'id');
+    has Str $.description is column;
+    has Num $.amount is column;
+    has $.account is relationship({ .account-id }, model => 'Account');
+}
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+# Drop any existing tables first
+lives-ok { schema(Account, Transaction).drop }, "drop tables if they exist";
+
+# Test that schema.create works normally
+lives-ok { schema(Account, Transaction).create }, "create tables with schema().create";
+
+# Test that creating again fails (shows current behavior)
+throws-like { schema(Account, Transaction).create }, Exception, "creating existing tables throws exception";
+
+# Test that individual model .^create-table :if-not-exists works (baseline)
+lives-ok { Account.^create-table: :if-not-exists }, "Account.^create-table :if-not-exists works";
+lives-ok { Transaction.^create-table: :if-not-exists }, "Transaction.^create-table :if-not-exists works";
+
+# Drop tables again for the main test
+lives-ok { schema(Account, Transaction).drop }, "drop tables again";
+
+# Test the desired functionality (this should work after the fix)
+lives-ok { schema(Account, Transaction).create: :if-not-exists }, "create tables with :if-not-exists flag";
+lives-ok { schema(Account, Transaction).create: :if-not-exists }, "create tables again with :if-not-exists flag should not fail";
+
+done-testing;

@@ -62,9 +62,9 @@ method drop {
     self
 }
 
-method create(:$where) {
+method create(:$where, Bool :unless-exists(:$if-not-exists)) {
     red-do (:$where with $where), :transaction, {
-        |.create-schema(%!models);
+        |.create-schema(%!models, :$if-not-exists);
     }
     self
 }

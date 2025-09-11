@@ -1,0 +1,71 @@
+use v6;
+use Test;
+use Red;
+
+# More comprehensive test for schema(...).create :if-not-exists flag
+
+model User is rw {
+    has Int $.id is serial;
+    has Str $.username is column{ :unique };
+    has Str $.email is column;
+}
+
+model Article is rw {
+    has Int $.id is serial;
+    has Int $.author-id is referencing(model => 'User', column => 'id');
+    has Str $.title is column;
+    has Str $.content is column;
+    has $.author is relationship({ .author-id }, model => 'User');
+}
+
+model Comment is rw {
+    has Int $.id is serial;
+    has Int $.article-id is referencing(model => 'Article', column => 'id');
+    has Int $.user-id is referencing(model => 'User', column => 'id');
+    has Str $.text is column;
+    has $.article is relationship({ .article-id }, model => 'Article');
+    has $.user is relationship({ .user-id }, model => 'User');
+}
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+# Clean start
+lives-ok { schema(User, Article, Comment).drop }, "drop tables if they exist";
+
+# Test multiple table schema creation with :if-not-exists
+lives-ok { schema(User, Article, Comment).create: :if-not-exists }, "create three tables with :if-not-exists";
+
+# Test that we can create actual data
+my $user;
+lives-ok { $user = User.^create: :username("testuser"), :email("test@example.com") }, "create a user";
+
+my $article;
+lives-ok { $article = Article.^create: :author-id($user.id), :title("Test Article"), :content("Test content") }, "create an article";
+
+my $comment;
+lives-ok { $comment = Comment.^create: :article-id($article.id), :user-id($user.id), :text("Test comment") }, "create a comment";
+
+# Test that recreating the schema with :if-not-exists doesn't break existing data
+lives-ok { schema(User, Article, Comment).create: :if-not-exists }, "recreate schema with :if-not-exists preserves data";
+
+# Verify data is still there
+my $found-user = User.^load: $user.id;
+is $found-user.username, "testuser", "user data preserved after schema recreation";
+
+my $found-article = Article.^load: $article.id;
+is $found-article.title, "Test Article", "article data preserved after schema recreation";
+
+my $found-comment = Comment.^load: $comment.id;
+is $found-comment.text, "Test comment", "comment data preserved after schema recreation";
+
+# Test that regular schema creation still fails when tables exist
+throws-like { schema(User, Article, Comment).create }, Exception, "regular schema creation fails when tables exist";
+
+# Test edge case: empty schema with :if-not-exists
+lives-ok { schema().create: :if-not-exists }, "empty schema with :if-not-exists works";
+
+done-testing;
