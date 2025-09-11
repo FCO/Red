@@ -1,0 +1,312 @@
+=head1 ClassHOW-Based Migration System
+
+=head2 Overview
+
+Red now supports a powerful ClassHOW-based migration syntax that provides a native Raku DSL for defining database migrations. This approach replaces function-based migration definitions with a more declarative, class-based syntax.
+
+=head2 Basic Syntax
+
+=head3 Simple Migration
+
+    migration user-security-upgrade {
+        table users {
+            new-column hashed_password { :type<VARCHAR>, :255size }
+            new-column is_active { :type<bool>, :default }
+            new-indexes :columns["email"], :unique
+            populate -> $new, $old {
+                $new.hashed_password = "hash:" ~ $old.plain_password
+            }
+            delete-columns <plain_password>;
+        }
+    }
+
+=head3 Migration with Description
+
+    #| Add password hashing and user activation
+    migration user-security-upgrade {
+        description "Convert plain passwords to hashed passwords";
+        
+        table users {
+            new-column hashed_password { :type<VARCHAR>, :255size, :!nullable }
+            new-column is_active { :type<bool>, :default(True) }
+            
+            populate hashed_password => {
+                ast => ast-concat(ast-literal("hash:"), ast-column("plain_password"))
+            };
+            
+            delete-columns <plain_password>;
+        }
+    }
+
+=head2 Column Definitions
+
+=head3 Column Types and Constraints
+
+    new-column column_name {
+        :type<VARCHAR>          # Type specification
+        :255size               # Size specification  
+        :!nullable             # NOT NULL constraint
+        :unique                # UNIQUE constraint
+        :default("value")      # DEFAULT value
+        :primary-key           # PRIMARY KEY
+    }
+
+=head3 Alternative Column Syntax
+
+    # Hash syntax
+    new-column "price", %{ :type<DECIMAL>, :size<10,2>, :!nullable };
+    
+    # Block syntax with functions
+    new-column created_at {
+        type "TIMESTAMP";
+        default "NOW()";
+        nullable False;
+    }
+
+=head2 Table Operations
+
+=head3 Creating New Tables
+
+    new-table audit_log {
+        id { :type<SERIAL>, :primary-key }
+        table_name { :type<VARCHAR>, :100size }
+        action { :type<VARCHAR>, :50size }
+        created_at { :type<TIMESTAMP>, :default("NOW()") }
+    }
+
+=head3 Modifying Existing Tables
+
+    table users {
+        new-column status { :type<VARCHAR>, :20size, :default("active") }
+        new-indexes :columns["status", "created_at"];
+        delete-columns <old_status deprecated_field>;
+    }
+
+=head2 Indexes and Constraints
+
+=head3 Adding Indexes
+
+    # Simple index
+    new-indexes :columns["email"];
+    
+    # Unique index
+    new-indexes :columns["email"], :unique;
+    
+    # Composite index
+    new-indexes :columns["last_name", "first_name"];
+    
+    # Multiple indexes
+    new-indexes ["email"], ["status"], ["created_at"];
+
+=head3 Foreign Keys
+
+    new-foreign-key :column<user_id>, 
+                    :references-table<users>, 
+                    :references-column<id>;
+
+=head3 Check Constraints
+
+    new-check-constraint :name<valid_email>, 
+                         :expression<"email ~ '^[^@]+@[^@]+\\.[^@]+$'">;
+
+=head2 Data Population
+
+=head3 Simple Expression Population
+
+    populate column_name => "SQL_EXPRESSION";
+    populate full_name => "CONCAT(first_name, ' ', last_name)";
+    populate created_at => "NOW()";
+
+=head3 Red::AST Population
+
+    populate full_name => {
+        ast => ast-concat(
+            ast-column("first_name"),
+            ast-literal(" "),  
+            ast-column("last_name")
+        )
+    };
+
+=head3 Block-Based Population
+
+    populate -> $new, $old {
+        $new.full_name = $old.first_name ~ " " ~ $old.last_name;
+        $new.status = $old.active ?? "active" !! "inactive";
+        $new.created_at = DateTime.now;
+    };
+
+=head3 Hash-Based Population
+
+    populate %{
+        full_name => "CONCAT(first_name, ' ', last_name)",
+        status => "CASE WHEN active THEN 'active' ELSE 'inactive' END",
+        created_at => "NOW()"
+    };
+
+=head2 Auto-Migration from Model Differences
+
+=head3 Model Versioning
+
+    model UserV1 is model-version('User:1.0') {
+        has Int $.id is serial;
+        has Str $.email is column;
+        has Str $.plain-password is column;
+    }
+
+    model UserV2 is model-version('User:2.0') {
+        has Int $.id is serial;
+        has Str $.email is column;
+        has Str $.hashed-password is column;
+        has Bool $.is-active is column;
+    }
+
+=head3 Auto-Generate Migration
+
+    # Automatically generate migration from model differences
+    UserV2.^migrate(from => UserV1);
+
+This analyzes the differences between UserV1 and UserV2 and automatically creates the appropriate migration steps.
+
+=head2 Complex Migration Examples
+
+=head3 Multi-Table Migration
+
+    migration database-restructure {
+        description "Restructure user and profile data";
+        
+        # Create new table
+        new-table user_profiles {
+            id { :type<SERIAL>, :primary-key }
+            user_id { :type<INTEGER>, :!nullable }
+            bio { :type<TEXT> }
+            avatar_url { :type<VARCHAR>, :255size }
+        }
+        
+        # Modify users table
+        table users {
+            new-column full_name { :type<VARCHAR>, :200size }
+            new-column status { :type<VARCHAR>, :20size, :default("active") }
+            
+            populate full_name => {
+                ast => ast-concat(ast-column("first_name"), ast-literal(" "), ast-column("last_name"))
+            };
+            
+            delete-columns <first_name last_name>;
+        }
+        
+        # Populate new table from old data
+        table user_profiles {
+            populate -> $new, $old {
+                # Migration logic here
+            };
+        }
+        
+        delete-tables <old_user_metadata>;
+    }
+
+=head3 Migration with Conditional Logic
+
+    migration conditional-upgrade {
+        table products {
+            new-column discounted_price { :type<DECIMAL>, :size<10,2> }
+            
+            populate discounted_price => {
+                ast => ast-function("CASE",
+                    ast-function("WHEN", 
+                        ast-function(">=", ast-column("price"), ast-literal(100)),
+                        ast-function("*", ast-column("price"), ast-literal(0.9))
+                    ),
+                    ast-function("ELSE", ast-column("price"))
+                )
+            };
+        }
+    }
+
+=head2 Migration Management
+
+=head3 Checking Migration Status
+
+    # List all migrations
+    my @migrations = migration-status();
+    for @migrations -> %migration {
+        say "Migration: {%migration<name>} - Phase: {%migration<phase>}";
+    }
+
+=head3 Advancing Migrations
+
+    # Advance specific migration
+    advance-migration("user-security-upgrade");
+    
+    # Advance all migrations
+    advance-all-migrations();
+
+=head3 Safety Checks
+
+    # Check if it's safe to deploy
+    my @unsafe = migration-safety-check();
+    if @unsafe {
+        say "Cannot deploy: " ~ @unsafe.join(", ");
+        exit 1;
+    }
+
+=head2 Migration-Aware Application Code
+
+=head3 Handling Migration States
+
+    method authenticate(Str $password) {
+        handle-migration "user-security-upgrade",
+            read-new-return-defined => {
+                return self if $!hashed-password eq hash($password);
+                Nil
+            },
+            read-old => {
+                return self if $!plain-password eq $password;
+                Nil
+            };
+    }
+
+=head2 Integration with Red::AST
+
+The ClassHOW migration system integrates seamlessly with Red's AST system for type-safe SQL generation:
+
+    populate complex_calculation => {
+        ast => ast-function("ROUND",
+            ast-function("+",
+                ast-function("*", ast-column("base_amount"), ast-literal(1.1)),
+                ast-function("COALESCE", ast-column("bonus"), ast-literal(0))
+            ),
+            ast-literal(2)
+        )
+    };
+
+=head2 Benefits
+
+=over 4
+
+=item * B<Native Raku Syntax>: Uses ClassHOW for true Raku language integration
+
+=item * B<Type Safety>: Red::AST integration provides compile-time SQL validation
+
+=item * B<Auto-Generation>: Automatically generate migrations from model differences
+
+=item * B<Zero-Downtime>: Multi-phase migration support for production deployments
+
+=item * B<Declarative>: Clear, readable migration specifications
+
+=item * B<Flexible>: Multiple syntax options for different use cases
+
+=back
+
+=head2 See Also
+
+=over 4
+
+=item * L<Red::Migration::DSL> - DSL implementation
+
+=item * L<MetamodelX::Red::MigrationHOW> - ClassHOW metamodel
+
+=item * L<Red::ModelRegistry> - Model versioning system
+
+=item * L<Red::MultiStepMigration> - Zero-downtime migration engine
+
+=back

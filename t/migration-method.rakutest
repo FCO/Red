@@ -1,0 +1,154 @@
+use v6;
+use Test;
+use lib 'lib';
+
+plan 12;
+
+use Red:api<2>;
+use Red::ModelRegistry;
+use MetamodelX::Red::Migration;
+use Red::AST;
+
+# Define test models for migration
+red-defaults "SQLite";
+
+model UserV1 is model-version('User:1.0') {
+    has $.id is serial;
+    has $.first_name is column;
+    has $.last_name is column;
+    has $.plain_password is column;
+    has $.email is column;
+    has $.status is column;
+}
+
+model UserV2 is model-version('User:2.0') {
+    has $.id is serial;
+    has $.first_name is column;
+    has $.last_name is column;
+    has $.full_name is column;
+    has $.hashed_password is column;
+    has $.email_lower is column;
+    has $.is_active is column;
+}
+
+# Test ^migration method for different transformation patterns
+subtest 'full_name transformation', {
+    plan 2;
+    
+    my $ast = UserV2.^migration(from => UserV1, target-column => "full_name");
+    isa-ok $ast, Red::AST::Function, "Returns AST Function for full_name";
+    is $ast.name, 'CONCAT', "Uses CONCAT function";
+}
+
+subtest 'hashed_password transformation', {
+    plan 2;
+    
+    my $ast = UserV2.^migration(from => UserV1, target-column => "hashed_password");
+    isa-ok $ast, Red::AST::Function, "Returns AST Function for hashed_password";
+    is $ast.name, 'CONCAT', "Uses CONCAT function for hashing";
+}
+
+subtest 'email_lower transformation', {
+    plan 2;
+    
+    my $ast = UserV2.^migration(from => UserV1, target-column => "email_lower");
+    isa-ok $ast, Red::AST::Function, "Returns AST Function for email_lower";
+    is $ast.name, 'LOWER', "Uses LOWER function";
+}
+
+subtest 'is_active transformation', {
+    plan 2;
+    
+    my $ast = UserV2.^migration(from => UserV1, target-column => "is_active");
+    isa-ok $ast, Red::AST::Function, "Returns AST Function for is_active";
+    is $ast.name, 'CASE', "Uses CASE function for boolean conversion";
+}
+
+subtest 'direct column mapping', {
+    plan 2;
+    
+    my $ast = UserV2.^migration(from => UserV1, target-column => "first_name");
+    isa-ok $ast, Red::AST::Identifier, "Returns AST Identifier for direct mapping";
+    is $ast.name, 'first_name', "Maps to same column name";
+}
+
+subtest 'unknown column fallback', {
+    plan 2;
+    
+    my $ast = UserV2.^migration(from => UserV1, target-column => "unknown_column");
+    isa-ok $ast, Red::AST::Value, "Returns AST Value for unknown columns";
+    is $ast.value, Nil, "Default value is NULL";
+}
+
+subtest 'invalid target column', {
+    plan 1;
+    
+    throws-like { 
+        UserV2.^migration(from => UserV1, target-column => "nonexistent")
+    }, 
+    Exception, 
+    message => /Target column .* not found/,
+    "Throws exception for nonexistent target column";
+}
+
+# Test CLI integration
+subtest 'CLI population SQL generation', {
+    plan 1;
+    
+    use Red::Cli::Migration;
+    
+    my $cli = Red::Cli::Migration.new;
+    my $ast = $cli.generate-population-sql(UserV1, UserV2, "full_name");
+    isa-ok $ast, Red::AST, "CLI generates AST objects";
+}
+
+# Test integration with migration template generation
+subtest 'migration template with models', {
+    plan 1;
+    
+    use Red::Cli::Migration;
+    
+    my $cli = Red::Cli::Migration.new;
+    my $filename = $cli.generate-migration(
+        "test-migration", 
+        from-model => UserV1,
+        to-model => UserV2
+    );
+    
+    ok $filename.IO.f, "Migration template file created";
+    
+    # Clean up
+    $filename.IO.unlink if $filename.IO.f;
+    "migrations".IO.rmdir if "migrations".IO.d && "migrations".IO.dir.elems == 0;
+}
+
+# Test AST to SQL translation  
+subtest 'AST SQL generation', {
+    plan 1;
+    
+    my $ast = UserV2.^migration(from => UserV1, target-column => "full_name");
+    
+    # This would normally be done by MigrationManager with database context
+    ok $ast.^can('name'), "AST has required methods for SQL generation";
+}
+
+# Test error handling
+subtest 'error handling', {
+    plan 1;
+    
+    model EmptyModel is model-version('Empty:1.0') {
+        has $.id is serial;
+    }
+    
+    my $ast = UserV2.^migration(from => EmptyModel, target-column => "full_name");
+    isa-ok $ast, Red::AST::Value, "Gracefully handles missing source columns";
+}
+
+# Test method availability
+subtest 'method composition', {
+    plan 1;
+    
+    ok UserV2.^can('migration'), "^migration method is available on models";
+}
+
+done-testing;
