@@ -69,6 +69,10 @@ method create(:$where) {
     self
 }
 
+#| Updates the database schema to match the model definitions.
+#| Compares the current schema definition with the database state
+#| and applies necessary changes (add/modify/remove columns, etc.).
+#| This method is idempotent and preserves existing data.
 method update(:$where) {
     red-do (:$where with $where), :transaction, {
         my $db = get-RED-DB;
