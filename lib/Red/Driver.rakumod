@@ -20,79 +20,30 @@ has Supplier $!supplier .= new;
 #| Supply of events of that driver
 has Supply   $.events    = $!supplier.Supply;
 
-#| Current savepoint level (0 = no savepoints)
-has Int      $!savepoint-level = 0;
-#| Promises for each savepoint level  
-has Promise  @!savepoint-promises;
-
 method new-connection {
     self.WHAT.new: |self.^attributes.map({ .name.substr(2) => .get_value: self }).Hash
 }
 
-#| Begin transaction or savepoint
+#| Begin transaction
 method begin {
-    if $!savepoint-level > 0 {
-        # We're already in a transaction, use a savepoint
-        $!savepoint-level++;
-        my $savepoint-name = "sp{$!savepoint-level}";
-        self.prepare(Red::AST::Savepoint.new(:name($savepoint-name))).map: *.execute;
-        @!savepoint-promises.push: Promise.new;
-        self
-    } else {
-        # Start a new transaction
-        $!savepoint-level = 1;
-        self.prepare(Red::AST::BeginTransaction.new).map: *.execute;
-        @!savepoint-promises.push: Promise.new;
-        self
-    }
+    # Create a transaction context for savepoint management
+    require ::('Red::Driver::TransactionContext');
+    ::('Red::Driver::TransactionContext').new(
+        :parent(self),
+        :level(1)
+    )
 }
 
-#| Commit transaction or savepoint
+#| Commit transaction
 method commit {
-    if $!savepoint-level > 1 {
-        # We're in a savepoint, release it
-        my $savepoint-name = "sp{$!savepoint-level}";
-        self.prepare(Red::AST::ReleaseSavepoint.new(:name($savepoint-name))).map: *.execute;
-        @!savepoint-promises.pop.keep;
-        $!savepoint-level--;
-        self
-    } elsif $!savepoint-level == 1 {
-        # We're in the main transaction, commit it
-        # Wait for any remaining savepoint promises
-        await @!savepoint-promises if @!savepoint-promises;
-        self.prepare(Red::AST::CommitTransaction.new).map: *.execute;
-        @!savepoint-promises = ();
-        $!savepoint-level = 0;
-        self
-    } else {
-        # Not in a transaction
-        self.prepare(Red::AST::CommitTransaction.new).map: *.execute;
-        self
-    }
+    self.prepare(Red::AST::CommitTransaction.new).map: *.execute;
+    self
 }
 
-#| Rollback transaction or savepoint
+#| Rollback transaction
 method rollback {
-    if $!savepoint-level > 1 {
-        # We're in a savepoint, rollback to the previous one
-        my $savepoint-name = "sp{$!savepoint-level}";
-        self.prepare(Red::AST::RollbackToSavepoint.new(:name($savepoint-name))).map: *.execute;
-        @!savepoint-promises.pop.break;
-        $!savepoint-level--;
-        self
-    } elsif $!savepoint-level >= 1 {
-        # We're in the main transaction, rollback it
-        # Break any remaining savepoint promises
-        .break for @!savepoint-promises;
-        self.prepare(Red::AST::RollbackTransaction.new).map: *.execute;
-        @!savepoint-promises = ();
-        $!savepoint-level = 0;
-        self
-    } else {
-        # Not in a transaction
-        self.prepare(Red::AST::RollbackTransaction.new).map: *.execute;
-        self
-    }
+    self.prepare(Red::AST::RollbackTransaction.new).map: *.execute;
+    self
 }
 
 #| Create a named savepoint

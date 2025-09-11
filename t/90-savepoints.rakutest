@@ -36,7 +36,11 @@ subtest "Nested transaction with savepoints", {
     ok $db, "Started main transaction";
     
     # Insert some data
-    my $item1 = TestSavepoint.^create(:name("item1"));
+    my $item1;
+    {
+        my $*RED-DB = $db;
+        $item1 = TestSavepoint.^create(:name("item1"));
+    }
     ok $item1, "Created item1 in main transaction";
     
     # Start nested transaction (should create savepoint)
@@ -44,7 +48,11 @@ subtest "Nested transaction with savepoints", {
     ok $nested-db, "Started nested transaction (savepoint)";
     
     # Insert data in nested transaction
-    my $item2 = TestSavepoint.^create(:name("item2"));
+    my $item2;
+    {
+        my $*RED-DB = $nested-db;
+        $item2 = TestSavepoint.^create(:name("item2"));
+    }
     ok $item2, "Created item2 in nested transaction";
     
     # Rollback nested transaction
@@ -52,7 +60,10 @@ subtest "Nested transaction with savepoints", {
     pass "Rolled back nested transaction";
     
     # item2 should not exist, but item1 should
-    is TestSavepoint.^all.grep(*.name eq "item2").elems, 0, "item2 was rolled back";
+    {
+        my $*RED-DB = $db;
+        is TestSavepoint.^all.grep(*.name eq "item2").elems, 0, "item2 was rolled back";
+    }
     
     # Commit main transaction
     $db.commit;
@@ -68,21 +79,33 @@ subtest "Multiple nested savepoints", {
     my $db = $*RED-DB.begin;
     ok $db, "Started main transaction";
     
-    my $item1 = TestSavepoint.^create(:name("level1"));
+    my $item1;
+    {
+        my $*RED-DB = $db;
+        $item1 = TestSavepoint.^create(:name("level1"));
+    }
     ok $item1, "Created item at level 1";
     
     # First nested level
     my $nested1 = $db.begin;
     ok $nested1, "Started first nested transaction";
     
-    my $item2 = TestSavepoint.^create(:name("level2"));
+    my $item2;
+    {
+        my $*RED-DB = $nested1;
+        $item2 = TestSavepoint.^create(:name("level2"));
+    }
     ok $item2, "Created item at level 2";
     
     # Second nested level
     my $nested2 = $nested1.begin;
     ok $nested2, "Started second nested transaction";
     
-    my $item3 = TestSavepoint.^create(:name("level3"));
+    my $item3;
+    {
+        my $*RED-DB = $nested2;
+        $item3 = TestSavepoint.^create(:name("level3"));
+    }
     ok $item3, "Created item at level 3";
     
     # Rollback deepest level
@@ -130,20 +153,34 @@ subtest "Transaction isolation with savepoints", {
     my $db = $*RED-DB.begin;
     ok $db, "Started transaction";
     
-    my $item1 = TestSavepoint.^create(:name("outer"));
+    my $item1;
+    {
+        my $*RED-DB = $db;
+        $item1 = TestSavepoint.^create(:name("outer"));
+    }
     ok $item1, "Created item in outer transaction";
     
     my $nested = $db.begin;
-    my $item2 = TestSavepoint.^create(:name("inner"));
+    my $item2;
+    {
+        my $*RED-DB = $nested;
+        $item2 = TestSavepoint.^create(:name("inner"));
+    }
     ok $item2, "Created item in inner savepoint";
     
     # Both items should be visible within the transaction
-    is TestSavepoint.^all.elems, 2, "Both items visible in nested transaction";
+    {
+        my $*RED-DB = $nested;
+        is TestSavepoint.^all.elems, 2, "Both items visible in nested transaction";
+    }
     
     $nested.rollback;
     
     # Only outer item should remain
-    is TestSavepoint.^all.elems, 1, "Only outer item remains after rollback";
+    {
+        my $*RED-DB = $db;
+        is TestSavepoint.^all.elems, 1, "Only outer item remains after rollback";
+    }
     
     $db.rollback;
     
