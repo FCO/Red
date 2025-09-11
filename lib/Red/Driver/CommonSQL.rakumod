@@ -189,17 +189,9 @@ method ping {
     self.execute("SELECT 1 as ping").row<ping> == 1
 }
 
-method create-schema(%models where .values.all ~~ Red::Model, Bool :$if-not-exists) {
+method create-schema(%models where .values.all ~~ Red::Model) {
     for %models.kv -> Str() $name, Red::Model \model {
         my $*RED-IGNORE-REFERENCE = True;
-        if $if-not-exists {
-            CATCH {
-                when X::Red::Driver::Mapped::TableExists {
-                    # Skip this table if it already exists
-                    next;
-                }
-            }
-        }
         my $data = Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
@@ -226,14 +218,6 @@ method create-schema(%models where .values.all ~~ Red::Model, Bool :$if-not-exis
     for %models.kv -> Str() $name, Red::Model \model {
         my @fks = model.^columns>>.column.grep({ .ref.defined });
         if @fks {
-            if $if-not-exists {
-                CATCH {
-                    when X::Red::Driver::Mapped::TableExists {
-                        # Skip foreign key creation if there's an issue
-                        next;
-                    }
-                }
-            }
             self.execute: my $data = Red::AST::AddForeignKeyOnTable.new:
                 :table(model.^table),
                 :foreigns[@fks.map: {

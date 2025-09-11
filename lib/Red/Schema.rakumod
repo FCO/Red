@@ -62,9 +62,30 @@ method drop {
     self
 }
 
-method create(:$where, Bool :unless-exists(:$if-not-exists)) {
+method create(:$where) {
     red-do (:$where with $where), :transaction, {
-        |.create-schema(%!models, :$if-not-exists);
+        |.create-schema(%!models);
+    }
+    self
+}
+
+method update(:$where) {
+    red-do (:$where with $where), :transaction, {
+        my $db = get-RED-DB;
+        
+        # Get differences for each model in the schema and execute changes
+        for %!models.values -> $model {
+            my @diffs = $model.^diff-from-db;
+            if @diffs {
+                # Convert differences to AST nodes grouped by execution order
+                for $db.diff-to-ast(@diffs) -> @ast-group {
+                    for @ast-group -> $ast {
+                        my $sql = $db.translate($ast).key;
+                        $db.execute($sql) if $sql;
+                    }
+                }
+            }
+        }
     }
     self
 }
