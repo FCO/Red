@@ -46,12 +46,19 @@ method is-valid-table-name($name) { $!parent.is-valid-table-name($name) }
 method type-by-name($name) { $!parent.type-by-name($name) }
 method map-exception($exception) { $!parent.map-exception($exception) }
 method inflate($value, *%args) { $!parent.inflate($value, |%args) }
+method deflate($value) { $!parent.deflate($value) }
 method optimize($ast) { $!parent.optimize($ast) }
 method debug(*@args) { $!parent.debug(|@args) }
 method events { $!parent.events }
 method emit($data) { $!parent.emit($data) }
 method auto-register() { $!parent.auto-register() }
 method should-drop-cascade() { $!parent.should-drop-cascade() }
+method ping() { $!parent.ping() }
+
+# Delegate any missing methods via FALLBACK
+method FALLBACK($name, |c) {
+    $!parent."$name"(|c)
+}
 
 # Override transaction methods for savepoint behavior
 method begin {
@@ -83,3 +90,8 @@ method rollback {
     }
     self
 }
+
+# Delegate savepoint methods to parent
+method savepoint(Str $name) { $!parent.savepoint($name) }
+method rollback-to-savepoint(Str $name) { $!parent.rollback-to-savepoint($name) }
+method release-savepoint(Str $name) { $!parent.release-savepoint($name) }
