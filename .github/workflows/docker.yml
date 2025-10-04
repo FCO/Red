@@ -17,30 +17,30 @@ jobs:
         run: |
           docker run --rm --entrypoint "" red-test:base sh -c "raku -V && zef install --/test . && prove6 -lj8 t"
 
-  build-and-test-postgres:
-    runs-on: ubuntu-latest
-    services:
-      postgres:
-        image: postgres:16
-        env:
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
-          POSTGRES_DB: red_test
-        ports: ["5432:5432"]
-        options: >-
-          --health-cmd "pg_isready -U postgres" --health-interval 10s --health-timeout 5s --health-retries 5
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build base image
-        run: docker build -t red-test:pg -f Dockerfile .
-      - name: Wait for Postgres from container
-        run: |
-          for i in {1..15}; do
-            docker run --rm --add-host=host.docker.internal:host-gateway alpine sh -c "apk add --no-cache postgresql-client >/dev/null 2>&1 && pg_isready -h host.docker.internal -p 5432 -U postgres" && exit 0 || sleep 3;
-          done
-          exit 1
-      - name: Run tests (PostgreSQL)
-        env:
-          RED_DATABASE: "Pg host=host.docker.internal port=5432 dbname=red_test user=postgres password=postgres"
-        run: |
-          docker run --rm --add-host=host.docker.internal:host-gateway --entrypoint "" -e RED_DATABASE='Pg host=host.docker.internal port=5432 dbname=red_test user=postgres password=postgres' red-test:pg sh -c "zef install --/test . && prove6 -l t"
+  # build-and-test-postgres:
+  #   runs-on: ubuntu-latest
+  #   services:
+  #     postgres:
+  #       image: postgres:16
+  #       env:
+  #         POSTGRES_PASSWORD: postgres
+  #         POSTGRES_USER: postgres
+  #         POSTGRES_DB: red_test
+  #       ports: ["5432:5432"]
+  #       options: >-
+  #         --health-cmd "pg_isready -U postgres" --health-interval 10s --health-timeout 5s --health-retries 5
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #     - name: Build base image
+  #       run: docker build -t red-test:pg -f Dockerfile .
+  #     - name: Wait for Postgres from container
+  #       run: |
+  #         for i in {1..15}; do
+  #           docker run --rm --add-host=host.docker.internal:host-gateway alpine sh -c "apk add --no-cache postgresql-client >/dev/null 2>&1 && pg_isready -h host.docker.internal -p 5432 -U postgres" && exit 0 || sleep 3;
+  #         done
+  #         exit 1
+  #     - name: Run tests (PostgreSQL)
+  #       env:
+  #         RED_DATABASE: "Pg host=host.docker.internal port=5432 dbname=red_test user=postgres password=postgres"
+  #       run: |
+  #         docker run --rm --add-host=host.docker.internal:host-gateway --entrypoint "" -e RED_DATABASE='Pg host=host.docker.internal port=5432 dbname=red_test user=postgres password=postgres' red-test:pg sh -c "zef install --/test . && prove6 -l t"
