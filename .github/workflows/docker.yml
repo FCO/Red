@@ -43,4 +43,4 @@ jobs:
         env:
           RED_DATABASE: "Pg host=host.docker.internal port=5432 dbname=red_test user=postgres password=postgres"
         run: |
-          docker run --rm --add-host=host.docker.internal:host-gateway --entrypoint "" -e RED_DATABASE="$RED_DATABASE" red-test:pg sh -c "zef install --/test . && prove6 -l t"
+          docker run --rm --add-host=host.docker.internal:host-gateway --entrypoint "" -e RED_DATABASE='Pg host=host.docker.internal port=5432 dbname=red_test user=postgres password=postgres' red-test:pg sh -c "zef install --/test . && prove6 -l t"
