@@ -15,6 +15,14 @@ Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):
 
     zef install Red
 
+If the command above doesn't work, you may need to add the following flag to the install command:
+
+```
+zef install --exclude="pq:ver<5>:from<native>" Red
+```
+
+The above `--exclude` flag tells `zef` to not try and install the dependency `pq` directly as it is a native library (it's referencing `libpq`.) 
+
 SYNOPSIS
 --------
 
