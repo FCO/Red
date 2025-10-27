@@ -1,0 +1,69 @@
+use Test;
+use Red:api<2>;
+use Red::AST::Savepoint;
+use Red::AST::RollbackToSavepoint;
+use Red::AST::ReleaseSavepoint;
+
+model SimpleTest is rw {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+
+# Set up in-memory SQLite database for testing
+my $*RED-DB = database "SQLite";
+
+plan 3;
+
+# Create test table
+SimpleTest.^create-table;
+
+subtest "Basic transaction context creation", {
+    plan 2;
+    
+    # Test that begin returns a different object
+    my $tx = $*RED-DB.begin;
+    ok $tx, "Transaction context created";
+    ok $tx !=== $*RED-DB, "Transaction context is different from original DB";
+    
+    $tx.rollback;
+};
+
+subtest "SQL generation", {
+    plan 3;
+    
+    # Test that the correct SQL is generated for savepoint operations
+    my $driver = $*RED-DB;
+    
+    # Test savepoint creation
+    my $savepoint-sql = $driver.translate(Red::AST::Savepoint.new(:name("test")));
+    is $savepoint-sql.key, "SAVEPOINT test", "Correct savepoint SQL generated";
+    
+    # Test rollback to savepoint  
+    my $rollback-sql = $driver.translate(Red::AST::RollbackToSavepoint.new(:name("test")));
+    is $rollback-sql.key, "ROLLBACK TO test", "Correct rollback to savepoint SQL generated (SQLite)";
+    
+    # Test release savepoint
+    my $release-sql = $driver.translate(Red::AST::ReleaseSavepoint.new(:name("test")));
+    is $release-sql.key, "RELEASE test", "Correct release savepoint SQL generated (SQLite)";
+};
+
+subtest "Basic nested transaction", {
+    plan 4;
+    
+    # Start main transaction
+    my $main-tx = $*RED-DB.begin;
+    ok $main-tx, "Started main transaction";
+    
+    # Start nested transaction
+    my $nested-tx = $main-tx.begin;
+    ok $nested-tx, "Started nested transaction";
+    ok $nested-tx !=== $main-tx, "Nested transaction is different object";
+    
+    # Test that we can call methods on both
+    lives-ok { 
+        $nested-tx.rollback; 
+        $main-tx.rollback;
+    }, "Can call rollback on both transaction contexts";
+};
+
+done-testing;

@@ -21,6 +21,9 @@ use Red::DB;
 use Red::Schema;
 use Red::Formatter;
 use Red::AST::Infixes;
+use Red::AST::Savepoint;
+use Red::AST::RollbackToSavepoint;
+use Red::AST::ReleaseSavepoint;
 
 class Red:ver<0.2.3>:api<2> {
     our %experimentals;

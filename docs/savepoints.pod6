@@ -1,0 +1,106 @@
+=begin pod
+
+=head1 SAVEPOINT Support in Red
+
+Red now supports database savepoints for better handling of nested transactions. This addresses issues where nested transactions using separate connections could lead to isolation problems.
+
+=head2 Automatic Savepoint Usage
+
+When you start a nested transaction using C<begin>, Red automatically uses savepoints instead of creating new database connections:
+
+=begin code :lang<raku>
+use Red:api<2>;
+
+model Person is rw {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+
+my $*RED-DB = database "SQLite";
+Person.^create-table;
+
+# Start main transaction
+my $main-tx = $*RED-DB.begin;
+
+{
+    my $*RED-DB = $main-tx;
+    my $person1 = Person.^create(:name("Alice"));
+    
+    # Start nested transaction (creates savepoint automatically)
+    my $nested-tx = $main-tx.begin;
+    
+    {
+        my $*RED-DB = $nested-tx;
+        my $person2 = Person.^create(:name("Bob"));
+        
+        # Rollback nested transaction (rolls back to savepoint)
+        $nested-tx.rollback;  # Only Bob is rolled back
+    }
+    
+    # Alice is still there
+    $main-tx.commit;
+}
+=end code
+
+=head2 Manual Savepoint Operations
+
+You can also create and manage savepoints manually:
+
+=begin code :lang<raku>
+my $tx = $*RED-DB.begin;
+my $*RED-DB = $tx;
+
+my $person1 = Person.^create(:name("Alice"));
+
+# Create a named savepoint
+$*RED-DB.savepoint("checkpoint1");
+
+my $person2 = Person.^create(:name("Bob"));
+
+# Rollback to the savepoint
+$*RED-DB.rollback-to-savepoint("checkpoint1");  # Bob is rolled back
+
+# Or release the savepoint when no longer needed
+$*RED-DB.savepoint("checkpoint2");
+my $person3 = Person.^create(:name("Charlie"));
+$*RED-DB.release-savepoint("checkpoint2");  # Just removes the savepoint
+
+$tx.commit;  # Alice and Charlie are committed
+=end code
+
+=head2 Database Support
+
+Savepoints are supported on:
+
+=item PostgreSQL - Full SAVEPOINT/ROLLBACK TO SAVEPOINT/RELEASE SAVEPOINT syntax
+=item MySQL - Full SAVEPOINT/ROLLBACK TO SAVEPOINT/RELEASE SAVEPOINT syntax  
+=item SQLite - SAVEPOINT/ROLLBACK TO/RELEASE syntax (simplified)
+
+=head2 API Methods
+
+=head3 Automatic Transaction Context
+
+=item C<$driver.begin()> - Returns a transaction context that uses savepoints for nesting
+=item C<$tx.begin()> - Creates a nested savepoint context
+=item C<$tx.commit()> - Commits transaction or releases savepoint
+=item C<$tx.rollback()> - Rolls back transaction or rolls back to savepoint
+
+=head3 Manual Savepoint Control
+
+=item C<$driver.savepoint($name)> - Creates a named savepoint
+=item C<$driver.rollback-to-savepoint($name)> - Rolls back to a named savepoint
+=item C<$driver.release-savepoint($name)> - Releases a named savepoint
+
+=head2 Implementation Details
+
+The savepoint implementation uses a C<TransactionContext> wrapper that:
+
+=item Maintains API compatibility with existing transaction code
+=item Uses the same underlying database connection for all nested levels
+=item Automatically translates nested transactions to savepoints
+=item Provides promise-based coordination for cleanup
+=item Delegates all driver methods to the parent connection
+
+This ensures that changes made in outer transactions are visible to inner transactions, solving the isolation issues that occurred with the previous approach of using separate connections.
+
+=end pod
