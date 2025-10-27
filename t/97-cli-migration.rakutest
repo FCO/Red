@@ -1,0 +1,93 @@
+use Test;
+use Red;
+
+plan 8;
+
+# Set up test database using Mock (like other Red tests)
+my $*RED-DB = database "Mock";
+
+# Load CLI modules after setting up database
+use Red::Cli::Migration;
+
+# Test 1: CLI module loads correctly
+subtest "CLI module loads", {
+    plan 1;
+    
+    ok Red::Cli::Migration.defined, "CLI Migration class loads";
+};
+
+# Test 2: CLI functions are exported
+subtest "CLI functions exported", {
+    plan 6;
+    
+    ok &migration-generate.defined, "migration-generate function exported";
+    ok &migration-start.defined, "migration-start function exported";
+    ok &migration-advance.defined, "migration-advance function exported";
+    ok &migration-advance-all.defined, "migration-advance-all function exported";
+    ok &migration-status.defined, "migration-status function exported";
+    ok &migration-safety-check.defined, "migration-safety-check function exported";
+};
+
+# Test 3: Migration template generation
+subtest "Migration template generation", {
+    plan 2;
+    
+    my $cli = Red::Cli::Migration.new;
+    
+    # Test column-change template
+    my $template = $cli!get-migration-template('column-change', 'test-migration');
+    ok $template.contains('new-columns'), "Column change template includes new-columns";
+    
+    # Test table-change template
+    my $table-template = $cli!get-migration-template('table-change', 'test-table-migration');
+    ok $table-template.contains('new-tables'), "Table change template includes new-tables";
+};
+
+# Test 4: Migration name extraction
+subtest "Migration name extraction", {
+    plan 2;
+    
+    my $cli = Red::Cli::Migration.new;
+    
+    my $name1 = $cli!extract-migration-name('migrations/20241201120000-add-user-email.raku');
+    is $name1, 'add-user-email', "Extracts name from timestamped filename";
+    
+    my $name2 = $cli!extract-migration-name('simple-migration.raku');
+    is $name2, 'simple-migration', "Extracts name from simple filename";
+};
+
+# Test 5: Safety check functionality
+subtest "Safety check", {
+    plan 1;
+    
+    # This should not throw and should return an exit code
+    lives-ok { migration-safety-check() }, "Safety check function runs without error";
+};
+
+# Test 6: Status display functionality
+subtest "Status display", {
+    plan 1;
+    
+    # This should not throw
+    lives-ok { migration-status() }, "Status display function runs without error";
+};
+
+# Test 7: Advance all functionality
+subtest "Advance all migrations", {
+    plan 1;
+    
+    # This should not throw
+    lives-ok { migration-advance-all() }, "Advance all function runs without error";
+};
+
+# Test 8: Template types
+subtest "Template types", {
+    plan 2;
+    
+    my $cli = Red::Cli::Migration.new;
+    
+    lives-ok { $cli!get-migration-template('column-change', 'test') }, "Column change template works";
+    lives-ok { $cli!get-migration-template('table-change', 'test') }, "Table change template works";
+};
+
+done-testing;

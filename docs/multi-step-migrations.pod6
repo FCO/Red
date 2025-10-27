@@ -1,0 +1,522 @@
+=begin pod
+
+=head1 Multi-Step Migrations in Red
+
+Red's multi-step migration system enables zero-downtime database migrations by breaking schema changes into phases that can be deployed incrementally.
+
+=head2 Overview
+
+Traditional database migrations can cause downtime because they often involve:
+- Adding/removing columns while the application is running
+- Data transformations that might fail
+- Incompatible schema changes
+
+Multi-step migrations solve this by breaking changes into 9 phases:
+
+1. B<BEFORE-START>: Initial state, no changes yet
+2. B<CREATED-TABLES>: New tables created
+3. B<CREATED-COLUMNS>: New nullable columns added
+4. B<CREATED-INDEXES>: New indexes created for performance
+5. B<POPULATED-COLUMNS>: New columns populated and made NOT NULL
+6. B<UPDATED-CONSTRAINTS>: Foreign keys and constraints added
+7. B<DELETED-COLUMNS>: Old columns removed
+8. B<DELETED-INDEXES>: Old indexes removed
+9. B<DELETED-TABLES>: Old tables removed
+10. B<COMPLETED>: Migration finished
+
+=head2 Basic Usage
+
+=head3 Starting a Migration
+
+    use Red::MigrationManager;
+    
+    # Syntactic sugar approach - using sub to make DSL-like syntax
+    migration "password-migration" => {
+        description "Convert plain text passwords to hashed";
+        
+        new-columns user => {
+            hashed_password => { type => "VARCHAR(255)" },
+            is_active => { type => "BOOLEAN DEFAULT 1" }
+        };
+        
+        populate user => {
+            hashed_password => "CONCAT('hash:', old_password)",
+            is_active => "1"
+        };
+        
+        make-not-null { table => "user", column => "hashed_password" };
+        
+        delete-columns user => ["old_password"];
+    };
+    
+    # Alternative traditional hash approach
+    my %migration-spec = {
+        description => "Convert plain text passwords to hashed",
+        new-columns => {
+            user => {
+                hashed_password => { type => "VARCHAR(255)" },
+                is_active => { type => "BOOLEAN DEFAULT 1" }
+            }
+        },
+        population => {
+            user => {
+                hashed_password => "CONCAT('hash:', old_password)",
+                is_active => "1"
+            }
+        },
+        make-not-null => [
+            { table => "user", column => "hashed_password" }
+        ],
+        delete-columns => {
+            user => ["old_password"]
+        }
+    };
+    
+    start-multi-step-migration("password-migration", %migration-spec);
+
+=head3 Advancing Through Phases
+
+    # Phase 1: Add new nullable columns
+    advance-migration("password-migration");
+    
+    # Deploy code that handles both old and new columns
+    # ... deployment happens here ...
+    
+    # Phase 2: Populate new columns
+    advance-migration("password-migration");
+    
+    # Deploy code that uses new columns
+    # ... deployment happens here ...
+    
+    # Phase 3: Remove old columns
+    advance-migration("password-migration");
+    
+    # Phase 4: Complete migration
+    advance-migration("password-migration");
+
+=head2 Writing Migration-Aware Code
+
+Use the C<handle-migration> function to write code that works during migrations:
+
+    model User {
+        has Str $.old-password is column is nullable;
+        has Str $.hashed-password is column is nullable;
+        
+        method authenticate(Str $password) {
+            handle-migration "password-migration",
+                read-new-return-defined => {
+                    return self if $!hashed-password && 
+                                  $!hashed-password eq hash($password);
+                    Nil
+                },
+                read-old => {
+                    return self if $!old-password && 
+                                  $!old-password eq $password;
+                    Nil
+                };
+        }
+        
+        method set-password(Str $password) {
+            handle-migration "password-migration",
+                write-new => {
+                    $!hashed-password = hash($password);
+                },
+                write-old => {
+                    $!old-password = $password;
+                };
+            self.^save;
+        }
+    }
+
+=head2 Migration Specification Format
+
+A migration specification is a hash with these keys:
+
+=head3 C<description>
+
+Human-readable description of the migration.
+
+=head3 C<new-tables>
+
+Hash defining new tables to create:
+
+    new-tables => {
+        table-name => {
+            columns => {
+                column-name => { 
+                    type => "SQL-TYPE",
+                    nullable => True,  # optional, defaults to True
+                    default => "value" # optional
+                }
+            }
+        }
+    }
+
+=head3 C<new-columns>
+
+Hash defining new columns to add:
+
+    new-columns => {
+        table-name => {
+            column-name => { 
+                type => "SQL-TYPE",
+                nullable => True,  # optional, defaults to True
+                default => "value" # optional
+            }
+        }
+    }
+
+=head3 C<new-indexes>
+
+Hash defining new indexes to create:
+
+    new-indexes => {
+        table-name => [
+            {
+                name => "optional-index-name",
+                columns => ["col1", "col2"],
+                unique => False  # optional, defaults to False
+            }
+        ]
+    }
+
+=head3 C<population>
+
+Hash defining how to populate new columns. Supports multiple formats:
+
+=head4 Using C<^migration> Method (Recommended)
+
+The C<^migration> method generates Red::AST-based SQL for populating columns during migrations:
+
+    # Auto-generate population transformation
+    my $ast = UserV2.^migration(from => UserV1, target-column => "hashed_password");
+    
+    population => {
+        user => {
+            hashed_password => { ast => $ast }
+        }
+    }
+
+Common transformation patterns supported by C<^migration>:
+
+=over 4
+
+=item * B<full_name>: Combines first_name + last_name
+
+=item * B<hashed_password>: Adds hash prefix to plain password
+
+=item * B<email_lower>: Converts email to lowercase
+
+=item * B<is_*> fields: Converts status to boolean
+
+=back
+
+=head4 Manual AST Specifications
+
+For custom transformations using Red::AST:
+
+    population => {
+        user => {
+            full_name => {
+                ast => Red::AST::Function.new(
+                    name => 'CONCAT',
+                    args => [ast-column('first_name'), ast-literal(' '), ast-column('last_name')]
+                )
+            }
+        }
+    }
+
+=head4 String Expressions (Fallback)
+
+Simple SQL expressions as strings:
+
+    population => {
+        table-name => {
+            column-name => "SQL-expression",
+            # or
+            other-column => {
+                expression => "complex SQL expression",
+                where => "optional WHERE clause"
+            }
+        }
+    }
+
+=head3 C<make-not-null>
+
+Array of columns to make NOT NULL after population:
+
+    make-not-null => [
+        { table => "table-name", column => "column-name" },
+        # ...
+    ]
+
+=head3 C<new-foreign-keys>
+
+Array of foreign key constraints to add:
+
+    new-foreign-keys => [
+        {
+            table => "orders",
+            column => "user_id", 
+            ref-table => "users",
+            ref-column => "id",
+            name => "orders_user_fk"  # optional
+        }
+    ]
+
+=head3 C<new-check-constraints>
+
+Array of check constraints to add:
+
+    new-check-constraints => [
+        {
+            table => "users",
+            name => "age_check",
+            condition => "age >= 0 AND age <= 150"
+        }
+    ]
+
+=head3 C<delete-columns>
+
+Hash of columns to delete:
+
+    delete-columns => {
+        table-name => ["column1", "column2", ...]
+    }
+
+=head3 C<delete-indexes>
+
+Array of indexes to delete:
+
+    delete-indexes => [
+        { name => "old_index_name" }
+    ]
+
+=head3 C<delete-tables>
+
+Array of table names to delete:
+
+    delete-tables => ["old_table1", "old_table2"]
+
+=head2 Safety and Monitoring
+
+=head3 Checking Migration Status
+
+    my @migrations = list-migration-status();
+    for @migrations -> %migration {
+        say "Migration: %migration<name>";
+        say "Phase: %migration<phase>";
+        say "Time in phase: %migration<time-in-phase>s";
+    }
+
+=head3 Deployment Safety Checks
+
+Before deploying new code, check if any migrations require special consideration:
+
+    my @warnings = check-deployment-safety();
+    if @warnings {
+        say "⚠️  Deployment warnings:";
+        .say for @warnings;
+    }
+
+=head2 Best Practices
+
+=head3 1. Always Test Migrations
+
+Test your migrations thoroughly on a copy of production data:
+
+    # Create test environment
+    my $test-db = database "SQLite", :database<test.db>;
+    
+    # Copy production data
+    # ... copy data ...
+    
+    # Test complete migration process
+    start-multi-step-migration("test-migration", %spec);
+    advance-migration("test-migration") for 1..4;
+
+=head3 2. Use Descriptive Names and Descriptions
+
+    start-multi-step-migration(
+        "20241201-user-password-hashing",
+        {
+            description => "Migrate user passwords from plain text to bcrypt hashing for security",
+            # ...
+        }
+    );
+
+=head3 3. Handle Errors in Migration Code
+
+    method authenticate(Str $password) {
+        {
+            handle-migration "password-migration",
+                read-new-return-defined => { ... },
+                read-old => { ... };
+            
+            CATCH {
+                # Log error and fall back to safe default
+                default { return Nil }
+            }
+        }
+    }
+
+=head3 4. Monitor Migration Progress
+
+Set up monitoring to track:
+- Time spent in each phase
+- Any errors during migration
+- Performance impact
+
+=head3 5. Plan Rollback Strategy
+
+While the multi-step system minimizes risk, always have a rollback plan:
+
+    # If issues occur in CREATED-COLUMNS phase, you can:
+    # 1. Fix the application code
+    # 2. The old columns are still there and working
+    # 3. Drop the new columns if needed (manual process)
+
+=head2 CLI Integration with ^migration Method
+
+The CLI migration tooling integrates with the C<^migration> method to auto-generate population SQL:
+
+=head3 Using CLI to Generate Population SQL
+
+    # Generate population SQL for a specific column transformation
+    my $ast = migration-population-sql(UserV1, UserV2, "hashed_password");
+    
+    # Use in migration specification
+    migration "user-password-hashing" => {
+        description "Migrate passwords to secure hashing";
+        new-columns users => { hashed_password => { type => "VARCHAR(255)" } };
+        populate users => { hashed_password => { ast => $ast } };
+        delete-columns users => ["plain_password"];
+    };
+
+=head3 Auto-Generated Migration Templates
+
+When generating migrations with model context:
+
+    migration-generate "password-hashing", 
+        from-model => UserV1, 
+        to-model => UserV2;
+
+This generates a template with C<^migration> method examples for common transformations.
+
+=head2 Advanced Features
+
+=head3 Custom Transformation Logic
+
+For complex data transformations, you can use Red's AST system:
+
+    use Red::AST;
+    
+    population => {
+        user => {
+            full_name => {
+                # Using Red AST instead of raw SQL
+                expression => ast-concat(
+                    ast-column('first_name'),
+                    ast-literal(' '),
+                    ast-column('last_name')
+                ),
+                where => ast-and(
+                    ast-is-not-null(ast-column('first_name')),
+                    ast-is-not-null(ast-column('last_name'))
+                )
+            }
+        }
+    }
+    
+    # Alternative: using Red's query builder syntax
+    population => {
+        user => {
+            full_name => {
+                ast => { .first-name ~ ' ' ~ .last-name },
+                where => { .first-name.defined && .last-name.defined }
+            }
+        }
+    }
+
+=head3 Migration Dependencies
+
+Migrations can depend on each other by checking migration status:
+
+    # Only start if previous migration is complete
+    my $prev-status = Red::MigrationStatus.get-status("previous-migration");
+    if $prev-status.current-phase eq 'COMPLETED' {
+        start-multi-step-migration("dependent-migration", %spec);
+    }
+
+=head2 CLI Integration
+
+The migration system integrates with Red's CLI:
+
+    # Start migration
+    red migrate start password-hashing migration-spec.json
+    
+    # Advance migration
+    red migrate advance password-hashing
+    
+    # Check status
+    red migrate status
+    
+    # Safety check
+    red migrate safety-check
+
+=head2 Integration with CI/CD
+
+Example CI/CD integration:
+
+    # In deployment script
+    #!/bin/bash
+    
+    # Check if safe to deploy
+    if ! red migrate safety-check; then
+        echo "Unsafe to deploy - check migration status"
+        exit 1
+    fi
+    
+    # Deploy application
+    deploy-app
+    
+    # Advance any pending migrations
+    red migrate advance-all
+
+=head2 Troubleshooting
+
+=head3 Migration Stuck in Phase
+
+If a migration gets stuck:
+
+1. Check the migration status: C<red migrate status>
+2. Review application logs for errors
+3. Manually advance if safe: C<red migrate advance migration-name>
+4. As last resort, reset migration state (data loss possible)
+
+=head3 Performance Issues
+
+If migrations cause performance problems:
+
+1. Add indexes before starting migration
+2. Use batch processing for large tables
+3. Schedule migrations during low-traffic periods
+4. Monitor database performance during migration
+
+=head3 Data Consistency Issues
+
+To ensure data consistency:
+
+1. Always test on production-like data
+2. Use transactions where possible
+3. Validate data after each phase
+4. Have monitoring in place
+
+=head2 See Also
+
+=item L<Red::MigrationManager> - Main migration management class
+=item L<Red::MultiStepMigration> - Core migration logic
+=item L<Red::MigrationStatus> - Migration status tracking
+=item L<Red::ModelRegistry> - Versioned model registry
+
+=end pod
