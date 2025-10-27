@@ -1,0 +1,64 @@
+use Test;
+use lib 'lib';
+use Red;
+
+model Upload {
+    has $.id is serial;
+    has DateTime $.uploaded is column;
+}
+
+model StatsViewRefresh {
+    has $.id is serial;
+    has DateTime $.refresh-time is column;
+}
+
+plan 4;
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+schema(Upload, StatsViewRefresh).create;
+
+subtest "exists method works with empty table", {
+    plan 1;
+    
+    # Test with empty table - should return False (no uploads to match)
+    my $exists = StatsViewRefresh.^rs.exists;
+    my $result-empty = Upload.^all.grep( -> $v { $exists }).so;
+    ok !$result-empty, "exists returns False when no uploads exist";
+}
+
+subtest "exists.not method works with empty table", {
+    plan 2;
+    
+    # Test with empty stats table - exists.not should be True
+    my $exists-not = StatsViewRefresh.^rs.exists.not;
+    my $result = Upload.^all.grep( -> $v { $exists-not }).so;
+    ok !$result, "exists.not works correctly when no uploads exist";
+    
+    # Create an upload and test again
+    my $upload = Upload.^create: uploaded => DateTime.now;
+    $result = Upload.^all.grep( -> $v { $exists-not }).so;
+    ok $result, "exists.not returns True when upload exists and stats table is empty";
+}
+
+subtest "is-empty method works", {
+    plan 1;
+    
+    my $empty = StatsViewRefresh.^rs.is-empty;
+    my $result = Upload.^all.grep( -> $v { $empty }).so;
+    ok $result, "is-empty works correctly when stats table is empty and uploads exist";
+}
+
+subtest "Manual AST Function approach works", {
+    plan 1;
+    
+    my $manual-exists = Red::AST::Function.new( args => [StatsViewRefresh.^rs.map(*.id).ast], func => 'NOT EXISTS');
+    my $result = Upload.^all.grep( -> $v { $manual-exists }).so;
+    ok $result, "Manual approach works correctly";
+}
+
+done-testing;
