@@ -89,6 +89,7 @@ has Red::AST::Chained $.chain handles <filter limit offset post order group tabl
 has Lock::Async       $!lock .= new;
 has Red::LockType     $.for;
 has                   @.prefetches;
+has Bool              $.prefetches-set = False;
 
 multi method with { $!with }
 
@@ -453,8 +454,28 @@ multi method join-model(Red::Model \model, &on, :$name = "{ self.^shortname }_{ 
     }
 }
 
-method prefetch(+@prefetches) {
-    self.clone: :prefetches[|@!prefetches, |self.of.^relationships.keys.grep: { .name.substr(2) eq @prefetches.any }]
+method prefetch($defined? is copy, *%prefetches) {
+    my @prefetches =
+        |$.of.^pre-fetches,
+        |@!prefetches,
+    ;
+
+    $defined = [$defined,] if $defined.defined && $defined !~~ Positional;
+    @prefetches .= grep: {
+        .name.substr(2) eq $defined.any
+    } with $defined;
+
+    my :(:@add, :@del) := %prefetches.pairs.classify: { .value ?? "add" !! "del" }, :as{ .key };
+
+    @prefetches.append: @.^attributes.grep: {
+        .name.substr(2) eq @add.any
+    } if @add;
+
+    @prefetches .= grep: {
+        .name.substr(2) eq @del.none
+    } if @del;
+
+    self.clone: :@prefetches, :prefetches-set
 }
 
 #| Returns the AST that will generate the SQL
@@ -462,10 +483,14 @@ method ast(Bool :$sub-select --> Red::AST) is hidden-from-sql-commenting {
     if $.filter ~~ Red::AST::MultiSelect {
         $.filter
     } else {
-        # my @prefetch = $.of.^has-one-relationships;
-        # dd @prefetch;
-        my @prefetch = |$.of.^pre-fetches, |@!prefetches;
-        # say @prefetch.head.^name;
-        Red::AST::Select.new: :$.of, :$.filter, :$.limit, :$.offset, :@.order, :@.table-list, :@.group, :@.comments, :@prefetch, :$sub-select, :$!for;
+        my @prefetch := $!prefetches-set ?? @!prefetches !! @($.of.^pre-fetches);
+        Red::AST::Select.new:
+            :$.of,          :$.filter,
+            :$.limit,       :$.offset,
+            :@.order,       :@.table-list,
+            :@.group,       :@.comments,
+            :@prefetch,     :$sub-select,
+            :$!for,
+        ;
     }
 }

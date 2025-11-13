@@ -10,6 +10,7 @@ Revision history for Red
     - pg(json): stringify-json; #> (path), #- (remove), and jsonb_set updates with to_jsonb/::jsonb binding
     - pg: map MINUS to EXCEPT; use $n placeholders for parameters
     - sql(binding): route AST::Value through wildcard-value; fix INSERT binding to use deflated values
+    - implement prefetch
 
 0.2.3  2025-09-04T20:41:59+01:00
     - fix join error on relationship with 2 parameters

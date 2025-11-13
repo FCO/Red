@@ -1,0 +1,44 @@
+use v6;
+use Test;
+use Red;
+
+use lib $?FILE.IO.parent(1).add('lib');
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+model Buyer  { ... }
+model Seller { ... }
+model Login is table<logged_user> {
+    has         $.id        is serial;
+    has         $.source    is column;
+    has UInt    $.source-id is referencing(*.id, :model<Buyer>);
+    has Instant $.created   is column = now;
+    has Buyer   $.buyer     is relationship(:prefetch, { $^b.id == $^a.source-id && $^a.source eq "buyer"  });
+    has Seller  $.seller    is relationship(:prefetch, { $^b.id == $^a.source-id && $^a.source eq "seller" });
+}
+model Buyer {
+    has UInt  $.id     is serial;
+    has Str   $.name   is column;
+    has Login @.logins is relationship{ $^a.id == $^b.source-id && $^b.source eq "buyer" }
+}
+model Seller {
+    has UInt  $.id     is serial;
+    has Str   $.name   is column;
+    has Login @.logins is relationship{ $^a.id == $^b.source-id && $^b.source eq "seller" }
+}
+red-defaults "SQLite"; schema(Buyer, Seller, Login).create;
+my $comprador = Buyer.^create: :name<Comprador>;
+$comprador.logins.create;
+
+is Login.^all.first.buyer.name, "Comprador";
+is Login.^all.prefetch(:buyer).first.buyer.name, "Comprador";
+is Login.^all.prefetch(:!seller).first.buyer.name, "Comprador";
+is Login.^all.prefetch(:!seller, :!buyer).first.buyer.name, "Comprador";
+is Login.^all.prefetch(<buyer>).first.buyer.name, "Comprador";
+is Login.^all.prefetch(<buyer seller>).first.buyer.name, "Comprador";
+
+done-testing;
