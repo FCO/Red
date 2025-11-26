@@ -18,7 +18,7 @@ method deflator {
   -> $data {
     # TODO: Find a better way of doing this
     do if get-RED-DB.?stringify-json  {
-      try { to-json $data } // $data
+      try { to-json $data, :!pretty } // $data
     } else {
       $data
     }
