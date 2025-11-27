@@ -41,7 +41,7 @@ use Red::PrepareCode;
 unit class MetamodelX::Red::Model is Metamodel::ClassHOW;
 also does MetamodelX::Red::Dirtable;
 also does MetamodelX::Red::Comparate;
-#also does MetamodelX::Red::Migration;
+also does MetamodelX::Red::Migration;
 also does MetamodelX::Red::Relationship;
 also does MetamodelX::Red::Describable;
 also does MetamodelX::Red::OnDB;

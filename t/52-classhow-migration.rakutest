@@ -1,0 +1,168 @@
+use Test;
+use Red;
+use Red::Migration::DSL;
+
+plan 8;
+
+# Test the ClassHOW-based migration DSL
+lives-ok {
+    migration "test-migration" => {
+        description "Test ClassHOW-based migration syntax";
+        
+        table "users" => {
+            new-column "hashed_password" => {
+                type "VARCHAR(255)";
+                nullable False;
+            };
+            
+            new-column "is_active" => {
+                type "BOOLEAN";
+                default True;
+            };
+            
+            new-indexes :columns["email"], :unique;
+            
+            populate -> $new, $old {
+                $new.hashed_password = "hash:" ~ $old.plain_password;
+                $new.is_active = True;
+            };
+            
+            delete-columns "plain_password";
+        };
+    };
+}, "ClassHOW-based migration syntax works";
+
+# Test individual DSL functions work independently
+my $migration-class;
+lives-ok {
+    $migration-class = migration "individual-test" => {
+        description "Test individual DSL functions";
+        
+        table "posts" => {
+            new-column "slug", %{ type => "VARCHAR(100)", unique => True };
+            new-column "published_at", %{ type => "TIMESTAMP", nullable => True };
+            
+            populate "slug" => ast-function("LOWER", ast-function("REPLACE", ast-column("title"), ast-literal(" "), ast-literal("-")));
+            
+            new-indexes ["title", "created_at"];
+        };
+    };
+}, "Individual DSL functions work";
+
+# Test auto-migration from model differences
+model UserV1 {
+    has Int $.id is serial;
+    has Str $.email is column;
+    has Str $.plain-password is column;
+}
+
+model UserV2 {
+    has Int $.id is serial;
+    has Str $.email is column;
+    has Str $.hashed-password is column;
+    has Bool $.is-active is column;
+}
+
+lives-ok {
+    UserV2.^migrate(from => UserV1);
+}, "Auto-migration from model differences works";
+
+# Test Red::AST integration
+lives-ok {
+    migration "ast-integration-test" => {
+        description "Test Red::AST integration";
+        
+        table "profiles" => {
+            new-column "full_name" => { type => "VARCHAR(200)" };
+            
+            populate "full_name" => {
+                ast => ast-concat(
+                    ast-column("first_name"),
+                    ast-literal(" "),
+                    ast-column("last_name")
+                )
+            };
+        };
+    };
+}, "Red::AST integration works";
+
+# Test comprehensive database operations
+lives-ok {
+    migration "comprehensive-ops" => {
+        description "Test all database operations";
+        
+        new-table "audit_log" => {
+            id => { type => "SERIAL", primary-key => True };
+            table_name => { type => "VARCHAR(100)" };
+            action => { type => "VARCHAR(50)" };
+            created_at => { type => "TIMESTAMP DEFAULT NOW()" };
+        };
+        
+        table "users" => {
+            new-column "created_at" => { type => "TIMESTAMP DEFAULT NOW()" };
+            new-column "updated_at" => { type => "TIMESTAMP" };
+            
+            new-indexes ["created_at"];
+            new-foreign-key column => "department_id", references-table => "departments", references-column => "id";
+            new-check-constraint name => "valid_email", expression => "email ~ '^[^@]+@[^@]+\\.[^@]+$'";
+        };
+        
+        delete-tables "old_logs";
+    };
+}, "Comprehensive database operations work";
+
+# Test alternative syntax forms
+lives-ok {
+    migration "syntax-alternatives" => {
+        table "products" => {
+            # Alternative column syntax
+            new-column "price" => %{ :type<DECIMAL>, :size<10,2>, :!nullable };
+            new-column "description" => %{ :type<TEXT> };
+            
+            # Alternative populate syntax  
+            populate %{
+                price => "old_price * 1.1",
+                description => "COALESCE(old_description, 'No description')"
+            };
+            
+            # Alternative delete syntax
+            delete-columns <old_price old_description>;
+        };
+    };
+}, "Alternative syntax forms work";
+
+# Test error handling
+throws-like {
+    migration "invalid-migration" => {
+        table "test" => {
+            # Missing required operations
+        };
+    };
+}, Exception, "Migration validation catches errors";
+
+# Test migration with complex AST expressions
+lives-ok {
+    migration "complex-ast" => {
+        description "Test complex AST expressions";
+        
+        table "analytics" => {
+            new-column "score" => { type => "INTEGER" };
+            
+            populate "score" => {
+                ast => ast-function("CASE",
+                    ast-function("WHEN", 
+                        ast-function(">=", ast-column("rating"), ast-literal(4)),
+                        ast-literal(100)
+                    ),
+                    ast-function("WHEN",
+                        ast-function(">=", ast-column("rating"), ast-literal(3)),
+                        ast-literal(75)
+                    ),
+                    ast-function("ELSE", ast-literal(50))
+                )
+            };
+        };
+    };
+}, "Complex AST expressions work";
+
+done-testing;

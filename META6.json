@@ -116,6 +116,7 @@
     "Red::Migration::Column": "lib/Red/Migration/Column.rakumod",
     "Red::Migration::Migration": "lib/Red/Migration/Migration.rakumod",
     "Red::Migration::Table": "lib/Red/Migration/Table.rakumod",
+    "Red::ModelRegistry": "lib/Red/ModelRegistry.rakumod",
     "Red::Model": "lib/Red/Model.rakumod",
     "Red::Operators": "lib/Red/Operators.rakumod",
     "Red::Phaser": "lib/Red/Phaser.rakumod",

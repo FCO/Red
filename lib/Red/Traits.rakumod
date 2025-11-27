@@ -320,3 +320,22 @@ multi trait_mod:<is>($subset where { .HOW ~~ Metamodel::SubsetHOW }, Bool :$sub-
     $subset.HOW does MetamodelX::Red::SubModelHOW;
     $subset
 }
+
+=head3 is model-version
+
+#| This trait registers a model as a version of a logical model
+multi trait_mod:<is>(Mu:U $model, Str :$model-version! --> Empty) {
+    use Red::ModelRegistry;
+    my ($logical-name, $version) = $model-version.split(':');
+    register-model-version($logical-name, $version, $model);
+}
+
+#| This trait registers a model with a logical name and version using a hash
+multi trait_mod:<is>(Mu:U $model, :%model-version! --> Empty) {
+    use Red::ModelRegistry;
+    my $logical-name = %model-version<name> // die "model-version requires 'name' key";
+    my $version = %model-version<version> // die "model-version requires 'version' key";
+    register-model-version($logical-name, $version, $model);
+}
+
+
