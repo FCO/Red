@@ -7,6 +7,9 @@ use Red::Event;
 use Red::AST::BeginTransaction;
 use Red::AST::CommitTransaction;
 use Red::AST::RollbackTransaction;
+use Red::AST::Savepoint;
+use Red::AST::RollbackToSavepoint;
+use Red::AST::ReleaseSavepoint;
 
 =head2 Red::Driver
 
@@ -23,22 +26,41 @@ method new-connection {
 
 #| Begin transaction
 method begin {
-    my $trans = self.new-connection;
-    $trans.prepare(Red::AST::BeginTransaction.new).map: *.execute;
-    $trans
+    # Create a transaction context for savepoint management
+    require ::('Red::Driver::TransactionContext');
+    ::('Red::Driver::TransactionContext').new(
+        :parent(self),
+        :level(1)
+    )
 }
 
 #| Commit transaction
 method commit {
-    #die "Not in a transaction!" unless $*RED-TRANSACTION-RUNNING;
     self.prepare(Red::AST::CommitTransaction.new).map: *.execute;
     self
 }
 
 #| Rollback transaction
 method rollback {
-    #die "Not in a transaction!" unless $*RED-TRANSACTION-RUNNING;
     self.prepare(Red::AST::RollbackTransaction.new).map: *.execute;
+    self
+}
+
+#| Create a named savepoint
+method savepoint(Str $name) {
+    self.prepare(Red::AST::Savepoint.new(:$name)).map: *.execute;
+    self
+}
+
+#| Rollback to a named savepoint
+method rollback-to-savepoint(Str $name) {
+    self.prepare(Red::AST::RollbackToSavepoint.new(:$name)).map: *.execute;
+    self
+}
+
+#| Release a named savepoint
+method release-savepoint(Str $name) {
+    self.prepare(Red::AST::ReleaseSavepoint.new(:$name)).map: *.execute;
     self
 }
 
