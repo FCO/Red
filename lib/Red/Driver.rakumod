@@ -122,7 +122,7 @@ method optimize(Red::AST $in --> Red::AST) { $in }
 
 multi method debug(@bind) {
     if $*RED-DEBUG {
-        note "BIND: @bind.perl()";
+        note "BIND: @bind.raku()";
     }
 }
 
@@ -135,6 +135,6 @@ multi method debug($sql) {
 multi method debug($sql, @binds) {
     if $*RED-DEBUG {
         note "SQL : $sql";
-        note "BIND: @binds.perl()";
+        note "BIND: @binds.raku()";
     }
 }
