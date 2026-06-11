@@ -1,6 +1,7 @@
 use Test;
 use Red <has-one>;
 
+# ---- Models with STRING references (:model<Name>) ----
 model Bla {
     has UInt $.id      is serial;
     has Str  $.value   is column;
@@ -15,13 +16,50 @@ model Ble {
     has      $.bla    is relationship(*.bla-id, :model<Bla>);
 }
 
+# ---- Models with TYPE references (:model(Type)) ----
+model Blu { ... }
+model Blb {
+    has UInt $.id      is serial;
+    has Str  $.value   is column;
+    has Blu  @.blus    is relationship(*.blb-id, :model(Blu));
+    has Blu  $.one-blu is relationship(*.blb-id, :model(Blu), :has-one);
+}
+
+model Blu {
+    has UInt $.id     is serial;
+    has Str  $.value  is column;
+    has UInt $.blb-id is referencing(*.id, :model(Blb));
+    has Blb  $.blb    is relationship(*.blb-id, :model(Blb));
+}
+
+# ---- Model with non-nullable FK (default=0) ----
+model Blz { ... }
+model Bly {
+    has UInt $.id      is serial;
+    has Str  $.value   is column;
+    has UInt $.bly-id  is referencing(*.id, :model(Bly), :default(0));
+    has Blz  $.blz     is relationship(*.bly-id, :model(Blz));
+}
+
+model Blz {
+    has UInt $.id      is serial;
+    has Str  $.value   is column;
+    has      @.blies   is relationship(*.blz-id, :model(Bly));
+    has      $.one-bly is relationship(*.blz-id, :model(Bly), :has-one);
+}
+
+# ---- Setup ----
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
-schema(Bla, Ble).drop.create;
+schema(Bla, Ble, Blb, Blu, Bly, Blz).drop.create;
+
+# ======================================================================
+# Existing tests (unchanged)
+# ======================================================================
 
 subtest "Simple create and fk id", {
     my $bla = Bla.^create: :value<test1>;
@@ -105,14 +143,18 @@ subtest "Create on transaction", {
     is Bla.^all.grep(*.value eq "trans1").elems, 0
 };
 
-# NEW: belongs-to .^create with auto FK
-subtest "belongs-to .^create sets FK automatically", {
+# ======================================================================
+# NEW: belongs-to .^create via relationship accessor (string model)
+# ======================================================================
+
+subtest "belongs-to .^create sets FK automatically (string model)", {
     my $ble = Ble.^create: :value<ble>;
     my $bla = $ble.bla.^create: :value<bla>;
     is $bla.value, "bla", "Created Bla has correct value";
+    is $ble.bla.id, $bla.id, "FK set on Ble without explicit refresh";
     $ble.^refresh;
-    is $ble.bla.value, "bla", "FK auto-set — ble.bla returns the new Bla";
-    is $ble.bla.id, $bla.id, "IDs match";
+    is $ble.bla.value, "bla", "After refresh, bla is accessible";
+    is $ble.bla.id, $bla.id, "After refresh, IDs still match";
 };
 
 subtest "belongs-to .^create does not affect other records", {
@@ -123,6 +165,117 @@ subtest "belongs-to .^create does not affect other records", {
     $ble2.^refresh;
     is $ble1.bla.id, $bla.id, "FK set on correct Ble";
     nok $ble2.bla.defined, "Other Ble not affected";
+    is $ble2.bla-id, UInt, "Other Ble FK is still default (0)";
+};
+
+subtest "belongs-to .^create with extra attributes", {
+    my $ble = Ble.^create: :value<ble-extra>;
+    my $bla = $ble.bla.^create: :value<bla-extra>, :id(999);
+    $ble.^refresh;
+    is $ble.bla.value, "bla-extra", "Extra attrs passed through";
+    is $ble.bla.id, 999, "Explicit ID respected";
+};
+
+subtest "belongs-to .^create multiple times on same parent", {
+    my $ble = Ble.^create: :value<ble-reuse>;
+    my $bla1 = $ble.bla.^create: :value<bla-first>;
+    $ble.^refresh;
+    is $ble.bla.id, $bla1.id, "First create works";
+
+    # Creating a second Bla should create a new one and update FK
+    my $bla2 = $ble.bla.^create: :value<bla-second>;
+    $ble.^refresh;
+    is $ble.bla.id, $bla2.id, "Second create updates FK";
+    isnt $bla1.id, $bla2.id, "Created different records";
+    is Bla.^all.elems, 2, "Both Blas exist in DB";
+};
+
+subtest "belongs-to .^create on FK that already has a value", {
+    my $bla1 = Bla.^create: :value<existing-bla>;
+    my $ble  = Ble.^create: :value<ble-with-fk>, :bla-id($bla1.id);
+    is $ble.bla.id, $bla1.id, "FK manually set works";
+
+    # Now create a NEW Bla via relationship — should replace FK
+    my $bla2 = $ble.bla.^create: :value<new-bla>;
+    $ble.^refresh;
+    is $ble.bla.id, $bla2.id, "FK updated to new Bla";
+    isnt $bla1.id, $bla2.id, "Different Bla records";
+};
+
+# ======================================================================
+# Type model references (not strings)
+# ======================================================================
+
+subtest "belongs-to .^create with type model (not string)", {
+    my $blu = Blu.^create: :value<blu>;
+    my $blb = $blu.blb.^create: :value<blb>;
+    is $blb.value, "blb";
+    $blu.^refresh;
+    is $blu.blb.id, $blb.id, "FK auto-set with type model reference";
+    is $blu.blb.value, "blb", "Value accessible after refresh";
+};
+
+subtest "belongs-to .^create isolation with type model", {
+    my $blu1 = Blu.^create: :value<blu1>;
+    my $blu2 = Blu.^create: :value<blu2>;
+    my $blb  = $blu1.blb.^create: :value<blb1>;
+    $blu1.^refresh;
+    $blu2.^refresh;
+    is $blu1.blb.id, $blb.id, "FK on correct parent";
+    nok $blu2.blb.defined, "Other parent not affected";
+};
+
+# ======================================================================
+# To-one via relationship (reverse direction: has-one side)
+# ======================================================================
+
+subtest "has-one .^create via relationship accessor", {
+    my $bla = Bla.^create: :value<bla-hasone>;
+    my $ble = $bla.one-ble.^create: :value<ble-hasone>;
+    is $ble.value, "ble-hasone";
+    $bla.^refresh;
+    is $bla.one-ble.id, $ble.id, "FK auto-set on has-one via accessor";
+};
+
+# ======================================================================
+# To-many .create (ResultSeq) — already works, just verifying
+# ======================================================================
+
+subtest "to-many .create via ResultSeq still works", {
+    my $bla = Bla.^create: :value<bla-tomany>;
+    $bla.bles.create: :value<ble1>;
+    $bla.bles.create: :value<ble2>;
+    $bla.^refresh;
+    is $bla.bles.elems, 2, "Two Bles created";
+    is $bla.bles.map(*.value).sort, <ble1 ble2>, "Correct values";
+    is $bla.bles.map(*.bla-id).unique.elems, 1, "All have same FK";
+    is $bla.bles.map(*.bla-id).unique.head, $bla.id, "FK matches parent";
+};
+
+subtest "to-many with type model .create still works", {
+    my $blb = Blb.^create: :value<blb-tomany>;
+    $blb.blus.create: :value<blu1>;
+    $blb.blus.create: :value<blu2>;
+    $blb.^refresh;
+    is $blb.blus.elems, 2;
+    is $blb.blus.map(*.value).sort, <blu1 blu2>;
+};
+
+# ======================================================================
+# Edge cases
+# ======================================================================
+
+subtest "belongs-to .^create on unsaved parent should fail", {
+    my $ble = Ble.new: :value<unsaved>;
+    throws-like {
+        $ble.bla.^create: :value<should-fail>;
+    }, Exception, "Cannot .^create on relationship of unsaved object";
+};
+
+subtest "Verify Bla is not fetched when FK is 0", {
+    my $bly = Bly.^create: :value<bly-no-fk>;
+    # FK default is 0, so no Blz should be fetched
+    nok $bly.blz.defined, "No Blz when FK is 0";
 };
 
 done-testing;
