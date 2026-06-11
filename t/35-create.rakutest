@@ -99,10 +99,30 @@ subtest "Create with has-one", {
 };
 
 subtest "Create on transaction", {
-	throws-like {
-		Bla.^create: :value<trans1>, :bles[{ :42value }]
-	}, X::TypeCheck::Assignment, message => rx/value/;
-	is Bla.^all.grep(*.value eq "trans1").elems, 0
+    throws-like {
+        Bla.^create: :value<trans1>, :bles[{ :42value }]
+    }, X::TypeCheck::Assignment, message => rx/value/;
+    is Bla.^all.grep(*.value eq "trans1").elems, 0
+};
+
+# NEW: belongs-to .^create with auto FK
+subtest "belongs-to .^create sets FK automatically", {
+    my $ble = Ble.^create: :value<ble>;
+    my $bla = $ble.bla.^create: :value<bla>;
+    is $bla.value, "bla", "Created Bla has correct value";
+    $ble.^refresh;
+    is $ble.bla.value, "bla", "FK auto-set — ble.bla returns the new Bla";
+    is $ble.bla.id, $bla.id, "IDs match";
+};
+
+subtest "belongs-to .^create does not affect other records", {
+    my $ble1 = Ble.^create: :value<ble1>;
+    my $ble2 = Ble.^create: :value<ble2>;
+    my $bla  = $ble1.bla.^create: :value<bla-for-ble1>;
+    $ble1.^refresh;
+    $ble2.^refresh;
+    is $ble1.bla.id, $bla.id, "FK set on correct Ble";
+    nok $ble2.bla.defined, "Other Ble not affected";
 };
 
 done-testing;

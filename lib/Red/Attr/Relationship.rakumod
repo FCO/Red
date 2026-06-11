@@ -196,7 +196,7 @@ method !relationship-ast($t1, $t2) {
             :points-to($_)
         ).throw unless $_ ~~ Red::Column;
 
-        Red::AST::Eq.new: $_, .ref: $t2
+        Red::AST::Eq.new: $_, ast-value .ref: $t2
     }).reduce: -> $agg, $i? {
         return $agg without $i;
         Red::AST::AND.new: $agg, $i

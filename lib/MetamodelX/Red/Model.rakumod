@@ -257,20 +257,21 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
         my \alias = ::?CLASS.new_type(:$name);
 
         my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
+            method parent(|) is rw { $ }
             method columns(|)     { @cols }
             method table(|)       { rtype.^table }
             method as(|)          { self.table-formatter: $rname }
             method orig(|)        { rtype }
             method join-type(|)   { join-type }
             method tables(|)      { [ |base.^tables, alias ] }
-            method join-on(|)     {
+            method join-on($, \a = alias) {
                 my $*RED-INTERNAL = True;
                 do given rel {
                     when Red::AST {
                         $_
                     }
                     when Callable {
-                        my $filter = do given what-does-it-do($_, alias) {
+                        my $filter = do given what-does-it-do($_, a) {
                             do if [eqv] .values {
                                 .values.head
                             } else {
@@ -289,7 +290,7 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
                         $filter
                     }
                     default {
-                        .relationship-ast(alias, |(base if $opposite))
+                        .relationship-ast(a, |(base if $opposite))
                     }
                 }
             }
@@ -520,8 +521,9 @@ multi method create($, Str :$with!, |c) is hidden-from-backtrace {
 #| Creates a new object and saves it on DB
 #| It accepts a list os pairs (the same as C<.new>)
 #| And Lists and/or Hashes for relationships
-multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {
-    die "Cannot call .^create on a defined model." if model.DEFINITE;
+multi method create(\\mo where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {
+    my \\model = mo.^orig;
+    die "Cannot call .^create on a defined model." if mo.DEFINITE;
     my $RED-DB = get-RED-DB;
     my $trans  = so $*RED-TRANSACTION-RUNNING;
     $RED-DB   .= begin        unless $trans;
@@ -614,6 +616,29 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
             }
         }
         self.apply-row-phasers($obj, AfterCreate);
+
+        if mo.HOW.?join-on(mo) && mo.HOW.?parent(mo) {
+            my $obj;
+            my $*RED-DB = $RED-DB;
+            if !$data.elems {
+                $obj = model.^find: $filter
+            } else {
+                $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);
+                $obj.^saved-on-db;
+                $obj.^clean-up;
+                $obj.^populate-ids;
+            }
+            my %should-set = |mo.^join-on(mo.^parent).should-set.Hash if mo.HOW.?join-on: mo;
+            my $p = mo.^parent;
+            my %attrs = |$p.^columns.map: { .name.substr(2) => .self }
+            for %should-set.kv -> $name, $value {
+                $p.^set-attr: $name, $value;
+                $p.^set-dirty: %attrs{ $name };
+            }
+            $p.^save;
+            return $obj
+        }
+
         .return with $no;
         return-rw Proxy.new:
                 STORE => -> | {
