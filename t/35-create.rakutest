@@ -37,7 +37,7 @@ model Blz { ... }
 model Bly {
     has UInt $.id      is serial;
     has Str  $.value   is column;
-    has UInt $.bly-id  is referencing(*.id, :model(Bly), :default(0));
+    has UInt $.bly-id  is referencing(*.id, :model(Bly), :default{ 0 });
     has Blz  $.blz     is relationship(*.bly-id, :model(Blz));
 }
 

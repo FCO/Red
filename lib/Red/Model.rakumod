@@ -12,7 +12,7 @@ multi method perl(::?CLASS:D:) { self.raku }
 
 multi method raku(::?CLASS:D:) {
     my @attrs = self.^attributes.grep({ !.^can("relationship-ast") && .has_accessor}).map: {
-        "{ .name.substr(2) } => { .get_value(self).perl }"
+        "{ .name.substr(2) } => { .get_value(self).raku }"
     }
     "{ self.^name }.new({ @attrs.join: ", " })"
 }
