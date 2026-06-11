@@ -1,0 +1,298 @@
+use Test;
+use Red;
+
+# Test plan: fills coverage gaps that the 86 existing test files miss.
+# Targets: between, like/ilike, sort multi-column, modulo, tail, delete cascade
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+# ── Models ───────────────────────────────────────────────────────
+
+model Gadget {
+    has UInt $.id    is serial;
+    has Str  $.name  is column;
+    has Int  $.price is column;
+    has Str  $.color is column;
+    has      @.tags  is column{ :type<str> };
+}
+
+model Appliance {
+    has UInt $.id        is serial;
+    has Str  $.name      is column;
+    has Int  $.watts     is column;
+    has Bool $.active    is column = True;
+    has Str  $.code      is column;
+}
+
+model Item {
+    has UInt $.id     is serial;
+    has Str  $.name   is column;
+    has Int  $.qty    is column;
+    has Bool $.on-sale is column = False;
+}
+
+model DateItem {
+    has UInt $.id         is serial;
+    has Str  $.label      is column;
+    has Date $.start-date is column;
+    has Date $.end-date   is column;
+}
+
+model Deletable {
+    has UInt $.id   is serial;
+    has Str  $.name is column;
+    has Int  $.cat  is column;
+    has Bool $.flag is column = False;
+}
+
+# ── Setup ────────────────────────────────────────────────────────
+
+schema(Gadget, Appliance, Item, DateItem, Deletable).drop.create;
+
+# Populate Gadgets
+my @gadgets = Gadget.^create: :name<A>, :price(10),  :color<red>;
+              Gadget.^create: :name<B>, :price(50),  :color<blue>;
+              Gadget.^create: :name<C>, :price(100), :color<red>;
+              Gadget.^create: :name<D>, :price(75),  :color<green>;
+
+# Populate Appliances
+Appliance.^create: :name<Toaster>,  :watts(800),  :active, :code<T800>;
+Appliance.^create: :name<Kettle>,   :watts(2000), :active, :code<K2000>;
+Appliance.^create: :name<OldRadio>, :watts(50),   :!active, :code<OR001>;
+Appliance.^create: :name<Lamp>,     :watts(60),   :active, :code<L060>;
+
+# Populate Items
+Item.^create: :name<Widget>,  :qty(5),  :on-sale;
+Item.^create: :name<Gizmo>,   :qty(12), :!on-sale;
+Item.^create: :name<Doodad>,  :qty(7),  :on-sale;
+Item.^create: :name<Thingy>,  :qty(3),  :!on-sale;
+
+# Populate DateItems
+DateItem.^create: :label<Recent>,     :start-date(Date.today.earlier(months => 1)),  :end-date(Date.today.later(months => 1));
+DateItem.^create: :label<Old>,        :start-date(Date.today.earlier(years => 2)),   :end-date(Date.today.earlier(years => 1));
+DateItem.^create: :label<Current>,    :start-date(Date.today.earlier(days => 5)),    :end-date(Date.today.later(days => 5));
+DateItem.^create: :label<Future>,     :start-date(Date.today.later(months => 1)),    :end-date(Date.today.later(months => 3));
+
+# Populate Deletables
+Deletable.^create: :name<One>,   :cat(1), :flag;
+Deletable.^create: :name<Two>,   :cat(1), :!flag;
+Deletable.^create: :name<Three>, :cat(2), :flag;
+Deletable.^create: :name<Four>,  :cat(2), :!flag;
+
+# ══════════════════════════════════════════════════════════════════
+# 1. BETWEEN — previously completely untested
+# ══════════════════════════════════════════════════════════════════
+subtest "BETWEEN on Int column", {
+    my @r = Gadget.^all.grep(*.price between 20, 90).Seq;
+    is @r.elems, 2, "two gadgets in 20..90 range";
+    ok @r.map(*.name).sort eqv <B D>.Seq, "names match: B and D";
+}
+
+subtest "BETWEEN with variables", {
+    my $lo = 40;
+    my $hi = 80;
+    my $r  = Gadget.^all.first(*.price between $lo, $hi);
+    is $r.name, "B", "price 50 is between 40 and 80";
+}
+
+subtest "BETWEEN exclusive-ish (NOT between)", {
+    my @r = Gadget.^all.grep(not *.price between 20, 90).Seq;
+    is @r.elems, 2, "two gadgets outside 20..90";
+    ok @r.map(*.name).sort eqv <A C>.Seq, "names match: A and C";
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 2. SORT with multiple columns / mixed direction
+# ══════════════════════════════════════════════════════════════════
+subtest "SORT multi-column", {
+    my @by-price-color = Gadget.^all.sort(*.price, *.color).map({ $_.name }).Seq;
+    is-deeply @by-price-color, <A B D C>.Seq, "sort by price asc (primary), color asc (secondary)";
+}
+
+subtest "SORT with explicit DESC/ASC on columns", {
+    my @desc = Gadget.^all.sort({ .price.desc }).map({ $_.name }).Seq;
+    is-deeply @desc, <C D B A>.Seq, "sort by price descending";
+}
+
+subtest "SORT with mixed direction", {
+    my @mixed = Gadget.^all.sort({ .color.asc, .price.desc }).map({ $_.name }).Seq;
+    is-deeply @mixed, <B D C A>.Seq, "sort: color asc (blue→green→red), price desc within same color (C=100 before A=10)";
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 3. LIKE / ILIKE — previously completely untested
+# ══════════════════════════════════════════════════════════════════
+subtest "LIKE operator", {
+    skip "like not supported on SQLite" if $driver eq "SQLite";
+    my @r = Appliance.^all.grep(*.code like "T%").Seq;
+    is @r.elems, 1, "one code starts with T";
+    is @r.head.name, "Toaster", "T% matches Toaster's code T800";
+}
+
+subtest "ILIKE operator (case insensitive)", {
+    skip "ilike not supported on SQLite" if $driver eq "SQLite";
+    my @r = Appliance.^all.grep(*.code ilike "t%").Seq;
+    is @r.elems, 1, "iliKE T% matches same as LIKE T%";
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 4. MODULO (%) — previously completely untested
+# ══════════════════════════════════════════════════════════════════
+subtest "MODULO operator on column", {
+    my @r = Appliance.^all.grep(*.watts % 100 == 0).Seq;
+    is @r.elems, 2, "two appliances with watts divisible by 100: Toaster(800), Kettle(2000)";
+    ok @r.map(*.name).sort eqv <Kettle Toaster>.Seq, "names match";
+}
+
+subtest "MODULO with variable", {
+    my $mod = 50;
+    my @r = Appliance.^all.grep(*.watts % $mod == 0).Seq;
+    is @r.elems, 2, "watts divisible by 50: Toaster(800), Kettle(2000)";
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 5. TAIL — previously barely tested
+# ══════════════════════════════════════════════════════════════════
+subtest "TAIL on sorted ResultSeq", {
+    my @r = Item.^all.sort(*.qty).tail(2).map(*.name).Seq;
+    is @r.elems, 2, "two items with highest qty";
+    ok @r.sort eqv <Doodad Gizmo>.Seq, "highest qty items: Gizmo(12), Doodad(7)";
+}
+
+subtest "TAIL single", {
+    my $r = Gadget.^all.sort(*.price).tail;
+    is $r.name, "C", "tail on price-sorted = most expensive (C=100)";
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 6. DATE BETWEEN (two-column)
+# ══════════════════════════════════════════════════════════════════
+my $today = Date.today;
+
+subtest "Date BETWEEN using two columns", {
+    my @r = DateItem.^all.grep(*.start-date <= $today and *.end-date >= $today).Seq;
+    is @r.elems, 2, "two date items span today: Recent, Current";
+    ok @r.map(*.label).sort eqv <Current Recent>.Seq, "labels match";
+}
+
+subtest "Date comparison with ranges", {
+    my $near-past    = Date.today.earlier(days => 10);
+    my $near-future  = Date.today.later(days => 10);
+    my @r = DateItem.^all.grep(
+        *.start-date between $near-past, $near-future
+    ).Seq;
+    is @r.elems, 1, "Current starts within ±10 days of today";
+    is @r.head.label, "Current";
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 7. Complex AND/OR in grep
+# ══════════════════════════════════════════════════════════════════
+subtest "AND condition chain", {
+    my @r = Gadget.^all.grep(*.color eq "red" and *.price > 20).Seq;
+    is @r.elems, 1, "one red gadget above 20";
+    is @r.head.name, "C", "C is red at price 100";
+}
+
+subtest "OR condition", {
+    my @r = Gadget.^all.grep(*.color eq "blue" or *.color eq "green").Seq;
+    is @r.elems, 2, "two blue-or-green gadgets";
+    ok @r.map(*.name).sort eqv <B D>.Seq;
+}
+
+subtest "NOT AND complex", {
+    my @r = Gadget.^all.grep(not (*.color eq "red" and *.price < 50)).Seq;
+    is @r.elems, 3, "all except red and cheap (A is red/10 → excluded; C=red/100 → included)";
+    ok @r.map(*.name).sort eqv <B C D>.Seq;
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 8. .^update with conditions
+# ══════════════════════════════════════════════════════════════════
+subtest "Batch UPDATE with grep filter", {
+    lives-ok { Item.^all.grep(*.on-sale).update(:qty(99)) }, "batch update on sale items";
+    my @updated = Item.^all.grep(*.qty == 99).Seq;
+    is @updated.elems, 2, "two items updated to qty=99";
+    ok @updated.map(*.name).sort eqv <Doodad Widget>.Seq, "Widget and Doodad were on sale";
+    # Restore
+    Item.^all.grep(*.qty == 99).update(:qty(1));
+}
+
+subtest "Single UPDATE on found row", {
+    my $g = Gadget.^all.first(*.name eq "A");
+    lives-ok { $g.update(:price(15)) }, "update single gadget";
+    is Gadget.^all.first(*.name eq "A").price, 15, "price updated to 15";
+    $g.update(:price(10));  # restore
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 9. .^delete with filter
+# ══════════════════════════════════════════════════════════════════
+subtest "DELETE with grep", {
+    Deletable.^create: :name<ToDelete>, :cat(9), :flag;
+    my $before = Deletable.^all.elems;
+    lives-ok { Deletable.^all.grep(*.cat == 9).delete }, "delete with grep filter";
+    is Deletable.^all.elems, $before - 1, "one row deleted";
+    is Deletable.^all.grep(*.cat == 9).elems, 0, "category 9 is now empty";
+}
+
+subtest "DELETE single row", {
+    Deletable.^create: :name<ToDelete2>, :cat(10);
+    my $row = Deletable.^all.first(*.cat == 10);
+    lives-ok { $row.delete }, "delete single row by object";
+    is Deletable.^all.grep(*.cat == 10).elems, 0, "row gone";
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 10. .^all with chained methods (head, first, map)
+# ══════════════════════════════════════════════════════════════════
+subtest "Chained: sort + head + map", {
+    my @r = Gadget.^all.sort(*.price).head(2).map(*.name).Seq;
+    is-deeply @r, <A B>.Seq, "cheapest two: A(10), B(50)";
+}
+
+subtest "Chained: grep + sort + first", {
+    my $r = Gadget.^all.grep(*.color ne "red").sort(*.price.desc).first;
+    is $r.name, "D", "most expensive non-red = D(75, green)";
+}
+
+subtest "Bool coercion of ResultSeq", {
+    ok Gadget.^all.grep(*.name eq "A"), "grep result is truthy";
+    nok Gadget.^all.grep(*.name eq "Z"), "empty grep is falsy";
+}
+
+subtest ".elems on filtered ResultSeq", {
+    is Gadget.^all.grep(*.color eq "red").elems, 2, "two red gadgets";
+    is Appliance.^all.grep(*.active == False).elems, 1, "one inactive appliance";
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 11. Column .in / ⊂ with more edge cases
+# ══════════════════════════════════════════════════════════════════
+subtest "IN with empty set", {
+    my @r = Gadget.^all.grep(*.name ⊂ []).Seq;
+    is @r.elems, 0, "IN empty list returns nothing";
+}
+
+subtest "IN with single element", {
+    my $r = Gadget.^all.grep(*.name ⊂ ["D"]).first;
+    is $r.name, "D";
+}
+
+# ══════════════════════════════════════════════════════════════════
+# 12. .^save (update or create)
+# ══════════════════════════════════════════════════════════════════
+subtest "save existing object (update path)", {
+    my $g = Gadget.^all.first(*.name eq "B");
+    $g.price = 55;
+    lives-ok { $g.^save }, "save updated object";
+    is Gadget.^all.first(*.name eq "B").price, 55, "price updated via save";
+    $g.price = 50;
+    $g.^save;
+}
+
+done-testing;
