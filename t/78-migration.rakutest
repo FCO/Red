@@ -1,0 +1,136 @@
+use Test;
+use Red;
+use Red::Cli;
+use Red::Do;
+use Red::Configuration;
+use Red::DB;
+
+# ============================================
+# RED tests — verify migration detection works
+# ============================================
+
+my $*RED-DB   = database "SQLite", :database<:memory:>;
+my $*RED-DEBUG = False;
+
+# --- Define models ---
+model PersonV1 {
+    has UInt $.id   is serial;
+    has Str  $.name is column;
+}
+
+# --- Test 1: diff-from-db detects no changes after create-table ---
+PersonV1.^create-table;
+my @diffs = PersonV1.^diff-from-db;
+is @diffs.elems, 0, "diff-from-db: no changes after create-table";
+
+# --- Test 2: describe returns correct table info ---
+my $desc = PersonV1.^describe;
+isa-ok $desc, Red::Cli::Table, "describe returns Red::Cli::Table";
+is $desc.name, "person_v1", "table name is snake_case";
+is $desc.columns.elems, 2, "two columns (id + name)";
+
+# --- Test 3: Red::Configuration paths ---
+my $config = Red::Configuration.new: :base-path($*TMPDIR.Str);
+is $config.migration-base-path.Str, $*TMPDIR.add("migrations").Str, "migration base path";
+is $config.model-storage-path.Str,  $*TMPDIR.add("migrations/models").Str, "model storage path";
+is $config.current-version, 0, "initial version is 0";
+
+# --- Test 4: store-model saves a file ---
+my $tmp-model = $*TMPDIR.add("TestModel.rakumod");
+$tmp-model.spurt: "use Red; model TestModel { has Int \$.x is column }";
+my $stored = $config.store-model($tmp-model, "TestModel");
+ok $stored.f, "store-model created a file";
+ok $stored.basename.starts-with("TestModel-"), "stored model has correct prefix";
+$tmp-model.unlink;
+
+# --- Test 5: ensure-dirs creates directories ---
+$config.ensure-dirs;
+ok $config.migration-base-path.d, "migrations/ dir created";
+ok $config.model-storage-path.d,  "migrations/models/ dir created";
+ok $config.version-storage-path.d, "migrations/versions/ dir created";
+ok $config.sql-storage-path.d,     "migrations/sql/ dir created";
+
+# --- Test 6: migration-update flow (local DB update) ---
+# Drop and recreate to have a clean state
+$*RED-DB.execute: "DROP TABLE IF EXISTS person_v1";
+PersonV1.^create-table;
+
+# First, confirm no diffs after fresh create
+@diffs = PersonV1.^diff-from-db;
+is @diffs.elems, 0, "no diffs after fresh create-table";
+
+# --- Test 7: Configuration version-dir ---
+my $vdir = $config.version-dir(1);
+is $vdir.Str, $config.version-storage-path.add("1").Str, "version-dir(1) is correct";
+
+# --- Test 8: sql-dir-for paths ---
+my $sqldir = $config.sql-dir-for("SQLite", 1);
+ok $sqldir.Str.contains("versions/1/sql/SQLite"), "sql-dir-for resolves correctly";
+
+my $upfile = $config.up-sql("SQLite", 1);
+ok $upfile.Str.ends-with("up.sql"), "up-sql filename is up.sql";
+
+my $downfile = $config.down-sql("SQLite", 1);
+ok $downfile.Str.ends-with("down.sql"), "down-sql filename is down.sql";
+
+# --- Test 9: diff between two tables (old vs new) ---
+# Create a second model to simulate evolution
+model PersonV2 {
+    has UInt $.id        is serial;
+    has Str  $.name      is column;
+    has UInt $.age       is column;
+    has Str  $.email     is column{ :nullable };
+}
+
+# Get descriptions for both
+my $old-desc = PersonV1.^describe;
+my $new-desc = PersonV2.^describe;
+
+my @up-diffs = $old-desc.diff: $new-desc;
+# Should detect 2 new columns: age, email
+my $added-cols = @up-diffs.grep: *[1] eq "+" and *[2] eq "col";
+cmp-ok $added-cols.elems, ">=", 2, "up-diff detects at least 2 new columns";
+
+my @down-diffs = $new-desc.diff: $old-desc;
+my $removed-cols = @down-diffs.grep: *[1] eq "-" and *[2] eq "col";
+cmp-ok $removed-cols.elems, ">=", 2, "down-diff detects at least 2 removed columns";
+
+# --- Test 10: diff-to-ast produces AST nodes ---
+if @up-diffs {
+    my @asts;
+    for $*RED-DB.diff-to-ast(@up-diffs) -> @data {
+        @asts.append: @data;
+    }
+    cmp-ok @asts.elems, ">=", 1, "diff-to-ast produces at least 1 AST node";
+    for @asts {
+        ok $_.does(Red::AST), "  AST node does Red::AST role";
+    }
+}
+
+# --- Test 11: translate produces SQL strings ---
+if @up-diffs {
+    my @asts;
+    for $*RED-DB.diff-to-ast(@up-diffs) -> @data {
+        @asts.append: @data;
+    }
+    for @asts {
+        my $pair = $*RED-DB.translate($_);
+        ok $pair.key ne "", "translate returns non-empty SQL";
+    }
+}
+
+# --- Test 12: store-version creates info file ---
+my $test-config = Red::Configuration.new: :base-path($*TMPDIR.Str);
+$test-config.ensure-dirs;
+$test-config.store-version: 1, "test migration";
+my $info-file = $test-config.version-dir(1).add("info.txt");
+ok $info-file.f, "store-version creates info.txt";
+my $info-content = $info-file.slurp;
+ok $info-content.contains("version: 1"), "info.txt contains version";
+ok $info-content.contains("test migration"), "info.txt contains description";
+
+# Cleanup
+$test-config.version-dir(1).rmdir;
+$test-config.migration-base-path.rmdir;
+
+done-testing;

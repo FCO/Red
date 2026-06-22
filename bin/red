@@ -1,7 +1,9 @@
-#!env perl6
+#!/usr/bin/env raku
 use Red::Cli;
 use Red::Do;
+use Red::DB;
 use Red::Database;
+use Red::Configuration;
 
 my %*SUB-MAIN-OPTS =
   :named-anywhere,
@@ -36,7 +38,6 @@ multi MAIN(
     say gen-stub-code :$schema-class, :$driver, |%pars
 }
 
-
 #| Generates migration plan to upgrade database schema
 multi MAIN(
     "migration-plan",
@@ -57,7 +58,6 @@ multi MAIN(
     Str  :$schema-class,
     Bool :$print-stub       = False,
     Bool :$no-relationships = False,
-    #Bool :$stub-only,
     Str  :$driver!,
     *%pars
 ) {
@@ -80,10 +80,62 @@ multi MAIN(
         Str  :$driver!,
         *%pars
 ) {
-    $GLOBAL::RED-DB = database $driver, |%pars;
+    my $*RED-DB = database $driver, |%pars;
     prepare-database :$populate, :$models, :$driver, |%pars
 }
 
+#============================================
+# MIGRATION COMMANDS
+#============================================
+
+#| Update local DB to match model, save model snapshot for future diffs
+multi MAIN(
+    "migration",
+    "update",
+    Str :$model!,
+    Str :$require = $model,
+    Str :$driver!,
+    *%pars
+) {
+    my $*RED-DB = database($driver, |%pars);
+    migration-update :$model, :$require, :$driver, |%pars;
+}
+
+#| Rollback the last applied migration on the local DB
+multi MAIN(
+    "migration",
+    "downgrade",
+    Str :$driver!,
+    *%pars
+) {
+    my $*RED-DB = database($driver, |%pars);
+    migration-downgrade :$driver, |%pars;
+}
+
+#| Generate SQL migration files (up.sql + down.sql) from model snapshots
+multi MAIN(
+    "migration",
+    "prepare",
+    Str :$model!,
+    Str :$require = $model,
+    Str :$driver!,
+    *%pars
+) {
+    my $*RED-DB = database($driver, |%pars);
+    migration-prepare :$model, :$require, :$driver, |%pars;
+}
+
+#| Apply pending SQL migrations to the target database
+multi MAIN(
+    "migration",
+    "apply",
+    Str :$driver!,
+    *%pars
+) {
+    my $*RED-DB = database($driver, |%pars);
+    migration-apply :$driver, |%pars;
+}
+
 sub dyn-lib(@libs) {
-	qq[use lib "{ $_ }"].EVAL for @libs
+    qq[use lib "{ $_ }"].EVAL for @libs
 }
