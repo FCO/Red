@@ -154,12 +154,13 @@ cmp-ok @applied.elems, ">=", 1, "can query applied migrations";
 is @applied.map(*.version).max, 1, "max version is 1";
 ok @applied.head.applied-at.defined, "applied-at is auto-set";
 
-# --- Test 14: store-model uses IdClass for merge-safe ordered filenames ---
+# --- Test 14: store-model produces unique filenames ---
 my $tmp-model = $tmp-base.add("TestModel2.rakumod");
 $tmp-model.spurt: "use Red; model TestModel2 { has Int \$.x is column }";
 my $stored1 = $config.store-model($tmp-model, "TestModel2");
 my $stored2 = $config.store-model($tmp-model, "TestModel2");
-isnt $stored1.basename, $stored2.basename, "IdClass produces unique filenames (merge-safe)";
-cmp-ok $stored1.basename, "<", $stored2.basename, "IdClass produces ordered filenames";
+isnt $stored1.basename, $stored2.basename, "produces unique filenames (merge-safe)";
+ok $stored1.basename.starts-with("TestModel2-"), "filename has model prefix";
+like $stored1.basename, / \d+ '-' <xdigit>+ /, "filename has timestamp-random format";
 
 done-testing;

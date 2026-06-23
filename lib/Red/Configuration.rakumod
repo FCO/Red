@@ -1,13 +1,5 @@
-use IdClass;
-
-#| Ordered, unique ID for migration artifacts — avoids merge conflicts
-#| between branches while keeping filenames sortable.
-class MigrationId does IdClass {
-    method prefix { "mig" }
-}
-
 #| Manages migration paths, versions, and model snapshots for Red migrations.
-unit class Red::Configuration;
+class Red::Configuration {
 
 #| Base project directory (where META6.json lives)
 has IO() $.base-path              = $*CWD;
@@ -67,11 +59,12 @@ method global-down-sql(Str $driver --> IO::Path) {
 }
 
 #| Store a snapshot of a model file into the versioned model storage.
-#| Uses IdClass for ordered, unique, merge-safe filenames.
+#| Uses a microsecond timestamp + random suffix for unique, ordered filenames.
 #| Returns the path where it was stored.
 method store-model(IO() $source-file, Str $model-name --> IO::Path) {
     $!model-storage-path.mkdir: :p;
-    my $dest = $!model-storage-path.add: "{ $model-name }-{ MigrationId.new }.rakumod";
+    my $suffix = (now * 1_000_000).Int ~ '-' ~ (^0xFFFF).pick.fmt('%04x');
+    my $dest = $!model-storage-path.add: "{ $model-name }-{ $suffix }.rakumod";
     $source-file.copy: $dest;
     $dest
 }
@@ -88,4 +81,5 @@ method ensure-dirs() {
     .mkdir for $!migration-base-path, $!model-storage-path,
                $!version-storage-path, $!sql-storage-path;
     self
+}
 }
