@@ -156,7 +156,7 @@ ok @applied.head.applied-at.defined, "applied-at is auto-set";
 
 # --- Test 14: store-model produces unique filenames ---
 my $tmp-model = $tmp-base.add("TestModel2.rakumod");
-$tmp-model.spurt: "use Red; model TestModel2 { has Int \$.x is column }";
+$tmp-model.spurt: 'use Red; model TestModel2 { has Int $.x is column }';
 my $stored1 = $config.store-model($tmp-model, "TestModel2");
 my $stored2 = $config.store-model($tmp-model, "TestModel2");
 isnt $stored1.basename, $stored2.basename, "produces unique filenames (merge-safe)";
