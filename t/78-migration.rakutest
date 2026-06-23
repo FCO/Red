@@ -12,6 +12,11 @@ use Red::DB;
 my $*RED-DB   = database "SQLite", :database<:memory:>;
 my $*RED-DEBUG = False;
 
+# Use a unique per-test temp directory to avoid collisions in parallel test runs
+my $tmp-base = $*TMPDIR.add: "red-migration-test-{ $*PID }-{ now.Int }";
+$tmp-base.mkdir: :p;
+LEAVE { try $tmp-base.IO.rmdir: :r }  # cleanup on exit
+
 # --- Define models ---
 model PersonV1 {
     has UInt $.id   is serial;
@@ -30,13 +35,13 @@ is $desc.name, "person_v1", "table name is snake_case";
 is $desc.columns.elems, 2, "two columns (id + name)";
 
 # --- Test 3: Red::Configuration paths ---
-my $config = Red::Configuration.new: :base-path($*TMPDIR.Str);
-is $config.migration-base-path.Str, $*TMPDIR.add("migrations").Str, "migration base path";
-is $config.model-storage-path.Str,  $*TMPDIR.add("migrations/models").Str, "model storage path";
+my $config = Red::Configuration.new: :base-path($tmp-base.Str);
+is $config.migration-base-path.Str, $tmp-base.add("migrations").Str, "migration base path";
+is $config.model-storage-path.Str,  $tmp-base.add("migrations/models").Str, "model storage path";
 is $config.current-version, 0, "initial version is 0";
 
 # --- Test 4: store-model saves a file ---
-my $tmp-model = $*TMPDIR.add("TestModel.rakumod");
+my $tmp-model = $tmp-base.add("TestModel.rakumod");
 $tmp-model.spurt: "use Red; model TestModel { has Int \$.x is column }";
 my $stored = $config.store-model($tmp-model, "TestModel");
 ok $stored.f, "store-model created a file";
@@ -120,17 +125,13 @@ if @up-diffs {
 }
 
 # --- Test 12: store-version creates info file ---
-my $test-config = Red::Configuration.new: :base-path($*TMPDIR.Str);
-$test-config.ensure-dirs;
-$test-config.store-version: 1, "test migration";
-my $info-file = $test-config.version-dir(1).add("info.txt");
+# Reuse $config (already scoped to unique $tmp-base) instead of creating a new one
+$config.ensure-dirs;
+$config.store-version: 1, "test migration";
+my $info-file = $config.version-dir(1).add("info.txt");
 ok $info-file.f, "store-version creates info.txt";
 my $info-content = $info-file.slurp;
 ok $info-content.contains("version: 1"), "info.txt contains version";
 ok $info-content.contains("test migration"), "info.txt contains description";
-
-# Cleanup
-$test-config.version-dir(1).rmdir;
-$test-config.migration-base-path.rmdir;
 
 done-testing;

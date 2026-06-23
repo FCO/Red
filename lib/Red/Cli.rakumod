@@ -154,7 +154,7 @@ multi migration-update(
 ) is export {
     my $config = Red::Configuration.new:
         :base-path($*CWD),
-        :drivers[@[$driver]],
+        :drivers[$driver],
     ;
     $config.ensure-dirs;
 
@@ -164,16 +164,16 @@ multi migration-update(
     my $model-name  = $model-class.^name;
     my $table-name  = $model-class.^table;
 
-    # 1. Save current DB schema description before changes (for rollback reference)
-    my $version = $config.current-version + 1;
-    $config.store-version: $version, "update $model-name";
-
-    # 2. Compute the diff between DB and model
+    # 1. Compute the diff between DB and model FIRST — avoid creating empty versions
     my @diffs = $model-class.^diff-from-db;
     unless @diffs {
         note "No changes detected for $model-name (table: $table-name)";
         return;
     }
+
+    # 2. Allocate new version only when there are actual changes
+    my $version = $config.current-version + 1;
+    $config.store-version: $version, "update $model-name";
 
     # 3. Convert diffs to AST
     my @asts;
@@ -209,7 +209,7 @@ multi migration-downgrade(
 ) is export {
     my $config = Red::Configuration.new:
         :base-path($*CWD),
-        :drivers@[$driver],
+        :drivers[$driver],
     ;
 
     my $version = $config.current-version;
@@ -249,7 +249,7 @@ multi migration-prepare(
 ) is export {
     my $config = Red::Configuration.new:
         :base-path($*CWD),
-        :drivers@[$driver],
+        :drivers[$driver],
     ;
     $config.ensure-dirs;
 
@@ -292,7 +292,7 @@ multi migration-prepare(
 
         # Generate up.sql
         my $up-dir = $config.sql-dir-for($drv, $version);
-        $up-dir.mkdir;
+        $up-dir.mkdir: :p;
         my $up-file = $config.up-sql($drv, $version);
         my $up-fh = $up-file.open: :w;
         $up-fh.say: "-- Red Migration v$version: $model-name (UP)";
@@ -350,7 +350,7 @@ multi migration-apply(
 ) is export {
     my $config = Red::Configuration.new:
         :base-path($*CWD),
-        :drivers@[$driver],
+        :drivers[$driver],
     ;
 
     # 1. Ensure the migration tracking table exists
@@ -382,22 +382,20 @@ multi migration-apply(
         note "Applying migration v$ver: { $file.relative($*CWD) }";
 
         get-RED-DB.execute: "BEGIN";
-        try {
-            for $file.lines -> $sql {
-                my $trimmed = $sql.trim;
-                next if $trimmed eq '' || $trimmed.starts-with('--');
-                get-RED-DB.execute: $trimmed;
-            }
-            # Record the migration
-            record-migration($config, $ver, $file.basename);
-            get-RED-DB.execute: "COMMIT";
-            note "  ✓ Migration v$ver applied successfully.";
-            CATCH {
-                default {
-                    note "  ✗ Migration v$ver FAILED: { .message }";
-                    get-RED-DB.execute: "ROLLBACK";
-                    die "Migration v$ver failed. Aborting.";
-                }
+        for $file.lines -> $sql {
+            my $trimmed = $sql.trim;
+            next if $trimmed eq '' || $trimmed.starts-with('--');
+            get-RED-DB.execute: $trimmed;
+        }
+        # Record the migration
+        record-migration($config, $ver, $file.basename);
+        get-RED-DB.execute: "COMMIT";
+        note "  ✓ Migration v$ver applied successfully.";
+        CATCH {
+            default {
+                note "  ✗ Migration v$ver FAILED: { .message }";
+                get-RED-DB.execute: "ROLLBACK";
+                die "Migration v$ver failed. Aborting.";
             }
         }
     }

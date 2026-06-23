@@ -16,7 +16,7 @@ has IO() $.sql-storage-path       = $!migration-base-path.add: "sql";
 #| Subdirectory name for SQL files within each version
 has Str  $.sql-subdir             = "sql";
 #| The current migration version (read from DB or tracking table)
-has UInt $.current-version        = 0;
+has UInt $.current-version is rw  = 0;
 #| Supported database drivers (used to generate driver-specific SQL)
 has Str  @.drivers                = <SQLite Pg>;
 
@@ -63,7 +63,7 @@ method global-down-sql(Str $driver --> IO::Path) {
 #| Store a snapshot of a model file into the versioned model storage.
 #| Returns the path where it was stored.
 method store-model(IO() $source-file, Str $model-name --> IO::Path) {
-    $!model-storage-path.mkdir;
+    $!model-storage-path.mkdir: :p;
     my $dest = $!model-storage-path.add: "{ $model-name }-{ UUID.new }.rakumod";
     $source-file.copy: $dest;
     $dest
