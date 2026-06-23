@@ -134,4 +134,22 @@ my $info-content = $info-file.slurp;
 ok $info-content.contains("version: 1"), "info.txt contains version";
 ok $info-content.contains("test migration"), "info.txt contains description";
 
+# --- Test 13: Red::Migration::Applied model works ---
+use Red::Migration::Applied;
+Red::Migration::Applied.^create-table;
+lives-ok { Red::Migration::Applied.^create: :version(1), :name<test> },
+    "can create applied migration record";
+
+my @applied = Red::Migration::Applied.^all;
+cmp-ok @applied.elems, ">=", 1, "can query applied migrations";
+is @applied.map(*.version).max, 1, "max version is 1";
+ok @applied.head.applied-at.defined, "applied-at is auto-set";
+
+# --- Test 14: store-model uses timestamp ordering ---
+$tmp-model.spurt: "use Red; model TestModel2 { has Int \$.x is column }";
+my $stored1 = $config.store-model($tmp-model, "TestModel2");
+sleep 0.01;  # ensure different timestamps
+my $stored2 = $config.store-model($tmp-model, "TestModel2");
+cmp-ok $stored1.basename, "<", $stored2.basename, "timestamps produce ordered filenames";
+
 done-testing;

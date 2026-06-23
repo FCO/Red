@@ -114,6 +114,7 @@
     "Red::FromRelationship": "lib/Red/FromRelationship.rakumod",
     "Red::HiddenFromSQLCommenting": "lib/Red/HiddenFromSQLCommenting.rakumod",
     "Red::LockType": "lib/Red/LockType.rakumod",
+    "Red::Migration::Applied": "lib/Red/Migration/Applied.rakumod",
     "Red::Migration::Column": "lib/Red/Migration/Column.rakumod",
     "Red::Migration::Migration": "lib/Red/Migration/Migration.rakumod",
     "Red::Migration::Table": "lib/Red/Migration/Table.rakumod",

@@ -1,6 +1,4 @@
-use UUID;
-
-#| Manages migration paths, versions, and model storage for Red migrations.
+#| Manages migration paths, versions, and model snapshots for Red migrations.
 unit class Red::Configuration;
 
 #| Base project directory (where META6.json lives)
@@ -61,10 +59,12 @@ method global-down-sql(Str $driver --> IO::Path) {
 }
 
 #| Store a snapshot of a model file into the versioned model storage.
+#| Uses a microsecond-precision timestamp for ordered, unique filenames.
 #| Returns the path where it was stored.
 method store-model(IO() $source-file, Str $model-name --> IO::Path) {
     $!model-storage-path.mkdir: :p;
-    my $dest = $!model-storage-path.add: "{ $model-name }-{ UUID.new }.rakumod";
+    my $suffix = (now * 1_000_000).Int;
+    my $dest = $!model-storage-path.add: "{ $model-name }-{ $suffix }.rakumod";
     $source-file.copy: $dest;
     $dest
 }

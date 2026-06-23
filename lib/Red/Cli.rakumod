@@ -406,54 +406,19 @@ multi migration-apply(
 
 #| Ensure the migration tracking table exists in the database.
 sub ensure-migration-table(Red::Configuration $config) {
-    # Create the tracking table if it doesn't exist
-    my $sql;
-    given get-RED-DB.^name {
-        when /SQLite/ {
-            $sql = q:to/SQL/;
-                CREATE TABLE IF NOT EXISTS red_migrations (
-                    version     INTEGER PRIMARY KEY,
-                    name        TEXT NOT NULL,
-                    applied_at  TEXT NOT NULL DEFAULT (datetime('now'))
-                )
-                SQL
-        }
-        when /Pg/ {
-            $sql = q:to/SQL/;
-                CREATE TABLE IF NOT EXISTS red_migrations (
-                    version     INTEGER PRIMARY KEY,
-                    name        TEXT NOT NULL,
-                    applied_at  TIMESTAMP NOT NULL DEFAULT NOW()
-                )
-                SQL
-        }
-        default {
-            note "Warning: unknown driver for migration tracking table, skipping.";
-            return;
-        }
-    }
-    get-RED-DB.execute: $sql;
+    use Red::Migration::Applied;
+    Red::Migration::Applied.^create-table;
 }
 
 #| Get the currently applied migration version from the DB.
 sub get-applied-version(Red::Configuration $config --> UInt) {
-    my $result = get-RED-DB.prepare(
-        "SELECT MAX(version) as max_ver FROM red_migrations"
-    ).head.execute;
-    try { $result.row<max_ver> // 0 } // 0
+    use Red::Migration::Applied;
+    my @applied = Red::Migration::Applied.^all;
+    @applied ?? @applied.map(*.version).max !! 0
 }
 
 #| Record that a migration was applied.
 sub record-migration(Red::Configuration $config, UInt $version, Str $name) {
-    my $sql;
-    given get-RED-DB.^name {
-        when /SQLite/ {
-            $sql = "INSERT INTO red_migrations (version, name) VALUES (?, ?)";
-        }
-        when /Pg/ {
-            $sql = "INSERT INTO red_migrations (version, name) VALUES (\$1, \$2)";
-        }
-        default { return }
-    }
-    get-RED-DB.execute: $sql, $version, $name;
+    use Red::Migration::Applied;
+    Red::Migration::Applied.^create: :$version, :$name;
 }
