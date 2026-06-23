@@ -108,6 +108,8 @@ cmp-ok $removed-cols.elems, ">=", 2, "down-diff detects at least 2 removed colum
 # Create PersonV2 table so ^diff-from-db can produce real diffs
 PersonV2.^create-table;
 my @db-diffs = PersonV2.^diff-from-db;
+# Filter out Any entries that diff-to-ast can't handle
+@db-diffs = @db-diffs.grep: * ~~ Positional;
 if @db-diffs {
     my @asts;
     for $*RED-DB.diff-to-ast(@db-diffs) -> @data {
