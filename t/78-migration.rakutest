@@ -145,11 +145,11 @@ cmp-ok @applied.elems, ">=", 1, "can query applied migrations";
 is @applied.map(*.version).max, 1, "max version is 1";
 ok @applied.head.applied-at.defined, "applied-at is auto-set";
 
-# --- Test 14: store-model uses timestamp ordering ---
+# --- Test 14: store-model uses IdClass for merge-safe ordered filenames ---
 $tmp-model.spurt: "use Red; model TestModel2 { has Int \$.x is column }";
 my $stored1 = $config.store-model($tmp-model, "TestModel2");
-sleep 0.01;  # ensure different timestamps
 my $stored2 = $config.store-model($tmp-model, "TestModel2");
-cmp-ok $stored1.basename, "<", $stored2.basename, "timestamps produce ordered filenames";
+isnt $stored1.basename, $stored2.basename, "IdClass produces unique filenames (merge-safe)";
+cmp-ok $stored1.basename, "<", $stored2.basename, "IdClass produces ordered filenames";
 
 done-testing;
