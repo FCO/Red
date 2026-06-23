@@ -132,7 +132,7 @@ method verify { #is test-assertion {
 
         for %!when-re.kv -> Regex $re, % (:$counter = 0, :$times, |) {
             ok ($times == Inf or $counter == $times),
-                "Query that matches '$re.perl()' should be called $times times and was called $counter time(s)";
+                "Query that matches '$re.raku()' should be called $times times and was called $counter time(s)";
         }
     }, "Red Mock verify"
 }
