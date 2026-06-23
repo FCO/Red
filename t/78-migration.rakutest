@@ -41,7 +41,7 @@ is $config.model-storage-path.Str,  $tmp-base.add("migrations/models").Str, "mod
 is $config.current-version, 0, "initial version is 0";
 
 # --- Test 4: to-hash + JSON round-trip for Red::Cli::Table ---
-my $desc = PersonV1.^describe;
+# $desc already declared in Test 2 — reuse it
 my $hash = $desc.to-hash;
 isa-ok $hash, Hash, "to-hash returns a Hash";
 ok $hash<name>:exists, "hash has name";
