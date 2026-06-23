@@ -80,7 +80,7 @@ multi MAIN(
         Str  :$driver!,
         *%pars
 ) {
-    my $*RED-DB = database $driver, |%pars;
+    $GLOBAL::RED-DB = database $driver, |%pars;
     prepare-database :$populate, :$models, :$driver, |%pars
 }
 
@@ -97,7 +97,7 @@ multi MAIN(
     Str :$driver!,
     *%pars
 ) {
-    my $*RED-DB = database($driver, |%pars);
+    $GLOBAL::RED-DB = database($driver, |%pars);
     migration-update :$model, :$require, :$driver, |%pars;
 }
 
@@ -108,7 +108,7 @@ multi MAIN(
     Str :$driver!,
     *%pars
 ) {
-    my $*RED-DB = database($driver, |%pars);
+    $GLOBAL::RED-DB = database($driver, |%pars);
     migration-downgrade :$driver, |%pars;
 }
 
@@ -121,7 +121,7 @@ multi MAIN(
     Str :$driver!,
     *%pars
 ) {
-    my $*RED-DB = database($driver, |%pars);
+    $GLOBAL::RED-DB = database($driver, |%pars);
     migration-prepare :$model, :$require, :$driver, |%pars;
 }
 
@@ -132,7 +132,7 @@ multi MAIN(
     Str :$driver!,
     *%pars
 ) {
-    my $*RED-DB = database($driver, |%pars);
+    $GLOBAL::RED-DB = database($driver, |%pars);
     migration-apply :$driver, |%pars;
 }
 
