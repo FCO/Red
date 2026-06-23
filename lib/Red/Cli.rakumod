@@ -187,10 +187,11 @@ multi migration-update(
         get-RED-DB.execute: $ast;
     }
 
-    # 5. Save model description snapshot (for future prepare)
+    # 5. Save model description snapshot as JSON (for future prepare)
+    use JSON::Fast;
     my $desc = $model-class.^describe;
-    my $snapshot-path = $config.model-storage-path.add: "{ $model-name }-{ $version }.rakudata";
-    $snapshot-path.spurt: $desc.raku;
+    my $snapshot-path = $config.model-storage-path.add: "{ $model-name }-{ $version }.json";
+    $snapshot-path.spurt: to-json(:!pretty, $desc.to-hash);
 
     # 6. Update current version
     $config.current-version = $version;
@@ -257,9 +258,9 @@ multi migration-prepare(
     my $model-class = ::($model);
     my $model-name  = $model-class.^name;
 
-    # 1. Find the latest model snapshot
+    # 1. Find the latest model snapshot (JSON format)
     my @snapshots = $config.model-storage-path.dir
-        .grep: { .basename.starts-with($model-name ~ '-') && .extension eq 'rakudata' }
+        .grep: { .basename.starts-with($model-name ~ '-') && .extension eq 'json' }
         .sort: { .modified }
     ;
 
@@ -272,10 +273,10 @@ multi migration-prepare(
     my $snapshot-file = @snapshots.tail;
     note "Using snapshot: { $snapshot-file.relative($*CWD) }";
 
-    # 2. Load the old model description from snapshot
-    my $old-desc-str = $snapshot-file.slurp;
-    use MONKEY-SEE-NO-EVAL;
-    my $old-desc = EVAL $old-desc-str;
+    # 2. Load the old model description from JSON snapshot
+    use JSON::Fast;
+    my $old-hash = from-json $snapshot-file.slurp;
+    my $old-desc = Red::Cli::Table.from-hash: $old-hash;
 
     # 3. Get current model description
     my $new-desc = $model-class.^describe;

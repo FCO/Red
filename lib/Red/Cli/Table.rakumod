@@ -67,3 +67,23 @@ method diff(::?CLASS $b) {
     @diffs.push: [ $!name, "-", "col", $_ ] for @a;
     @diffs
 }
+
+#| Serialize to a JSON-safe Hash (no circular references).
+method to-hash(--> Hash) {
+    %(
+        :name($!name),
+        :model-name($!model-name),
+        :columns[ @!columns.map: *.to-hash ],
+        :$!exists,
+    )
+}
+
+#| Deserialize from a Hash produced by to-hash.
+multi method from-hash(::?CLASS:U: Hash $h --> ::?CLASS) {
+    self.new:
+        :name($h<name>),
+        :model-name($h<model-name> // try { snake-to-camel-case $h<name> }),
+        :columns[ $h<columns>.map: { Red::Cli::Column.from-hash($_) } ],
+        :exists($h<exists> // True),
+    ;
+}

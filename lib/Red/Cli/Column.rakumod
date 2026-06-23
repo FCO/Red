@@ -84,3 +84,29 @@ method diff(::?CLASS $b) {
     }
     @diffs
 }
+
+#| Serialize to a JSON-safe Hash (no circular table reference).
+method to-hash(--> Hash) {
+    %(
+        :name($!name),
+        :type($!type),
+        :perl-type($!perl-type),
+        :nullable($!nullable),
+        :pk($!pk),
+        :unique($!unique),
+        :references($!references.Hash),
+    )
+}
+
+#| Deserialize from a Hash produced by to-hash.
+multi method from-hash(::?CLASS:U: Hash $h --> ::?CLASS) {
+    self.new:
+        :name($h<name>),
+        :type($h<type>),
+        :perl-type($h<perl-type> // Str),
+        :nullable($h<nullable> // True),
+        :pk($h<pk> // False),
+        :unique($h<unique> // False),
+        :references($h<references> // {}),
+    ;
+}

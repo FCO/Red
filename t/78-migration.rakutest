@@ -40,13 +40,22 @@ is $config.migration-base-path.Str, $tmp-base.add("migrations").Str, "migration 
 is $config.model-storage-path.Str,  $tmp-base.add("migrations/models").Str, "model storage path";
 is $config.current-version, 0, "initial version is 0";
 
-# --- Test 4: store-model saves a file ---
-my $tmp-model = $tmp-base.add("TestModel.rakumod");
-$tmp-model.spurt: "use Red; model TestModel { has Int \$.x is column }";
-my $stored = $config.store-model($tmp-model, "TestModel");
-ok $stored.f, "store-model created a file";
-ok $stored.basename.starts-with("TestModel-"), "stored model has correct prefix";
-$tmp-model.unlink;
+# --- Test 4: to-hash + JSON round-trip for Red::Cli::Table ---
+my $desc = PersonV1.^describe;
+my $hash = $desc.to-hash;
+isa-ok $hash, Hash, "to-hash returns a Hash";
+ok $hash<name>:exists, "hash has name";
+ok $hash<columns>:exists, "hash has columns";
+is $hash<columns>.elems, 2, "hash has 2 columns";
+
+# Serialize to JSON and back
+use JSON::Fast;
+my $json = to-json(:!pretty, $hash);
+my $reloaded = from-json($json);
+my $table = Red::Cli::Table.from-hash: $reloaded;
+isa-ok $table, Red::Cli::Table, "from-hash reconstructs Red::Cli::Table";
+is $table.name, $desc.name, "reconstructed name matches";
+is $table.columns.elems, $desc.columns.elems, "reconstructed column count matches";
 
 # --- Test 5: ensure-dirs creates directories ---
 $config.ensure-dirs;
@@ -146,6 +155,7 @@ is @applied.map(*.version).max, 1, "max version is 1";
 ok @applied.head.applied-at.defined, "applied-at is auto-set";
 
 # --- Test 14: store-model uses IdClass for merge-safe ordered filenames ---
+my $tmp-model = $tmp-base.add("TestModel2.rakumod");
 $tmp-model.spurt: "use Red; model TestModel2 { has Int \$.x is column }";
 my $stored1 = $config.store-model($tmp-model, "TestModel2");
 my $stored2 = $config.store-model($tmp-model, "TestModel2");
