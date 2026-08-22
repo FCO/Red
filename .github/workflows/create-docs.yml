@@ -6,20 +6,37 @@ on:
 jobs:
   perl6:
     runs-on: ubuntu-latest
-    container:
-      image: fernandocorrea/red-tester-no-run
     steps:
-      - uses: actions/checkout@v1
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build docs image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile-no-run
+          tags: red-docs:latest
+          push: false
+          load: true
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
       - name: Create local changes
         run: |
-          raku tools/make-docs.raku
+          docker run --rm \
+            -v "$PWD":/code -w /code \
+            --entrypoint "" \
+            red-docs:latest raku tools/make-docs.raku
+
       - name: Commit files
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add .
           git commit -m "Create docs" -a || true
+
       - name: Push changes
-        uses: ad-m/github-push-action@master
+        uses: ad-m/github-push-action@v1.3.0
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
