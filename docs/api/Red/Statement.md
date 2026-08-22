@@ -2,6 +2,16 @@
 
 Base role to DB statements Returned by .query
 
+### method execute
+
+```raku
+method execute(
+    *@binds
+) returns Mu
+```
+
+Execute the pre-prepared query
+
 ### method stt-row
 
 ```raku

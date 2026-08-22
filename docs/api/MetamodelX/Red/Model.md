@@ -297,6 +297,18 @@ multi method save(
 
 Generic save, calls C<.^save: :insert> if C<.^is-on-db> or C<.^save: :update> otherwise
 
+### multi method create
+
+```raku
+multi method create(
+    \model where { ... },
+    *%orig-pars,
+    :$with where { ... }
+) returns Mu
+```
+
+Creates a new object and saves it on DB It accepts a list os pairs (the same as C<.new>) And Lists and/or Hashes for relationships
+
 ### multi method delete
 
 ```raku
