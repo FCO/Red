@@ -89,7 +89,7 @@ class X::Red::Driver::Mapped::UnknownError is X::Red::Driver::Mapped {
             Unknown Error!!!
             Please, copy this backtrace and open an issue on https://github.com/FCO/Red/issues/new
             Driver: { $.driver }
-            Original error: { $.orig-exception.perl }
+            Original error: { $.orig-exception.raku }
         END
     }
 }

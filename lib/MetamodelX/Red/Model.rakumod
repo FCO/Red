@@ -176,7 +176,7 @@ method compose(Mu \type) {
         #}
     }
     die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
-    self.add_role: type, Red::Model;
+    self.add_role: type, Red::Model unless type ~~ Red::Model;
     self.add_role: type, role :: {
         method TWEAK(|c) {
             self.^set-dirty: self.^columns;
