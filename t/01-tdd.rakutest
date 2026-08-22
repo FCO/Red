@@ -108,73 +108,73 @@ given model {
     use Red::AST;
     my $a = 42;
     is
-        (.a == 42).perl,
-        Red::AST::Eq.new(Red::AST::Cast.new(.a, "num"), ast-value(42)).perl
+        (.a == 42).raku,
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "num"), ast-value(42)).raku
     ;
     is
-        (42 == .a).perl,
-        Red::AST::Eq.new(ast-value(42), Red::AST::Cast.new(.a, "num")).perl
+        (42 == .a).raku,
+        Red::AST::Eq.new(ast-value(42), Red::AST::Cast.new(.a, "num")).raku
     ;
     is
-        (.a == $a).perl,
-        Red::AST::Eq.new(Red::AST::Cast.new(.a, "num"), ast-value(42), :bind-right).perl
+        (.a == $a).raku,
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "num"), ast-value(42), :bind-right).raku
     ;
     is
-        ($a == .a).perl,
-        Red::AST::Eq.new(ast-value(42), Red::AST::Cast.new(.a, "num"), :bind-left).perl
+        ($a == .a).raku,
+        Red::AST::Eq.new(ast-value(42), Red::AST::Cast.new(.a, "num"), :bind-left).raku
     ;
 
     is
-        (.a != 42).perl,
-        Red::AST::Ne.new(Red::AST::Cast.new(.a, "num"), ast-value(42)).perl
+        (.a != 42).raku,
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "num"), ast-value(42)).raku
     ;
     is
-        (42 != .a).perl,
-        Red::AST::Ne.new(ast-value(42), Red::AST::Cast.new(.a, "num")).perl
+        (42 != .a).raku,
+        Red::AST::Ne.new(ast-value(42), Red::AST::Cast.new(.a, "num")).raku
     ;
     is
-        (.a != $a).perl,
-        Red::AST::Ne.new(Red::AST::Cast.new(.a, "num"), ast-value(42), :bind-right).perl
+        (.a != $a).raku,
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "num"), ast-value(42), :bind-right).raku
     ;
     is
-        ($a != .a).perl,
-        Red::AST::Ne.new(ast-value(42), Red::AST::Cast.new(.a, "num"), :bind-left).perl
+        ($a != .a).raku,
+        Red::AST::Ne.new(ast-value(42), Red::AST::Cast.new(.a, "num"), :bind-left).raku
     ;
 
 
     my $b = "lorem ipsum";
     is
-        (.a eq "lorem ipsum").perl,
-        Red::AST::Eq.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum")).perl
+        (.a eq "lorem ipsum").raku,
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum")).raku
     ;
     is
-        ("lorem ipsum" eq .a).perl,
-        Red::AST::Eq.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str")).perl
+        ("lorem ipsum" eq .a).raku,
+        Red::AST::Eq.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str")).raku
     ;
     is
-        (.a eq $b).perl,
-        Red::AST::Eq.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum"), :bind-right).perl
+        (.a eq $b).raku,
+        Red::AST::Eq.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum"), :bind-right).raku
     ;
     is
-        ($b eq .a).perl,
-        Red::AST::Eq.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str"), :bind-left).perl
+        ($b eq .a).raku,
+        Red::AST::Eq.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str"), :bind-left).raku
     ;
 
     is
-        (.a ne "lorem ipsum").perl,
-        Red::AST::Ne.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum")).perl
+        (.a ne "lorem ipsum").raku,
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum")).raku
     ;
     is
-        ("lorem ipsum" ne .a).perl,
-        Red::AST::Ne.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str")).perl
+        ("lorem ipsum" ne .a).raku,
+        Red::AST::Ne.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str")).raku
     ;
     is
-        (.a ne $b).perl,
-        Red::AST::Ne.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum"), :bind-right).perl
+        (.a ne $b).raku,
+        Red::AST::Ne.new(Red::AST::Cast.new(.a, "str"), ast-value("lorem ipsum"), :bind-right).raku
     ;
     is
-        ($b ne .a).perl,
-        Red::AST::Ne.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str"), :bind-left).perl
+        ($b ne .a).raku,
+        Red::AST::Ne.new(ast-value("lorem ipsum"), Red::AST::Cast.new(.a, "str"), :bind-left).raku
     ;
 }
 
@@ -352,7 +352,7 @@ isa-ok Person2.posts.do-it.head, Post2;
 my $seq = Person2.posts.map: *.id;
 isa-ok $seq, Post2::ResultSeq;
 #isa-ok $seq.head, Int;
-is $seq.filter.perl, Person2.posts.filter.perl;
+is $seq.filter.raku, Person2.posts.filter.raku;
 
 given my model {
     has Int  $.int-u  is column{ :id };

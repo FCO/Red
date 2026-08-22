@@ -151,7 +151,7 @@ multi trait_mod:<is>(Attribute $attr, :$referencing! (Str :$model!, Str :$column
 
 #| Trait that defines a reference receiving a code block, a model type object and an optional nullable.
 multi trait_mod:<is>(Attribute $attr, :$referencing! (&referencing!, Mu:U :$model!, Bool :$nullable = True, *%rest ) --> Empty) is export {
-    $model.^add_role: Red::Model;
+    # $model.^add_role: Red::Model;
     trait_mod:<is>($attr, :column{ :$nullable, :references(&referencing), model-type  => $model, |%rest })
 }
 
