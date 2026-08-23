@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.5  2026-08-23T18:10:25+01:00
     - .perl -> .raku
     - pg: translate .index to STRPOS() with proper binding (aligns .index/.contains on Postgres)
     - tests(pg): make t/82–t/85 Pg-safe and idempotent
