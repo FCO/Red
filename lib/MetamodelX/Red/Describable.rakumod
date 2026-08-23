@@ -11,7 +11,7 @@ method !create-column($_ --> Red::Cli::Column) {
     Red::Cli::Column.new:
         :name(.column-name // self.column-formatter: .attr-name),
         :formated-name(.attr-name),
-        :type(get-RED-DB.default-type-for($_)),
+        :type(.type // get-RED-DB.default-type-for($_)),
         :perl-type(.type),
         :nullable(.nullable),
         :pk(.id),
@@ -21,8 +21,10 @@ method !create-column($_ --> Red::Cli::Column) {
 #| Returns an object of type `Red::Cli::Table` that represents
 #| a database table of the caller.
 method describe(\model --> Red::Cli::Table) {
+    my @constraints = model.^unique-constraints;
     Red::Cli::Table.new: :name(self.table(model)), :model-name(self.name(model)),
-        :columns(self.columns>>.column.map({self!create-column($_)}).cache)
+        :columns(self.columns>>.column.map({self!create-column($_)}).cache),
+	:@constraints
 }
 
 #| Returns the difference to transform this model to the database version.
