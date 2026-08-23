@@ -1,0 +1,163 @@
+use v6;
+use Test;
+use Red;
+
+use lib $?FILE.IO.parent(1).add('lib');
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+my multi replace("+") { "-" }
+my multi replace("-") { "+" }
+
+sub inversable-diff(Red::Model $a, Red::Model $b) is test-assertion {
+    subtest "inversable-diff $a.^name(), $b.^name()" => {
+        my @diff1 = sort $a.^diff: $b;
+        my @diff2 = sort $b.^diff: $a;
+
+        is +@diff1, +@diff2, "diffs of same size";
+        for (@diff1 Z @diff2) -> (@d1, @d2) {
+            is @(@d1.duckmap(&replace)), @d2, "the diff is inversible";
+        }
+    }
+}
+
+sub renamed-table-diff(Red::Model $a, Red::Model $b) is test-assertion {
+    subtest "renamed-table-diff $a.^name() ($a.^table()), $b.^name() ($b.^table())" => {
+        is $a.^diff($b)[0], [$a.^table, "+", "name", $b.^table], "{ $b.^table } created";
+        is $a.^diff($b)[1], [$a.^table, "-", "name", $a.^table], "{ $a.^table } removed";
+        is $b.^diff($a)[0], [$b.^table, "+", "name", $a.^table], "{ $a.^table } created";
+        is $b.^diff($a)[1], [$b.^table, "-", "name", $b.^table], "{ $b.^table } removed";
+    }
+}
+
+sub renamed-column-diff(Red::Model $a, Red::Model $b, Str $c1, Str $c2) is test-assertion {
+    subtest "renamed-column-diff $a.^name(), $b.^name(), $c1, $c2" => {
+        my @a2b = $a.^diff: $b;
+        my @b2a = $b.^diff: $a;
+        is @a2b[0].tail.name, $c1, "$c1 removed";
+        is @a2b[1].tail.name, $c2, "$c2 created";
+        is @b2a[0].tail.name, $c1, "$c1 created";
+        is @b2a[1].tail.name, $c2, "$c2 removed";
+    }
+}
+
+sub retyped-column-diff(Red::Model $a, Red::Model $b) is test-assertion {
+    subtest "retyped-column-diff $a.^name(), $b.^name()" => {
+        my @a2b = sort $a.^diff: $b;
+        my @b2a = sort duckmap &replace, $b.^diff: $a;
+        is +@a2b, 2, "has 2 differences";
+        is +@b2a, 2, "has 2 differences";
+        is @a2b, @b2a, "retyped reversible";
+    }
+}
+
+sub reflagged-column-diff(Red::Model $a, Red::Model $b, Str $flag) is test-assertion {
+    subtest "reflagged-column-diff $a.^name(), $b.^name(), $flag" => {
+        my @a2b = sort $a.^diff: $b;
+        my @b2a = sort duckmap &replace, $b.^diff: $a;
+        is +@a2b, 2, "has 2 differences";
+        is +@b2a, 2, "has 2 differences";
+        is .[3], $flag, "$flag has changed" for |@a2b, |@b2a;
+        is @a2b, @b2a, "reflagged reversible";
+    }
+}
+
+model E1 is table<expl> {
+    has UInt $.id is serial;
+    has Str  $.a  is column;
+}
+
+is E1.^diff(E1), [], "no diff";
+
+model E2 is table<expl> {
+    has UInt $.id is serial;
+    has Str  $.a  is column;
+    has Str  $.b  is column;
+}
+
+model E3 is table<expl> {
+    has UInt $.id is serial;
+    has Str  $.a  is column;
+    has Str  $.b  is column;
+    has Str  $.c  is column;
+}
+
+inversable-diff E1, E2;
+inversable-diff E1, E3;
+inversable-diff E2, E3;
+
+model E1-renamed is table<expl2> {
+    has UInt $.id is serial;
+    has Str  $.a  is column;
+}
+
+renamed-table-diff E1, E1-renamed;
+
+model E1-a-renamed is table<expl> {
+    has UInt $.id is serial;
+    has Str  $.a2 is column;
+}
+
+renamed-column-diff E1, E1-a-renamed, "a", "a2";
+
+model E1-a-retyped is table<expl> {
+    has UInt $.id is serial;
+    has Int  $.a  is column;
+}
+
+model E1-a-retyped2 is table<expl> {
+    has UInt $.id is serial;
+    has Str  $.a  is column{ :type<varchar(255)> };
+}
+
+retyped-column-diff E1, E1-a-retyped;
+retyped-column-diff E1, E1-a-retyped2;
+
+model E1-a-nullable is table<expl> {
+    has UInt $.id is serial;
+    has Str  $.a  is column{ :nullable };
+}
+
+model E1-a-pk is table<expl> {
+    has UInt $.id is serial;
+    has Str  $.a  is serial;
+}
+
+model E1-a-unique is table<expl> {
+    has UInt $.id is serial;
+    has Str  $.a  is unique;
+}
+
+reflagged-column-diff E1, E1-a-nullable, "nullable";
+reflagged-column-diff E1, E1-a-pk,       "pk";
+reflagged-column-diff E1, E1-a-unique,   "unique";
+
+schema(E1).drop;
+E1.^create-table: :if-not-exists;
+
+is E1.^diff-from-db, [], "no difference from db";
+is E1.^diff-to-db, [],   "no difference to db";
+
+my @models = E1, E2, E3, E1-a-renamed, E1-a-retyped, E1-a-retyped2, E1-a-nullable, E1-a-pk, E1-a-unique;
+for @models -> $model {
+    is $model.^diff-from-db, E1.^diff($model), "same diff if using models or DB";
+    is $model.^diff-to-db,   $model.^diff(E1), "same diff if using models or DB";
+}
+
+schema(E1).drop;
+
+for @models X @models -> ($a, $b) {
+    diag "create-table $a.^table() ($a.^name())";
+    skip("SchemaReaders pk NYI", 2), next if $a.^name ~~ /"-pk"$/;
+    skip("SchemaReaders unique NYI", 2), next if $a.^name ~~ /"-unique"$/;
+    $a.^create-table;
+    is $b.^diff-from-db, $a.^diff($b), "same diff if using models or DB";
+    is $b.^diff-to-db,   $b.^diff($a), "same diff if using models or DB";
+    schema($a).drop;
+}
+
+done-testing;

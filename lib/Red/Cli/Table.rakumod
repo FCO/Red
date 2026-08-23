@@ -6,12 +6,19 @@ unit class Red::Cli::Table;
 has Str  $.name;
 has Str  $.model-name = try { snake-to-camel-case $!name };
 has      @.columns;
+has      @.constraints;
 has      @.relationships;
 has Bool $.exists = True;
 
-submethod TWEAK(:@columns) {
+submethod TWEAK(:@columns, :@constraints) {
+    my @single-constraints;
+    for @constraints -> @cols {
+        @single-constraints.push: @cols.head.column.name if +@cols == 1
+    }
+    my %single := set @single-constraints;
     for @columns -> $col {
         $col.table = self;
+        $col.unique = True if %single{$col.name};
         with $col.references {
             @!relationships.push: Red::Cli::Relationship.new: :id($col)
         }
@@ -43,10 +50,6 @@ method diff(::?CLASS $b) {
         @diffs.push: [ $!name, "+", "name", $b.name ];
         @diffs.push: [ $!name, "-", "name", $!name  ];
     }
-    if @!columns != $b.columns {
-        @diffs.push: [ $!name, "+", "n-of-cols", $b.columns.elems ];
-        @diffs.push: [ $!name, "-", "n-of-cols", @!columns.elems  ];
-    }
     my @a = @!columns.sort:  *.name;
     my @b = $b.columns.sort: *.name;
 
@@ -57,9 +60,9 @@ method diff(::?CLASS $b) {
             for $a.diff: $b -> @d {
                 @diffs.push: [ $!name, |@d ]
             }
-        } elsif @b.head lt @a.head {
+        } elsif @b.head.name lt @a.head.name {
             @diffs.push: [ $!name, "+", "col", @b.shift ];
-        } elsif @a.head lt @b.head {
+        } elsif @a.head.name lt @b.head.name {
             @diffs.push: [ $!name, "-", "col", @a.shift ];
         }
     }
