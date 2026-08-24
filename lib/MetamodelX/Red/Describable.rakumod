@@ -2,6 +2,7 @@ use Red::DB;
 use Red::Utils;
 use Red::Cli::Table;
 use Red::Cli::Column;
+use Red::Model;
 
 =head2 MetamodelX::Red::Describable
 
@@ -29,7 +30,9 @@ method describe(\model --> Red::Cli::Table) {
 
 #| Returns the difference to transform this model to the database version.
 method diff-to-db(\model) {
-    model.^describe.diff: $*RED-DB.schema-reader.table-definition: model.^table
+    my Str $table = model.^table;
+    my $b = $*RED-DB.schema-reader.table-definition: $table;
+    model.^describe.diff: $b
 }
 
 #| Returns the difference to transform the DB table into this model.
@@ -38,6 +41,16 @@ method diff-from-db(\model) {
 }
 
 #| Returns the difference between two models.
-method diff(\model, \other-model) {
-    model.^describe.diff: other-model.^describe
+multi method diff(\model, Red::Model \other-model) {
+    model.^diff: other-model.^describe
+}
+
+#| Returns the difference between two models.
+multi method diff(\model, Red::Cli::Table \other-model) {
+    model.^describe.diff: other-model
+}
+
+#| Returns the difference between two models.
+multi method diff(\model, \other-model) {
+    model.^describe.diff: other-model
 }

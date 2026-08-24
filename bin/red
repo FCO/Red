@@ -52,8 +52,8 @@ multi MAIN(
 #| Generates models' code from database schema
 multi MAIN(
     "generate-code",
-    Str  :$path!    where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
-    Str  :$from-sql where { not .defined or .IO.f or $_ eq "-" or fail "SQL $_ do not exist." },
+    Str  :$path!    where { not .defined or .IO.d or $_ eq "-" },
+    Str  :$from-sql where { not .defined or .IO.f or $_ eq "-" },
     Str  :$schema-class,
     Bool :$print-stub       = False,
     Bool :$no-relationships = False,
@@ -82,6 +82,28 @@ multi MAIN(
 ) {
     $GLOBAL::RED-DB = database $driver, |%pars;
     prepare-database :$populate, :$models, :$driver, |%pars
+}
+
+#| Diff model from DB
+multi MAIN(
+    "diff-from-db",
+    +@models,
+    :$driver = "SQLite",
+    *%pars,
+) {
+    $GLOBAL::RED-DB = database $driver, |%pars if $driver;
+    say tree prepare-tree diff-from-db @models
+}
+
+#| Diff model to DB
+multi MAIN(
+    "diff-to-db",
+    +@models,
+    :$driver = "SQLite",
+    *%pars,
+) {
+    $GLOBAL::RED-DB = database $driver, |%pars if $driver;
+    say tree prepare-tree diff-to-db @models
 }
 
 sub dyn-lib(@libs) {

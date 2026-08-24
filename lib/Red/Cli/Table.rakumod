@@ -44,14 +44,15 @@ method to-code(Str :$schema-class, Bool :$no-relationships) {
     END
 }
 
-method diff(::?CLASS $b) {
+method diff($b) {
     my @diffs;
-    if $!name ne $b.name {
-        @diffs.push: [ $!name, "+", "name", $b.name ];
+    my Str $b-name = $b ?? $b.name !! "";
+    if $!name ne $b-name {
+        @diffs.push: [ $!name, "+", "name", $b-name ];
         @diffs.push: [ $!name, "-", "name", $!name  ];
     }
     my @a = @!columns.sort:  *.name;
-    my @b = $b.columns.sort: *.name;
+    my @b = $b ?? $b.columns.sort: *.name !! ();
 
     while @a > 0 and @b > 0 {
         if @a.head.name eq @b.head.name {
