@@ -68,3 +68,21 @@ method create(:$where) {
     }
     self
 }
+
+method diff-from-db {
+    [
+        |do for %!models.values -> $model {
+            next unless $model ~~ Red::Model;
+            |($model.^diff-from-db // [])
+        }
+    ]
+}
+
+method diff-to-db {
+    [
+        |do for %!models.values -> $model {
+            next unless $model ~~ Red::Model;
+            |($model.^diff-to-db // [])
+        }
+    ]
+}

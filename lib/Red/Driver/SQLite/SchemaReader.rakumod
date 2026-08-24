@@ -1,3 +1,4 @@
+use Red::Operators;
 use Red::SchemaReader;
 use Red::Driver::SQLite::SQLiteMaster;
 
