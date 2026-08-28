@@ -437,11 +437,20 @@ ok !$cx-red-bool.value;
 is $cx-red-bool.message, "<red bool control exception>";
 
 lives-ok {
+    my $*RED-DB = database "SQLite";
     ok X.^describe;
     isa-ok X.^describe, Red::Cli::Table;
 
-    ok X.^diff-to-db;
-    # ok X.^diff-from-db;
+    my @from-db = X.^diff-from-db;
+    is @from-db.elems, 1, "tabela ausente: uma entrada só";
+    is @from-db[0][0..2], ["<no-table>", "+", "table"], "sinal e kind corretos";
+    isa-ok @from-db[0][3], Red::Cli::Table, "payload é a Table inteira";
+    is @from-db[0][3].name, "x", "e é a tabela certa";
+
+    my @to-db = X.^diff-to-db;
+    is @to-db.elems, 1, "mesma coisa no sentido oposto";
+    is @to-db[0][0..2], ["x", "-", "table"];
+    isa-ok @to-db[0][3], Red::Cli::Table;
 
     model Y is table<x> is rw {
         has Int $.int is column{:nullable}

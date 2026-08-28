@@ -17,7 +17,7 @@ multi method new($name, $type, $nullable, $pk, $unique, $references) {
 }
 
 multi method gist(::?CLASS:D:) {
-    "Red::Cli::Column.new(:name<$!name>, :type<$!type> {
+    "Red::Cli::Column.new(:name<$!name>, :type<$!type>{
         ", :nullable" if $!nullable
     }{
         ", :pk" if $!pk
