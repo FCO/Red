@@ -37,7 +37,9 @@ method diff-to-db(\model) {
 
 #| Returns the difference to transform the DB table into this model.
 method diff-from-db(\model) {
-    $*RED-DB.schema-reader.table-definition(model.^table).diff: model.^describe
+    my $schema-reader = $*RED-DB.schema-reader;
+    my $from-db       = $schema-reader.table-definition: model.^table;
+    $from-db.diff: model.^describe
 }
 
 #| Returns the difference between two models.

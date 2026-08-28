@@ -60,10 +60,10 @@ class SQL::CreateTable::Action {
 
 method tables-names       { self.sqlite-master.tables.map: *.name }
 method indexes-of($table) { self.sqlite-master.find-table($table).indexes }
-method table-definition($table) {
+method table-definition($table --> Red::Cli::Table) {
     my $sql = self.sqlite-master.find-table($table).sql;
     my $list = self.table-definition-from-create-table($sql);
-    return unless $list;
+    return Red::Cli::Table unless $list;
     $list.head
 }
 multi method table-definition-from-create-table(Str:D $sql) {
