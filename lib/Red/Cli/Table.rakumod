@@ -6,16 +6,28 @@ unit class Red::Cli::Table;
 has Str  $.name;
 has Str  $.model-name = try { snake-to-camel-case $!name };
 has      @.columns;
+has      @.constraints;
 has      @.relationships;
 has Bool $.exists = True;
 
-submethod TWEAK(:@columns) {
+submethod TWEAK(:@columns, :@constraints) {
+    my @single-constraints;
+    for @constraints -> @cols {
+        @single-constraints.push: @cols.head.column.name if +@cols == 1
+    }
+    my %single := set @single-constraints;
     for @columns -> $col {
         $col.table = self;
+        $col.unique = True if %single{$col.name};
         with $col.references {
             @!relationships.push: Red::Cli::Relationship.new: :id($col)
         }
     }
+}
+
+multi method gist(::?CLASS:U:) { "({ self.^name})" }
+multi method gist(::?CLASS:D:) {
+    "{self.^name}.new(:name<{$!name}>, :columns[{ @!columns>>.gist.join: ", " }])"
 }
 
 multi method model-definition($ where so *)  { "unit model { $!model-name };\n" }
@@ -37,33 +49,44 @@ method to-code(Str :$schema-class, Bool :$no-relationships) {
     END
 }
 
-method diff(::?CLASS $b) {
+method diff($b) {
     my @diffs;
-    if $!name ne $b.name {
-        @diffs.push: [ $!name, "+", "name", $b.name ];
-        @diffs.push: [ $!name, "-", "name", $!name  ];
+    my Str $a-name = self.defined ?? $!name  // "<no-table>" !! "<no-table>";
+    my Str $b-name = $b.defined   ?? $b.name // Str !! Str;
+
+    my @a = self ?? @!columns.sort:  *.name !! ();
+    my @b = $b   ?? $b.columns.sort: *.name !! ();
+
+    if $a-name ne ($b-name // "") {
+        if !self.defined && !$!name.defined && !$b-name.defined {
+            die "No from or to table... it should never happen..."
+        }
+        if !self.defined || !$!name.defined {
+            @diffs.push: [ $a-name, "+", "table", $b ];
+            return @diffs
+        } elsif !$b-name.defined {
+            @diffs.push: [ $a-name, "-", "table", self ];
+            return @diffs
+        } else {
+            @diffs.push: [ $a-name, "+", "name", $b-name ];
+            @diffs.push: [ $a-name, "-", "name", $a-name ];
+        }
     }
-    if @!columns != $b.columns {
-        @diffs.push: [ $!name, "+", "n-of-cols", $b.columns.elems ];
-        @diffs.push: [ $!name, "-", "n-of-cols", @!columns.elems  ];
-    }
-    my @a = @!columns.sort:  *.name;
-    my @b = $b.columns.sort: *.name;
 
     while @a > 0 and @b > 0 {
         if @a.head.name eq @b.head.name {
             my $a = @a.shift;
             my $b = @b.shift;
             for $a.diff: $b -> @d {
-                @diffs.push: [ $!name, |@d ]
+                @diffs.push: [ $a-name, |@d ]
             }
-        } elsif @b.head lt @a.head {
-            @diffs.push: [ $!name, "+", "col", @b.shift ];
-        } elsif @a.head lt @b.head {
-            @diffs.push: [ $!name, "-", "col", @a.shift ];
+        } elsif @b.head.name lt @a.head.name {
+            @diffs.push: [ $a-name, "+", "col", @b.shift ];
+        } elsif @a.head.name lt @b.head.name {
+            @diffs.push: [ $a-name, "-", "col", @a.shift ];
         }
     }
-    @diffs.push: [ $!name, "+", "col", $_ ] for @b;
-    @diffs.push: [ $!name, "-", "col", $_ ] for @a;
+    @diffs.push: [ $a-name, "+", "col", $_ ] for @b;
+    @diffs.push: [ $a-name, "-", "col", $_ ] for @a;
     @diffs
 }
