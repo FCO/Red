@@ -69,6 +69,19 @@ method create(:$where) {
     self
 }
 
+method update(:$where) {
+    red-do (:$where with $where), :transaction, {
+        my $diff = self.diff-from-db;
+        for .diff-to-ast: $diff -> @ast {
+            for @ast -> $ast {
+                .execute: $ast
+            }
+        }
+        True
+    }
+    self
+}
+
 method diff-from-db {
     [
         |do for %!models.values -> $model {

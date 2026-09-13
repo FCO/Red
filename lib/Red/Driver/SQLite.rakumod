@@ -74,6 +74,16 @@ multi method join-type("right") { die "'RIGHT JOIN' is not supported by SQLite" 
 #| Does this driver accept drop table cascade?
 multi method should-drop-cascade { False }
 
+multi method translate(Red::AST::ChangeColumn $_, $context?) {
+    "ALTER TABLE {
+        .table
+    } ALTER COLUMN {
+        .name
+    } {
+        .nullable ?? "DROP NOT NULL" !! "SET NOT NULL"
+    }" => []
+}
+
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context? where $_ ne "bind") {
     (.value ?? 1 !! 0) => []
 }

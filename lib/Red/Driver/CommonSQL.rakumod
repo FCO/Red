@@ -16,11 +16,13 @@ use Red::AST::Between;
 use Red::AST::Divisible;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
+use Red::AST::CreateTableCli;
 use Red::AST::CreateView;
 use Red::AST::LastInsertedRow;
 use Red::AST::CreateColumn;
 use Red::AST::ChangeColumn;
 use Red::AST::DropColumn;
+use Red::AST::DropTable;
 use Red::AST::TableComment;
 use Red::AST::StringFuncs;
 use Red::AST::DateTimeFuncs;
@@ -30,6 +32,7 @@ use Red::AST::RollbackTransaction;
 use Red::AST::Generic::Prefix;
 use Red::AST::Generic::Postfix;
 use Red::AST::AddForeignKeyOnTable;
+use Red::Cli::Table;
 use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
@@ -112,6 +115,14 @@ method reserved-words {<
 has &.table-formatter is rw;
 
 method table-name-wrapper($name) { qq["$name"] }
+
+multi method diff-to-ast($, "-", "table", Red::Cli::Table $_ --> Hash()) {
+    9 => Red::AST::DropTable.new: table => .name
+}
+
+multi method diff-to-ast($, "+", "table", Red::Cli::Table $_ --> Hash()) {
+    1 => Red::AST::CreateTableCli.new: table => $_
+}
 
 multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
     1 => Red::AST::CreateColumn.new(
@@ -705,6 +716,46 @@ multi method translate(Red::Column $_, "pk") {
     .name => []
 }
 
+multi method translate(Red::Cli::Column $_, "column-comment") {
+    (.comment ?? " COMMENT '$_'" !! "") => []
+}
+
+multi method translate(Red::Cli::Column $ (:$references where {!.keys}), "column-references") {
+    ("references { .<table> }({ .<column> })" => []) with .references
+}
+
+multi method translate(Red::Cli::Column $_, "column-references") {
+    "" => []
+}
+
+multi method translate(Red::Cli::Column $_, "column-auto-increment") {
+    (.auto-increment ?? "auto_increment" !! "") => []
+}
+
+multi method translate(Red::Cli::Column $_, "column-pk") {
+    (.pk ?? "primary key" !! "") => []
+}
+
+multi method translate(Red::Cli::Column $_, "nullable-column") {
+    (.nullable ?? "NULL" !! "NOT NULL") => []
+}
+
+multi method translate(Red::Cli::Column $_, "column-type") {
+    .type => []
+}
+
+multi method translate(Red::Cli::Column $_, "create-table-column-name") {
+    .name => []
+}
+
+multi method translate(Red::Cli::Column $_, "unique") {
+    .name => []
+}
+
+multi method translate(Red::Cli::Column $_, "pk") {
+    .name => []
+}
+
 multi method translate(Red::AST::Cast $_, $context?) {
     when Red::AST::Value {
         .bind ?? self.translate(.value, "bind") !! qq|'{ .value }'| => []
@@ -794,6 +845,41 @@ multi method translate(Red::Column $_, "create-table") {
         .subst(/\s ** 2..*/, " ", :g) => []
 }
 
+multi method translate(Red::Cli::Column $_, "create-table") {
+    # has      $.table      is rw;
+    # has Str  $.name       is required;
+    # has Str  $.formated-name = snake-to-kebab-case $!name;
+    # has Str  $.type       is required;
+    # has Str  $.perl-type  = get-RED-DB.type-for-sql: $!type.lc;
+    # has Bool $.nullable   = True;
+    # has Bool $.pk         = False;
+    # has Bool $.unique     is rw = False;
+    # has      $.references = {};
+    (
+        "create-table-column-name",
+        "column-type",
+        # (
+        #     .default
+        #     ?? "column-default"
+        #     !! "nullable-column"
+        # ),
+        "nullable-column",
+        (|(
+            "column-pk",
+            "column-auto-increment",
+        ) if .pk),
+        |("column-references" unless $*RED-IGNORE-REFERENCE),
+        |("column-comment" if self.comment-on-same-statement),
+    )
+        .map(-> $context {
+            my $trans = self.translate($_, $context);
+            $trans.key
+        })
+        .grep( *.defined )
+        .join(" ")
+        .subst(/\s ** 2..*/, " ", :g) => []
+}
+
 multi method translate(Red::Column $_, "column-name")           { .name // "" => [] }
 
 multi method translate(Red::Column $_, "column-type")           {
@@ -851,6 +937,20 @@ multi method translate(Red::AST::CreateView $_, $context?) {
     |do if not self.comment-on-same-statement {
         self.translate($_).key => [] with .comment
     },
+}
+
+multi method translate(Red::AST::DropTable $_, $context?) {
+    "DROP TABLE IF EXISTS { self.table-name-wrapper: .name }" => [],
+}
+
+multi method translate(Red::AST::CreateTableCli $ (:table($_)), $context?) {
+    "CREATE TABLE {
+        self.table-name-wrapper: .name
+    } (\n{
+        (
+            |.columns.map({ self.translate($_, "create-table").key }),
+        ).join(",\n").indent: 3
+    }\n)" => [],
 }
 
 multi method translate(Red::AST::CreateTable $_, $context?) {
