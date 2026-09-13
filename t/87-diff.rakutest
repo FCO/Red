@@ -152,11 +152,11 @@ schema(E1).drop;
 
 for @models X @models -> ($a, $b) {
     diag "create-table $a.^table() ($a.^name())";
-    skip("SchemaReaders pk NYI", 2), next if $a.^name ~~ /"-pk"$/;
-    skip("SchemaReaders unique NYI", 2), next if $a.^name ~~ /"-unique"$/;
+    todo("SchemaReaders pk NYI", 2) if $a.^name ~~ /"-pk"$/;
+    todo("SchemaReaders unique NYI", 2) if $a.^name ~~ /"-unique"$/;
     $a.^create-table;
-    is $b.^diff-from-db, $a.^diff($b), "same diff if using models or DB";
-    is $b.^diff-to-db,   $b.^diff($a), "same diff if using models or DB";
+    is (try $b.^diff-from-db), $a.^diff($b), "$b.^name().^diff-from-db ~~ $a.^name().^diff\($b.^name())";
+    is (try $b.^diff-to-db),   $b.^diff($a), "$b.^name().^diff-from-db ~~ $b.^name().^diff\($a.^name())";
     schema($a).drop;
 }
 
