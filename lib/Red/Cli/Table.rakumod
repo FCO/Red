@@ -58,8 +58,8 @@ method diff($b) {
     my @b = $b   ?? $b.columns.sort: *.name !! ();
 
     if $a-name ne ($b-name // "") {
-        if !self.defined && !$!name.defined && !$b-name.defined {
-            die "No from or to table... it should never happen..."
+        if !self.defined && !$b-name.defined {
+            die "No from and to table... it should never happen..."
         }
         if !self.defined || !$!name.defined {
             @diffs.push: [ $a-name, "+", "table", $b ];

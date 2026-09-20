@@ -133,11 +133,11 @@ has &.table-formatter is rw;
 method table-name-wrapper($name) { '"' ~ $name.subst('"', '""', :g) ~ '"' }
 
 multi method diff-to-ast($, "-", "table", Red::Cli::Table $_ --> Hash()) {
-    9 => Red::AST::DropTable.new: table => .name
+    10 => Red::AST::DropTable.new: table => .name
 }
 
 multi method diff-to-ast($, "+", "table", Red::Cli::Table $_ --> Hash()) {
-    1 => Red::AST::CreateTableCli.new: table => $_
+    0 => Red::AST::CreateTableCli.new: table => $_
 }
 
 multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
@@ -200,7 +200,7 @@ multi method diff-to-ast($table, "-", "col", Red::Cli::Column $_ --> Hash()) {
     ;
 }
 multi method diff-to-ast(@diff) {
-    @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(|*.key, :as{ |.value }).sort.map: *.value
+    @diff.map({ |self.diff-to-ast(|$_).pairs }).classify(+*.key, :as{ |.value }).sort.map: *.value
 }
 
 method table-name-formatter($data) {
