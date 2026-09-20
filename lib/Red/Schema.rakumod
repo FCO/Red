@@ -70,17 +70,15 @@ method create(:$where) {
 }
 
 method plan(:$where is copy --> Array[Str]()) {
-    red-do (:$where with $where), {
-        $where = $_;
-        my @sql;
-        my $diff = self.diff-from-db;
-        for .diff-to-ast: $diff -> @ast {
-            for @ast -> $ast {
-                @sql.push: .key for $where.translate: $ast
-            }
+    $where //= get-RED-DB;
+    my @sql;
+    my $diff = self.diff-from-db;
+    for $where.diff-to-ast: $diff -> @ast {
+        for @ast -> $ast {
+            @sql.push: .key for $where.translate: $ast
         }
-        return @sql
     }
+    return @sql
 }
 
 method update(:$where) {
