@@ -69,15 +69,25 @@ method create(:$where) {
     self
 }
 
-method update(:$where) {
-    red-do (:$where with $where), :transaction, {
+method plan(:$where is copy --> Array[Str]()) {
+    red-do (:$where with $where), {
+        $where = $_;
+        my @sql;
         my $diff = self.diff-from-db;
         for .diff-to-ast: $diff -> @ast {
             for @ast -> $ast {
-                .execute: $ast
+                @sql.push: .key for $where.translate: $ast
             }
         }
-        True
+        return @sql
+    }
+}
+
+method update(:$where) {
+    red-do (:$where with $where), :transaction, {
+        do for $.plan[] -> Str $sql {
+            .execute: $sql
+        }
     }
     self
 }
