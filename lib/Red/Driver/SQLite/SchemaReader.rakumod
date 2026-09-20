@@ -16,7 +16,7 @@ grammar SQL::CreateTable {
     multi token name:sym<plain>    { :i \w+ }
     multi token name:sym<quoted>   { '"' ~ '"' $<name>=[<-["]>+] }
     rule  type                     { :i <name>["(" ~ ")" \d+]? }
-    rule  column                   { :i <column-name=.name> <type> <modifier>? <index-mod>? <auto-increment>? }
+    rule  column                   { :i <column-name=.name> <type> [ <modifier> | <index-mod> | <auto-increment> ]* }
     rule  auto-increment           { :i "AUTOINCREMENT" }
     proto rule modifier            {*}
     multi rule modifier:<null>     { :i NULL }
@@ -40,11 +40,13 @@ class SQL::CreateTable::Action {
     method name:sym<quoted>($/)    { make ~$<name> }
     method type($/)                { make $/.Str.trim}
     method column($/)              {
+        my %modifier  is Map = $<modifier>.map: *.made;
+        my %index-mod is Map = $<index-mod>.map: *.made;
         make Red::Cli::Column.new(
             name => $<column-name>.made,
             type => $<type>.made,
-            |$<modifier>.made,
-            |$<index-mod>.made.grep(*.defined).Map,
+            |%modifier,
+            |%index-mod,
         )
     }
     method auto-increment($/)      { make ( :auto-increment ) }
