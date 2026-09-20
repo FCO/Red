@@ -2,6 +2,8 @@ use v6;
 use Test;
 use Red;
 
+plan 12;
+
 use lib $?FILE.IO.parent(1).add('lib');
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
@@ -9,6 +11,13 @@ my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+my Version() $ver = $*RED-DB.execute("select sqlite_version() as version").row.values.head;
+
+if $ver < v3.53 {
+    skip-rest "This SQLite version does not accept alter table alter column";
+    exit
+}
 
 model A { has UInt $.id is serial }
 
@@ -68,9 +77,8 @@ model E1-a-unique is table<expl> {
 schema(E1).drop;
 for E1, E2, E3 -> $model {
     my $s1 = schema($model);
+    lives-ok({ $s1.plan   }, "schema($model.^name()).plan lives");
     lives-ok({ $s1.update }, "schema($model.^name()).update lives");
     is $s1.diff-to-db,   [], "schema($model.^name()).diff-to-db is []";
     is $s1.diff-from-db, [], "schema($model.^name()).diff-from-db is []";
 }
-
-done-testing;
