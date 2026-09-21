@@ -1,6 +1,7 @@
 unit class Red::Cli;
 use Red::Database;
 use Red::Do;
+use Red::DB;
 use Red::Schema;
 use Red::Utils;
 use Red::AST::CreateColumn;
@@ -64,11 +65,12 @@ multi migration-plan(
 ) is export {
     my %steps;
     require ::($require);
-    for $*RED-DB.diff-to-ast: ::($model).^diff-from-db -> @data {
+    for get-RED-DB.diff-to-ast: ::($model).^diff-from-db -> @data {
         say "Step ", ++$, ":";
-        #say @data.join("\n").indent: 4
-        #        $*RED-DB.translate($_).key.indent(4).say for Red::AST::ChangeColumn.optimize: @data
-        $*RED-DB.translate($_).key.indent(4).say for @data
+        for @data {
+            my @trans = get-RED-DB.translate($_);
+            say "{.key};".indent(4) for @trans
+        }
     }
 }
 
@@ -191,11 +193,13 @@ sub prepare-tree(@data) is export {
 }
 
 #| Diff from DB
-multi diff-from-db(+@models) is export {
-    schema(@models).diff-from-db
+multi diff-from-db(+@models, Red::Schema :$schema is copy) is export {
+    $schema //= schema @models;
+    $schema.diff-from-db
 }
 
 #| Diff from DB
-multi diff-to-db(+@models) is export {
-    schema(@models).diff-to-db
+multi diff-to-db(+@models, Red::Schema :$schema is copy) is export {
+    $schema //= schema @models;
+    $schema.diff-to-db
 }
