@@ -1,0 +1,28 @@
+use v6;
+use Test;
+use Red;
+use Red::Cli;
+
+use lib $?FILE.IO.parent(1).add('lib');
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+model E1 is table<bla> {
+    has UInt $.id is serial;
+    has Str  $.a  is column;
+}
+
+schema(E1).drop;
+
+lives-ok { prepare-database :models(E1) }
+
+is list-tables, <bla>;
+
+is diff-to-db(E1),   [], "No changes";
+is diff-from-db(E1), [], "No changes";
+
+done-testing

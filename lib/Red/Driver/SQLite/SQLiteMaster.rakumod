@@ -9,7 +9,7 @@ has Str      $.sql       is column;
 has ::?CLASS @.children  is relationship{ .table }
 
 method tables(::?CLASS:U:)   {
-    self.^all.grep: *.is-table
+    self.^all.grep: { .is-table && .name ne "sqlite_sequence" }
 }
 
 multi method indexes(::?CLASS:U:) { ::?CLASS.^all.grep: *.is-index }

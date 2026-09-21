@@ -1,3 +1,4 @@
+use Red::Operators;
 use Red::SchemaReader;
 use Red::Driver::SQLite::SQLiteMaster;
 
@@ -11,9 +12,11 @@ method sqlite-master { Red::Driver::SQLite::SQLiteMaster }
 grammar SQL::CreateTable {
     rule  TOP                      { :i <create-table>+ %% ";" }
     rule  create-table             { :i CREATE TABLE <table-name=.name> '(' ~ ')' <column>+ %% [ "," ] }
-    token name                     { :i \w+ }
+    proto token name               {*}
+    multi token name:sym<plain>    { :i \w+ }
+    multi token name:sym<quoted>   { '"' ~ '"' $<name>=[<-["]>+] }
     rule  type                     { :i <name>["(" ~ ")" \d+]? }
-    rule  column                   { :i <column-name=.name> <type> <modifier>? <index-mod>? <auto-increment>? }
+    rule  column                   { :i <column-name=.name> <type> [ <modifier> | <index-mod> | <auto-increment> ]* }
     rule  auto-increment           { :i "AUTOINCREMENT" }
     proto rule modifier            {*}
     multi rule modifier:<null>     { :i NULL }
@@ -33,33 +36,36 @@ class SQL::CreateTable::Action {
     use Red::Cli::Column;
     method TOP($/)                 { make $<create-table>».made }
     method create-table($/)        { make Red::Cli::Table.new: name => $<table-name>.made, columns => $<column>».made }
-    method name($/)                { make ~$/ }
+    method name:sym<plain>($/)     { make ~$/ }
+    method name:sym<quoted>($/)    { make ~$<name> }
     method type($/)                { make $/.Str.trim}
     method column($/)              {
+        my %modifier  is Map = $<modifier>.map: *.made;
+        my %index-mod is Map = $<index-mod>.map: *.made;
         make Red::Cli::Column.new(
-            $<column-name>.made,
-            $<type>.made,
-            ($<modifier>.made // True),
-            |$<index-mod>.made<pk unique references>
+            name => $<column-name>.made,
+            type => $<type>.made,
+            |%modifier,
+            |%index-mod,
         )
     }
-    method auto-increment          { make ( :auto-increment ) }
+    method auto-increment($/)      { make ( :auto-increment ) }
     method modifier:<null>($/)     { make ( :nullable ) }
     method modifier:<not-null>($/) { make ( :!nullable ) }
     method index-mod:<pk>($/)      { make ( :pk ) }
     method index-mod:<fk>($/)      { make ( :references( %( table => $<table-name>.made, column => $<column-name>.made ) ) ) }
     method index-mod:<unique>($/)  { make ( :unique ) }
-    method index:<pk>($/)          { ... }
+    method index:<pk>($/)          { make ( :id ) }
     method index:<fk>($/)          { ... }
     method index:<unique>($/)      { ... }
 }
 
 method tables-names       { self.sqlite-master.tables.map: *.name }
 method indexes-of($table) { self.sqlite-master.find-table($table).indexes }
-method table-definition($table) {
+method table-definition($table --> Red::Cli::Table) {
     my $sql = self.sqlite-master.find-table($table).sql;
     my $list = self.table-definition-from-create-table($sql);
-    return unless $list;
+    return Red::Cli::Table unless $list;
     $list.head
 }
 multi method table-definition-from-create-table(Str:D $sql) {

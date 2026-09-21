@@ -1,6 +1,7 @@
 unit class Red::Cli;
 use Red::Database;
 use Red::Do;
+use Red::DB;
 use Red::Schema;
 use Red::Utils;
 use Red::AST::CreateColumn;
@@ -10,12 +11,11 @@ use Red::AST::DropColumn;
 
 #| Lists tables from database schema
 multi list-tables(
-        Str  :$driver!,
+        Str  :$driver,
         *%pars
 ) is export {
     my $schema-reader = $*RED-DB.schema-reader;
-
-    $schema-reader.tables-names.do-it
+    $schema-reader.tables-names
 }
 
 sub gen-stub(:@includes, :@models, :$driver, :%pars) {
@@ -35,7 +35,7 @@ sub gen-stub(:@includes, :@models, :$driver, :%pars) {
 #| Generates stub code to access models from database schema
 multi gen-stub-code(
         Str  :$schema-class,
-        Str  :$driver!,
+        Str  :$driver,
         *%pars
 ) is export {
     my $schema-reader = $*RED-DB.schema-reader;
@@ -60,16 +60,17 @@ multi gen-stub-code(
 multi migration-plan(
         Str :$model!,
         Str :$require = $model,
-        Str :$driver!,
+        Str :$driver,
         *%pars
 ) is export {
     my %steps;
     require ::($require);
-    for $*RED-DB.diff-to-ast: ::($model).^diff-from-db -> @data {
+    for get-RED-DB.diff-to-ast: ::($model).^diff-from-db -> @data {
         say "Step ", ++$, ":";
-        #say @data.join("\n").indent: 4
-        #        $*RED-DB.translate($_).key.indent(4).say for Red::AST::ChangeColumn.optimize: @data
-        $*RED-DB.translate($_).key.indent(4).say for @data
+        for @data {
+            my @trans = get-RED-DB.translate($_);
+            say "{.key};".indent(4) for @trans
+        }
     }
 }
 
@@ -81,7 +82,7 @@ multi generate-code(
         Bool :$print-stub       = False,
         Bool :$no-relationships = False,
         #Bool :$stub-only,
-        Str  :$driver!,
+        Str  :$driver,
         *%pars
 ) is export {
     my $schema-reader = $*RED-DB.schema-reader;
@@ -136,11 +137,69 @@ multi generate-code(
 
 #| Prepare database
 multi prepare-database(
-        Bool :$populate,
+        Bool :$populate = False,
         Str  :$models!,
-        Str  :$driver!,
+        Str  :$driver,
         *%pars
 ) is export {
-    my @m = schema($models.split: ",").create.models.values;
+    my $schema = schema($models.split: ",");
+    prepare-database :$populate, :$schema, |(:$driver with $driver)
+}
+
+#| Prepare database
+multi prepare-database(
+        Bool       :$populate,
+        Red::Model :$models!,
+        Str        :$driver,
+        *%pars
+) is export {
+    prepare-database :$populate, :models[ $models, ], |(:$driver with $driver)
+}
+
+#| Prepare database
+multi prepare-database(
+        Bool :$populate,
+             :@models! where { .are: Red::Model },
+        Str  :$driver,
+        *%pars
+) is export {
+    my $schema = schema(@models);
+    prepare-database :$populate, :$schema, |(:$driver with $driver)
+}
+
+#| Prepare database
+multi prepare-database(
+        Bool :$populate,
+             :$schema!,
+        Str  :$driver,
+        *%pars
+) is export {
+    my @m = $schema.create.models.values;
     @m.map: { .^populate } if $populate
+}
+
+multi tree(@changes) is export {
+    @changes.map({"$_\n"}).join
+}
+
+multi tree(%tree) is export {
+    join "", do for %tree.kv -> $key, $value {
+        "$key:\n{ tree($value).indent(4) }"
+    }
+}
+
+sub prepare-tree(@data) is export {
+    @data.classify: :as{ .skip: 3 }, *.head: 3
+}
+
+#| Diff from DB
+multi diff-from-db(+@models, Red::Schema :$schema is copy) is export {
+    $schema //= schema @models;
+    $schema.diff-from-db
+}
+
+#| Diff from DB
+multi diff-to-db(+@models, Red::Schema :$schema is copy) is export {
+    $schema //= schema @models;
+    $schema.diff-to-db
 }

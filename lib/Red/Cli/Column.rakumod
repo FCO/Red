@@ -2,24 +2,38 @@ use Red::Utils;
 use Red::DB;
 unit class Red::Cli::Column;
 
-has      $.table      is rw;
-has Str  $.name       is required;
+has      $.table    is rw;
+has Str  $.name     is required;
 has Str  $.formated-name = snake-to-kebab-case $!name;
-has Str  $.type       is required;
-has Str  $.perl-type  = get-RED-DB.type-for-sql: $!type.lc;
-has Bool $.nullable   = True;
-has Bool $.pk         = False;
-has Bool $.unique     = False;
-has      $.references = {};
+has Str  $.type     is required;
+has Str  $.perl-type      = get-RED-DB.type-for-sql: $!type.lc;
+has Bool $.nullable       = True;
+has Bool $.pk             = False;
+has Bool $.unique   is rw = False;
+has Bool $.auto-increment = False;
+has      $.references     = {};
+has Str  $.comment;
 
 multi method new($name, $type, $nullable, $pk, $unique, $references) {
     self.bless: :$name, :$type, :nullble(?$nullable), :pk(?$pk), :unique(?$unique), :$references
 }
 
 multi method gist(::?CLASS:D:) {
-    "Red::Cli::Column.new(:name($!name), :type($!type), :nullable($!nullable), :pk($!pk), :unique($!unique), {
-        ":references($_)" with $!references
+    "Red::Cli::Column.new(:name<$!name>, :type<$!type>{
+        ", :nullable" if $!nullable
+    }{
+        ", :pk" if $!pk
+    }{
+        ", :unique" if $!unique
+    }{
+        ", :references({$!references<table>}.{$!references<column>})" if $!references
     } #`( table => $!table.name() ))"
+}
+
+method Str { $.gist }
+
+multi method WHICH(::?CLASS:D:) {
+    ValueObjAt.new: $.gist
 }
 
 method !modifier(Str :$schema-class) {
