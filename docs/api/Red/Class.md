@@ -6,7 +6,7 @@ Base class for Red methods
 ### method instance
 
 ```raku
-method instance() returns Red::Class
+method instance() returns Red::Class:D
 ```
 
 Return a instance of Red::Class

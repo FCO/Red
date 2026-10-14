@@ -400,10 +400,8 @@ multi sub trait_mod:<is>(
 
 Trait to define a phaser to run after delete a record
 
-head
-====
-
 is sub-module
+=============
 
 ### multi sub trait_mod:<is>
 

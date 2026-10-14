@@ -35,6 +35,24 @@ method contains(
 
 Tests if that column value contains a specific sub-string is usually translated for SQL as `column like %'substr%'`
 
+### method contains
+
+```raku
+method contains(
+    $value
+) returns Mu
+```
+
+Tests whether a JSON document contains another JSON value.
+
+### method elems
+
+```raku
+method elems() returns Mu
+```
+
+Returns the number of members in a JSON object or array; scalars have zero members.
+
 ### method lc
 
 ```raku
@@ -153,11 +171,42 @@ method DELETE-KEY(
 
 Delete and return a value from a json hash key
 
-### method AT-POS
+### method EXISTS-KEY
 
 ```raku
-method AT-POS(
-    $key where { ... }
+method EXISTS-KEY(
+    $key
+) returns Mu
+```
+
+Tests for a JSON key, including keys whose value is JSON null.
+
+### method EXISTS-POS
+
+```raku
+method EXISTS-POS(
+    $index
+) returns Mu
+```
+
+Tests for a JSON array index, including elements whose value is JSON null.
+
+### method DELETE-POS
+
+```raku
+method DELETE-POS(
+    $index
+) returns Mu
+```
+
+Deletes and returns an element from a JSON array.
+
+### method ASSIGN-POS
+
+```raku
+method ASSIGN-POS(
+    $index,
+    $value
 ) returns Mu
 ```
 

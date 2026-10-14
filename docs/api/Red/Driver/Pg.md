@@ -1,5 +1,33 @@
-class submethod BUILD (Red::Driver::Pg: :$!dbh, Str :$!user, Str :$!password, Str :$!host = "127.0.0.1", Int :$!port = 5432, Str :$!dbname, *%_) { #`(Submethod|140577446912832) ... }
---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+### method pg-jsonb-path
 
-Data accepted by the Pg driver constructor: dbh : DB::Pg object user : User to be used to connect to the database password: Password to be used to connect to the database host : To be connected to port : What port to connect dbname : Database name
+```raku
+method pg-jsonb-path(
+    Red::AST $path
+) returns Mu
+```
+
+Builds a bound text array so JSON keys never become SQL syntax.
+
+### multi method translate
+
+```raku
+multi method translate(
+    Red::Column $col where { ... },
+    "select",
+    Str :$RED-OVERRIDE-COLUMN-AS-PREFIX
+) returns Mu
+```
+
+Ask DB::Pg for serialized JSON so strings and JSON null survive inflation.
+
+### multi method translate
+
+```raku
+multi method translate(
+    Red::AST::Infix $_ where { ... },
+    $context?
+) returns Mu
+```
+
+JSON arithmetic uses SQL numbers; comparisons with scalars use the scalar's type.
 

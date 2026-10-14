@@ -1,6 +1,17 @@
 Red::Operators
 --------------
 
+### multi sub postcircumfix:<[ ]>
+
+```raku
+multi sub postcircumfix:<[ ]>(
+    Red::AST $value where { ... },
+    Red::AST $index
+) returns Mu
+```
+
+Retains SQL expressions used as JSON array indexes instead of coercing them to Int.
+
 ### multi sub prefix:<-->
 
 ```raku
