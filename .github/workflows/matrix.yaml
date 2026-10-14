@@ -6,6 +6,8 @@ on:
     tags-ignore:
       - "*"
   pull_request:
+env:
+  RAKUDO_RAKUAST: "0"
 jobs:
   raku:
     strategy:

@@ -15,7 +15,7 @@ jobs:
         run: docker build -t red-test:base -f Dockerfile .
       - name: Run tests (SQLite)
         run: |
-          docker run --rm --entrypoint "" red-test:base sh -c "raku -V && zef install --/test . && prove6 -lj8 t"
+          docker run --rm --env RAKUDO_RAKUAST=0 --entrypoint "" red-test:base sh -c "raku -V && zef install --/test . && prove6 -lj8 t"
 
   # build-and-test-postgres:
   #   runs-on: ubuntu-latest

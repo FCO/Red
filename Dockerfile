@@ -1,4 +1,5 @@
 FROM rakudo-star:alpine
+ENV RAKUDO_RAKUAST=0
 WORKDIR /code
 COPY . .
 ENV PATH="/usr/share/raku/site/bin:/usr/local/share/raku/site/bin:/usr/share/perl6/site/bin:/usr/local/share/perl6/site/bin:${PATH}"
