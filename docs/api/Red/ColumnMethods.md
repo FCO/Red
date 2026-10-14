@@ -51,7 +51,15 @@ Tests whether a JSON document contains another JSON value.
 method elems() returns Mu
 ```
 
-Returns the number of members in a JSON object or array; scalars have zero members.
+Counts JSON members; scalars and null have one element, absent paths have none.
+
+### method elems
+
+```raku
+method elems() returns Mu
+```
+
+A non-JSON scalar has one element, including SQL NULL.
 
 ### method lc
 

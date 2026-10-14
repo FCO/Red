@@ -34,6 +34,22 @@ method Seq() returns Mu
 
 Returns a Seq with the result of the SQL query
 
+### method projection-subject
+
+```raku
+method projection-subject() returns Mu
+```
+
+The symbolic element passed to a block, independently of the storage model.
+
+### method can-fuse-projection
+
+```raku
+method can-fuse-projection() returns Bool
+```
+
+Exports a projection or a pagination barrier as a derived table.
+
 ### method grep
 
 ```raku
@@ -49,7 +65,7 @@ Adds a new filter on the query (does not run the query)
 ```raku
 method first(
     &filter
-) returns Red::Model
+) returns Mu
 ```
 
 Changes the query to return only the first row that matches the condition and run it (.grep(...).head)
@@ -63,6 +79,14 @@ method map(
 ```
 
 Change what will be returned (does not run the query)
+
+### method sort
+
+```raku
+method sort() returns Red::ResultSeq
+```
+
+Orders scalar projected values without executing the query.
 
 ### method sort
 
@@ -89,7 +113,7 @@ Sets the query to return the rows in a randomic order (does not run the query)
 ```raku
 method classify(
     &func,
-    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|3201898011392) ... },
+    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|3302274843288) ... },
     :&reduce
 ) returns Red::ResultAssociative
 ```
