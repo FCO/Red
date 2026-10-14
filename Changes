@@ -1,6 +1,11 @@
 Revision history for Red
 
 {{$NEXT}}
+    - json: bind paths, support dynamic keys/indexes, and preserve scalar JSON types
+    - json: compose updates to the same column and evaluate Pg arithmetic in SQL
+    - json: add existence, array deletion, member counts, and recursive containment
+    - json: distinguish JSON null from SQL NULL and report serialization errors
+    - tests(json): cover SQLite and Pg operations, including special keys and nested paths
 
 0.2.5  2026-08-23T18:10:25+01:00
     - .perl -> .raku

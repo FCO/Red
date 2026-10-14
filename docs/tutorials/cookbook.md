@@ -628,3 +628,68 @@ Red.emit: "my data";
 ```
 
 or use `red-emit` to emit for the current driver.
+
+## JSON columns
+
+Import `Red::Type::Json` and use `Json` as the column type. SQLite stores JSON text;
+PostgreSQL uses JSONB. Pass Raku values rather than pre-encoded JSON strings.
+
+```raku
+use Red:api<2>;
+use Red::Type::Json;
+
+model Document {
+    has UInt $.id is serial;
+    has Json $.data is rw is column;
+    has Json $.optional is rw is column{ :nullable };
+    has Str $.selected-key is column;
+    has Int $.selected-index is column;
+}
+
+Document.^create:
+    :data({ :count(10), :items([1, 2, 3]), :unknown(Any) }),
+    :selected-key<count>, :selected-index(1);
+
+Document.^all.map(*.data<items>[1]);
+Document.^all.map({ .data{.selected-key} });
+Document.^all.map({ .data<items>[.selected-index] });
+
+Document.^all.map({
+    .data<count> += 2;
+    .data<items>[.selected-index] = 42;
+    .data<added> = { :enabled(True) };
+}).save;
+
+Document.^all.map({ .data<items>[0]:delete }).save;
+Document.^all.map({ .data<added><enabled>:delete }).save;
+
+Document.^all.grep({ .data<unknown>:exists });
+Document.^all.grep({ .data<items>[0]:exists });
+Document.^all.map(*.data<items>.elems);
+Document.^all.grep({ .data.contains({ :items([42]) }) });
+```
+
+Keys may contain punctuation, quotes, backslashes, or Unicode. SQL expressions
+can supply keys and indexes. Escaped object labels require a recent SQLite build;
+older SQLite versions cannot address keys containing both quotes and dots.
+Negative indexes count from the end; use
+`.AT-POS(-1)` because Raku rejects a literal `[-1]` subscript.
+
+Multiple changes to a JSON column in one `map` are composed in order. A later
+expression referring to that column sees the earlier changes. For portable
+nested updates, create the parent object or array first: PostgreSQL's
+`jsonb_set` does not create missing intermediate containers.
+
+`:exists` distinguishes missing paths from members containing JSON null.
+`Any` represents JSON null; the `Json` type object represents SQL NULL for a
+nullable column and is also returned for a missing path. A JSON column without
+an explicit default starts as `Json`. Strings such as `'123'`, `'null'`, and
+`'{"x":1}'` remain strings. Invalid JSON and unsupported values raise
+`X::Red::Json` during inflation or deflation.
+
+`.elems` counts object members or array elements and returns zero for scalars
+and missing values. `.contains` performs recursive JSON containment. Objects
+match a subset of their members; arrays ignore order and duplicate requirements,
+and can contain a primitive value. SQLite implements containment with a recursive
+query over `json_tree`; PostgreSQL uses the native JSONB containment operator.
+For large documents, PostgreSQL's native JSONB operations are preferable.

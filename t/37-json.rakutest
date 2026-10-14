@@ -21,12 +21,6 @@ Bla.^create-table;
 Bla.^create: :num1{:42bla};
 is Bla.^all.map({ .num1<bla> }).head, 42;
 
-if $driver eq "Pg" {
-    skip-rest "Pg not accepting update on json yet";
-    exit
-}
-
-# TODO: use jsonb_set for Pg
 Bla.^all.map({ .num1<ble> = 13 }).save;
 is Bla.^all.map({ .num1<ble> }).head, 13;
 

@@ -69,3 +69,35 @@ jobs:
   #       env:
   #         RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=red_test user=postgres password=postgres"
   #       run: prove6 -lj8 t
+
+  json-pg:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: red_json_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+    steps:
+      - uses: actions/checkout@v3
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: "2022.07"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev
+          zef install --/test --test-depends --deps-only .
+          zef install --/test App::Prove6 DB::Pg
+      - name: Test JSON operations and custom types
+        env:
+          RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=red_json_test user=postgres password=postgres"
+        run: prove6 -lv t/37-json.rakutest t/77-red-type.rakutest t/87-json-operations.rakutest

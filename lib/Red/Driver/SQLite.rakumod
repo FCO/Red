@@ -13,6 +13,9 @@ use Red::AST::LastInsertedRow;
 use Red::AST::TableComment;
 use Red::AST::JsonItem;
 use Red::AST::JsonRemoveItem;
+use Red::AST::JsonOperation;
+use Red::AST::JsonSetItem;
+use JSON::Fast;
 use X::Red::Exceptions;
 use UUID;
 use Red::SchemaReader;
@@ -125,38 +128,150 @@ multi method translate(Red::AST::TableComment $_, $context?) {
 }
 
 multi method translate(Red::AST::JsonRemoveItem $_, $context?) {
-    self.translate:
-            Red::AST::Function.new:
-                    :func<JSON_REMOVE>,
-                    :args[
-                        .left,
-                        ast-value('$' ~ self.prepare-json-path-item: .right.value)
-                    ],
-                    :returns(Json),
+    my ($left, @lb) := do given self.translate(.left, $context) { .key, .value };
+    my ($path, @pb) := do given self.sqlite-json-path(.right) { .key, .value };
+    "JSON_REMOVE($left, $path)" => [|@lb, |@pb]
 }
 
 multi method translate(Red::AST::JsonItem $_, $context?) {
-    self.translate:
-            Red::AST::Function.new:
-                    :func<JSON_EXTRACT>,
-                    :args[
-                        .left,
-                        ast-value('$' ~ self.prepare-json-path-item: .right.value)
-                    ],
-                    :returns(Json),
+    my ($left, @lb) := do given self.translate(.left, "json-source") { .key, .value };
+    my ($path, @pb) := do given self.sqlite-json-path(.right) { .key, .value };
+    if $context.defined && $context eq any(<select json-value>) {
+        # Keep serialized JSON at the inflation boundary, including scalar types.
+        "(SELECT CASE WHEN kind IS NULL THEN NULL "
+            ~ "WHEN kind IN ('true', 'false', 'null') THEN kind "
+            ~ "WHEN kind IN ('object', 'array') THEN item "
+            ~ "ELSE JSON_QUOTE(item) END FROM "
+            ~ "(SELECT JSON_TYPE($left, $path) AS kind, "
+            ~ "JSON_EXTRACT($left, $path) AS item))"
+            => [|@lb, |@pb, |@lb, |@pb]
+    } else {
+        "JSON_EXTRACT($left, $path)" => [|@lb, |@pb]
+    }
 }
 
-multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~~ Red::AST::JsonItem}, "update") {
-    my $value = Red::AST::Function.new:
-            :func<JSON_SET>,
-            :args[
-                .value.key.left,
-                ast-value('$' ~ self.prepare-json-path-item(.value.key.right.value)),
-                .value.value
-            ],
-            :returns(Json),
-    ;
-    self.translate: ast-value(.value.key.left => $value), "update"
+multi method translate(Red::AST::Value $_ where {
+    .type ~~ Pair and .value.key ~~ Red::AST::JsonItem
+}, "update") {
+    my $item = .value.key;
+    self.translate: ast-value($item.left => Red::AST::JsonSetItem.new(
+        :left($item.left), :right($item.right), :value(.value.value))), "update"
+}
+
+method sqlite-json-path(Red::AST $path) {
+    my @bind;
+    my @sql = q['$'];
+    for self.json-path-items($path) -> $item {
+        if $item ~~ Red::AST::Value {
+            my $part = $item.value ~~ Int
+                ?? ($item.value < 0 ?? "[\#{ $item.value }]" !! "[{ $item.value }]")
+                !! '.' ~ to-json($item.value.Str, :!pretty);
+            @sql.push: self.wildcard;
+            @bind.push: $part;
+        } else {
+            my ($sql, @values) := do given self.translate($item, "json-path") {
+                .key, .value
+            };
+            if $item.returns ~~ Int {
+                @sql.push: "('[' || CASE WHEN $sql < 0 THEN '#' ELSE '' END || $sql || ']')";
+                @bind.append: |@values, |@values;
+            } else {
+                @sql.push: "('.' || JSON_QUOTE($sql))";
+                @bind.append: @values;
+            }
+        }
+    }
+    '(' ~ @sql.join(' || ') ~ ')' => @bind
+}
+
+multi method translate(Red::AST::JsonSetItem $_, $context?) {
+    my ($left, @lb) := do given self.translate(.left, $context) { .key, .value };
+    my ($path, @pb) := do given self.sqlite-json-path(.right) { .key, .value };
+    my ($value, @vb) := do given self.translate(.value, "json-value") { .key, .value };
+    my $json-value = .value.returns ~~ Json ?? "JSON($value)"
+        !! .value.returns ~~ Bool
+            ?? "JSON((SELECT CASE WHEN v IS NULL THEN 'null' WHEN v THEN 'true' "
+                ~ "ELSE 'false' END FROM (SELECT $value AS v)))"
+            !! $value;
+    "JSON_SET($left, $path, $json-value)" => [|@lb, |@pb, |@vb]
+}
+
+multi method translate(Red::AST::Value $_ where { .type ~~ Json }, "json-value") {
+    self.wildcard => [self.wildcard-value($_)]
+}
+
+multi method translate(Red::AST::Value $_ where { .type ~~ Json }, "update-rval") {
+    return "NULL" => [] if .value === Json;
+    "JSON({ self.wildcard })" => [self.wildcard-value($_)]
+}
+
+multi method translate(Red::AST::JsonOperation $operation, $context?) {
+    if $operation.operation eq "exists" {
+        my $item = $operation.value;
+        my ($left, @lb) := do given self.translate($item.left, $context) { .key, .value };
+        my ($path, @pb) := do given self.sqlite-json-path($item.right) { .key, .value };
+        return "(JSON_TYPE($left, $path) IS NOT NULL)" => [|@lb, |@pb];
+    }
+    my ($value, @bind) := do given self.translate($operation.value, "json-value") {
+        .key, .value
+    };
+    given $operation.operation {
+        when "elems" {
+            "(SELECT count(*) FROM JSON_EACH($value) "
+                ~ "WHERE JSON_TYPE($value) IN ('array', 'object'))" => [|@bind, |@bind]
+        }
+        when "contains" {
+            my ($argument, @ab) := do given self.translate($operation.argument, "json-value") {
+                .key, .value
+            };
+            self.sqlite-json-contains($value, $argument) => [|@bind, |@ab]
+        }
+    }
+}
+
+#| Implements recursive JSON containment, with unordered array matching as in JSONB.
+method sqlite-json-contains(Str $value, Str $argument --> Str) {
+    qq:to/SQL/.trim;
+    (WITH RECURSIVE
+        actual AS (SELECT * FROM JSON_TREE($value)),
+        wanted AS (
+            SELECT *, row_number() OVER (ORDER BY id DESC) AS step
+            FROM JSON_TREE($argument)
+        ),
+        matched(step, matches) AS (
+            SELECT 0, JSON_OBJECT()
+            UNION ALL
+            SELECT wanted.step,
+                JSON_SET(matched.matches, '\$."' || wanted.id || '"', JSON((
+                    SELECT JSON_GROUP_ARRAY(a.id) FROM actual a
+                    WHERE (a.type = wanted.type
+                        OR (a.type IN ('integer', 'real')
+                            AND wanted.type IN ('integer', 'real')))
+                    AND CASE WHEN wanted.type IN ('object', 'array') THEN
+                        NOT EXISTS (
+                            SELECT 1 FROM wanted child
+                            WHERE child.parent = wanted.id AND NOT EXISTS (
+                                SELECT 1 FROM actual member
+                                JOIN JSON_EACH(JSON_EXTRACT(matched.matches,
+                                    '\$."' || child.id || '"')) found ON found.value = member.id
+                                WHERE member.parent = a.id
+                                AND (wanted.type = 'array' OR member.key = child.key)
+                            )
+                        )
+                    ELSE a.atom IS wanted.atom END
+                )))
+            FROM matched JOIN wanted ON wanted.step = matched.step + 1
+        )
+        SELECT EXISTS (
+            SELECT 1 FROM actual a
+            JOIN JSON_EACH(JSON_EXTRACT(matches, '\$."' || root.id || '"')) found
+                ON found.value = a.id
+            WHERE a.parent IS NULL OR (root.type NOT IN ('object', 'array')
+                AND a.parent = (SELECT id FROM actual WHERE parent IS NULL)
+                AND (SELECT type FROM actual WHERE parent IS NULL) = 'array')
+        ) FROM matched, wanted root
+        WHERE root.parent IS NULL AND matched.step = (SELECT count(*) FROM wanted))
+    SQL
 }
 
 multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" => [] }

@@ -34,6 +34,9 @@ use Red::Cli::Column;
 use Red::FromRelationship;
 use Red::Driver;
 use Red::Type::Json;
+use Red::AST::JsonItem;
+use Red::AST::JsonRemoveItem;
+use Red::AST::JsonSetItem;
 use Red::Utils;
 use Red::LockType;
 use MetamodelX::Red::VirtualView;
@@ -881,7 +884,10 @@ multi method translate(Red::AST::Unique $_, $context?) {
 }
 
 multi method translate(Red::AST::Insert $_, $context?) {
-    my @values = .values.grep({ .value.value.defined });
+    my @values = .values.grep({
+        .value.value.defined || (.value.column.DEFINITE
+            && .value.column.attr.type ~~ Json && !(.value.value === Json))
+    });
     return "INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES" => [] unless @values;
     my @bind = @values.map: { self.wildcard-value: .value };
     "INSERT INTO {
@@ -915,7 +921,33 @@ multi method translate(Red::AST::Delete $_, $context?) {
 
 multi method translate(Red::AST::Update $_, $context?) {
     my @bind;
-    my $str = .values.map({
+    my @values;
+    my %json-updates;
+    for .values -> $pair {
+        my $column = $pair.key;
+        my $value = $pair.value;
+        if $column ~~ Red::AST::JsonItem {
+            $value = Red::AST::JsonSetItem.new:
+                :left($column.left), :right($column.right), :value($value);
+            $column = $column.left;
+        }
+        if $column.returns ~~ Json {
+            my $key = $column.WHICH.Str;
+            if %json-updates{$key}:exists {
+                my $index = %json-updates{$key};
+                if $value ~~ Red::AST::JsonSetItem | Red::AST::JsonRemoveItem {
+                    $value = $value.replace($column, @values[$index].value);
+                }
+                @values[$index] = $column => $value;
+            } else {
+                %json-updates{$key} = @values.elems;
+                @values.push: $column => $value;
+            }
+        } else {
+            @values.push: $pair;
+        }
+    }
+    my $str = @values.map({
         my ($c, @c) := do given self.translate: .&ast-value, "update" { .key, .value };
         @bind.append: @c;
         $c
@@ -1030,6 +1062,12 @@ multi method is-valid-table-name(Str $str) is default {
     so $str ~~ /^ <[\w_]>+ $/
 }
 method wildcard { "?" }
+
+#| Returns the AST components of a JSON path without evaluating dynamic keys.
+method json-path-items(Red::AST $path --> List) {
+    $path ~~ Red::AST::Value && $path.value ~~ Positional
+        ?? $path.value.list !! ($path,)
+}
 
 multi method prepare-json-path-item(@items) {
     @items.map({ self.prepare-json-path-item: $_ }).join;

@@ -1,0 +1,201 @@
+use Test;
+use Red;
+use Red::Type::Json;
+use X::Red::Exceptions;
+use JSON::Fast;
+
+my $*RED-FALLBACK = False;
+my $*RED-DEBUG = $_ with %*ENV<RED_DEBUG>;
+my @conf = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver = @conf.shift;
+my $*RED-DB = database $driver, |%(@conf.map: {
+    do given .split("=") { .[0] => val .[1] }
+});
+
+model JsonDocument {
+    has UInt $.id is serial;
+    has Json $.data is rw is column;
+    has Json $.optional is rw is column{ :nullable };
+    has Json $.json-column is rw is column{ :nullable };
+    has Str $.key is column;
+    has Int $.item-index is column;
+    has Bool $.flag is column;
+}
+
+schema(JsonDocument).drop.create;
+LEAVE schema(JsonDocument).drop;
+
+sub reset($data) {
+    JsonDocument.^all.delete;
+    JsonDocument.^create: :$data, :key<special.key>, :item-index(1), :flag(True);
+}
+
+subtest "JSON key existence syntax", {
+    reset({});
+    JsonDocument.^all.map({ .json-column = { :bla(False), :null(Any) } }).save;
+    is JsonDocument.^all.grep({ .json-column<bla>:exists }).elems, 1,
+        "A key with a false value exists";
+    is-deeply JsonDocument.^all.map({ .json-column<bla>:exists }).head.so, True,
+        "Key existence can be selected as a boolean";
+    is-deeply JsonDocument.^all.map({ .json-column<missing>:exists }).head.so, False,
+        "Missing key existence selects false";
+    is JsonDocument.^all.grep({ .json-column<null>:exists }).elems, 1,
+        "A key with a JSON null value exists";
+    is JsonDocument.^all.grep({ .json-column<missing>:!exists }).elems, 1,
+        "Negated existence matches a missing key";
+};
+
+subtest "Scalar types and missing values", {
+    reset({
+        :text('123'), :json-text<null>, :object-text('{"x":1}'),
+        :yes(True), :no(False), :number(123), :null(Any), :array([1, 2])
+    });
+    is-deeply JsonDocument.^all.map(*.data<text>).head, '123',
+        "Numeric-looking strings remain strings";
+    is-deeply JsonDocument.^all.map(*.data<json-text>).head, 'null',
+        "Null-looking strings remain strings";
+    is-deeply JsonDocument.^all.map(*.data<object-text>).head, '{"x":1}',
+        "Object-looking strings remain strings";
+    is-deeply JsonDocument.^all.map(*.data<yes>).head, True, "True remains a boolean";
+    is-deeply JsonDocument.^all.map(*.data<no>).head, False, "False remains a boolean";
+    is-deeply JsonDocument.^all.map(*.data<number>).head, 123, "Numbers remain numbers";
+    is-deeply JsonDocument.^all.map(*.data<null>).head, Any, "JSON null inflates to Any";
+    is-deeply JsonDocument.^all.map(*.data<missing>).head, Json,
+        "Missing paths retain the Json type object";
+    is-deeply JsonDocument.^all.map(*.optional).head, Json,
+        "SQL NULL retains the Json type object";
+    is JsonDocument.^all.grep({ .data<null>:exists }).elems, 1,
+        "A JSON null member exists";
+    is JsonDocument.^all.grep({ .data<missing>:exists }).elems, 0,
+        "An absent member does not exist";
+    is JsonDocument.^all.grep(*.data<text> eq '123').elems, 1, "String comparison";
+    is JsonDocument.^all.grep(*.data<number> > 100).elems, 1, "Numeric comparison";
+    is JsonDocument.^all.grep({ .data<missing>:!exists }).elems, 1,
+        "Negated key existence";
+    JsonDocument.^all.map({ .optional = Any }).save;
+    is-deeply JsonDocument.^all.map(*.optional).head, Any, "Assign JSON null to a column";
+    JsonDocument.^all.map({ .optional = Json }).save;
+    is-deeply JsonDocument.^all.map(*.optional).head, Json, "Assign SQL NULL to a column";
+};
+
+subtest "Nested and dynamic paths", {
+    reset({ :nested({ :items([10, 20, 30]) }), 'special.key' => 17 });
+    is JsonDocument.^all.map(*.data<nested><items>[1]).head, 20, "Nested array read";
+    is JsonDocument.^all.map({ .data{.key} }).head, 17, "Column-valued object key";
+    is JsonDocument.^all.map({ .data<nested><items>[.item-index] }).head, 20,
+        "Column-valued array index";
+    is JsonDocument.^all.map(*.data<nested><items>.AT-POS(-1)).head, 30, "Negative array index";
+    JsonDocument.^all.map({ .data<nested><items>[.item-index] = 42 }).save;
+    is JsonDocument.^all.map(*.data<nested><items>[1]).head, 42, "Dynamic array update";
+    JsonDocument.^all.map({ .data{.key} = 19 }).save;
+    is JsonDocument.^all.map({ .data{.key} }).head, 19, "Dynamic object update";
+    JsonDocument.^all.map({ .data<nested><items>[0]:delete }).save;
+    is-deeply JsonDocument.^all.map(*.data<nested><items>).head, [42, 30],
+        "Nested array deletion shifts elements";
+    JsonDocument.^all.map({ .data<nested><items>:delete }).save;
+    is JsonDocument.^all.grep({ .data<nested><items>:exists }).elems, 0,
+        "Nested object deletion";
+};
+
+subtest "Special keys", {
+    my $escaped-paths = $driver ne "SQLite" || $*RED-DB.execute(
+        'SELECT JSON_EXTRACT(?, ?) AS value',
+        to-json({ 'a".b' => 42 }), '$."a\".b"'
+    ).row<value> == 42;
+    my @keys = 'a.b', 'a,b', "a'b", 'a"b', 'a".b', 'a\\b', '', 'a[0]', '{a}', '雪',
+        q[x'); DROP TABLE json_document; --];
+    for @keys -> $key {
+        if !$escaped-paths && ($key.contains('"') || $key.contains('\\')) {
+            skip "This SQLite build does not support escaped object labels in JSON paths", 3;
+            next;
+        }
+        reset({ $key => 41 });
+        is JsonDocument.^all.map({ .data{$key} }).head, 41, "Read key {$key.raku}";
+        JsonDocument.^all.map({ .data{$key} = 42 }).save;
+        is JsonDocument.^all.map({ .data{$key} }).head, 42, "Update key {$key.raku}";
+        JsonDocument.^all.map({ .data{$key}:delete }).save;
+        is JsonDocument.^all.grep({ .data{$key}:exists }).elems, 0,
+            "Delete key {$key.raku}";
+    }
+};
+
+subtest "Composed updates and SQL expressions", {
+    reset({ :a(10), :b(3), :items([1, 2]), :nested({ :old(1) }) });
+    JsonDocument.^all.map({ .data<a> = 20; .data<b> = 5 }).save;
+    is JsonDocument.^all.map(*.data<a>).head, 20, "First update is preserved";
+    is JsonDocument.^all.map(*.data<b>).head, 5, "Second update is preserved";
+    JsonDocument.^all.map({ .data<a> -= .data<b> }).save;
+    is JsonDocument.^all.map(*.data<a>).head, 15, "Arithmetic is evaluated in SQL";
+    JsonDocument.^all.map({ .data<a> = 10; .data<later> = .data<a> + 2 }).save;
+    is JsonDocument.^all.map(*.data<later>).head, 12,
+        "Later expressions see earlier assignments";
+    JsonDocument.^all.map({ .data<remainder> = .data<a> % 3 }).save;
+    is JsonDocument.^all.map(*.data<remainder>).head, 1, "JSON arithmetic modulo";
+    JsonDocument.^all.map({ .data<copy> = .data<items> }).save;
+    is-deeply JsonDocument.^all.map(*.data<copy>).head, [1, 2], "Copy a JSON array";
+    JsonDocument.^all.map({ .data<yes> = True; .data<text> = '123'; .data<null> = Any }).save;
+    is-deeply JsonDocument.^all.map(*.data<yes>).head, True, "Update boolean";
+    is-deeply JsonDocument.^all.map(*.data<text>).head, '123', "Update string";
+    is-deeply JsonDocument.^all.map(*.data<null>).head, Any, "Update JSON null";
+    JsonDocument.^all.map({ .data<flag> = .flag; .data<missing-copy> = .data<missing> }).save;
+    is-deeply JsonDocument.^all.map(*.data<flag>).head, True, "Copy a SQL boolean";
+    is JsonDocument.^all.grep({ .data<missing-copy>:exists }).elems, 1,
+        "Copying a missing path inserts JSON null";
+    is-deeply JsonDocument.^all.map(*.data<missing-copy>).head, Any,
+        "Missing path copies preserve the target document";
+    JsonDocument.^all.map({ .data<nested><old>:delete; .data<nested><new> = 7 }).save;
+    is-deeply JsonDocument.^all.map(*.data<nested>).head, { :new(7) },
+        "Compose deletion and assignment";
+    JsonDocument.^all.map({ .data = { :fresh(1) }; .data<extra> = 2 }).save;
+    is-deeply JsonDocument.^all.map(*.data).head, { :fresh(1), :extra(2) },
+        "Compose replacement and assignment";
+};
+
+subtest "Array existence and member counts", {
+    reset({ :items([Any, 20]), :object({ :a(1), :b(2) }), :scalar(3) });
+    is JsonDocument.^all.grep({ .data<items>[0]:exists }).elems, 1,
+        "Null array element exists";
+    is JsonDocument.^all.grep({ .data<items>[2]:exists }).elems, 0,
+        "Out-of-range array element does not exist";
+    is JsonDocument.^all.grep({ .data<items>[2]:!exists }).elems, 1,
+        "Negated array existence";
+    is JsonDocument.^all.map(*.data<items>.elems).head, 2, "Array length";
+    is JsonDocument.^all.map(*.data<object>.elems).head, 2, "Object size";
+    is JsonDocument.^all.map(*.data<scalar>.elems).head, 0, "Scalar size";
+    is JsonDocument.^all.map(*.data<absent>.elems).head, 0, "Missing value size";
+};
+
+subtest "Recursive containment", {
+    my @cases =
+        [{ :a(1), :b(2) }, { :a(1) }, True],
+        [{ :nested({ :a(1), :b(2) }) }, { :nested({ :a(1) }) }, True],
+        [{ :a(1) }, { :a(2) }, False],
+        [[1, 2, 3], [3, 1], True],
+        [[1, 2], [1, 1], True],
+        [[1, 2], 2, True],
+        [[1, 2], '2', False],
+        [[{ :a(1), :b(2) }.item], [{ :a(1) }.item], True],
+        [[{ :a(1) }.item, { :b(2) }.item], [{ :a(1), :b(2) }.item], False],
+        [{ :null(Any) }, { :null(Any) }, True],
+        [{ :a(1) }, {}, True],
+        [[], [], True],
+        [True, True, True],
+        [True, 1, False],
+        ['123', '123', True],
+        [1, 1.0, True],
+        [Any, Any, True];
+    for @cases -> ($data, $subset, $expected) {
+        reset($data);
+        is JsonDocument.^all.grep({ .data.contains($subset) }).elems,
+            $expected.Int, "{$data.raku} contains {$subset.raku}: $expected";
+    }
+};
+
+subtest "Invalid serialization is reported", {
+    throws-like { Json.inflator.('{broken') }, X::Red::Json,
+        "Invalid JSON does not silently become a string";
+    throws-like { Json.deflator.(-> {}) }, X::Red::Json,
+        "Unsupported values do not silently pass through";
+};
+
+done-testing;

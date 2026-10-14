@@ -3,12 +3,39 @@ use Red::AST::Infixes;
 use Red::AST::Divisible;
 use Red::AST::Value;
 use Red::ResultSeq;
+use Red::Type::Json;
 
 =head2 Red::Operators
 
 unit module Red::Operators;
 
 sub __RED_OPERATOR_LOADED__ is export { True }
+
+#| Retains SQL expressions used as JSON array indexes instead of coercing them to Int.
+multi postcircumfix:<[ ]>(Red::AST $value where { .returns ~~ Json },
+    Red::AST $index) is rw is export {
+    $value.AT-POS($index)
+}
+
+multi postcircumfix:<[ ]>(Red::AST $value where { .returns ~~ Json },
+    Red::AST $index, Mu \assignee) is raw is export {
+    $value.ASSIGN-POS($index, assignee)
+}
+
+multi postcircumfix:<[ ]>(Red::AST $value where { .returns ~~ Json },
+    Red::AST $index, Bool :$exists!) is export {
+    $exists ?? $value.EXISTS-POS($index) !! $value.EXISTS-POS($index).not
+}
+
+multi postcircumfix:<[ ]>(Red::AST $value where { .returns ~~ Json },
+    Red::AST $index, Bool :$delete!) is rw is export {
+    $delete ?? $value.DELETE-POS($index) !! $value.AT-POS($index)
+}
+
+multi postcircumfix:<[ ]>(Red::AST $value where { .returns ~~ Json },
+    Int $index, Bool :$exists!) is export {
+    $exists ?? $value.EXISTS-POS($index) !! $value.EXISTS-POS($index).not
+}
 
 # TODO: Diferenciate prefix and postfix
 #| --X

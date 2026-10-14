@@ -71,6 +71,9 @@ submethod !TWEAK_pr(\instance: *%data) is rw {
     my %new = |@columns.map: {
         my Mu $built := .build;
         $built := $built.(self.WHAT, Mu) if $built ~~ Method;
+        $built := .type.red-type-default
+            if $built =:= Mu && .type.HOW ~~ Metamodel::ClassHOW
+                && .type.^can("red-type-default");
         next if $built =:= Mu;
         if instance.^is-id: $_ {
             instance.^set-id: .name => $built
@@ -137,6 +140,9 @@ method compose-dirtable(Mu \type) {
         my %new = |@columns.map: {
             my Mu $built := .build;
             $built := $built.(self, Mu) if $built ~~ Method;
+            $built := .type.red-type-default
+                if $built =:= Mu && .type.HOW ~~ Metamodel::ClassHOW
+                    && .type.^can("red-type-default");
             next if $built =:= Mu;
             if instance.^is-id: $_ {
                 instance.^set-id: .name => $built

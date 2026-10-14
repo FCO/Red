@@ -5,6 +5,7 @@ use Red::AST::StringFuncs;
 use Red::AST::DateTimeFuncs;
 use Red::AST::JsonItem;
 use Red::AST::JsonRemoveItem;
+use Red::AST::JsonOperation;
 use Red::Type::Json;
 
 =head2 Red::ColumnMethods
@@ -34,12 +35,25 @@ multi method ends-with(Str() $text is rw) {
 
 #| Tests if that column value contains a specific sub-string
 #| is usually translated for SQL as `column like %'substr%'`
-multi method contains(Str() $text is readonly) {
+multi method contains(\SELF where { .returns !~~ Json }: Str() $text is readonly) {
     Red::AST::Like.new(self, ast-value "%{ $text }%") but Red::ColumnMethods
 }
 
-multi method contains(Str() $text is rw) {
+multi method contains(\SELF where { .returns !~~ Json }: Str() $text is rw) {
     Red::AST::Like.new(self, ast-value("%{ $text }%"), :bind-left) but Red::ColumnMethods
+}
+
+#| Tests whether a JSON document contains another JSON value.
+multi method contains(\SELF where { .returns ~~ Json }: $value) {
+    Red::AST::JsonOperation.new:
+        :operation<contains>, :value(SELF),
+        :argument($value ~~ Red::AST ?? $value
+            !! ast-value(Json.deflator.($value), :type(Json)))
+}
+
+#| Returns the number of members in a JSON object or array; scalars have zero members.
+multi method elems(\SELF where { .returns ~~ Json }:) {
+    Red::AST::JsonOperation.new: :operation<elems>, :value(SELF)
 }
 
 #| Return a lowercased string
@@ -125,11 +139,35 @@ multi method AT-KEY(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Str or 
 #| Delete and return a value from a json hash key
 multi method DELETE-KEY(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Str or ( $_ ~~ Red::AST and .returns ~~ Str )}) {
     my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);
-    @*UPDATE.push: Pair.new: SELF, Red::AST::JsonRemoveItem.new: SELF, ast-value $key;
+    @*UPDATE.push: Pair.new: $obj.left,
+        Red::AST::JsonRemoveItem.new($obj.left, $obj.right);
     $obj
 }
 
+#| Tests for a JSON key, including keys whose value is JSON null.
+method EXISTS-KEY(\SELF where { .returns ~~ Json }: $key) {
+    Red::AST::JsonOperation.new: :operation<exists>,
+        :value(Red::AST::JsonItem.new(SELF, ast-value($key)))
+}
+
+#| Tests for a JSON array index, including elements whose value is JSON null.
+method EXISTS-POS(\SELF where { .returns ~~ Json }: $index) {
+    SELF.EXISTS-KEY($index)
+}
+
+#| Deletes and returns an element from a JSON array.
+method DELETE-POS(\SELF where { .returns ~~ Json }: $index) {
+    my $obj = Red::AST::JsonItem.new(SELF, ast-value($index));
+    @*UPDATE.push: Pair.new: $obj.left,
+        Red::AST::JsonRemoveItem.new($obj.left, $obj.right);
+    $obj but Red::ColumnMethods
+}
+
 #| Returns a value from a json array index
+method ASSIGN-POS(\SELF where { .returns ~~ Json }: $index, $value) {
+    SELF.AT-POS($index) = $value
+}
+
 method AT-POS(\SELF where { .returns ~~ Json }: $key where { $_ ~~ Int or ( $_ ~~ Red::AST and .returns ~~ Int )}) is rw {
     my $obj = Red::AST::JsonItem.new(SELF, ast-value $key);
     Proxy.new:

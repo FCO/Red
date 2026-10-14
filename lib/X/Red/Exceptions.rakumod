@@ -2,6 +2,13 @@ use Red::Column;
 
 class X::Red is Exception {}
 
+class X::Red::Json is X::Red {
+    has Str $.operation is required;
+    has Exception $.cause is required;
+
+    method message { "Cannot $!operation JSON: { $!cause.message }" }
+}
+
 class X::Red::NoOperatorsDefined is X::Red {
     has Str $.meth is required where <first grep map>.any;
     method message {

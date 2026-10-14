@@ -63,6 +63,8 @@
     "Red::AST::Intersect": "lib/Red/AST/Intersect.rakumod",
     "Red::AST::IsDefined": "lib/Red/AST/IsDefined.rakumod",
     "Red::AST::JsonItem": "lib/Red/AST/JsonItem.rakumod",
+    "Red::AST::JsonOperation": "lib/Red/AST/JsonOperation.rakumod",
+    "Red::AST::JsonSetItem": "lib/Red/AST/JsonSetItem.rakumod",
     "Red::AST::JsonRemoveItem": "lib/Red/AST/JsonRemoveItem.rakumod",
     "Red::AST::LastInsertedRow": "lib/Red/AST/LastInsertedRow.rakumod",
     "Red::AST::Minus": "lib/Red/AST/Minus.rakumod",

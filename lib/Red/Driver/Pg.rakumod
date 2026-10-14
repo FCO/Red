@@ -8,6 +8,8 @@ use Red::AST::Value;
 use X::Red::Exceptions;
 use Red::AST::TableComment;
 use Red::Type::Json;
+use Red::AST::JsonOperation;
+use Red::AST::JsonSetItem;
 use Red::LockType;
 need UUID;
 
@@ -62,7 +64,7 @@ method commit { $!dbh.commit.finish }
 method rollback { $!dbh.rollback }
 
 multi method translate(Red::AST::DateTimePart $_, $context?) {
-    my ($sql, @bind) = do given self.translate: .base, $context { .key, |.value }
+    my ($sql, @bind) := do given self.translate: .base, $context { .key, |.value }
     "EXTRACT({ .part.key.uc } FROM { $sql })" => @bind
 }
 
@@ -138,34 +140,137 @@ multi method translate(Red::AST::Index $_, $context?) {
 # MINUS is EXCEPT in Postgres
 multi method translate(Red::AST::Minus $ast, "multi-select-op") { "EXCEPT" => [] }
 
-# JSONB support
-proto method pg-jsonb-path-item(|) {*}
-multi method pg-jsonb-path-item(@items) { @items.map({ self.pg-jsonb-path-item: $_ }).join(',') }
-multi method pg-jsonb-path-item(Red::AST::Value $_) { self.pg-jsonb-path-item: .value }
-multi method pg-jsonb-path-item(Int $_) { $_ }
-multi method pg-jsonb-path-item(Str $_) { $_ }
+#| Builds a bound text array so JSON keys never become SQL syntax.
+method pg-jsonb-path(Red::AST $path) {
+    my @bind;
+    my @sql = self.json-path-items($path).map: -> $item {
+        my ($sql, @values) := do given self.translate($item, "bind") { .key, .value };
+        @bind.append: @values;
+        "($sql)::text"
+    };
+    "ARRAY[{ @sql.join(', ') }]::text[]" => @bind
+}
 
 multi method translate(Red::AST::JsonItem $_, $context?) {
     my ($left, @lb) := do given self.translate: .left, $context { .key, .value };
-    my $path = self.pg-jsonb-path-item: .right.value;
-    "($left #> '{ $path }')" => @lb
+    my ($path, @pb) := do given self.pg-jsonb-path(.right) { .key, .value };
+    "($left #> $path)" => [|@lb, |@pb]
 }
 
 multi method translate(Red::AST::JsonRemoveItem $_, $context?) {
     my ($left, @lb) := do given self.translate: .left, $context { .key, .value };
-    my $path = self.pg-jsonb-path-item: .right.value;
-    "($left #- '{ $path }')" => @lb
+    my ($path, @pb) := do given self.pg-jsonb-path(.right) { .key, .value };
+    "($left #- $path)" => [|@lb, |@pb]
 }
 
-multi method translate(Red::AST::Value $_ where { .type ~~ Pair and .value.key ~~ Red::AST::JsonItem }, "update") {
-    my $json-item = .value.key;
-    my $val       = .value.value;
-    my ($col, @cb) := do given self.translate: $json-item.left, 'update-lval' { .key, .value };
-    my $path = self.pg-jsonb-path-item: $json-item.right.value;
-    my $ph = self.wildcard;
-    my @bind = [ self.wildcard-value: $val ];
-    my $newval-sql = $val.?returns ~~ Json ?? "($ph)::jsonb" !! "to_jsonb($ph)";
-    "{ $col } = jsonb_set({ $col }, '{ $path }', { $newval-sql }, true)" => [|@cb, |@bind]
+multi method translate(Red::AST::Value $_ where {
+    .type ~~ Pair and .value.key ~~ Red::AST::JsonItem
+}, "update") {
+    my $item = .value.key;
+    self.translate: ast-value($item.left => Red::AST::JsonSetItem.new(
+        :left($item.left), :right($item.right), :value(.value.value))), "update"
+}
+
+multi method translate(Red::AST::JsonSetItem $_, $context?) {
+    my ($left, @lb) := do given self.translate(.left, $context) { .key, .value };
+    my ($path, @pb) := do given self.pg-jsonb-path(.right) { .key, .value };
+    my ($value, @vb) := do given self.translate(.value, "json-value") { .key, .value };
+    my $json = .value.returns ~~ Json
+        ?? "COALESCE(($value)::jsonb, 'null'::jsonb)"
+        !! "COALESCE(to_jsonb($value), 'null'::jsonb)";
+    "jsonb_set($left, $path, $json, true)" => [|@lb, |@pb, |@vb]
+}
+
+multi method translate(Red::AST::Value $_ where { .type ~~ Json }, "json-value") {
+    "({ self.wildcard })::text::jsonb" => [self.wildcard-value($_)]
+}
+
+multi method translate(Red::AST::Value $_ where { .type ~~ Json }, "update-rval") {
+    return "NULL" => [] if .value === Json;
+    "({ self.wildcard })::text::jsonb" => [self.wildcard-value($_)]
+}
+
+multi method translate(Red::AST::Value $_ where { .type ~~ Json }, $context?
+    where { !.defined || $_ ne "bind" }) {
+    "({ self.wildcard })::text::jsonb" => [self.wildcard-value($_)]
+}
+
+#| Ask DB::Pg for serialized JSON so strings and JSON null survive inflation.
+multi method translate(Red::Column $col where { .attr.type ~~ Json }, "select",
+    Str :$RED-OVERRIDE-COLUMN-AS-PREFIX) {
+    my ($value, @bind) := do if $col.computation.DEFINITE {
+        self.translate($col.computation, "json-value").kv
+    } else {
+        "{ self.table-name-wrapper($col.model.^as) }.{ $col.name }", []
+    };
+    my $alias = ($RED-OVERRIDE-COLUMN-AS-PREFIX.defined
+        ?? "$RED-OVERRIDE-COLUMN-AS-PREFIX." !! '') ~ $col.attr-name;
+    "($value)::text AS { self.table-name-wrapper($alias) }" => @bind
+}
+
+multi method translate(Red::AST::Value $_ where { .type !~~ Json }, "json-value") {
+    my $type = .type ~~ Bool ?? "boolean"
+        !! .type ~~ Numeric ?? "numeric" !! "text";
+    my $value = .type ~~ Bool ?? (.value ?? 'true' !! 'false') !! self.wildcard-value($_);
+    "({ self.wildcard })::$type" => [$value]
+}
+
+#| JSON arithmetic uses SQL numbers; comparisons with scalars use the scalar's type.
+multi method translate(Red::AST::Infix $_ where {
+    .op eq any('+', '-', '*', '/', '%', '=', '!=', '<', '>', '<=', '>=')
+        && (.left.returns ~~ Json || .right.returns ~~ Json)
+}, $context?) {
+    self.pg-json-infix($_, $context)
+}
+
+multi method translate(Red::AST::Mod $_ where {
+    .left.returns ~~ Json || .right.returns ~~ Json
+}, $context?) {
+    self.pg-json-infix($_, $context)
+}
+
+method pg-json-infix(Red::AST::Infix $_, $context?) {
+    my $arithmetic = .op eq any(<+ - * / %>);
+    my $both-json = .left.returns ~~ Json && .right.returns ~~ Json;
+    my @bind;
+    my @sql;
+    for (.left, .right), (.right, .left) -> ($operand, $other) {
+        my $bind = $operand =:= .left ?? .bind-left !! .bind-right;
+        my ($raw-sql, @values) := do given self.translate(
+            $operand, $bind ?? "bind" !! $context
+        ) {
+            .key, .value
+        };
+        my $sql = $raw-sql;
+        @bind.append: @values;
+        if $operand.returns ~~ Json && ($arithmetic || !$both-json) {
+            my $type = $arithmetic || $other.returns ~~ Numeric ?? "numeric"
+                !! $other.returns ~~ Bool ?? "boolean" !! "text";
+            $sql = "(($sql) #>> ARRAY[]::text[])::$type";
+        }
+        @sql.push: $sql;
+    }
+    "({ @sql[0] } { .op } { @sql[1] })" => @bind
+}
+
+multi method translate(Red::AST::JsonOperation $operation, $context?) {
+    my ($value, @bind) := do given self.translate($operation.value, "json-value") {
+        .key, .value
+    };
+    given $operation.operation {
+        when "exists" { "($value IS NOT NULL)" => @bind }
+        when "elems" {
+            "(SELECT CASE jsonb_typeof(j.value) WHEN 'array' THEN jsonb_array_length(j.value) "
+                ~ "WHEN 'object' THEN (SELECT count(*) FROM jsonb_object_keys(j.value)) "
+                ~ "ELSE 0 END FROM (SELECT $value AS value) j)" => @bind
+        }
+        when "contains" {
+            my ($argument, @ab) := do given self.translate($operation.argument, "json-value") {
+                .key, .value
+            };
+            "($value @> ($argument)::jsonb)" => [|@bind, |@ab]
+        }
+    }
 }
 
 multi method translate(Red::Column $_, "column-auto-increment") {}
@@ -203,15 +308,23 @@ multi method translate(Red::AST::Delete $_, $context?, :$gambi where !*.defined)
 
 multi method translate(Red::AST::Insert $_, $context?) {
     my Int $*bind-counter;
-    my @values = .values.grep({ .value.value.defined });
-    return "INSERT INTO { self.table-name-wrapper: .into.^table } DEFAULT VALUES RETURNING *" => [] unless @values;
+    my @values = .values.grep({
+        .value.value.defined || (.value.column.DEFINITE
+            && .value.column.attr.type ~~ Json && !(.value.value === Json))
+    });
+    return "INSERT INTO { self.table-name-wrapper: .into.^table } "
+        ~ "DEFAULT VALUES RETURNING *" => [] unless @values;
     my @bind = @values.map: { self.wildcard-value: .value };
     "INSERT INTO {
         self.table-name-wrapper: .into.^table
     }(\n{
         @values>>.key.join(",\n").indent: 3
     }\n)\nVALUES(\n{
-        (self.wildcard xx @values).join(",\n").indent: 3
+        @values.map({
+            my $placeholder = self.wildcard;
+            .value.column.attr.type ~~ Json
+                ?? "$placeholder\::text::jsonb" !! $placeholder
+        }).join(",\n").indent: 3
     }\n) RETURNING *" => @bind
 }
 
