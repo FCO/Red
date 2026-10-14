@@ -7,6 +7,7 @@ use Red::AST::JsonItem;
 use Red::AST::JsonRemoveItem;
 use Red::AST::JsonOperation;
 use Red::Type::Json;
+use Red::Projection;
 
 =head2 Red::ColumnMethods
 
@@ -51,9 +52,17 @@ multi method contains(\SELF where { .returns ~~ Json }: $value) {
             !! ast-value(Json.deflator.($value), :type(Json)))
 }
 
-#| Returns the number of members in a JSON object or array; scalars have zero members.
+#| Counts JSON members; scalars and null have one element, absent paths have none.
 multi method elems(\SELF where { .returns ~~ Json }:) {
-    Red::AST::JsonOperation.new: :operation<elems>, :value(SELF)
+    Red::AST::JsonOperation.new: :operation<elems>, :value(SELF),
+        :presence(Red::Projection.json-presence(SELF))
+}
+
+#| A non-JSON scalar has one element, including SQL NULL.
+multi method elems(\SELF where {
+    .returns !~~ Json && .returns !~~ Positional && .returns !~~ Associative
+}:) {
+    ast-value(1)
 }
 
 #| Return a lowercased string

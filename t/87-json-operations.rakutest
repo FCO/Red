@@ -25,9 +25,9 @@ model JsonDocument {
 schema(JsonDocument).drop.create;
 LEAVE schema(JsonDocument).drop;
 
-sub reset($data) {
+sub reset($data, Bool :$flag = True) {
     JsonDocument.^all.delete;
-    JsonDocument.^create: :$data, :key<special.key>, :item-index(1), :flag(True);
+    JsonDocument.^create: :$data, :key<special.key>, :item-index(1), :$flag;
 }
 
 subtest "JSON key existence syntax", {
@@ -161,8 +161,78 @@ subtest "Array existence and member counts", {
         "Negated array existence";
     is JsonDocument.^all.map(*.data<items>.elems).head, 2, "Array length";
     is JsonDocument.^all.map(*.data<object>.elems).head, 2, "Object size";
-    is JsonDocument.^all.map(*.data<scalar>.elems).head, 0, "Scalar size";
+    is JsonDocument.^all.map(*.data<scalar>.elems).head, 1, "Scalar size";
     is JsonDocument.^all.map(*.data<absent>.elems).head, 0, "Missing value size";
+};
+
+subtest "Scalar and null element counts", {
+    reset({});
+    for 42, 'text', True, False, Any -> $value {
+        # Exercise scalar counts independently of native JSON decoding in RETURNING.
+        my $placeholder = $driver eq 'Pg' ?? '$1::text::jsonb' !! '?';
+        $*RED-DB.execute("UPDATE json_document SET data = $placeholder",
+            to-json($value, :!pretty));
+        is JsonDocument.^all.map(*.data.elems).head, 1,
+            "A root JSON scalar has one element ({$value.^name})";
+    }
+    reset({ :number(42), :text('text'), :yes(True), :no(False), :null(Any),
+        :empty-array([]), :empty-object({}), :items([Any, 2]) });
+    for <number text yes no null> -> $key {
+        is JsonDocument.^all.map({ .data{$key}.elems }).head, 1,
+            "A present JSON scalar has one element ($key)";
+    }
+    is JsonDocument.^all.map(*.optional.elems).head, 1, "SQL NULL is one value";
+    is JsonDocument.^all.map(*.data<empty-array>.elems).head, 0, "Empty array";
+    is JsonDocument.^all.map(*.data<empty-object>.elems).head, 0, "Empty object";
+    is JsonDocument.^all.map(*.data<items>[0].elems).head, 1, "JSON null array member";
+    is JsonDocument.^all.map(*.data<items>[10].elems).head, 0, "Absent array member";
+    is JsonDocument.^all.map(*.data<missing>.elems).head, 0, "Absent object member";
+    is JsonDocument.^all.map(*.optional<missing>.elems).head, 0,
+        "A path into SQL NULL is absent";
+    my Str $key = 'missing';
+    my $bound = JsonDocument.^all.map({ .data{$key}.elems });
+    is $bound.head, 0, "Bound paths retain presence and correct bindings";
+    if $driver eq 'Pg' {
+        my $sql = $*RED-DB.translate($bound.ast).key;
+        my @placeholders = $sql.comb(/\$ \d+/);
+        is-deeply @placeholders.Array, (1 .. @placeholders.elems).map({ '$' ~ $_ }).Array,
+            "Presence and value share the PostgreSQL bind counter";
+    }
+};
+
+subtest "Presence through projection boundaries", {
+    reset({ :scalar(3), :null(Any), :items([1, 2]), :object({ :x(1) }) });
+    for <scalar null items object missing> Z (1, 1, 2, 1, 0) -> ($key, $expected) {
+        my $query = JsonDocument.^all.map({ .data{$key} }).head(1).map(*.elems);
+        is $query.head, $expected, "Projected element count ($key)";
+    }
+    is JsonDocument.^all.map(*.optional).head(1).map(*.elems).head, 1,
+        "Projected SQL NULL remains present";
+    is JsonDocument.^all.map(*.data<missing>).head(1)
+        .map({ %(:value($_)) }).head(1).map({ .<value>.elems }).head, 0,
+        "An absent path stays absent through nested projections and repeated boundaries";
+    my $conditional = JsonDocument.^all.map({ .flag ?? .data<missing> !! .optional });
+    is $conditional.map(*.elems).head, 0, "Conditional missing value without a boundary";
+    is $conditional.head(1).map(*.elems).head, 0, "Conditional missing value with a boundary";
+    reset({}, :!flag);
+    is $conditional.map(*.elems).head, 1, "Conditional SQL NULL without a boundary";
+    is $conditional.head(1).map(*.elems).head, 1, "Conditional SQL NULL with a boundary";
+    is JsonDocument.^all.map(*.data<missing>.elems).grep(* == 0).elems, 1,
+        "ResultSeq elems still counts rows";
+    {
+        my $*RED-DB = database 'Mock';
+        my Int $calls = 0;
+        $*RED-DB.die-on-unexpected;
+        $*RED-DB.when: :once, rx:i/SELECT/, :run{
+            $calls++;
+            [{ :data_1(0) }]
+        };
+        my $query = JsonDocument.^all.map(*.data<missing>).head(1).map(*.elems);
+        is $calls, 0, "Building an element-count projection is lazy";
+        is $query.head, 0, "A projected missing path is counted in SQL";
+        is $calls, 1, "Presence tracking executes one statement";
+        $*RED-DB.verify;
+    }
 };
 
 subtest "Recursive containment", {

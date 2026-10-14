@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - queries: count scalars and NULL as one element, preserving absent JSON paths
     - queries: support argumentless sort for scalar projections
     - queries: chain scalar, Hash, Array, and List projections through map/grep/sort
     - queries: fuse safe map/grep/sort stages and retain necessary SELECT boundaries

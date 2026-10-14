@@ -9,6 +9,7 @@ use X::Red::Exceptions;
 use Red::AST::TableComment;
 use Red::Type::Json;
 use Red::AST::JsonOperation;
+use Red::Projection;
 use Red::AST::JsonSetItem;
 use Red::LockType;
 need UUID;
@@ -260,9 +261,14 @@ multi method translate(Red::AST::JsonOperation $operation, $context?) {
     given $operation.operation {
         when "exists" { "($value IS NOT NULL)" => @bind }
         when "elems" {
-            "(SELECT CASE jsonb_typeof(j.value) WHEN 'array' THEN jsonb_array_length(j.value) "
+            my $presence = $operation.presence.DEFINITE ?? $operation.presence
+                !! Red::Projection.json-presence($operation.value);
+            my ($present, @pb) := self.translate($presence, $context).kv;
+            "(SELECT CASE WHEN NOT j.present THEN 0 ELSE CASE jsonb_typeof(j.value) "
+                ~ "WHEN 'array' THEN jsonb_array_length(j.value) "
                 ~ "WHEN 'object' THEN (SELECT count(*) FROM jsonb_object_keys(j.value)) "
-                ~ "ELSE 0 END FROM (SELECT $value AS value) j)" => @bind
+                ~ "ELSE 1 END END FROM (SELECT $value AS value, $present AS present) j)"
+                => [|@bind, |@pb]
         }
         when "contains" {
             my ($argument, @ab) := do given self.translate($operation.argument, "json-value") {

@@ -27,6 +27,7 @@ model ProjectionRow {
     has Int $.col1 is rw is column;
     has Int $.col2 is column;
     has Str $.col3 is column;
+    has Str $.optional-text is column{ :nullable };
     has Str $.snake-value is column;
     has Json $.payload is column;
     has Int $!owner-id is referencing(*.id, :model(ProjectionOwner));
@@ -224,6 +225,29 @@ subtest 'Empty and constant projections', {
     is-deeply rows.map({ True }).head, True, 'True remains a boolean';
     is-deeply rows.map(*.col1 == 0).grep({ $_ }).Seq.Array, [True],
         'A projected boolean can filter the next stage';
+};
+
+subtest 'Non-JSON scalar and container element counts', {
+    is-deeply rows.map(*.col1.elems).Seq.Array, [1 xx 5], 'Numeric columns have one element';
+    is-deeply rows.map(*.col3.elems).Seq.Array, [1 xx 5], 'String columns have one element';
+    is-deeply rows.map(*.optional-text.elems).Seq.Array, [1 xx 5], 'SQL NULL has one element';
+    is-deeply rows.map({ .col1 + .col2 }).map(*.elems).Seq.Array, [1 xx 5],
+        'Computed scalars have one element';
+    is-deeply rows.map(*.col1 > 1).map(*.elems).Seq.Array, [1 xx 5],
+        'Boolean scalars have one element';
+    is-deeply rows.map(*.optional-text).head(2).map(*.elems).Seq.Array, [1, 1],
+        'Projected SQL NULL has one element after a boundary';
+    is-deeply rows.map({ Any }).map(*.elems).Seq.Array, [1 xx 5],
+        'Undefined scalar constants have one element';
+    is-deeply rows.map({ [.col1, .col2] }).map(*.elems).Seq.Array, [2 xx 5],
+        'Projected Arrays retain their element count';
+    is-deeply rows.map({ (.col1, .col2) }).map(*.elems).Seq.Array, [2 xx 5],
+        'Projected Lists retain their element count';
+    is-deeply rows.map({ %(:a(.col1), :b(.col2)) }).map(*.elems).Seq.Array, [2 xx 5],
+        'Projected Hashes retain their element count';
+    is-deeply rows.map({ [] }).map(*.elems).Seq.Array, [0 xx 5],
+        'Empty projected containers have zero elements';
+    is rows.map(*.col1).map(*.elems).elems, 5, 'ResultSeq elems counts rows';
 };
 
 subtest 'Conditional shapes', {

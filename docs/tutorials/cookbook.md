@@ -687,8 +687,10 @@ an explicit default starts as `Json`. Strings such as `'123'`, `'null'`, and
 `'{"x":1}'` remain strings. Invalid JSON and unsupported values raise
 `X::Red::Json` during inflation or deflation.
 
-`.elems` counts object members or array elements and returns zero for scalars
-and missing values. `.contains` performs recursive JSON containment. Objects
+`.elems` counts object members or array elements. Scalars have one element,
+including JSON null and SQL NULL; missing JSON paths have zero elements. This
+also applies to projected scalars after a SELECT boundary. Non-JSON scalars have
+one element, while `.elems` on a ResultSeq counts rows. `.contains` performs recursive JSON containment. Objects
 match a subset of their members; arrays ignore order and duplicate requirements,
 and can contain a primitive value. SQLite implements containment with a recursive
 query over `json_tree`; PostgreSQL uses the native JSONB containment operator.

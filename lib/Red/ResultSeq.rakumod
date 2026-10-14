@@ -29,6 +29,7 @@ use Red::Formatter::ResultSeq;
 use Red::Formatter::ResultSeq::Vertical;
 use Red::LockType;
 use Red::Projection;
+use Red::Type::Json;
 use Red::AST::Reference;
 use Red::AST::ProjectionField;
 
@@ -175,12 +176,21 @@ method !projection-input(Bool :$fuse = False) {
     my $projection = $!chain.projection;
     if $projection.DEFINITE {
         my @columns = self.of.^columns;
-        my @references = do for @columns -> $attr {
+        my @leaves = $projection.leaves;
+        my @references = do for @columns.kv -> $i, $attr {
             my $column = $attr.column;
-            Red::AST::Reference.new(:table($alias), :name($column.attr-name),
+            my Red::AST $presence;
+            if $attr.type ~~ Json {
+                my $expression = Red::Projection.json-presence(@leaves[$i]);
+                my $name = "{$alias}_presence_$i";
+                @fields.push: Red::AST::ProjectionField.new(:value($expression), :$name);
+                $presence = Red::AST::Reference.new(:table($alias), :$name, :type(Bool));
+            }
+            Red::AST::Reference.new(:table($alias), :name($column.attr-name), :$presence,
                 :type($attr.type), :inflate($column.inflate), :deflate($column.deflate))
                 but ::('Red::ColumnMethods')
         };
+        $source = $source.clone(:fields[|$source.fields, |@fields.skip($.order.elems)]);
         $projection = $projection.replace-leaves(@references);
         $model = self.of.^specialise(|@references);
     } else {
@@ -445,9 +455,12 @@ method classify(\SELF: &func, :&as = { $_ }, :&reduce --> Red::ResultAssociative
         self.last-rs.classify(&func o self.last-filter, :as{ ast-value True })
     } else {
         # TODO: use what-does-it-do() for &func, &as and &reduce
-        my \key   = func SELF.of;
-        my \value = as   SELF.of;
-        Red::ResultAssociative[value, key.head].new: :rs(SELF), |(:next-level(key.skip) if key.elems > 1), |(:&reduce if &reduce)
+        my $key = func SELF.of;
+        my @keys = $key ~~ Red::AST ?? ($key,) !! $key ~~ Positional
+            ?? $key.list !! (ast-value($key),);
+        my $value = as SELF.of;
+        Red::ResultAssociative[$value, @keys.head].new(:rs(SELF),
+            |(:next-level(@keys.skip) if @keys.elems > 1), |(:&reduce if &reduce))
     }
 }
 

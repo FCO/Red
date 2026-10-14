@@ -42,6 +42,28 @@ method from-value(::?CLASS:U: $value --> Red::Projection:D) {
     X::Red::Projection.new(:reason("Unsupported projection value: { $value.^name }")).throw;
 }
 
+#| Tracks whether a JSON value denotes a present value rather than an absent path.
+method json-presence(::?CLASS:U: Red::AST:D $value --> Red::AST:D) {
+    if $value ~~ ::('Red::AST::JsonItem') {
+        return ::('Red::AST::JsonOperation').new(:operation<exists>, :$value);
+    }
+    if $value ~~ ::('Red::AST::Reference') {
+        return $value.presence if $value.presence.DEFINITE;
+    }
+    if $value ~~ ::('Red::Column') && $value.computation.DEFINITE {
+        return self.json-presence($value.computation);
+    }
+    if $value ~~ Red::AST::Case {
+        my Red::AST %when{Red::AST};
+        for $value.when.kv -> $condition, $branch {
+            %when{$condition} = self.json-presence($branch);
+        }
+        return Red::AST::Case.new(:case($value.case), :%when,
+            :else($value.else.DEFINITE ?? self.json-presence($value.else) !! ast-value(True)));
+    }
+    ast-value(True)
+}
+
 #| Whether an expression can be substituted into another SQL clause.
 method safe-to-repeat(::?CLASS:U: $value --> Bool:D) {
     return True unless $value.DEFINITE;

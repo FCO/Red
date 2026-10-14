@@ -21,6 +21,7 @@ use UUID;
 use Red::SchemaReader;
 use Red::Driver::SQLite::SchemaReader;
 use Red::Type::Json;
+use Red::Projection;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
 has $.database = q<:memory:>;
@@ -219,8 +220,13 @@ multi method translate(Red::AST::JsonOperation $operation, $context?) {
     };
     given $operation.operation {
         when "elems" {
-            "(SELECT count(*) FROM JSON_EACH($value) "
-                ~ "WHERE JSON_TYPE($value) IN ('array', 'object'))" => [|@bind, |@bind]
+            my $presence = $operation.presence.DEFINITE ?? $operation.presence
+                !! Red::Projection.json-presence($operation.value);
+            my ($present, @pb) := self.translate($presence, $context).kv;
+            "(SELECT CASE WHEN NOT j.present THEN 0 "
+                ~ "WHEN JSON_TYPE(j.value) IN ('array', 'object') "
+                ~ "THEN (SELECT count(*) FROM JSON_EACH(j.value)) ELSE 1 END "
+                ~ "FROM (SELECT $value AS value, $present AS present) j)" => [|@bind, |@pb]
         }
         when "contains" {
             my ($argument, @ab) := do given self.translate($operation.argument, "json-value") {

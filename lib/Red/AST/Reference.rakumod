@@ -10,6 +10,7 @@ has Str $.name is required;
 has Mu:U $.type = Any;
 has &.inflate;
 has &.deflate;
+has Red::AST $.presence;
 
 method returns { $!type }
 method args { () }
