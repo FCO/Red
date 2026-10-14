@@ -66,6 +66,7 @@ method Bag {
 
 #| Run query to create a Set
 method Set {
-    my $rs = $!rs.map({ Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Str)) });
+    my $rs = $!rs.map({ Red::AST::Function.new(
+        :func<DISTINCT>, :args[$key-of], :returns($key-of.returns)) });
     $rs.Seq.Set
 }

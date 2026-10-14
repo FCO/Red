@@ -49,6 +49,8 @@ class Statement does Red::Statement {
 
 method stringify-json { True }
 
+method offset-without-limit { -1 }
+
 #| Begin transaction
 method begin {
     self.prepare(Red::AST::BeginTransaction.new).map: *.execute;

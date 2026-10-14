@@ -23,7 +23,10 @@ method args {
 }
 
 method returns {
-    #%!when.head.value.returns
+    my @types = (|%!when.values, |($!else if $!else.DEFINITE)).map(*.returns);
+    return Any unless @types;
+    return @types.head if @types.all === @types.head;
+    @types.all ~~ Numeric ?? Numeric !! Any
 }
 
 method find-column-name {}

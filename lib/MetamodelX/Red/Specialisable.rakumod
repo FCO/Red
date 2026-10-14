@@ -2,6 +2,7 @@ use Red::AST::MultiSelect;
 use Red::Column;
 use Red::Attr::Column;
 use Red::HiddenFromSQLCommenting;
+use Red::AST::Reference;
 
 unit role MetamodelX::Red::Specialisable;
 
@@ -27,11 +28,12 @@ multi method specialise($self, +@ret where .all ~~ Red::AST) is hidden-from-sql-
             :attr-name($name),
             :type(.returns.^name),
             :$attr,
-            :model(.tables.head),
+            :model($_ ~~ Red::Column ?? .model !! .tables.head),
             :class(model),
-        	|(do if $_ ~~ Red::Column {
+            |(do if $_ ~~ Red::Column | Red::AST::Reference {
                 :inflate(.inflate),
                 :deflate(.deflate),
+                |(:computation($_) if $_ ~~ Red::AST::Reference),
             } else {
                 :computation($_)
             })

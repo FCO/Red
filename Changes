@@ -1,6 +1,11 @@
 Revision history for Red
 
 {{$NEXT}}
+    - queries: support argumentless sort for scalar projections
+    - queries: chain scalar, Hash, Array, and List projections through map/grep/sort
+    - queries: fuse safe map/grep/sort stages and retain necessary SELECT boundaries
+    - queries: preserve ordering, converters, correlated aliases, and statement binds
+    - tests(queries): cover lazy execution and projection chains in SQLite and Pg
     - json: bind paths, support dynamic keys/indexes, and preserve scalar JSON types
     - json: compose updates to the same column and evaluate Pg arithmetic in SQL
     - json: add existence, array deletion, member counts, and recursive containment

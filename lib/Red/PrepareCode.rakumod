@@ -40,7 +40,7 @@ sub found-bool(@values, $try-again is rw, %bools, CX::Red::Bool $ex) is export {
 
 sub prepare-response($resp) is export {
     do given $resp {
-        when Empty {
+        when { .WHAT === Empty } {
             Red::AST::Empty.new
         }
         when Red::AST {

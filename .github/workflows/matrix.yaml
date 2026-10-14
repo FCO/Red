@@ -97,7 +97,7 @@ jobs:
           sudo apt-get install -y libpq-dev
           zef install --/test --test-depends --deps-only .
           zef install --/test App::Prove6 DB::Pg
-      - name: Test JSON operations and custom types
+      - name: Test JSON operations, projections, and custom types
         env:
           RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=red_json_test user=postgres password=postgres"
-        run: prove6 -lv t/37-json.rakutest t/77-red-type.rakutest t/87-json-operations.rakutest
+        run: prove6 -lv t/37-json.rakutest t/77-red-type.rakutest t/87-json-operations.rakutest t/88-projection-chains.rakutest

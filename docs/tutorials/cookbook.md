@@ -693,3 +693,90 @@ match a subset of their members; arrays ignore order and duplicate requirements,
 and can contain a primitive value. SQLite implements containment with a recursive
 query over `json_tree`; PostgreSQL uses the native JSONB containment operator.
 For large documents, PostgreSQL's native JSONB operations are preferable.
+
+## Chaining projected values
+
+A SQL `map` produces one element per row. That element can be a scalar, a Hash,
+an Array, or a List, and containers can be nested. Subsequent `map`, `grep`, and
+`sort` blocks receive the projected element rather than the original model.
+
+```raku
+my $values = MyModel.^all
+    .map({ .col1 + .col2 })
+    .grep(* > 3)
+    .map({ "something: $_" });
+
+my $records = MyModel.^all.map({
+    %(col1 => .col1, something-else => .col2 ~ .col3)
+});
+my $labels = $records.map({ .<something-else> });
+
+my $pairs = MyModel.^all.map({ [.col1, .col2] });
+my $second = $pairs.grep({ .[0] > 3 }).map({ .[1] });
+
+my $nested = MyModel.^all.map({
+    %(:pair([.col1, .col2]), :details(%(:label(.col3))))
+});
+my $nested-labels = $nested.map({ .<details><label> });
+```
+
+These operations remain lazy: constructing the chain does not execute SQL.
+Iteration runs one statement containing the required derived tables. Each row
+is reconstructed into its projected shape, preserving Array versus List and
+retaining column converters, including JSON and custom Red types. Arrays and
+Lists are not implicitly flattened into separate result elements. Empty
+containers still produce one element per source row.
+
+For scalar projections, `.sort` without arguments orders by the projected value
+in ascending order; `.sort(-*)` orders in descending order. `.sort(*)` is invalid,
+matching native Array and Seq sorting. Models and Hash, Array, or List projections
+require a Callable selecting the field or position to order by.
+
+Red substitutes safe projected expressions into subsequent `map`, `grep`, and
+`sort` operations, allowing them to share one SELECT. For example:
+
+```raku
+Bla.^all.map(*.bla).grep(* > 1).map(* + 42)
+```
+
+produces the equivalent of:
+
+```sql
+SELECT bla + 42 AS data FROM bla WHERE bla > 1
+```
+
+This also works for computed expressions and fields in nested containers. Each
+occurrence of a substituted expression retains its own bound parameters.
+
+Red retains a `FROM (SELECT ...)` boundary for pagination, grouping, aggregate
+and DISTINCT projections, subqueries, volatile or unclassified functions, and
+potentially failing operations such as division and non-identity casts. Identity
+casts, widening casts from numeric types to Numeric, and numeric-to-text casts
+used by string interpolation are safe to substitute.
+Filtering after `.head(2)` therefore filters those two rows, rather than filtering
+the complete source before taking two rows. Later safe operations can share the
+outer SELECT. Ordering crosses boundaries through internal fields that do not
+appear in the result elements. No configuration is needed to enable fusion.
+
+`head` and `first` return the projected element. Row counts, query existence,
+and scalar `Bag`, `Set`, and `classify` operations use the projected query and
+its filters. Independent chains derived from the same query do not modify each
+other. Subqueries use distinct aliases so correlated references remain valid.
+
+Projection shapes must be known while Red analyzes the block. Hash keys and
+container positions are static; conditional branches must have matching shapes
+and their expressions must have compatible SQL types. Use `%()` explicitly when
+constructing Hashes containing expressions. Arbitrary object constructors and
+other unsupported operations retain the existing runtime fallback behavior;
+set `my $*RED-FALLBACK = False` to require SQL translation. Unsupported shapes
+raise `X::Red::Projection` with fallback disabled.
+
+Projected queries are read-only: `create`, `save`, and `delete` reject them.
+Updating maps on model queries retain the existing explicit persistence flow:
+
+```raku
+MyModel.^all.grep(*.col1 > 3).map({ .col1 = 42 }).save;
+```
+
+The projection representation has internal rebinding and materialization hooks
+for future shapes; it is not a public custom-object projection API.

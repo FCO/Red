@@ -61,7 +61,13 @@ method transpose(::?CLASS:D: &func) {
 
 #| Returns a list with all the tables used on the AST
 method tables(::?CLASS:D:) {
-    |self.transpose-grep({ .^name eq "Red::Column" })».class.grep(-> \v { v !=:= Nil }).unique;
+    my @tables = gather self.transpose: -> $node {
+        # A nested SELECT owns its tables; they must not enter the outer FROM.
+        return False if $node ~~ ::('Red::AST::Select') | ::('Red::AST::MultiSelect');
+        take $node.class if $node ~~ ::('Red::Column');
+        True
+    };
+    |@tables.grep(-> \v { v !=:= Nil }).unique;
 }
 
 method replace(::?CLASS:D: Red::AST \n, Red::AST $s) {

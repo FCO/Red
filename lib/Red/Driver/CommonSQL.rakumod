@@ -37,6 +37,8 @@ use Red::Type::Json;
 use Red::AST::JsonItem;
 use Red::AST::JsonRemoveItem;
 use Red::AST::JsonSetItem;
+use Red::AST::Reference;
+use Red::AST::ProjectionField;
 use Red::Utils;
 use Red::LockType;
 use MetamodelX::Red::VirtualView;
@@ -398,6 +400,11 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
             $s
         }
     }
+    for $ast.fields -> $field {
+        my ($sql, @values) := do given self.translate($field, "select") { .key, .value };
+        $sel ~= ", $sql";
+        @bind.append: @values;
+    }
     my $role = role {}
     my @pre-join;
     my $pre = $ast.prefetch.map({
@@ -425,17 +432,34 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     $sel ~= ", $pre" if $pre;
     my @t = (|$ast.tables, $ast.of, |@pre-join).grep({ $_ ~~ Red::Model && not .?no-table }).unique(:as{ .WHICH }).map({ .^tables });
     my %t{Red::Model} = @t.classify: { .head }, :as{ .tail: *-1 };
+    my Str $derived;
+    if $ast.source.DEFINITE {
+        my ($sql, @values) := do given self.translate($ast.source.as-select) {
+            .key, .value
+        };
+        $derived = "(\n{ $sql.indent(3) }\n) AS { self.table-name-wrapper($ast.source-alias) }";
+        @bind.append: @values;
+    }
+    my @roots = %t.pairs;
+    @roots = @roots.sort({
+        ($^a.key.^as ne $ast.source-alias) <=> ($^b.key.^as ne $ast.source-alias)
+    }) if $derived.DEFINITE;
     my @join-binds;
-    my $tables = %t.kv.map(-> $_, @joins {
+    my $tables = @roots.map(-> $entry {
+        $_ = $entry.key;
+        my @joins = $entry.value.list;
+        my $source-root = $derived.DEFINITE && .^as eq $ast.source-alias;
         [
             "{
-                do if .HOW ~~ MetamodelX::Red::VirtualView {
+                do if $source-root {
+                    $derived
+                } elsif .HOW ~~ MetamodelX::Red::VirtualView {
                     "( { .sql } ) as { .^table }"
                 } else {
                     self.table-name-wrapper: .^table
                 }
             }{
-                do if .^table ne .^as {
+                do if !$source-root && .^table ne .^as {
                     " as {
                         .^as
                     }"
@@ -475,6 +499,9 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
             })
         ].join: "\n"
     }).join: ",\n"                                                                   if $ast.^can: "tables";
+    if $derived.DEFINITE && !@roots.grep({ .key.^as eq $ast.source-alias }) {
+        $tables = $tables ?? "$derived,\n$tables" !! $derived;
+    }
     @bind.push: |@join-binds;
     my ($where, @wb) := do given self.translate: $ast.filter, "where" { .key, .value }  if $ast.?filter;
     @bind.push: |@wb;
@@ -485,6 +512,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     }).join: ",\n"   if $ast.?order;
     my $limit  = $ast.limit;
     my $offset = $ast.offset;
+    $limit = self.offset-without-limit if $offset.DEFINITE && !$limit.DEFINITE;
     my $group;
     if $ast.?group -> $g {
         when Red::Column {
@@ -533,6 +561,17 @@ multi method translate(Red::LockType $lock-type --> Str ) {
             }
         }"
      }
+}
+
+multi method translate(Red::AST::Reference $_, $context?) {
+    "{ self.table-name-wrapper(.table) }.{ self.table-name-wrapper(.name) }" => []
+}
+
+multi method translate(Red::AST::ProjectionField $_, $context?) {
+    my ($sql, @bind) := do given self.translate(.value, "projection-field") {
+        .key, .value
+    };
+    "$sql AS { self.table-name-wrapper(.name) }" => @bind
 }
 
 multi method translate(Red::AST::StringFunction $_, $context?) {
@@ -606,7 +645,9 @@ multi method translate(Red::AST::Infix $_, $context?) {
     my ($lstr, @lbind) := do given self.translate: .left,  .bind-left  ?? "bind" !! $context { .key, .value }
     my ($rstr, @rbind) := do given self.translate: .right, .bind-right ?? "bind" !! $context { .key, .value }
 
-    "$lstr { .op } $rstr" => [|@lbind, |@rbind]
+    my $left = .left ~~ Red::AST::Infix && !.bind-left ?? "($lstr)" !! $lstr;
+    my $right = .right ~~ Red::AST::Infix && !.bind-right ?? "($rstr)" !! $rstr;
+    "$left { .op } $right" => [|@lbind, |@rbind]
 }
 
 multi method translate(Red::AST::OR $_, $context?) {
@@ -684,8 +725,11 @@ multi method translate(Red::AST::Divisible $_, $context?) {
         $context
 }
 
-multi method translate(Red::AST::Mul $_ where .left.?value == -1, "order") {
-    "{ .right.name } DESC" => []
+multi method translate(Red::AST::Mul $_ where {
+    .left ~~ Red::AST::Value && .left.value == -1
+}, "order") {
+    my ($sql, @bind) := do given self.translate(.right, "order") { .key, .value };
+    "$sql DESC" => @bind
 }
 
 multi method translate(Red::Column $_, "where") {
@@ -718,6 +762,10 @@ multi method translate(Red::AST::Cast $_, $context?) {
 }
 
 multi method translate(Red::AST::Value $_ where not .value.defined, "update" ) {
+    "NULL" => []
+}
+
+multi method translate(Red::AST::Value $_ where { !.value.DEFINITE }, $context?) {
     "NULL" => []
 }
 
@@ -1062,6 +1110,8 @@ multi method is-valid-table-name(Str $str) is default {
     so $str ~~ /^ <[\w_]>+ $/
 }
 method wildcard { "?" }
+
+method offset-without-limit { Int }
 
 #| Returns the AST components of a JSON path without evaluating dynamic keys.
 method json-path-items(Red::AST $path --> List) {

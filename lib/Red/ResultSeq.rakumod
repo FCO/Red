@@ -28,6 +28,9 @@ use Red::ResultSeqMethods;
 use Red::Formatter::ResultSeq;
 use Red::Formatter::ResultSeq::Vertical;
 use Red::LockType;
+use Red::Projection;
+use Red::AST::Reference;
+use Red::AST::ProjectionField;
 
 =head2 Red::ResultSeq
 
@@ -137,6 +140,103 @@ method transform-item(*%data) is hidden-from-sql-commenting {
     self.of.bless: |%data
 }
 
+#| The symbolic element passed to a block, independently of the storage model.
+method !projection-subject() {
+    return self.of unless $!chain.projection.DEFINITE;
+    $!chain.projection.construct($!chain.projection.leaves.map({
+        $_ ~~ ::('Red::ColumnMethods') ?? $_ !! $_ but ::('Red::ColumnMethods')
+    }))
+}
+
+#| Exports a projection or a pagination barrier as a derived table.
+method !can-fuse-projection(--> Bool:D) {
+    so $!chain.projection.DEFINITE && !$.limit.DEFINITE && !$.offset.DEFINITE
+        && !$.group.elems
+        && $!chain.projection.leaves.map({ Red::Projection.safe-to-repeat($_) }).all
+}
+
+method !projection-input(Bool :$fuse = False) {
+    return self if $fuse && self!can-fuse-projection;
+    return self unless $!chain.projection.DEFINITE || $.limit.DEFINITE || $.offset.DEFINITE;
+    return self if $!chain.projection-bound && !$.limit.DEFINITE && !$.offset.DEFINITE;
+    X::Red::Projection.new(:reason("An updating map cannot be used as a SQL projection")).throw
+        if @!update;
+    my $depth = $!chain.projection-depth + 1;
+    my $alias = Red::Projection.allocate-alias;
+    my $source = self.ast;
+    my @fields;
+    my @order = $.order.kv.map: -> $i, $expression {
+        my $name = "red_order_$i";
+        @fields.push: Red::AST::ProjectionField.new(:value($expression), :$name);
+        Red::AST::Reference.new(:table($alias), :$name, :type($expression.returns))
+    };
+    $source = $source.clone(:fields[|$source.fields, |@fields]);
+    my $model;
+    my $projection = $!chain.projection;
+    if $projection.DEFINITE {
+        my @columns = self.of.^columns;
+        my @references = do for @columns -> $attr {
+            my $column = $attr.column;
+            Red::AST::Reference.new(:table($alias), :name($column.attr-name),
+                :type($attr.type), :inflate($column.inflate), :deflate($column.deflate))
+                but ::('Red::ColumnMethods')
+        };
+        $projection = $projection.replace-leaves(@references);
+        $model = self.of.^specialise(|@references);
+    } else {
+        my @exports;
+        for self.of.^columns -> $attr {
+            my $column = $attr.column;
+            @exports.push: Red::AST::ProjectionField.new(:value($column), :name($column.name))
+                if $column.name ne $column.attr-name;
+        }
+        $source = $source.clone(:fields[|$source.fields, |@exports]);
+        $model = self.of.^alias($alias);
+        $model.HOW does role { method tables(\type) { [type] } };
+    }
+    my &post = $!chain.post;
+    if $projection.DEFINITE {
+        my @columns = $model.^columns;
+        &post = -> $row {
+            $projection.construct(@columns.map({ .get_value($row) }))
+        };
+    }
+    my role ProjectionModel[Mu:U \m] { method of { m } }
+    self.clone(:chain(Red::AST::Chained.new:
+        :$source, :source-alias($alias), :$projection, :projection-bound,
+        :projection-depth($depth), :@order, :&post
+    )) but ProjectionModel[$model]
+}
+
+method !create-projection(Red::Projection:D $projection, &filter) {
+    my @*table-list = |$.table-list, self.of;
+    my @expressions = $projection.leaves;
+    @expressions = ast-value(1) unless @expressions;
+    my $model = self.of.^specialise(|@expressions);
+    my @columns = $model.^columns;
+    my $previous = self;
+    my $aggregate = @expressions.grep({
+        .transpose-grep(-> $node {
+            $node ~~ Red::AST::Function
+                && $node.func.uc eq any(<COUNT MIN MAX SUM AVG DISTINCT>)
+        }).elems
+    }).elems;
+    my role ProjectedModel[Mu:U \m] {
+        method of { m }
+        has &.last-filter = &filter;
+        has $.last-rs = $previous;
+    }
+    my @tables = @*table-list.unique;
+    self.clone(:chain($!chain.clone:
+        :$projection, :!projection-bound, :table-list(@tables),
+        |(:order([]) if $aggregate),
+        :post(-> $row {
+            my @values = @columns.map({ .get_value($row) });
+            $projection.construct(@values)
+        })
+    )) but ProjectedModel[$model]
+}
+
 #| Adds a new filter on the query (does not run the query)
 method grep(&filter) is hidden-from-sql-commenting {
     X::Red::NoOperatorsDefined.new(:meth<grep>).throw
@@ -159,7 +259,14 @@ method grep(&filter) is hidden-from-sql-commenting {
         method print(|) { die "Trying to print inside the grep's block" }
     }
     my Red::AST $*RED-GREP-FILTER;
-    my $filter = do given what-does-it-do(&filter, self.of) {
+    my $input = self!projection-input(:fuse);
+    my Red::AST %branches{Red::AST} = what-does-it-do(&filter, $input!projection-subject).Hash;
+    if self.chain.projection.DEFINITE && $input === self
+        && !Red::Projection.safe-to-repeat(%branches) {
+        $input = self!projection-input;
+        %branches = what-does-it-do(&filter, $input!projection-subject).Hash;
+    }
+    my $filter = do given %branches {
         do if [eqv] .values {
             .values.head
         } else {
@@ -175,11 +282,11 @@ method grep(&filter) is hidden-from-sql-commenting {
     with $*RED-GREP-FILTER {
         $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
     }
-    self.where: $filter;
+    $input.where: $filter;
 }
 
 #| Changes the query to return only the first row that matches the condition and run it (.grep(...).head)
-multi method first(&filter --> Red::Model) is hidden-from-sql-commenting {
+multi method first(&filter) is hidden-from-sql-commenting {
     X::Red::NoOperatorsDefined.new(:meth<first>).throw
         if !::CALLERS::<&__RED_OPERATOR_LOADED__> && !::CALLERS::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
     self.create-comment-to-caller;
@@ -187,7 +294,7 @@ multi method first(&filter --> Red::Model) is hidden-from-sql-commenting {
     self.grep(&filter).head
 }
 
-multi method first(--> Red::Model) is hidden-from-sql-commenting {
+multi method first() is hidden-from-sql-commenting {
     X::Red::NoOperatorsDefined.new(:meth<grep>).throw
         if !::CALLERS::<&__RED_OPERATOR_LOADED__> && !::CALLERS::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
     self.create-comment-to-caller;
@@ -242,29 +349,66 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
     die "Count bigger than 1" if &filter.count > 1;
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};
-    my @*UPDATE := @!update;
-    for what-does-it-do(&filter, SELF.of) -> Pair $_ {
+    my $input = SELF!projection-input(:fuse);
+    my @updates = @!update;
+    my @*UPDATE := @updates;
+    my Red::AST %branches{Red::AST} = what-does-it-do(&filter, $input!projection-subject).Hash;
+    if $!chain.projection.DEFINITE && $input === SELF
+        && !Red::Projection.safe-to-repeat(%branches) {
+        $input = SELF!projection-input;
+        @updates = @!update;
+        %branches = what-does-it-do(&filter, $input!projection-subject).Hash;
+    }
+    for %branches -> Pair $_ {
         (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
     }
     my \seq := do if %next {
-        SELF.where(%next.keys.reduce(-> $agg, $n { Red::AST::OR.new: $agg, $n }))
-    } else { SELF }
+        my @keep = %when.keys;
+        $input.where(@keep ?? @keep.reduce(-> $agg, $n? {
+            $n.DEFINITE ?? Red::AST::OR.new($agg, $n) !! $agg
+        }) !! ast-value(False))
+    } else { $input }
+    return seq!create-projection(Red::Projection.from-value(Any), &filter) unless %when;
+    if @updates.elems == @!update.elems {
+        my $model-return = %when.elems == 1 && %when.values.head ~~ Red::AST::Value
+            && %when.values.head.type ~~ Red::Model;
+        return seq!create-projection(Red::Projection.from-branches(%when), &filter)
+            unless $model-return;
+    } else {
+        X::Red::Projection.new(:reason("Projected values cannot be updated")).throw
+            if $!chain.projection.DEFINITE || $input.chain.source.DEFINITE;
+    }
+    my $mutable-seq = seq.clone(:update(@updates));
     my \ast = Red::AST::Case.new(:%when);
     #die "Map returning Red::Model is NYI" if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
-    return seq.create-map: ast.value, :&filter if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
-    return seq.create-map: ast.value, :&filter if ast ~~ Red::AST::Value and ast.type ~~ Positional;
-    seq.create-map: ast, :&filter
+    return $mutable-seq.create-map: ast.value, :&filter if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
+    return $mutable-seq.create-map: ast.value, :&filter if ast ~~ Red::AST::Value and ast.type ~~ Positional;
+    $mutable-seq.create-map: ast, :&filter
 }
 #method flatmap(&filter) {
 #    treat-map :flat, $.filter, filter(self.of), &filter
 #}
 
+#| Orders scalar projected values without executing the query.
+multi method sort(--> Red::ResultSeq) is hidden-from-sql-commenting {
+    X::Red::Projection.new(:reason(
+        "Sorting without a Callable requires a scalar projection"
+    )).throw unless $!chain.projection.DEFINITE && $!chain.projection.kind eq 'leaf';
+    self.sort({ $_ })
+}
+
 #| Defines the order of the query (does not run the query)
-method sort(&order --> Red::ResultSeq) is hidden-from-sql-commenting {
+multi method sort(&order --> Red::ResultSeq) is hidden-from-sql-commenting {
     my $*RED-INTERNAL = True;
     self.create-comment-to-caller;
-    my @order = order self.of;
-    self.clone: :chain($!chain.clone: :@order)
+    my $input = self!projection-input(:fuse);
+    my @order = order $input!projection-subject;
+    if $!chain.projection.DEFINITE && $input === self
+        && !Red::Projection.safe-to-repeat(@order) {
+        $input = self!projection-input;
+        @order = order $input!projection-subject;
+    }
+    $input.clone: :chain($input.chain.clone: :@order)
 }
 
 #| Sets the query to return the rows in a randomic order (does not run the query)
@@ -287,6 +431,16 @@ multi method pick() is hidden-from-sql-commenting {
 method classify(\SELF: &func, :&as = { $_ }, :&reduce --> Red::ResultAssociative) is hidden-from-sql-commenting {
     my $*RED-INTERNAL = True;
     SELF.create-comment-to-caller;
+    if $!chain.projection.DEFINITE {
+        my $input = SELF!projection-input;
+        my $subject = $input!projection-subject;
+        my $key = func $subject;
+        my @keys = $key ~~ Red::AST ?? ($key,) !! $key ~~ Positional
+            ?? $key.list !! (ast-value($key),);
+        my $value = as $subject;
+        return Red::ResultAssociative[$value, @keys.head].new(:rs($input),
+            |(:next-level(@keys.skip) if @keys.elems > 1), |(:&reduce if &reduce));
+    }
     do if self.?last-rs.DEFINITE {
         self.last-rs.classify(&func o self.last-filter, :as{ ast-value True })
     } else {
@@ -299,12 +453,14 @@ method classify(\SELF: &func, :&as = { $_ }, :&reduce --> Red::ResultAssociative
 
 #| Runs a query to create a Bag
 multi method Bag {
+    return self.classify({ $_ }, :as{ ast-value True }).Bag if $!chain.projection.DEFINITE;
     nextsame unless self.?last-rs.DEFINITE;
     self.last-rs.classify(self.last-filter, :as{ ast-value True }).Bag
 }
 
 #| Runs a query to create a Set
 multi method Set {
+    return self.classify({ $_ }, :as{ ast-value True }).Set if $!chain.projection.DEFINITE;
     nextsame unless self.?last-rs.DEFINITE;
     self.last-rs.classify(self.last-filter, :as{ ast-value True }).Set
 }
@@ -335,13 +491,17 @@ method from(UInt:D $num --> Red::ResultSeq) is hidden-from-sql-commenting {
 #| Returns the number of rows returned by the query (runs the query)
 method elems( --> Int()) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    self.create-map(Red::AST::Function.new: :func<count>, :args[ast-value *]).head
+    my $input = self!projection-input;
+    $input.clone(:chain($input.chain.clone(:order([]))))
+        .create-map(Red::AST::Function.new: :func<count>, :args[ast-value *]).head
 }
 
 #| Returns True if there are lines returned by the query False otherwise (runs the query)
 method Bool( --> Bool()) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    self.create-map(Red::AST::Gt.new: Red::AST::Function.new(:func<count>, :args[ast-value *]), ast-value 0).head
+    my $input = self!projection-input;
+    $input.clone(:chain($input.chain.clone(:order([]))))
+        .create-map(Red::AST::Gt.new: Red::AST::Function.new(:func<count>, :args[ast-value *]), ast-value 0).head
 }
 
 method new-object(::?CLASS:D: *%pars) is hidden-from-sql-commenting {
@@ -360,6 +520,8 @@ method batch(Int $size --> Red::ResultSeqSeq) {
 
 #| Creates a new element of that set
 method create(::?CLASS:D: *%pars) is hidden-from-sql-commenting {
+    X::Red::Projection.new(:reason("Projected values cannot be used to create rows")).throw
+        if $!chain.projection.DEFINITE || $!chain.source.DEFINITE;
     self.create-comment-to-caller;
     $.of.^orig.^create: |%pars, |%(|(.should-set with $.filter), |(.should-set with $.of.HOW.?join-on: $.of));
 }
@@ -371,6 +533,8 @@ method push(::?CLASS:D: *%pars) is hidden-from-sql-commenting {
 
 #| Deletes every row on that ResultSeq
 method delete(::?CLASS:D:) is hidden-from-sql-commenting {
+    X::Red::Projection.new(:reason("Projected values cannot be deleted")).throw
+        if $!chain.projection.DEFINITE || $!chain.source.DEFINITE;
     self.create-comment-to-caller;
     my $*RED-INTERNAL = True;
     my $iter = Red::ResultSeq::Iterator.new: :$.of, :ast(Red::AST::Delete.new: $.of, $.filter), :&.post, |(:driver($_) with $!with);
@@ -383,6 +547,8 @@ method delete(::?CLASS:D:) is hidden-from-sql-commenting {
 
 #| Saves any change on any element of that ResultSet
 method save(::?CLASS:D:) is hidden-from-sql-commenting {
+    X::Red::Projection.new(:reason("Projected values cannot be saved")).throw
+        if $!chain.projection.DEFINITE || $!chain.source.DEFINITE;
     self.create-comment-to-caller;
     my @*UPDATE;
     die "You should use a map updating value(s) before saving" unless $.of.^can: "orig-result-seq";
@@ -491,6 +657,8 @@ method ast(Bool :$sub-select --> Red::AST) is hidden-from-sql-commenting {
             :@.group,       :@.comments,
             :@prefetch,     :$sub-select,
             :$!for,
+            :source($!chain.source), :source-alias($!chain.source-alias),
+            :fields($!chain.fields),
         ;
     }
 }

@@ -21,6 +21,8 @@ has Red::AST::Comment   @.comments;
 has Bool                $.sub-select;
 has                     @.prefetch;
 has Red::LockType       $.for;
+has Red::AST            $.source;
+has Str                 $.source-alias;
 
 method returns {
     do if $.of.^columns == 1 {
@@ -30,7 +32,7 @@ method returns {
     }
 }
 
-method args { $!sub-select ?? () !! ( $!of, $!filter, |@!order ) }
+method args { $!sub-select ?? () !! ( $!of, $!filter, |@!order, |@!fields ) }
 
 method gist {
     do if $!sub-select {
@@ -41,7 +43,8 @@ method gist {
 }
 
 method tables(::?CLASS:D:) {
-    |(|@!table-list, |(.?tables with $!filter), callsame).grep(-> \v { v !=:= Nil }).unique unless $!sub-select
+    |(|@!table-list, |(.?tables with $!filter), |@!order.map(*.tables),
+        |@!fields.map(*.tables)).flat.grep(-> \v { v !=:= Nil }).unique unless $!sub-select
 }
 method find-column-name {}
 

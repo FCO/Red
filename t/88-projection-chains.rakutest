@@ -1,0 +1,331 @@
+use Test;
+use Red;
+use Red::Type::Json;
+use Red::Type;
+use JSON::Fast;
+use Red::AST::JsonItem;
+use Red::AST::Unary;
+use Red::AST::Value;
+use Red::AST::Function;
+use X::Red::Exceptions;
+
+my $*RED-FALLBACK = False;
+my $*RED-DEBUG = $_ with %*ENV<RED_DEBUG>;
+my @conf = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @conf.shift;
+my $*RED-DB = database $driver, |%(@conf.map: {
+    do given .split('=') { .[0] => val .[1] }
+});
+
+model ProjectionOwner {
+    has UInt $.id is serial;
+    has Str $.name is column;
+}
+
+model ProjectionRow {
+    has UInt $.id is serial;
+    has Int $.col1 is rw is column;
+    has Int $.col2 is column;
+    has Str $.col3 is column;
+    has Str $.snake-value is column;
+    has Json $.payload is column;
+    has Int $!owner-id is referencing(*.id, :model(ProjectionOwner));
+    has ProjectionOwner $.owner is relationship{ .owner-id };
+}
+
+class ProjectedPoint {
+    has Int $.x;
+    has Int $.y;
+}
+
+class ProjectionPoint does Red::Type {
+    method red-type-accepts(ProjectedPoint) { True }
+    method red-type-column-type { 'jsonb' }
+    method inflator {
+        -> $value {
+            my $data = $value ~~ Str ?? from-json($value) !! $value;
+            ProjectedPoint.new(:x($data<x>), :y($data<y>))
+        }
+    }
+    method deflator {
+        -> ProjectedPoint $point {
+            my %data = :x($point.x), :y($point.y);
+            $*RED-DB.^name.ends-with('Pg') ?? %data !! to-json(%data)
+        }
+    }
+    method red-type-db-methods {
+        role :: {
+            method x { Red::AST::Cast.new(Red::AST::JsonItem.new(self, ast-value('x')), 'integer') }
+        }
+    }
+}
+
+model TypedProjectionRow {
+    has UInt $.id is serial;
+    has ProjectionPoint $.point is column;
+}
+
+class ProjectionBox { has $.value }
+
+schema(ProjectionOwner, ProjectionRow).drop.create;
+LEAVE schema(ProjectionOwner, ProjectionRow).drop;
+my $owner = ProjectionOwner.^create(:name<owner>);
+ProjectionRow.^create(:owner-id($owner.id), :col1($_), :col2($_ + 1), :col3("z$_"), :snake-value("s$_"),
+    :payload(%(:text('123'), :items([$_, $_ + 1]), :null(Any)))) for ^5;
+
+sub rows { ProjectionRow.^all.sort(*.id) }
+
+subtest 'Scalar projections and interpolation', {
+    my $query = rows.map({ .col1 + .col2 }).grep(* > 3).map({ "something: $_" });
+    isa-ok $query, Red::ResultSeq, 'The chain stays in SQL';
+    is-deeply $query.Seq.Array, ['something: 5', 'something: 7', 'something: 9'];
+    my $sql = $*RED-DB.translate($query.ast).key;
+    unlike $sql, /'FROM' \s* '(' \s* 'SELECT'/, 'Safe projection consumers share one SELECT';
+    my $repeated = rows.map(*.col1).map(* + 1).grep(* > 2).map(* * 2);
+    is-deeply $repeated.Seq.Array, [6, 8, 10], 'Repeated maps preserve arithmetic precedence';
+    is rows.map(*.col1).first(* > 2), 3, 'First returns the projected element';
+    my $correlated = rows.map(*.col1).grep({
+        my $outer = $_;
+        ProjectionRow.^all.map(*.col2).grep({ $_ == $outer }).exists
+    });
+    is-deeply $correlated.Seq.Array, [1, 2, 3, 4],
+        'Independent projection aliases do not shadow correlated references';
+};
+
+subtest 'Sorting scalar projections without arguments', {
+    my $numbers = rows.map(*.col1).sort;
+    isa-ok $numbers, Red::ResultSeq, 'Argumentless sort stays in SQL';
+    is-deeply $numbers.Seq.Array, [0, 1, 2, 3, 4];
+    my $strings = rows.map(*.col3).sort;
+    is-deeply $strings.Seq.Array, ['z0', 'z1', 'z2', 'z3', 'z4'];
+    my $computed = rows.map({ 10 - .col1 }).sort;
+    is-deeply $computed.Seq.Array, [6, 7, 8, 9, 10];
+    my $sql = $*RED-DB.translate($computed.ast).key;
+    like $sql, rx:i/ORDER \s+ BY/, 'Argumentless sort generates ORDER BY';
+    is $sql.comb(rx:i/SELECT/).elems, 1, 'Safe sorting does not add a SELECT';
+    is-deeply rows.map(*.col1).sort(-*).Seq.Array, [4, 3, 2, 1, 0],
+        'Callable descending sorting remains available';
+    throws-like { rows.map(*.col1).sort(*) }, X::Multi::NoMatch,
+        'Bare Whatever remains invalid, matching native sort';
+    throws-like { rows.sort }, X::Red::Projection, 'Models require a Callable';
+    throws-like { rows.map({ %(:value(.col1)) }).sort }, X::Red::Projection,
+        'Hash projections require a Callable';
+    throws-like { rows.map({ [.col1, .col2] }).sort }, X::Red::Projection,
+        'Array projections require a Callable';
+    throws-like { rows.map({ (.col1, .col2) }).sort }, X::Red::Projection,
+        'List projections require a Callable';
+    {
+        my $*RED-DB = database 'Mock';
+        my Int $calls = 0;
+        $*RED-DB.die-on-unexpected;
+        $*RED-DB.when: :once, rx:i/SELECT/, :run{
+            $calls++;
+            [{ :data_1(1) }, { :data_1(2) }]
+        };
+        my $query = ProjectionRow.^all.map(*.col1).sort;
+        is $calls, 0, 'Constructing argumentless sort does not execute SQL';
+        is-deeply $query.Seq.Array, [1, 2];
+        is $calls, 1, 'Iteration executes one statement';
+        $*RED-DB.verify;
+    }
+};
+
+subtest 'SQL stage fusion and required boundaries', {
+    sub sql($query) { $*RED-DB.translate($query.ast).key }
+    sub flat($query, Str $description) {
+        is sql($query).comb(rx:i/SELECT/).elems, 1, $description;
+    }
+    my $simple = rows.map(*.col1).grep(* > 1).map(* + 42);
+    flat $simple, 'Column map, grep, and second map share one SELECT';
+    is-deeply $simple.Seq.Array, [44, 45, 46];
+    my $interpolated = rows.map(*.col1).grep(* > 1).map({ "-> $_" });
+    flat $interpolated, 'Numeric interpolation does not add a SELECT boundary';
+    is-deeply $interpolated.Seq.Array, ['-> 2', '-> 3', '-> 4'];
+    my $arithmetic = rows.map({ .col1 + .col2 }).map(* * 2).grep(* > 6).map(* - 1);
+    flat $arithmetic, 'Computed maps and filters are substituted recursively';
+    is-deeply $arithmetic.Seq.Array, [9, 13, 17];
+    my $hash = rows.map({ %(:total(.col1 + .col2)) })
+        .grep({ .<total> > 3 }).map({ .<total> * 2 });
+    flat $hash, 'Hash fields fuse into scalar consumers';
+    is-deeply $hash.Seq.Array, [10, 14, 18];
+    my $nested = rows.map({ %(:pair([.col1, .col2])) })
+        .grep({ .<pair>[0] > 1 }).map({ .<pair>[1] + 10 });
+    flat $nested, 'Nested container fields fuse';
+    is-deeply $nested.Seq.Array, [13, 14, 15];
+    my $sorted = rows.map(*.col1).grep(* > 0).grep(* < 4).sort({ -$_ }).map(* + 1);
+    flat $sorted, 'Repeated filters and projected sorting fuse';
+    is-deeply $sorted.Seq.Array, [4, 3, 2];
+    my $text = rows.map({ .col3 ~ 'a' }).grep(*.contains('z2')).map(*.uc);
+    flat $text, 'String reads and identity casts are safe to substitute';
+    is-deeply $text.Seq.Array, ['Z2A'];
+    my $paged = rows.map(*.col1).head(2).grep(* > 0).map(* + 1);
+    is sql($paged).comb(rx:i/SELECT/).elems, 2, 'Pagination retains exactly one boundary';
+    is-deeply $paged.Seq.Array, [2];
+    my $aggregate = rows.map({
+        Red::AST::Function.new(:func<SUM>, :args[.col1], :returns(Int))
+    }).grep(* > 5).map(* + 1);
+    is sql($aggregate).comb(rx:i/SELECT/).elems, 2, 'Aggregate output is filtered outside';
+    is-deeply $aggregate.Seq.Array, [11];
+    my $distinct = rows.map({
+        Red::AST::Function.new(:func<DISTINCT>, :args[.col1], :returns(Int))
+    }).grep(* > 2);
+    is sql($distinct).comb(rx:i/SELECT/).elems, 2, 'DISTINCT remains a boundary';
+    is-deeply $distinct.sort({ $_ }).Seq.Array, [3, 4];
+    my $unknown = rows.map({
+        Red::AST::Function.new(:func<ABS>, :args[.col1], :returns(Int))
+    }).map(* + 1);
+    is sql($unknown).comb(rx:i/SELECT/).elems, 2, 'Unclassified functions retain a boundary';
+    is-deeply $unknown.Seq.Array, [1, 2, 3, 4, 5];
+    my $volatile = rows.map({
+        Red::AST::Function.new(:func<random>, :returns(Num))
+    }).grep(* > 0);
+    is sql($volatile).comb(rx:i/SELECT/).elems, 2, 'Volatile expressions are not substituted';
+    my $division = rows.map({ .col2 / (.col1 + 1) }).map(* + 1);
+    is sql($division).comb(rx:i/SELECT/).elems, 2, 'Division retains a boundary';
+    is-deeply $division.Seq.map(*.Int).Array, [2, 2, 2, 2, 2];
+    my $cast = rows.map({ .col3.cast('integer') }).grep(* > 0);
+    is sql($cast).comb(rx:i/SELECT/).elems, 2, 'Fallible casts are not substituted';
+};
+
+subtest 'Hash projections', {
+    my $query = rows.map({ %(col1 => .col1, something-else => .col2 ~ .col3) });
+    isa-ok $query.head, Hash, 'Each row is a Hash';
+    is-deeply $query.head, { :col1(0), :something-else('1z0') };
+    is-deeply $query.map({ .<something-else> }).Seq.Array,
+        ['1z0', '2z1', '3z2', '4z3', '5z4'], 'A later map reads projected keys';
+    is-deeply $query.grep({ .<col1> > 2 }).map({ .<something-else> }).Seq.Array,
+        ['4z3', '5z4'], 'A later grep filters projected keys';
+};
+
+subtest 'Array, List, and nested projections', {
+    my $arrays = rows.map({ [.col1, .col2] });
+    isa-ok $arrays.head, Array;
+    is-deeply $arrays.head, [0, 1];
+    is-deeply $arrays.grep({ .[0] > 2 }).map({ .[1] }).Seq.Array, [4, 5];
+    my $lists = rows.map({ (.col1, .col2) });
+    isa-ok $lists.head, List;
+    is-deeply $lists.head, (0, 1);
+    is-deeply $lists.map({ .[1] }).Seq.Array, [1, 2, 3, 4, 5];
+    my $nested = rows.map({ %(:pair([.col1, .col2]), :meta(%(:label(.col3)))) });
+    is-deeply $nested.head, { :pair([0, 1]), :meta({ :label<z0> }) };
+    is-deeply $nested.grep({ .<pair>[0] > 2 }).map({ .<meta><label> }).Seq.Array,
+        ['z3', 'z4'];
+};
+
+subtest 'Empty and constant projections', {
+    is rows.map({ [] }).Seq.elems, 5, 'Empty Arrays retain row cardinality';
+    is-deeply rows.map({ [] }).head, [];
+    is-deeply rows.map({ {} }).head, {};
+    is-deeply rows.map({ () }).head, ();
+    is-deeply rows.map({ 'constant' }).grep(* eq 'constant').Seq.Array,
+        ['constant' xx 5], 'Scalar constants can be filtered';
+    is-deeply rows.map({ Any }).head, Any, 'Undefined scalar projection';
+    is-deeply rows.map({ False }).head, False, 'False remains a boolean';
+    is-deeply rows.map({ True }).head, True, 'True remains a boolean';
+    is-deeply rows.map(*.col1 == 0).grep({ $_ }).Seq.Array, [True],
+        'A projected boolean can filter the next stage';
+};
+
+subtest 'Conditional shapes', {
+    my $query = rows.map({ .col1 > 2 ?? %(:value(.col1)) !! %(:value(.col2)) });
+    is-deeply $query.map({ .<value> }).Seq.Array, [1, 2, 3, 3, 4];
+    throws-like { rows.map({ .col1 > 2 ?? [.col1] !! %(:value(.col2)) }) },
+        X::Red::Projection, 'Incompatible branch shapes are reported';
+};
+
+subtest 'Ordering and pagination barriers', {
+    is-deeply rows.head(2).map(*.col1).grep(* > 0).Seq.Array, [1],
+        'Filtering respects a limit before projection';
+    is-deeply rows.map(*.col1).head(2).grep(* > 0).Seq.Array, [1],
+        'Filtering respects a limit after projection';
+    is-deeply rows.head(2).map(*.owner.name).Seq.Array, ['owner', 'owner'],
+        'Relationship joins remain outside a pagination boundary';
+    is-deeply rows.head(2).map(*.snake-value).Seq.Array, ['s0', 's1'],
+        'Pagination exports formatted column names correctly';
+    is-deeply rows.map(*.col1).skip(2).grep(* > 0).Seq.Array, [2, 3, 4],
+        'Filtering respects an offset';
+    is-deeply rows.map(*.col1).sort({ -$_ }).map({ -$_ }).Seq.Array, [-4, -3, -2, -1, 0],
+        'Ordering survives another projection';
+    my $source = rows.map(*.col1);
+    is-deeply $source.grep(* > 2).Seq.Array, [3, 4];
+    is-deeply $source.grep(* < 2).Seq.Array, [0, 1], 'Sibling queries are independent';
+    is-deeply $source.Seq.Array, [0, 1, 2, 3, 4], 'The original query is unchanged';
+};
+
+subtest 'Aggregation after projection', {
+    my $query = rows.map(*.col1).grep(* > 1);
+    is $query.elems, 3, 'Count uses the projected and filtered query';
+    is rows.map(*.col1).head(2).elems, 2, 'Count respects pagination';
+    ok $query.Bool, 'Projected query existence';
+    is-deeply $query.Bag, bag(2, 3, 4), 'Bag respects the projected filter';
+    is-deeply $query.Set, set(2, 3, 4), 'Set respects the projected filter';
+    my $classified = $query.classify({ $_ % 2 });
+    is-deeply $classified{0}.Seq.Array, [2, 4], 'Classify receives the projected value';
+};
+
+subtest 'Lazy execution and statement bindings', {
+    {
+        my $*RED-DB = database 'Mock';
+        my Int $calls = 0;
+        $*RED-DB.die-on-unexpected;
+        $*RED-DB.when: :once, rx:i/SELECT/, :run{
+            $calls++;
+            [{ :data_1('something: 5') }]
+        };
+        my $query = ProjectionRow.^all.map({ .col1 + .col2 })
+            .grep(* > 3).map({ "something: $_" });
+        is $calls, 0, 'Building the chain does not execute SQL';
+        is-deeply $query.Seq.Array, ['something: 5'];
+        is $calls, 1, 'All stages execute as one statement';
+        $*RED-DB.verify;
+    }
+    my Str $first = 'a';
+    my Str $prefix = 'P:';
+    my Str $root-filter = 'z2';
+    my Str $projected-filter = 'z2a';
+    my $query = rows.grep({ .col3 eq $root-filter }).map({ .col3 ~ $first })
+        .grep({ $_ eq $projected-filter }).map({ $prefix ~ $_ });
+    my ($sql, @bind) := do given $*RED-DB.translate($query.ast) { .key, .value };
+    is-deeply @bind.Array, [$prefix, $first, $root-filter, $first, $projected-filter],
+        'Repeated expressions bind each occurrence in SQL order';
+    if $driver eq 'Pg' {
+        is-deeply $sql.comb(/\$ \d+/).Array, ['$1', '$2', '$3', '$4', '$5'],
+            'PostgreSQL placeholders share one statement counter';
+    }
+    is-deeply $query.Seq.Array, ['P:z2a'];
+};
+
+subtest 'Custom converters and unsupported objects', {
+    schema(TypedProjectionRow).drop.create;
+    LEAVE schema(TypedProjectionRow).drop;
+    TypedProjectionRow.^create(:point(ProjectedPoint.new(:x(5), :y(7))));
+    my $points = TypedProjectionRow.^all.map(*.point);
+    my @point-values = $points.Seq.Array;
+    isa-ok @point-values.head, ProjectedPoint, 'The original converter is preserved';
+    my $wrapped = $points.grep(*.x > 3).map({ %(:point($_)) });
+    my @wrapped-values = $wrapped.Seq.Array;
+    isa-ok @wrapped-values.head<point>, ProjectedPoint, 'Converters survive a SELECT boundary';
+    is @wrapped-values.head<point>.x, 5;
+    is-deeply $wrapped.map({ .<point>.x }).Seq.Array, [5], 'Custom SQL methods survive';
+    throws-like { rows.map({ ProjectionBox.new(:value(.col1)) }) }, X::Red::Projection,
+        'Arbitrary object projections need an extension or fallback';
+    {
+        my $*RED-FALLBACK = True;
+        is rows.map({ ProjectionBox.new(:value(.col1)) }).Seq.Array.head.value, 0,
+            'The existing runtime fallback handles arbitrary objects';
+    }
+};
+
+subtest 'JSON and write compatibility', {
+    my $json = rows.map({ %(:data(.payload)) });
+    is-deeply $json.map({ .<data><text> }).head, '123';
+    is-deeply $json.map({ .<data><items> }).head, [0, 1];
+    is-deeply $json.map({ .<data><null> }).head, Any;
+    throws-like { rows.map(*.col1).save }, X::Red::Projection;
+    throws-like { rows.map(*.col1).delete }, X::Red::Projection;
+    throws-like { rows.map(*.col1).create(:col1(99)) }, X::Red::Projection;
+    rows.grep(*.col1 == 4).map({ .col1 = 40 }).save;
+    is rows.map(*.col1).Seq.tail, 40, 'Updating map and save still work';
+};
+
+done-testing;

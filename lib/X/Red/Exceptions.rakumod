@@ -2,6 +2,11 @@ use Red::Column;
 
 class X::Red is Exception {}
 
+class X::Red::Projection is X::Red {
+    has Str $.reason is required;
+    method message { $!reason }
+}
+
 class X::Red::Json is X::Red {
     has Str $.operation is required;
     has Exception $.cause is required;

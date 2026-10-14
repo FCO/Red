@@ -276,11 +276,17 @@ multi method translate(Red::AST::JsonOperation $operation, $context?) {
 multi method translate(Red::Column $_, "column-auto-increment") {}
 
 multi method translate(Red::AST::Select $_, $context?, :$gambi where !*.defined) {
-    my $bind-counter = $*bind-counter // 0;
+    if $*bind-counter.defined {
+        return self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
+    }
     {
-        my Int $*bind-counter = $bind-counter;
+        my Int $*bind-counter = 0;
         self.Red::Driver::CommonSQL::translate($_, $context, :gambi);
     }
+}
+
+multi method translate(Red::AST::Reference $_ where { .returns ~~ Json }, $context?) {
+    "({ self.table-name-wrapper(.table) }.{ self.table-name-wrapper(.name) })::jsonb" => []
 }
 
 multi method translate(Red::AST::Update $_, $context?, :$gambi where !*.defined) {
@@ -334,7 +340,9 @@ multi method translate(Red::AST::Mod $_, $context?) {
     "mod($ls, $rs)" => [|@lb, |@rb]
 }
 
-multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) { (.value ?? "'t'" !! "'f'") => [] }
+multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
+    (.value ?? "TRUE" !! "FALSE") => []
+}
 
 multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) { "'{ .value.Str }'" => [] }
 
