@@ -60,4 +60,13 @@ is-deeply $tree3, BestTree::Store.find-tree(1.3, 2.2);
 is-deeply [$tree2, $tree1, $tree3], @ = BestTree::Store.all-trees;
 throws-like { BestTree::Store.suggest-tree: 1.3, 2.2, 15, "blu" }, X::Tree::ExistsInTheSameArea;
 
+my Rat $latitude = 2.1;
+my Rat $longitude = 1.1;
+is-deeply BestTree::Store.^all.grep({
+    .latitude == $latitude && .longitude == $longitude
+}).head, $tree1, 'Rational keys match bound comparison values';
+is-deeply BestTree::Store.^all.grep({
+    .latitude == 2.1 && .longitude == 1.1
+}).head, $tree1, 'Rational keys match SQL literal comparison values';
+
 done-testing;

@@ -43,6 +43,6 @@ is-deeply ChildAskedOnYear.^all.map(*.gift.name).Set, set <pokemon doll ball>;
 isa-ok Child.^create(:name<Maricota>, :country<Brazil>), Child;
 is Child.^all.elems, 3;
 is-deeply Child.^all.grep(*.name.starts-with: "M").map(*.name).head, "Maricota";
-is-deeply Gift.^all.grep(*.name.contains: "ll").map(*.name).Seq, <doll ball>.Seq;
+is-deeply Gift.^all.grep(*.name.contains: "ll").map(*.name).Bag, bag <doll ball>;
 
 done-testing;

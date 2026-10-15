@@ -17,7 +17,10 @@ model VirtualView is virtual-view {
 
   method sql {
     q:to/EOS/
-    with val(id, value) as (values (1, 'bla'), (2, 'ble'), (3, 'bli'), (4, 'blo'), (5, 'blu'))
+    with val(id, value) as (
+      select 1, 'bla' union all select 2, 'ble' union all select 3, 'bli'
+      union all select 4, 'blo' union all select 5, 'blu'
+    )
     select id, value
     from val
     EOS
@@ -33,7 +36,10 @@ model View is view {
 
   method sql {
     q:to/EOS/
-    with val(id, value) as (values (1, 'bla'), (2, 'ble'), (3, 'bli'), (4, 'blo'), (5, 'blu'))
+    with val(id, value) as (
+      select 1, 'bla' union all select 2, 'ble' union all select 3, 'bli'
+      union all select 4, 'blo' union all select 5, 'blu'
+    )
     select id, value
     from val
     EOS

@@ -21,7 +21,7 @@ class Red::AST::DateTimePart does Red::AST::DateTimeFunction {
     has Red::AST                 $.base;
     has Red::AST::DateTime::Part $.part;
 
-    method returns { Str }
+    method returns { $!part.key eq 'second' ?? Numeric !! Int }
     method find-column-name {
         $!base.find-column-name
     }

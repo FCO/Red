@@ -30,4 +30,21 @@ lives-ok {
   .say for Blx.^all.map(*.b.year)
 }
 
+my @dates = DateTime.new('2024-02-29T12:34:56Z'), DateTime.new('2025-03-01T01:02:03Z');
+Blx.^create(:a($_), :b(.Date)) for @dates;
+
+for <year month day> -> $part {
+    my @expected = @dates.map({ ."$part"() }).Array;
+    is-deeply Blx.^all.sort(*.a).map({ .a."$part"() }).Seq.Array, @expected,
+        "DateTime $part extraction returns the expected values";
+    is-deeply Blx.^all.sort(*.b).map({ .b."$part"() }).Seq.Array, @expected,
+        "Date $part extraction returns the expected values";
+}
+
+my Int $year = 2024;
+is Blx.^all.grep({ .a.year == $year }).elems, 1,
+    'Date parts compose with bound filters';
+is-deeply Blx.^all.sort(*.a).map(*.a.year).head(1).map(* + 1).Seq.Array, [2025],
+    'Date parts compose with projections across pagination';
+
 done-testing

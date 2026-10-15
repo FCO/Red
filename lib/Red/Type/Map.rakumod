@@ -8,3 +8,5 @@ multi to-raku-type("integer") is export { Int }
 multi to-raku-type("num")     is export { Numeric }
 multi to-raku-type("bool")    is export { Bool }
 multi to-raku-type("boolean") is export { Bool }
+multi to-raku-type("datetime") is export { DateTime }
+multi to-raku-type("date")     is export { Date }

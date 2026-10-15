@@ -1,6 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
+    - tests: preserve multiplicity in unordered results and use portable CTE fixtures
+    - pg: store Rat columns as numeric to preserve rational key comparisons
+    - pg: fix date-part extraction and recognize date/datetime cast result types
     - queries: execute tail and reverse in SQL, preserving pagination and ordering
     - queries: retain primary-key ordering through scalar and container projections
     - queries: count scalars and NULL as one element, preserving absent JSON paths

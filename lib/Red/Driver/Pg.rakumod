@@ -64,9 +64,9 @@ method begin {
 method commit { $!dbh.commit.finish }
 method rollback { $!dbh.rollback }
 
-multi method translate(Red::AST::DateTimePart $_, $context?) {
-    my ($sql, @bind) := do given self.translate: .base, $context { .key, |.value }
-    "EXTRACT({ .part.key.uc } FROM { $sql })" => @bind
+multi method translate(Red::AST::DateTimePart $part, $context?) {
+    my ($sql, @bind) := do given self.translate($part.base, $context) { .key, .value }
+    "EXTRACT({ $part.part.key.uc } FROM { $sql })" => @bind
 }
 
 multi method agg-prefetch($_) {
@@ -397,6 +397,7 @@ multi method default-type-for-type(Instant       --> Str:D) { "timestamp" }
 multi method default-type-for-type(Date          --> Str:D) { "date" }
 multi method default-type-for-type(Bool          --> Str:D) { "boolean" }
 multi method default-type-for-type(Int           --> Str:D) { "integer" }
+multi method default-type-for-type(Rat           --> Str:D) { "numeric" }
 multi method default-type-for-type(UUID          --> Str:D) { "uuid" }
 multi method default-type-for-type(Blob          --> Str:D) { "bytea" }
 multi method default-type-for-type(Red::Column $ --> Str:D) { "varchar(255)" }

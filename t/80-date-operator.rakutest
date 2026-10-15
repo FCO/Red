@@ -18,12 +18,11 @@ Dt.^create-table(:if-not-exists);
 
 Dt.^all.delete;
 
-my $earlier = DateTime.now.earlier(days => 1);
-my $even_earlier = DateTime.now.earlier(days => 2);
+my $now = DateTime.new('2024-03-01T12:34:56.123456Z');
+my $earlier = $now.earlier(days => 1);
+my $even_earlier = $now.earlier(days => 2);
 
 Dt.^create(created => $earlier);
-
-my $now = DateTime.now;
 
 lives-ok { is Dt.^all.grep(*.created < $now).elems,           1, "$earlier < $now"           };
 lives-ok { is Dt.^all.grep(*.created lt $now).elems,          1, "$earlier lt $now"          };

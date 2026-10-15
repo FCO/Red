@@ -30,47 +30,92 @@ jobs:
       - name: Run tests
         run: prove6 -lj8 t
 
-  # pg:
-  #   runs-on: ubuntu-latest
-  #   services:
-  #     postgres:
-  #       image: postgres:15
-  #       env:
-  #         POSTGRES_USER: postgres
-  #         POSTGRES_PASSWORD: postgres
-  #         POSTGRES_DB: red_test
-  #       ports:
-  #         - 5432:5432
-  #       options: >-
-  #         --health-cmd="pg_isready -U postgres"
-  #         --health-interval=10s
-  #         --health-timeout=5s
-  #         --health-retries=5
-  #   steps:
-  #     - uses: actions/checkout@v3
-  #     - uses: Raku/setup-raku@v1
-  #       with:
-  #         raku-version: "2022.07"
-  #     - name: Install system deps
-  #       run: |
-  #         sudo apt-get update
-  #         sudo apt-get install -y libpq-dev postgresql-client
-  #     - name: Install Raku deps
-  #       run: |
-  #         zef install --/test --test-depends --deps-only .
-  #         zef install --/test App::Prove6 DB::Pg
-  #     - name: Wait for Postgres
-  #       run: |
-  #         for i in {1..30}; do
-  #           pg_isready -h 127.0.0.1 -p 5432 -U postgres && break
-  #           sleep 1
-  #         done
-  #     - name: Show psql version
-  #       run: psql --version
-  #     - name: Run tests (Pg)
-  #       env:
-  #         RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=red_test user=postgres password=postgres"
-  #       run: prove6 -lj8 t
+  mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      RED_SOURCE: ${{ github.workspace }}
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: "3306"
+      MYSQL_USER: root
+      MYSQL_PASSWORD: red-ci-test
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: red-ci-test
+          MYSQL_ROOT_HOST: "%"
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -pred-ci-test --silent"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check out the MySQL driver
+        uses: actions/checkout@v4
+        with:
+          repository: FCO/Red-Driver-MySQL
+          ref: af810a598065e67c61d7312d39db21f33813e7b3
+          path: .ci/mysql-driver
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: "2026.06"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libmariadb-dev-compat libpq-dev libsqlite3-dev uuid-dev
+          zef install --/test --test-depends --deps-only .
+          zef install --/test App::Prove6
+      - name: Run tests (MySQL)
+        run: prove6 -j8 -e "raku $GITHUB_WORKSPACE/.ci/mysql-driver/tools/red-test-exec.raku" t
+
+  pg:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: red-ci-test
+      PGDATABASE: postgres
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: red-ci-test
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres -d postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: "2026.06"
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev postgresql-client libsqlite3-dev uuid-dev
+          zef install --/test --test-depends --deps-only .
+          zef install --/test App::Prove6 DB::Pg
+      - name: Run tests (Pg)
+        run: |
+          set -o pipefail
+          prove6 -j8 -e "bash tools/pg-test-exec.sh" t 2>&1 | tee pg-test-results.log
+      - name: Save PostgreSQL test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgresql-test-results
+          path: pg-test-results.log
 
   json-pg:
     runs-on: ubuntu-latest
