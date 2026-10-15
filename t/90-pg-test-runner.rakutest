@@ -1,0 +1,85 @@
+use Test;
+
+my $runner = $?FILE.IO.parent.parent.add('tools/pg-test-exec.sh').absolute;
+my $directory = $*TMPDIR.add("red-pg-runner-{$*PID}-{1000000.rand.Int}");
+$directory.mkdir;
+my $bin = $directory.add('bin');
+$bin.mkdir;
+
+sub remove-tree(IO::Path:D $path) {
+    if $path.d && !$path.l {
+        remove-tree($_) for $path.dir;
+        $path.rmdir;
+    } else {
+        $path.unlink;
+    }
+}
+LEAVE remove-tree($directory);
+
+$bin.add('createdb').spurt(q:to/SCRIPT/);
+#!/usr/bin/env bash
+echo "createdb $*" >> "$PG_RUNNER_LOG"
+exit "${PG_CREATE_STATUS:-0}"
+SCRIPT
+$bin.add('dropdb').spurt(q:to/SCRIPT/);
+#!/usr/bin/env bash
+echo "dropdb $*" >> "$PG_RUNNER_LOG"
+exit "${PG_DROP_STATUS:-0}"
+SCRIPT
+$bin.add('raku').spurt(q:to/SCRIPT/);
+#!/usr/bin/env bash
+echo "raku[$#] $*" >> "$PG_RUNNER_LOG"
+echo "$RED_DATABASE" >> "$PG_RUNNER_LOG"
+exit "${PG_TEST_STATUS:-0}"
+SCRIPT
+.chmod(0o755) for $bin.dir;
+
+sub execute(Int :$create = 0, Int :$test = 0, Int :$drop = 0) {
+    my $log = $directory.add('commands.log');
+    $log.spurt('');
+    temp %*ENV<PATH> = $bin.Str ~ ':' ~ (%*ENV<PATH> // '');
+    temp %*ENV<PG_RUNNER_LOG> = $log.Str;
+    temp %*ENV<PGHOST> = '127.0.0.1';
+    temp %*ENV<PGPORT> = '5432';
+    temp %*ENV<PGUSER> = 'postgres';
+    temp %*ENV<PGDATABASE> = 'postgres';
+    temp %*ENV<PG_CREATE_STATUS> = $create.Str;
+    temp %*ENV<PG_TEST_STATUS> = $test.Str;
+    temp %*ENV<PG_DROP_STATUS> = $drop.Str;
+    my $process = run 'bash', $runner, 'test file.rakutest', :out, :err;
+    my $out = $process.out.slurp-rest;
+    my $err = $process.err.slurp-rest;
+    %(:status($process.exitcode), :commands($log.slurp.lines.Array), :$out, :$err)
+}
+
+subtest 'The executor isolates and removes each test database', {
+    my %first = execute;
+    is %first<status>, 0, 'Successful tests succeed';
+    is %first<out>, '', 'The executor does not add non-TAP output';
+    like %first<commands>[0], /^ 'createdb --maintenance-db=postgres --template=template0 red_pg_test_' \d+ $/;
+    my $database = %first<commands>[0].words.tail;
+    is %first<commands>[2], "Pg host=127.0.0.1 port=5432 dbname=$database user=postgres",
+        'The test receives the isolated database configuration';
+    is %first<commands>[3], "dropdb --maintenance-db=postgres --if-exists $database",
+        'Cleanup removes the database that was created';
+    like %first<commands>[1], /^ 'raku[2] ' .* 'test file.rakutest' $/,
+        'Test paths remain one argument';
+    my %second = execute;
+    isnt %second<commands>[0], %first<commands>[0], 'Invocations use different databases';
+};
+
+subtest 'Failures preserve their status and still clean up', {
+    my %failed = execute(:test(23));
+    is %failed<status>, 23, 'The test exit status is preserved';
+    like %failed<commands>.tail, /^ 'dropdb '/, 'Failing tests still remove their database';
+    my %creation = execute(:create(7));
+    is %creation<status>, 7, 'Database creation failures stop the executor';
+    is %creation<commands>.elems, 1, 'A creation failure neither runs tests nor drops a database';
+    my %cleanup = execute(:drop(9));
+    is %cleanup<status>, 9, 'Cleanup failures are reported';
+    like %cleanup<err>, /'Failed to remove PostgreSQL test database'/;
+    my %both = execute(:test(23), :drop(9));
+    is %both<status>, 23, 'Cleanup failures do not overwrite a failing test status';
+};
+
+done-testing;
