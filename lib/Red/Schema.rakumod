@@ -68,3 +68,42 @@ method create(:$where) {
     }
     self
 }
+
+method plan(:$where is copy --> Array[Str]()) {
+    $where //= get-RED-DB;
+    my @sql;
+    my $diff = self.diff-from-db;
+    for $where.diff-to-ast: $diff -> @ast {
+        for @ast -> $ast {
+            @sql.push: .key for $where.translate: $ast
+        }
+    }
+    return @sql
+}
+
+method update(:$where) {
+    red-do (:$where with $where), :transaction, {
+        do for $.plan[] -> Str $sql {
+            .execute: $sql
+        }
+    }
+    self
+}
+
+method diff-from-db {
+    [
+        |do for %!models.values -> $model {
+            next unless $model ~~ Red::Model;
+            |($model.^diff-from-db // [])
+        }
+    ]
+}
+
+method diff-to-db {
+    [
+        |do for %!models.values -> $model {
+            next unless $model ~~ Red::Model;
+            |($model.^diff-to-db // [])
+        }
+    ]
+}

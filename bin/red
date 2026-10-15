@@ -1,13 +1,23 @@
 #!env perl6
+use Red;
 use Red::Cli;
 use Red::Do;
 use Red::Database;
+use Red::Configuration;
 
 my %*SUB-MAIN-OPTS =
   :named-anywhere,
 ;
 
 my $*RED-DEBUG = False;
+
+sub _config(:$config-file = "./red.rakuconfig", Bool :$debug, :$driver, *%pars) {
+    my $config         = single-config-run file => $config-file;
+    $GLOBAL::RED-DB    = $config.driver;
+    $GLOBAL::RED-DB    = database ($driver // $config.driver-name), |%pars if $driver || %pars;
+    $GLOBAL::RED-DEBUG = $debug // $config.debug;
+    $config
+}
 
 proto MAIN(Str :$I, Bool :$debug, |) {
     dyn-lib .split: "," with $I;
@@ -18,70 +28,188 @@ proto MAIN(Str :$I, Bool :$debug, |) {
 #| List tables in database
 multi MAIN(
     "list-tables",
-    Str  :$driver!,
+    :$config-file,
+    Str  :$driver,
+    Bool :$debug,
     *%pars
 ) {
-    my $*RED-DB = database($driver, |%pars);
+    my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
     .say for list-tables :$driver, |%pars
 }
 
 #| Generate stub code to access models from database schema
 multi MAIN(
     "print-stub",
+    :$config-file,
     Str  :$schema-class,
-    Str  :$driver!,
+    Str  :$driver,
+    Bool :$debug,
     *%pars
 ) {
-    my $*RED-DB = database($driver, |%pars);
-    say gen-stub-code :$schema-class, :$driver, |%pars
+    my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
+    say gen-stub-code :$schema-class, driver => $config.driver-name, |%pars
 }
 
 
 #| Generates migration plan to upgrade database schema
 multi MAIN(
     "migration-plan",
-    Str :$model!,
+    Str :$model,
     Str :$require = $model,
-    Str :$driver!,
+    Str :$driver,
+    :I($lib-path),
+    :$config-file,
+    Bool :$debug,
     *%pars
 ) {
-    my $*RED-DB = database($driver, |%pars);
-    migration-plan :$model, :$require, :$driver, |%pars
+    "use lib '$lib-path'".EVAL;
+    my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
+    migration-plan model => ($model // $config.models.head), :$require, driver => $config.driver-name, |%pars
 }
 
 #| Generates models' code from database schema
 multi MAIN(
     "generate-code",
-    Str  :$path!    where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
-    Str  :$from-sql where { not .defined or .IO.f or $_ eq "-" or fail "SQL $_ do not exist." },
+    Str  :$path!    where { not .defined or .IO.d or $_ eq "-" },
+    Str  :$from-sql where { not .defined or .IO.f or $_ eq "-" },
     Str  :$schema-class,
     Bool :$print-stub       = False,
     Bool :$no-relationships = False,
     #Bool :$stub-only,
-    Str  :$driver!,
+    Str  :$driver,
+    :$config-file,
+    Bool :$debug,
     *%pars
 ) {
-    my $*RED-DB = database($driver, |%pars);
+    my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
     generate-code
-            :$path,
-            :$from-sql,
-            :$schema-class,
-            :$print-stub,
-            :$no-relationships,
-            :$driver,
-            |%pars
+        :$path,
+        :$from-sql,
+        :$schema-class,
+        :$print-stub,
+        :$no-relationships,
+        :$driver,
+        |%pars
 }
 
 #| Prepare database
 multi MAIN(
-        "prepare-database",
-        Bool :$populate,
-        Str  :$models!,
-        Str  :$driver!,
-        *%pars
+    "prepare-database",
+    Bool :$populate,
+    Str  :$models,
+    Str  :$driver,
+    :I($lib-path),
+    :$config-file,
+    Bool :$debug,
+    *%pars
 ) {
-    $GLOBAL::RED-DB = database $driver, |%pars;
-    prepare-database :$populate, :$models, :$driver, |%pars
+    "use lib '$lib-path'".EVAL;
+    my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
+    prepare-database :$populate, models => ($models // $config.models), driver => $config.driver-name, |%pars
+}
+
+multi show(@_, %attrs) {
+    qq|[ { @_.join: ", " }, ]|
+}
+multi show(IO $_,          %attrs) { qq|"{ .absolute }".IO| }
+multi show(Red::Driver $_, %attrs) {
+    qq|database "{
+        .^shortname
+    }"{
+        ", " ~ %attrs<driver-attrs>.pairs.map({
+            "{.key} => {.value.raku}"
+        }).join: ", " if %attrs<driver-attrs>:exists
+    }|
+}
+multi show(Red::Schema $_, %attrs) { qq|schema { .models.keys.join: ", " }| }
+multi show($_,             %attrs) { .raku }
+
+#| Config
+multi MAIN(
+    "config",
+    :@models,
+    :@requires = |@models,
+    :$config-file,
+    :$driver,
+    :I($lib-path),
+    Bool :$debug,
+    *%pars,
+) {
+    my %attrs =
+        models       => @models,
+        requires     => @requires,
+        driver-name  => $driver,
+        driver-attrs => %pars,
+        debug        => $debug,
+        schema       => schema(@models),
+    ;
+    my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
+    say "use Red;";
+    say "use Red::Config;";
+    say "use lib '{ $lib-path }';";
+    for @requires {
+        say "use $_;";
+    }
+    say "\nconfig \{";
+    for $config.^attributes -> $attr {
+        next unless $attr.has_accessor;
+        my $name = $attr.name.substr: 2;
+        say ".{ $name } = { show (%attrs{$name} // $config."$name"()), %attrs };".indent: 4
+    }
+    say "}";
+}
+
+#| Diff model from DB
+multi MAIN(
+    "diff-from-db",
+    +@models,
+    :$config-file,
+    :$driver,
+    Bool :$debug,
+    *%pars,
+) {
+    my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
+    say tree prepare-tree diff-from-db ( @models || $config.models );
+}
+
+#| Diff model to DB
+multi MAIN(
+    "diff-to-db",
+    +@models,
+    :$config-file,
+    :$driver,
+    Bool :$debug,
+    *%pars,
+) {
+    my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
+    say tree prepare-tree diff-to-db ( @models || $config.models );
+}
+
+#| Update DB with models
+multi MAIN(
+    "sync",
+    # +@models,
+    Bool :$dev where { .so },
+    :$config-file,
+    :$driver,
+    Bool :$debug,
+    *%pars,
+) {
+    my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
+    $config.schema.update
+}
+
+#| Update DB with models
+multi MAIN(
+    "prepare",
+    # +@models,
+    :$config-file,
+    :$driver,
+    Bool :$debug,
+    *%pars,
+) {
+    my $config = _config |(:$config-file with $config-file),|(:$debug with $debug), :$driver, |%pars;
+    .say for $config.schema.plan
 }
 
 sub dyn-lib(@libs) {
