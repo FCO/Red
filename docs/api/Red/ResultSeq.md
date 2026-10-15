@@ -113,7 +113,7 @@ Sets the query to return the rows in a randomic order (does not run the query)
 ```raku
 method classify(
     &func,
-    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|3024153725256) ... },
+    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|4436123174808) ... },
     :&reduce
 ) returns Red::ResultAssociative
 ```
