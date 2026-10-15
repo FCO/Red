@@ -12,3 +12,6 @@
 *.db
 tags
 .racoco
+.raku-version
+.raku/
+.zef/
