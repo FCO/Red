@@ -113,7 +113,7 @@ Sets the query to return the rows in a randomic order (does not run the query)
 ```raku
 method classify(
     &func,
-    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|4014940046408) ... },
+    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|4105674430504) ... },
     :&reduce
 ) returns Red::ResultAssociative
 ```
@@ -143,6 +143,24 @@ method head() returns Mu
 ```
 
 Gets the first row returned by the query (run the query)
+
+### method reverse
+
+```raku
+method reverse() returns Mu
+```
+
+Reverses the query order without executing it.
+
+### method tail
+
+```raku
+method tail(
+    UInt(Numeric) $num
+) returns Mu
+```
+
+Selects the last rows in their original order without executing the query.
 
 ### method skip
 

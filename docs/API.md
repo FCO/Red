@@ -43,6 +43,7 @@ API Pages
 - [Red::AST::Next](api/Red/AST/Next)
 - [Red::AST::Optimizer::AND](api/Red/AST/Optimizer/AND)
 - [Red::AST::Optimizer::OR](api/Red/AST/Optimizer/OR)
+- [Red::AST::Ordering](api/Red/AST/Ordering)
 - [Red::AST::ProjectionField](api/Red/AST/ProjectionField)
 - [Red::AST::Reference](api/Red/AST/Reference)
 - [Red::AST::RollbackTransaction](api/Red/AST/RollbackTransaction)
