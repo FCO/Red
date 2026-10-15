@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.6  2026-10-15T18:34:50+01:00
     - tests: preserve multiplicity in unordered results and use portable CTE fixtures
     - pg: store Rat columns as numeric to preserve rational key comparisons
     - pg: fix date-part extraction and recognize date/datetime cast result types
