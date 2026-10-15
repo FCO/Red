@@ -32,6 +32,7 @@ use Red::Projection;
 use Red::Type::Json;
 use Red::AST::Reference;
 use Red::AST::ProjectionField;
+use Red::AST::Ordering;
 
 =head2 Red::ResultSeq
 
@@ -156,7 +157,14 @@ method !can-fuse-projection(--> Bool:D) {
         && $!chain.projection.leaves.map({ Red::Projection.safe-to-repeat($_) }).all
 }
 
-method !projection-input(Bool :$fuse = False) {
+method !row-identity {
+    return () if $!chain.identity-lost || $.group.elems;
+    return $!chain.row-identity if $!chain.row-identity.elems;
+    return () if $!chain.projection.DEFINITE;
+    self.of.^id.map(*.column)
+}
+
+method !projection-input(Bool :$fuse = False, Bool :$preserve-order = True) {
     return self if $fuse && self!can-fuse-projection;
     return self unless $!chain.projection.DEFINITE || $.limit.DEFINITE || $.offset.DEFINITE;
     return self if $!chain.projection-bound && !$.limit.DEFINITE && !$.offset.DEFINITE;
@@ -166,11 +174,19 @@ method !projection-input(Bool :$fuse = False) {
     my $alias = Red::Projection.allocate-alias;
     my $source = self.ast;
     my @fields;
-    my @order = $.order.kv.map: -> $i, $expression {
+    my @order = $preserve-order ?? $.order.kv.map(-> $i, $expression {
+        my $ordering = Red::AST::Ordering.from-expression($expression);
         my $name = "red_order_$i";
+        @fields.push: Red::AST::ProjectionField.new(:value($ordering.value), :$name);
+        $ordering.clone(:value(Red::AST::Reference.new(
+            :table($alias), :$name, :type($ordering.returns))))
+    }) !! ();
+    my @row-identity = self!row-identity.kv.map(-> $i, $expression {
+        my $name = "red_identity_$i";
         @fields.push: Red::AST::ProjectionField.new(:value($expression), :$name);
         Red::AST::Reference.new(:table($alias), :$name, :type($expression.returns))
-    };
+    });
+    my $exported = @fields.elems;
     $source = $source.clone(:fields[|$source.fields, |@fields]);
     my $model;
     my $projection = $!chain.projection;
@@ -187,10 +203,17 @@ method !projection-input(Bool :$fuse = False) {
                 $presence = Red::AST::Reference.new(:table($alias), :$name, :type(Bool));
             }
             Red::AST::Reference.new(:table($alias), :name($column.attr-name), :$presence,
+                :custom-inflate(@leaves[$i] ~~ Red::AST
+                    && so @leaves[$i].transpose-grep(-> $node {
+                    so $node.?custom-inflate || ($node ~~ Red::Column
+                        && (so ($node.attr.?args // {})<inflate>:exists
+                            || ($node.returns.HOW ~~ Metamodel::ClassHOW
+                                && so $node.returns.^can('inflator'))))
+                }).elems),
                 :type($attr.type), :inflate($column.inflate), :deflate($column.deflate))
                 but ::('Red::ColumnMethods')
         };
-        $source = $source.clone(:fields[|$source.fields, |@fields.skip($.order.elems)]);
+        $source = $source.clone(:fields[|$source.fields, |@fields.skip($exported)]);
         $projection = $projection.replace-leaves(@references);
         $model = self.of.^specialise(|@references);
     } else {
@@ -201,7 +224,7 @@ method !projection-input(Bool :$fuse = False) {
                 if $column.name ne $column.attr-name;
         }
         $source = $source.clone(:fields[|$source.fields, |@exports]);
-        $model = self.of.^alias($alias);
+        $model = self.of.^orig.^alias($alias);
         $model.HOW does role { method tables(\type) { [type] } };
     }
     my &post = $!chain.post;
@@ -214,7 +237,8 @@ method !projection-input(Bool :$fuse = False) {
     my role ProjectionModel[Mu:U \m] { method of { m } }
     self.clone(:chain(Red::AST::Chained.new:
         :$source, :source-alias($alias), :$projection, :projection-bound,
-        :projection-depth($depth), :@order, :&post
+        :projection-depth($depth), :@order, :&post,
+        :@row-identity, :identity-lost($!chain.identity-lost || so $.group.elems)
     )) but ProjectionModel[$model]
 }
 
@@ -237,8 +261,11 @@ method !create-projection(Red::Projection:D $projection, &filter) {
         has $.last-rs = $previous;
     }
     my @tables = @*table-list.unique;
+    my @row-identity = self!row-identity;
     self.clone(:chain($!chain.clone:
         :$projection, :!projection-bound, :table-list(@tables),
+        :row-identity($aggregate ?? [] !! @row-identity),
+        :identity-lost($!chain.identity-lost || so $aggregate || so $.group.elems),
         |(:order([]) if $aggregate),
         :post(-> $row {
             my @values = @columns.map({ .get_value($row) });
@@ -481,7 +508,7 @@ multi method Set {
 #| Gets the first row returned by the query (run the query)
 multi method head is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    self.do-it(:1limit).head
+    self.do-it(:limit(min(1, $.limit))).head
 }
 
 # TODO: Return a Red::ResultSeq
@@ -490,16 +517,123 @@ multi method head(UInt(Numeric) $num) is hidden-from-sql-commenting {
     self.clone: :chain($!chain.clone: :limit(min $num, $.limit))
 }
 
+method !ordered-input(Str:D $operation) {
+    my $input = self;
+    unless $.order.elems {
+        my @identity = self!row-identity;
+        X::Red::Projection.new(:reason(
+            "$operation requires explicit ordering or a preserved primary key"
+        )).throw unless @identity;
+        $input = self.clone(:chain($!chain.clone(:order(@identity))));
+    }
+    $input!projection-input(:fuse)
+}
+
+#| Reverses the query order without executing it.
+method reverse() is hidden-from-sql-commenting {
+    my $input;
+    my Exception $error;
+    try {
+        $input = self!ordered-input('reverse');
+        CATCH { default { $error = $_ } }
+    }
+    if $error.DEFINITE {
+        $error.rethrow if $*RED-FALLBACK.defined && !$*RED-FALLBACK;
+        return self.Seq.reverse;
+    }
+    my @order = $input.order.map({ Red::AST::Ordering.from-expression($_).reversed });
+    $input.clone(:chain($input.chain.clone(:@order)))
+}
+
+#| Selects the last rows in their original order without executing the query.
+multi method tail(UInt(Numeric) $num) is hidden-from-sql-commenting {
+    my $input;
+    my Exception $error;
+    try {
+        $input = self!ordered-input('tail');
+        CATCH { default { $error = $_ } }
+    }
+    if $error.DEFINITE {
+        $error.rethrow if $*RED-FALLBACK.defined && !$*RED-FALLBACK;
+        return self.Seq.tail($num);
+    }
+    my @order = $input.order.map({ Red::AST::Ordering.from-expression($_).reversed });
+    my $last = $input.clone(:chain($input.chain.clone(:@order, :limit($num))));
+    $last = $last!projection-input;
+    @order = $last.order.map({ Red::AST::Ordering.from-expression($_).reversed });
+    $last.clone(:chain($last.chain.clone(:@order)))
+}
+
+multi method tail() is hidden-from-sql-commenting {
+    self.tail(1).head
+}
+
+multi method tail(&count) is hidden-from-sql-commenting {
+    self.Seq.tail(&count)
+}
+
 #| Skips the $num first items from ResultSeq (adds a limit on the SQL query)
 method skip(UInt:D $num --> Red::ResultSeq) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    self.clone: :chain($!chain.clone: :offset(($.offset // 0) + $num));
+    my $limit = $.limit;
+    $limit = max(0, $limit - $num) if $limit.DEFINITE;
+    self.clone: :chain($!chain.clone:
+        :offset(($.offset // 0) + $num), :$limit);
 }
 
 # Alias for skip. It's going to be deprecated on a future version
 method from(UInt:D $num --> Red::ResultSeq) is hidden-from-sql-commenting {
     self.skip: $num
 }
+
+method !reduce-projection(Str:D $function) {
+    my $projection = $!chain.projection;
+    unless $projection.DEFINITE && $projection.kind eq 'leaf'
+        && so (Int, UInt, Num, Rat, Numeric).map({
+            $_ =:= $projection.expression.returns
+        }).any
+        && !$projection.expression.transpose-grep(-> $node {
+            so $node.?custom-inflate
+                || ($node ~~ Red::AST::Value && !$node.value.DEFINITE)
+                || ($node ~~ Red::Column
+                    && (so ($node.attr.?args // {})<inflate>:exists
+                        || ($node.returns.HOW ~~ Metamodel::ClassHOW
+                                && so $node.returns.^can('inflator'))))
+        }).elems {
+        X::Red::Projection.new(:reason(
+            "$function requires a numeric scalar projection without nulls or custom inflators"
+        )).throw
+            if $*RED-FALLBACK.defined && !$*RED-FALLBACK;
+        return self.Seq."{$function.lc}"();
+    }
+    my $result;
+    my Exception $error;
+    try {
+        my $input = self!projection-input(:!preserve-order);
+        my $expression = $input.chain.projection.expression;
+        my $aggregate = Red::AST::Function.new(:func($function), :args[$expression],
+            :returns($expression.returns));
+        my @values = $input.clone(:chain($input.chain.clone(:order([]))))
+            .create-map($aggregate,
+                Red::AST::Function.new(:func<COUNT>, :args[ast-value *], :returns(Int)),
+                Red::AST::Function.new(:func<COUNT>, :args[$expression], :returns(Int))
+            ).head.list;
+        X::Red::Projection.new(:reason(
+            "$function cannot preserve native reduction of undefined numeric values"
+        )).throw if @values[1] != @values[2];
+        $result = @values[0];
+        CATCH { default { $error = $_ } }
+    }
+    if $error.DEFINITE {
+        $error.rethrow if $*RED-FALLBACK.defined && !$*RED-FALLBACK;
+        return self.Seq."{$function.lc}"();
+    }
+    $result // ($function eq 'SUM' ?? 0 !! $function eq 'MIN' ?? Inf !! -Inf)
+}
+
+multi method sum() is hidden-from-sql-commenting { self!reduce-projection('SUM') }
+multi method min() is hidden-from-sql-commenting { self!reduce-projection('MIN') }
+multi method max() is hidden-from-sql-commenting { self!reduce-projection('MAX') }
 
 #| Returns the number of rows returned by the query (runs the query)
 method elems( --> Int()) is hidden-from-sql-commenting {

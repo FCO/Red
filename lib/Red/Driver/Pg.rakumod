@@ -352,7 +352,9 @@ multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context?) {
 
 multi method translate(Red::AST::Value $_ where .type ~~ UUID, $context?) { "'{ .value.Str }'" => [] }
 
-multi method translate(Red::AST::Value $_ where .type ~~ Rat, $context?) { "'{ .value }'::{ self.default-type-for-type: .type }" => [] }
+multi method translate(Red::AST::Value $_ where .type ~~ Rat, $context?) {
+    "'{ .value.Num }'::numeric" => []
+}
 
 multi method translate(Red::Column $_, "column-comment") {
     (.comment ?? qq[COMMENT ON COLUMN { self.translate: $_, "table-dot-column" } IS '{ .comment }'] !! "") => []

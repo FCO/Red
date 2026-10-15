@@ -17,6 +17,8 @@ has Red::Projection     $.projection;
 has Bool                $.projection-bound = False;
 has Int                 $.projection-depth = 0;
 has Red::AST            @.fields;
+has Red::AST            @.row-identity;
+has Bool                $.identity-lost = False;
 
 method args {
     $!filter, |@!order, |@!group, |(.args with $!next)

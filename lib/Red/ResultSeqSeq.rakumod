@@ -22,7 +22,7 @@ method AT-POS($key) {
 }
 
 method iterator {
-    gather for 0 .. $.elems { take self.AT-POS: $_ }.iterator
+    gather for ^$.elems { take self.AT-POS: $_ }.iterator
 }
 
 method gist {

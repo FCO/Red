@@ -17,10 +17,16 @@ class Red::AST::Concat  { ... }
 class Red::AST::Like    { ... }
 class Red::AST::In      { ... }
 
+sub arithmetic-type(Red::AST $left, Red::AST $right --> Mu:U) {
+    return Num if $left.returns ~~ Num || $right.returns ~~ Num;
+    return Int if $left.returns ~~ Int && $right.returns ~~ Int;
+    Numeric
+}
+
 #| Represents a sum operation
 class Red::AST::Sum does Red::AST::Infix {
     has $.op = "+";
-    has $.returns = (self.left | self.right).returns ~~ Num ?? Num !! Int;
+    has $.returns = arithmetic-type(self.left, self.right);
 
     method should-set(--> Hash()) {
         self.find-column-name => self.find-value
@@ -44,7 +50,7 @@ class Red::AST::Sum does Red::AST::Infix {
 #| Represents a subtraction operation
 class Red::AST::Sub does Red::AST::Infix {
     has $.op = "-";
-    has $.returns = (self.left | self.right).returns ~~ Num ?? Num !! Int;
+    has $.returns = arithmetic-type(self.left, self.right);
 
     method should-set(--> Hash()) {
         self.find-column-name => self.find-value
@@ -217,7 +223,7 @@ class Red::AST::OR does Red::AST::Infix {
 #| Represents a multiplication operation
 class Red::AST::Mul does Red::AST::Infix {
     has $.op = "*";
-    has $.returns = (self.left | self.right).returns ~~ Num ?? Num !! Int;
+    has $.returns = arithmetic-type(self.left, self.right);
 
     method should-set(--> Hash()) {
         self.find-column-name => self.find-value

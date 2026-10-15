@@ -1,72 +1,354 @@
 use Test;
 use Red;
+use Red::Type::Json;
+use Red::ResultSeqSeq;
 
-# TODO: Fix bug:
-# # Failed test at t/37-equal.t line 59
-# Too few positionals passed to 'translate'; expected 2 arguments but got 0
+plan :skip-all("Different driver selected ($_)") with %*ENV<RED_DATABASE>;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
-
-model Bla { has UInt $.id is serial; has Int $.bla is column }
-model Ble { has UInt $.id is serial; has Int $.ble is column }
-
-my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
-my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
-my $*RED-DEBUG-AST      = $_ with %*ENV<RED_DEBUG_AST>;
-my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
-my $driver              = @conf.shift;
-my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
-
-schema(Bla, Ble).drop.create;
-
-Bla.^create: :bla($_) for ^50;
-Ble.^create: :ble($_) for ^50;
-
-my @bla = Bla.^all; # running the query now, use := to not run the query
-my @ble = Ble.^all; # running the query now, use := to not run the query
-
-my @tests =
-        *.head,
-        *.head(5),
-        *.head(*-5),
-        *.tail(5),
-        *.tail(*-5),
-        *.map(*.bla),
-        *.grep(*.bla > 5),
-        *.grep(*.id > 5).map(*.bla),
-        *.grep(*.id  %% 2).map(*.bla ~ "bla"),
-        *.grep(*.bla %% 2).map(*.bla div 2),
-        *.first,
-        *.first(*.bla %% 5),
-        *.sort(*.bla),
-        *.sort(-*.bla),
-        *.sort({ .bla %% 5, .bla }),
-        *.sort({ .bla %% 5, .bla }).map(*.bla),
-        *.map({ .bla > 10 ?? "bla" !! "ble" }),
-        *.map({ .bla > 10 ?? .id !! .bla }),
-        *.map({ .bla > 10 ?? .id ~ "id" !! .bla ~ "bla" }),
-        *.grep(*.bla %% 2).map(*.bla * 2),
-        *.grep(*.id  %% 2).map(*.bla * 2),
-        *.grep(*.id  %% 2).map(*.bla + 5),
-        *.grep(*.id  %% 2).map(*.bla - 5),
-;
-
-my @todo =
-        *.grep(*.id  %% 2).map(*.bla * 2.1),
-        *.grep(*.id  %% 2).map(*.bla + 5.1),
-        *.grep(*.id  %% 2).map(*.bla - 5.1),
-        *.map({ "bla" if .bla > 45 }),
-        *.map({ next unless .bla < 5; "bla" }),
-;
-
-my $*RED-FALLBACK = False;
-lives-ok {
-        quietly is-deeply .(Bla.^all).Seq, .(@bla).Seq for @tests;
+model Bla {
+    has UInt $.id is serial;
+    has Int $.bla is column;
 }
 
-#lives-ok {
-#        todo "NYI";
-#        is-deeply .(Bla.^all).Seq, .(@bla).Seq for @todo;
-#}
+model ParityValue {
+    has UInt $.id is serial;
+    has Int $.number is column;
+    has Str $.text is column;
+    has Str $.optional is column{ :nullable };
+    has Json $.payload is column;
+}
+
+my $*RED-DEBUG = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my $*RED-DEBUG-AST = $_ with %*ENV<RED_DEBUG_AST>;
+my $*RED-DB = database 'SQLite';
+my $*RED-FALLBACK = False;
+
+schema(Bla, ParityValue).drop.create;
+Bla.^create(:bla($_)) for ^50;
+my @baseline = Bla.^all.sort(*.id).Array;
+my @numbers = -3, 0, 2, 2, 9;
+my @texts = '', 'bla', 'bla', 'z', 'last';
+for @numbers.kv -> $index, $number {
+    ParityValue.^create(:$number, :text(@texts[$index]),
+        :payload(%(:scalar($number), :items([$number, $index]), :null(Any))));
+}
+
+sub rows { Bla.^all.sort(*.id) }
+sub native-rows { @baseline.Seq }
+sub numbers { rows.map(*.bla) }
+sub native-numbers { @baseline.Seq.map(*.bla) }
+sub small-numbers { ParityValue.^all.sort(*.id).map(*.number) }
+sub native-small-numbers { @numbers.Seq }
+sub texts { ParityValue.^all.sort(*.id).map(*.text) }
+sub native-texts { @texts.Seq }
+
+# Materialize lazy results without flattening containers or converting scalars to Seqs.
+sub snapshot(Mu $value) {
+    $value.throw if $value ~~ Failure;
+    return $value unless $value.DEFINITE;
+    return %(kind => 'model', id => $value.id, bla => $value.bla) if $value ~~ Bla;
+    if $value ~~ Pair {
+        return %(kind => 'pair', key => snapshot($value.key), value => snapshot($value.value));
+    }
+    if $value ~~ Associative {
+        my %entries;
+        %entries{$_} = snapshot($value{$_}) for $value.keys;
+        my $kind = $value ~~ Bag ?? 'Bag' !! $value ~~ Set ?? 'Set'
+            !! $value ~~ Map && $value !~~ Hash ?? 'Map' !! 'Hash';
+        return %(kind => $kind, entries => %entries);
+    }
+    if $value ~~ Positional || $value ~~ Seq || $value ~~ Red::ResultSeqSeq {
+        my @items;
+        @items.push(snapshot($_)) for $value.list;
+        return %(kind => ($value ~~ Array ?? 'Array' !! 'sequence'), items => @items);
+    }
+    $value
+}
+
+sub outcome(&operation, &source --> Hash) {
+    my %result;
+    try {
+        %result = %(ok => True, value => snapshot(operation(source())));
+        CATCH {
+            default { %result = %(ok => False, exception => .^name, message => .message) }
+        }
+    }
+    %result
+}
+
+# Only decimal arithmetic cases allow database floating-point rounding.
+sub approximately(Mu $actual, Mu $expected --> Bool) {
+    if $actual ~~ Numeric && $expected ~~ Numeric {
+        return abs($actual - $expected) <= 1e-9 * max(1, abs($expected));
+    }
+    if $actual ~~ Hash && $expected ~~ Hash {
+        return False unless $actual.keys.Set eqv $expected.keys.Set;
+        return so $expected.keys.map({ approximately($actual{$_}, $expected{$_}) }).all;
+    }
+    if $actual ~~ Array && $expected ~~ Array {
+        return False unless $actual.elems == $expected.elems;
+        return so (^$expected.elems).map({ approximately($actual[$_], $expected[$_]) }).all;
+    }
+    so $actual eqv $expected
+}
+
+sub parity(Str:D $name, &operation, :&query = &numbers, :&reference = &native-numbers,
+        Str :$todo = '', Bool :$approx = False, Bool :$fails = False) {
+    subtest $name, {
+        my %expected = outcome(&operation, &reference);
+        my %actual = outcome(&operation, &query);
+        if %expected<ok> {
+            todo $todo if $todo.chars && !%actual<ok>;
+            ok %actual<ok>, 'Evaluation and iteration succeed like Seq';
+            if %actual<ok> {
+                todo $todo if $todo.chars;
+                if $approx {
+                    ok approximately(%actual<value>, %expected<value>),
+                        'Decimal values match Seq within numerical tolerance';
+                } else {
+                    is-deeply %actual<value>, %expected<value>,
+                        'Values, order, cardinality, and container shapes match Seq';
+                }
+            } else {
+                diag %actual<exception> ~ ': ' ~ %actual<message>;
+            }
+        } else {
+            ok $fails, 'The reference fails only for an intentionally invalid call';
+            diag %expected<exception> ~ ': ' ~ %expected<message> unless $fails;
+            todo $todo if $todo.chars;
+            is %actual<ok>, False, 'Invalid calls fail like Seq';
+            unless %actual<ok> {
+                todo $todo if $todo.chars;
+                is %actual<exception>, %expected<exception>, 'Exception types match Seq';
+            }
+        }
+    }
+}
+
+subtest 'Existing model operations', {
+    my @cases =
+        'head scalar' => { $_.head },
+        'head five' => { $_.head(5) },
+        'head Whatever count' => { $_.head(*-5) },
+        'tail five' => { $_.tail(5) },
+        'tail Whatever count' => { $_.tail(*-5) },
+        'column projection' => { $_.map(*.bla) },
+        'model filter' => { $_.grep(*.bla > 5) },
+        'filter then map' => { $_.grep(*.id > 5).map(*.bla) },
+        'string concatenation' => { $_.grep(*.id %% 2).map(*.bla ~ 'bla') },
+        'integer division' => { $_.grep(*.bla %% 2).map(*.bla div 2) },
+        'first scalar' => { $_.first },
+        'first predicate' => { $_.first(*.bla %% 5) },
+        'ascending model sort' => { $_.sort(*.bla) },
+        'descending model sort' => { $_.sort(-*.bla) },
+        'multiple sort keys' => { $_.sort({ .bla %% 5, .bla }) },
+        'multiple keys then map' => { $_.sort({ .bla %% 5, .bla }).map(*.bla) },
+        'conditional strings' => { $_.map({ .bla > 10 ?? 'bla' !! 'ble' }) },
+        'conditional numbers' => { $_.map({ .bla > 10 ?? .id !! .bla }) },
+        'conditional concatenation' => { $_.map({ .bla > 10 ?? .id ~ 'id' !! .bla ~ 'bla' }) },
+        'multiply filtered values' => { $_.grep(*.bla %% 2).map(*.bla * 2) },
+        'multiply filtered ids' => { $_.grep(*.id %% 2).map(*.bla * 2) },
+        'add integer' => { $_.grep(*.id %% 2).map(*.bla + 5) },
+        'subtract integer' => { $_.grep(*.id %% 2).map(*.bla - 5) };
+    for @cases -> $case {
+        parity $case.key, $case.value, :query(&rows), :reference(&native-rows);
+    }
+};
+
+subtest 'Finite sequence methods and boundaries', {
+    my @cases =
+        'reverse' => { $_.reverse },
+        'unique' => { $_.map(* % 4).unique },
+        'squish' => { $_.map(* div 4).squish },
+        'rotor partial batch' => { $_.rotor(7, :partial) },
+        'rotor complete batches' => { $_.rotor(7) },
+        'pairs' => { $_.pairs },
+        'kv' => { $_.kv },
+        'keys' => { $_.keys },
+        'values' => { $_.values },
+        'elems' => { $_.elems },
+        'Bool' => { $_.Bool },
+        'reduce' => { $_.reduce({ $^a + $^b }) },
+        'produce' => { $_.produce({ $^a + $^b }) },
+        'join' => { $_.join(',') },
+        'List' => { $_.List },
+        'Array' => { $_.Array },
+        'Slip' => { $_.Slip },
+        'flat' => { $_.flat },
+        'Bag with duplicates' => { $_.map(* % 4).Bag },
+        'Set with duplicates' => { $_.map(* % 4).Set },
+        'default scalar sort' => { $_.sort },
+        'descending scalar sort' => { $_.sort(-*) },
+        'bare Whatever sort is invalid' => { $_.sort(*) },
+        'all junction' => { so .all >= 0 },
+        'any junction' => { so .any > 40 },
+        'one junction' => { so .one == 20 },
+        'none junction' => { so .none < 0 },
+        'first match' => { $_.first(* > 3) },
+        'first absent match' => { $_.first(* > 100) },
+        'head zero' => { $_.head(0) },
+        'head oversized' => { $_.head(100) },
+        'tail scalar' => { $_.tail },
+        'tail zero' => { $_.tail(0) },
+        'tail oversized' => { $_.tail(100) },
+        'skip zero' => { $_.skip(0) },
+        'skip oversized' => { $_.skip(100) },
+        'skip then head' => { $_.skip(2).head(5) },
+        'head then filter' => { $_.head(5).grep(* > 2) },
+        'repeated maps and filters' => { $_.map(* + 2).grep(* > 5).map(* * 3) },
+        'position zero' => { .[0] },
+        'position last' => { .[*-1] },
+        'position missing' => { .[100] };
+    for @cases -> $case {
+        parity $case.key, $case.value,
+            :fails($case.key eq 'bare Whatever sort is invalid');
+    }
+    parity 'batch retains partial group without extra empty group',
+        { .batch(7).map(*.List) };
+    parity 'batch exact multiples have no trailing group', { .batch(10).map(*.List) };
+    parity 'oversized batch retains all items in one group', { .batch(100).map(*.List) };
+    parity 'zero limit survives projection before head', *.head(0).map(* + 1).head;
+    parity 'zero limit survives projection before pick', *.head(0).map(* + 1).pick;
+    parity 'head then skip retains the original window', *.head(5).skip(2);
+    for 'skip the entire window' => { .head(5).skip(5) },
+        'skip beyond the window' => { .head(5).skip(8) },
+        'repeated skip' => { .head(8).skip(2).skip(3) },
+        'existing offset and limit' => { .skip(3).head(5).skip(2) },
+        'projection between head and skip' => { .head(5).map(* + 1).skip(2) },
+        'batch within a limited window' => { .head(5).batch(2).map(*.List) } -> $case {
+        parity $case.key, $case.value;
+    }
+    for 'head' => { .head(0).head }, 'first' => { .head(0).first },
+        'pick' => { .head(0).pick } -> $case {
+        parity "zero limit followed by {$case.key}", $case.value;
+    }
+    for <sum min max> -> $method {
+        parity "$method without a Callable", { ."$method"() };
+        parity "$method over an empty sequence", { .grep(* < 0)."$method"() };
+        parity "$method over a bounded window", { .head(8).skip(3)."$method"() };
+        parity "$method over negative and duplicate values", { ."$method"() },
+            :query(&small-numbers), :reference(&native-small-numbers);
+        parity "$method over fractional values", { .map(* * (1 / 3))."$method"() }, :approx;
+    }
+};
+
+subtest 'Empty, singleton, duplicate, and string inputs', {
+    for 'empty' => 0, 'singleton' => 1 -> $fixture {
+        my $size = $fixture.value;
+        my &query = { numbers.grep(* < $size) };
+        my &reference = { native-numbers.grep(* < $size) };
+        for 'head' => { $_.head }, 'first' => { $_.first }, 'tail' => { $_.tail },
+            'elems' => { $_.elems }, 'Bool' => { $_.Bool }, 'Array' => { $_.Array },
+            'sort' => { $_.sort }, 'reverse' => { $_.reverse },
+            'rotor' => { $_.rotor(2, :partial) }, 'join' => { $_.join(',') } -> $case {
+            parity "{$fixture.key} {$case.key}", $case.value, :&query, :&reference;
+        }
+        parity "{$fixture.key} batch", { .batch(2).map(*.List) }, :&query, :&reference;
+    }
+    for 'unique' => { $_.unique }, 'squish' => { $_.squish }, 'sort' => { $_.sort },
+        'reverse' => { $_.reverse }, 'Bag' => { $_.Bag }, 'Set' => { $_.Set },
+        'reduce' => { $_.reduce({ $^a + $^b }) }, 'elems' => { $_.elems } -> $case {
+        parity "negative and duplicate numbers: {$case.key}", $case.value,
+            :query(&small-numbers), :reference(&native-small-numbers);
+    }
+    for 'unique' => { $_.unique }, 'squish' => { $_.squish }, 'sort' => { $_.sort },
+        'join' => { $_.join('|') }, 'Bool' => { $_.Bool }, 'first' => { $_.first },
+        'Bag' => { $_.Bag }, 'Set' => { $_.Set } -> $case {
+        parity "strings including empty values: {$case.key}", $case.value,
+            :query(&texts), :reference(&native-texts);
+    }
+};
+
+subtest 'Grouping and projected containers', {
+    parity 'classify preserves groups and their item order', {
+        my $groups = .classify(* % 3);
+        $groups.keys.Seq.map({ $_ => $groups{$_}.Array }).Hash
+    };
+    parity 'categorize preserves memberships and item order', {
+        my $groups = .categorize({ ($_.Str, ($_ % 3).Str) });
+        $groups.keys.Seq.map({ $_ => $groups{$_}.Array }).Hash
+    };
+    parity 'Hash projection followed by key access',
+        *.map({ %(value => $_, twice => $_ * 2) }).grep(*<value> > 3).map(*<twice>);
+    parity 'Array projections preserve nesting', *.map({ [$_, $_ + 1] });
+    parity 'List projections preserve nesting', *.map({ ($_, $_ + 1) });
+    parity 'nested containers and undefined leaves',
+        *.map({ %(values => [$_, ($_ + 1, Any)], empty => []) });
+    parity 'flatten projected Lists', *.map({ ($_, $_ + 1) }).flat;
+    for 'numeric scalar' => { .map(*.number).map(*.elems) },
+        'text scalar' => { .map(*.text).map(*.elems) },
+        'SQL NULL scalar' => { .map(*.optional).map(*.elems) },
+        'JSON scalar' => { .map(*.payload<scalar>).map(*.elems) },
+        'JSON null scalar' => { .map(*.payload<null>).map(*.elems) },
+        'JSON object' => { .map(*.payload).map(*.elems) },
+        'JSON Array' => { .map(*.payload<items>).map(*.elems) } -> $case {
+        parity "elems of {$case.key}", $case.value,
+            :query({ ParityValue.^all.sort(*.id) }),
+            :reference({ ParityValue.^all.sort(*.id).Array.Seq });
+    }
+};
+
+subtest 'Decimal arithmetic and omitted map rows', {
+    parity 'Num multiplication retains fractional values', *.map(* * 2.1e0), :approx;
+    for 'negative fraction on the right' => { .map(* * -2.1) },
+        'fraction on the left' => { .map({ 2.1 + $_ }) },
+        'subtraction with fraction on the left' => { .map({ 5.1 - $_ }) },
+        'repeating fraction multiplication' => { .map(* * (1 / 3)) },
+        'chained fractional arithmetic' => { .map(* + 2.1).map(* * -1.5).map(* - 0.2) }
+            -> $case {
+        parity $case.key, $case.value, :query(&small-numbers),
+            :reference(&native-small-numbers), :approx;
+    }
+    for 'multiply' => { $_.grep(*.id %% 2).map(*.bla * 2.1) },
+        'add' => { $_.grep(*.id %% 2).map(*.bla + 5.1) },
+        'subtract' => { $_.grep(*.id %% 2).map(*.bla - 5.1) } -> $case {
+        parity "decimal {$case.key}", $case.value, :query(&rows), :reference(&native-rows),
+            :approx;
+    }
+    parity 'conditional Empty omits rows', *.map({ 'bla' if .bla > 45 }),
+        :query(&rows), :reference(&native-rows);
+    parity 'next omits rows from map', *.map({ next unless .bla < 5; 'bla' }),
+        :query(&rows), :reference(&native-rows);
+    for 'next in the other branch' => { .map({ next if $_ < 5; $_ * 2 }) },
+        'nested next conditions' => { .map({ next unless $_ < 20; next if $_ %% 3; $_ }) },
+        'all rows omitted by next' => { .map({ next }) },
+        'all rows omitted by Empty' => { .map({ Empty }) },
+        'empty Slip omits rows' => { .map({ Slip.new }) },
+        'conditional Empty followed by consumers' => {
+            .map({ $_ if $_ > 5 }).grep(* < 10).map(* + 1)
+        },
+        'next after pagination and projection' => {
+            .head(8).map(* + 1).map({ next unless $_ %% 2; $_ })
+        },
+        'empty Arrays remain rows' => { .map({ [] }) },
+        'empty Lists remain rows' => { .map({ () }) },
+        'false values remain rows' => { .map({ False }) },
+        'undefined values remain rows' => { .map({ Any }) },
+        'empty strings remain rows' => { .map({ '' }) } -> $case {
+        parity $case.key, $case.value;
+    }
+};
+
+subtest 'Random methods obey Seq invariants', {
+    parity 'pick all retains duplicate multiplicities', *.pick(*).Bag,
+        :query(&small-numbers), :reference(&native-small-numbers);
+    for 'normal' => 50, 'singleton' => 1, 'empty' => 0 -> $fixture {
+        my $size = $fixture.value;
+        for 'pick all' => { .pick(*) }, 'pick five' => { .pick(5) },
+            'pick one' => { .pick }, 'roll five' => { .roll(5) },
+            'roll one' => { .roll }, 'bounded infinite roll' => { .roll(*).head(5) } -> $case {
+            parity "{$fixture.key} {$case.key}", {
+                my $draw = $case.value.($_);
+                my @items = $draw ~~ Iterable ?? $draw.list !! ($draw.defined ?? ($draw,) !! ());
+                my $valid = so @items.all >= 0 && so @items.all < $size;
+                my $without-replacement = $case.key.starts-with('pick');
+                %(count => @items.elems, valid => $valid,
+                    unique => ($without-replacement ?? @items.Set.elems == @items.elems !! True))
+            }, :query({ numbers.grep(* < $size) }),
+                :reference({ native-numbers.grep(* < $size) });
+        }
+    }
+};
 
 done-testing;

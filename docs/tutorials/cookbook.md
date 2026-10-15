@@ -760,6 +760,29 @@ the complete source before taking two rows. Later safe operations can share the
 outer SELECT. Ordering crosses boundaries through internal fields that do not
 appear in the result elements. No configuration is needed to enable fusion.
 
+`tail(n)` returns a lazy ResultSeq containing the last `n` rows in their original
+order. Red reverses the SQL ordering, applies `LIMIT n`, and restores the original
+ordering in an outer SELECT. Filters and maps after `tail` apply to those selected
+rows. `reverse` also stays in SQL and reverses every ordering component. Both
+operations preserve any preceding `head` or `skip` window.
+
+```raku
+my $last-values = Bla.^all.map(*.bla).grep(* > 1).tail(7)
+    .map(* * 10).grep(* < 100);
+my $descending = Bla.^all.sort(*.bla).reverse;
+my $last-value = Bla.^all.map(*.bla).tail;
+```
+
+Without an explicit `sort`, these operations use ascending primary-key order,
+including all components of a composite key. Red preserves these keys internally
+through scalar and container projections. Aggregate and DISTINCT projections lose
+that row identity and require explicit sorting. Queries without an available key
+use the native Seq fallback; with `$*RED-FALLBACK = False`, they raise
+`X::Red::Projection`. Callable tail counts, such as `.tail(*-3)`, retain native
+Seq behavior. Explicit sorting does not add primary-key tie-breakers; include them
+in the sort block when ties must have a deterministic order. NULL ordering follows
+the selected database driver.
+
 `head` and `first` return the projected element. Row counts, query existence,
 and scalar `Bag`, `Set`, and `classify` operations use the projected query and
 its filters. Independent chains derived from the same query do not modify each

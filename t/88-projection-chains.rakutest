@@ -66,6 +66,16 @@ model TypedProjectionRow {
     has ProjectionPoint $.point is column;
 }
 
+model NumericReductionRow {
+    has UInt $.id is serial;
+    has Int $.value is column{ :inflate{ $_ + 100 } };
+    has Int $.maybe is column{ :nullable };
+}
+
+model LargeReductionRow {
+    has Int $.value is column;
+}
+
 class ProjectionBox { has $.value }
 
 schema(ProjectionOwner, ProjectionRow).drop.create;
@@ -255,6 +265,17 @@ subtest 'Conditional shapes', {
     is-deeply $query.map({ .<value> }).Seq.Array, [1, 2, 3, 3, 4];
     throws-like { rows.map({ .col1 > 2 ?? [.col1] !! %(:value(.col2)) }) },
         X::Red::Projection, 'Incompatible branch shapes are reported';
+    my $conditional = rows.map({ .col1 if .col1 > 1 });
+    isa-ok $conditional, Red::ResultSeq, 'Conditional omission stays in SQL';
+    is-deeply $conditional.Seq.Array, [2, 3, 4], 'Empty branches omit rows';
+    like $*RED-DB.translate($conditional.ast).key, /'WHERE'/,
+        'Omitted rows are excluded by the SQL filter';
+    my $skipped = rows.map({ next unless .col1 > 1; .col1 });
+    isa-ok $skipped, Red::ResultSeq, 'Next stays in SQL';
+    is-deeply $skipped.map(* + 10).grep(* < 14).Seq.Array, [12, 13],
+        'Consumers compose with the filter introduced by next';
+    is-deeply rows.map({ next }).Seq.Array, [], 'Unconditional next produces no rows';
+    is-deeply rows.map({ Empty }).Seq.Array, [], 'Unconditional Empty produces no rows';
 };
 
 subtest 'Ordering and pagination barriers', {
@@ -285,6 +306,73 @@ subtest 'Aggregation after projection', {
     is-deeply $query.Set, set(2, 3, 4), 'Set respects the projected filter';
     my $classified = $query.classify({ $_ % 2 });
     is-deeply $classified{0}.Seq.Array, [2, 4], 'Classify receives the projected value';
+    for 'sum' => [9, 3, 0], 'min' => [2, 1, Inf], 'max' => [4, 2, -Inf] -> $case {
+        my $method = $case.key;
+        is rows.map(*.col1).grep(* > 1)."$method"(), $case.value[0],
+            "$method reduces the filtered projection";
+        is rows.map(*.col1).head(3).skip(1)."$method"(), $case.value[1],
+            "$method respects the preceding limit and offset";
+        is rows.map(*.col1).grep(* < 0)."$method"(), $case.value[2],
+            "$method preserves the native empty result";
+        {
+            my $*RED-DB = database 'Mock';
+            my Int $calls = 0;
+            my $function = $method.uc;
+            $*RED-DB.die-on-unexpected;
+            $*RED-DB.when: :once, rx:i/ $function \s* '(' /, :run{
+                $calls++;
+                [%(data_1 => 42, data_2 => 1, data_3 => 1).item]
+            };
+            my $source = ProjectionRow.^all.map(*.col1).head(3).skip(1);
+            is $calls, 0, 'Constructing the source does not execute SQL';
+            is $source."$method"(), 42, "$method uses the SQL aggregate result";
+            is $calls, 1, "$method executes exactly one aggregate statement";
+            $*RED-DB.verify;
+        }
+    }
+    my $distinct = ProjectionRow.^all.map({
+        Red::AST::Function.new(:func<DISTINCT>, :args[.col1 % 2], :returns(Int))
+    });
+    is $distinct.sum, 1, 'Sum respects a preceding DISTINCT projection';
+};
+
+subtest 'Reduction fallback preserves native semantics', {
+    throws-like { rows.map(*.col3).min }, X::Red::Projection,
+        'Non-numeric reduction requires fallback';
+    {
+        temp $*RED-FALLBACK = True;
+        is rows.map(*.col3).min, 'z0', 'String comparison uses the native reduction';
+    }
+    schema(NumericReductionRow).drop.create;
+    NumericReductionRow.^create(:value($_)) for 1, 2;
+    for 'direct' => { NumericReductionRow.^all.map(*.value) },
+        'derived' => { NumericReductionRow.^all.map(*.value).head(2).map({ $_ }) } -> $case {
+        throws-like { $case.value.().sum }, X::Red::Projection,
+            "{$case.key} custom inflation requires fallback";
+        {
+            temp $*RED-FALLBACK = True;
+            is $case.value.().sum, 203, 'Fallback sums the inflated values';
+        }
+    }
+    throws-like { NumericReductionRow.^all.map(*.maybe).sum }, X::Red::Projection,
+        'Nullable numeric projection requires fallback';
+    throws-like { NumericReductionRow.^all.map(*.maybe).head(1).map({ $_ }).sum },
+        X::Red::Projection, 'NULL handling survives a SELECT boundary';
+    NumericReductionRow.^create(:value(3), :maybe(2));
+    NumericReductionRow.^create(:value(4), :maybe(3));
+    is NumericReductionRow.^all.grep(*.maybe.defined).map(*.maybe).sum, 5,
+        'Nullable columns can aggregate in SQL after filtering out NULL values';
+    without %*ENV<RED_DATABASE> {
+        schema(LargeReductionRow).drop.create;
+        LargeReductionRow.^create(:value(2 ** 62)) xx 2;
+        dies-ok { LargeReductionRow.^all.map(*.value).sum },
+            'SQL overflow is propagated when fallback is disabled';
+        {
+            temp $*RED-FALLBACK = True;
+            is LargeReductionRow.^all.map(*.value).sum, 2 ** 63,
+                'Native fallback preserves sums beyond the SQLite integer range';
+        }
+    }
 };
 
 subtest 'Lazy execution and statement bindings', {

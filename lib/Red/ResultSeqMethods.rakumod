@@ -11,15 +11,15 @@ method !agg(Str $func, &block) {
   }).ast: :sub-select
 }
 
-method min(&block) {
+multi method min(&block) {
   self!agg("min", &block)
 }
 
-method max(&block) {
+multi method max(&block) {
   self!agg("max", &block)
 }
 
-method sum(&block) {
+multi method sum(&block) {
   self!agg("sum", &block)
 }
 

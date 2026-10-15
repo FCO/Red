@@ -1,0 +1,175 @@
+use Test;
+use Red;
+use Red::AST::Function;
+use X::Red::Exceptions;
+
+my $*RED-FALLBACK = False;
+my @config = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @config.shift;
+my $*RED-DB = database $driver, |%(@config.map({
+    do given .split('=') { .[0] => val .[1] }
+}));
+
+model TailRow {
+    has UInt $.id is serial;
+    has Int $.value is column;
+    has Int $.optional is column{ :nullable };
+    has Int $.converted is column{ :inflate{ $_ + 100 } };
+}
+
+model TailComposite {
+    has Int $.major is id;
+    has Int $.minor is id;
+    has Str $.label is column;
+}
+
+model TailWithoutKey {
+    has Int $.value is column;
+}
+
+schema(TailRow, TailComposite, TailWithoutKey).drop.create;
+for ^10 -> $value {
+    TailRow.^create(:$value, :converted($value),
+        |(:optional($value) if $value %% 2));
+}
+TailComposite.^create(:major(1), :minor(2), :label<b>);
+TailComposite.^create(:major(2), :minor(1), :label<c>);
+TailComposite.^create(:major(1), :minor(1), :label<a>);
+TailWithoutKey.^create(:value($_)) for ^3;
+
+sub rows { TailRow.^all.sort(*.id) }
+sub values($query) { $query.Seq.map(*.value).Array }
+
+subtest 'SQL tail and reverse preserve order and shape', {
+    isa-ok rows.tail(3), Red::ResultSeq, 'tail returns a ResultSeq';
+    isa-ok rows.reverse, Red::ResultSeq, 'reverse returns a ResultSeq';
+    is-deeply values(rows.tail(3)), [7, 8, 9], 'Model tail retains original order';
+    is-deeply values(rows.reverse), [9, 8, 7, 6, 5, 4, 3, 2, 1, 0];
+    is-deeply TailRow.^all.map(*.value).tail(3).Seq.Array, [7, 8, 9],
+        'Primary key ordering survives scalar projection';
+    is-deeply TailRow.^all.map(*.value).head(8).map(* + 10).tail(3).Seq.Array,
+        [15, 16, 17], 'Primary keys survive a SELECT boundary';
+    is-deeply TailRow.^all.map(*.value).head(3).reverse.Seq.Array, [2, 1, 0],
+        'Implicit ordering is applied inside preceding pagination';
+    is-deeply values(rows.sort(-*.value).tail(3)), [2, 1, 0],
+        'Descending ordering is restored';
+    is-deeply values(rows.sort(-*.value).head(4).tail(2)), [7, 6],
+        'Descending ordering crosses pagination boundaries';
+    is-deeply rows.map({ %(:value(.value), :pair([.id, .value])) }).tail(2)
+        .map({ .<pair>[1] }).Seq.Array, [8, 9], 'Nested containers retain their shape';
+    is-deeply rows.map(*.converted).tail(2).Seq.Array, [108, 109],
+        'Converters survive the tail boundary';
+    is-deeply rows.map({ [] }).tail(2).Seq.Array, [[], []],
+        'Empty containers retain row cardinality';
+    is-deeply rows.map({ Any }).tail(2).Seq.Array, [Any, Any],
+        'Undefined scalar projections retain row cardinality';
+    is-deeply TailComposite.^all.map(*.label).tail(2).Seq.Array, ['b', 'c'],
+        'Implicit ordering uses every composite primary key';
+    is-deeply TailComposite.^all.sort({ .major, .minor }).head(2)
+        .map(*.label).tail(1).Seq.Array, ['b'],
+        'Composite keys cross pagination boundaries';
+    is-deeply TailComposite.^all.sort({ -.major, .minor }).map(*.label).reverse.Seq.Array,
+        ['b', 'a', 'c'], 'Every explicit ordering component is reversed';
+    for -> $query { $query }, -> $query { $query.sort(-*.optional) } -> &ordered {
+        my @native = ordered(rows).map(*.optional).Seq.Array;
+        is-deeply ordered(rows).map(*.optional).tail(4).Seq.Array,
+            @native.tail(4).Array, 'Tail preserves the driver NULL ordering';
+        is-deeply ordered(rows).map(*.optional).reverse.Seq.Array,
+            @native.reverse.Array, 'Reverse preserves the driver NULL ordering';
+    }
+};
+
+subtest 'Pagination and subsequent consumers stay in SQL', {
+    my $query = TailRow.^all.map(*.value + 1).grep(* > 1).tail(7)
+        .map(* * 10).grep(* < 100).map({ %(:bla($_)) }).grep(*<bla> <= 50);
+    isa-ok $query, Red::ResultSeq, 'The complete tail chain stays in SQL';
+    is-deeply $query.Seq.map(*<bla>).Array, [40, 50];
+    is $*RED-DB.translate($query.ast).key.comb(/SELECT/).elems, 2,
+        'Safe consumers share the outer SELECT';
+    is-deeply rows.map(*.value).head(8).skip(2).tail(3).Seq.Array, [5, 6, 7];
+    is-deeply rows.map(*.value).tail(5).skip(1).head(2).Seq.Array, [6, 7];
+    is-deeply rows.map(*.value).tail(5).tail(2).Seq.Array, [8, 9];
+    is-deeply rows.map(*.value).tail(4).reverse.Seq.Array, [9, 8, 7, 6];
+    is-deeply rows.map(*.value).tail(3).sort(-*).Seq.Array, [9, 8, 7];
+    is-deeply rows.map(*.value).reverse.tail(3).Seq.Array, [2, 1, 0];
+    is-deeply rows.map(*.value).reverse.reverse.Seq.Array, [|^10];
+    is-deeply rows.map(*.value).tail(0).Seq.Array, [];
+    is-deeply rows.map(*.value).tail(100).Seq.Array, [|^10];
+    is-deeply rows.grep(*.value < 0).tail(3).Seq.Array, [];
+    is rows.map(*.value).tail, 9, 'Scalar tail returns the last projected value';
+    is rows.tail.value, 9, 'Scalar tail returns the last model';
+    is-deeply rows.grep(*.value < 0).map(*.value).tail, Nil,
+        'Scalar tail preserves the native empty result';
+    is rows.map(*.value).tail(3).sum, 24, 'SQL reductions consume the selected tail';
+    my $source = rows.map(*.value);
+    my $left = $source.tail(2);
+    my $right = $source.reverse.head(2);
+    is-deeply $left.Seq.Array, [8, 9], 'Sibling tail is independent';
+    is-deeply $right.Seq.Array, [9, 8], 'Sibling reverse is independent';
+    is-deeply $source.Seq.Array, [|^10], 'The original query remains unchanged';
+    is-deeply rows.map(*.value).tail(*-3).Array, [3, 4, 5, 6, 7, 8, 9],
+        'Callable counts retain native behavior';
+};
+
+subtest 'Lazy execution and bound expressions', {
+    {
+        my $*RED-DB = database 'Mock';
+        my Int $calls = 0;
+        $*RED-DB.die-on-unexpected;
+        $*RED-DB.when: :once, rx:i/SELECT/, :run{
+            $calls++;
+            [{ :data_1(90) }]
+        };
+        my $query = TailRow.^all.map(*.value).tail(3).map(* * 10).grep(* > 80);
+        is $calls, 0, 'Constructing the chain does not execute SQL';
+        like $*RED-DB.translate($query.ast).key, /'LIMIT 3'/, 'Tail appears in SQL';
+        is-deeply $query.Seq.Array, [90];
+        is $calls, 1, 'Iteration executes one statement';
+        $*RED-DB.verify;
+    }
+    my Str $suffix = 'suffix';
+    my Str $prefix = 'prefix: ';
+    my $bound = rows.map(*.value).sort({ $_ ~ $suffix }).tail(3)
+        .map({ $prefix ~ $_ });
+    is-deeply $bound.Seq.Array, ['prefix: 7', 'prefix: 8', 'prefix: 9'],
+        'Bound ordering crosses the boundary';
+    my ($sql, @bind) := do given $*RED-DB.translate($bound.ast) { .key, .value };
+    ok @bind.grep(* eq 'suffix').elems, 'Ordering parameters are retained';
+    ok @bind.grep(* eq 'prefix: ').elems, 'Outer projection parameters are retained';
+    if $driver eq 'Pg' {
+        is-deeply $sql.comb(/\$ \d+/).Array,
+            (1..@bind.elems).map({ '$' ~ $_ }).Array,
+            'PostgreSQL placeholders share one statement counter';
+    }
+};
+
+subtest 'Queries without row identity follow fallback policy', {
+    for <tail reverse> -> $operation {
+        throws-like { TailWithoutKey.^all."$operation"() }, X::Red::Projection,
+            "$operation requires ordering on a model without a primary key";
+        my $distinct = TailRow.^all.map({
+            Red::AST::Function.new(:func<DISTINCT>, :args[.value % 2], :returns(Int))
+        });
+        throws-like { $distinct."$operation"() }, X::Red::Projection,
+            "$operation cannot infer ordering from DISTINCT input keys";
+        {
+            temp $*RED-FALLBACK = True;
+            my @native = TailWithoutKey.^all.Seq.map(*.value).Array;
+            my $actual = TailWithoutKey.^all."$operation"();
+            if $operation eq 'tail' {
+                is $actual.value, @native.tail, 'Scalar tail uses native fallback';
+            } else {
+                is-deeply $actual.map(*.value).Array, @native.reverse.Array,
+                    'Reverse uses native fallback';
+            }
+        }
+    }
+    is-deeply TailWithoutKey.^all.sort(*.value).tail(2).Seq.map(*.value).Array, [1, 2],
+        'Explicit ordering supports models without primary keys';
+    my $distinct = TailRow.^all.map({
+        Red::AST::Function.new(:func<DISTINCT>, :args[.value % 2], :returns(Int))
+    }).sort;
+    is-deeply $distinct.tail(1).Seq.Array, [1], 'Explicit ordering supports DISTINCT';
+};
+
+done-testing;

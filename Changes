@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - queries: execute tail and reverse in SQL, preserving pagination and ordering
+    - queries: retain primary-key ordering through scalar and container projections
     - queries: count scalars and NULL as one element, preserving absent JSON paths
     - queries: support argumentless sort for scalar projections
     - queries: chain scalar, Hash, Array, and List projections through map/grep/sort

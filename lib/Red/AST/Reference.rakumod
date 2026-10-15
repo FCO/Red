@@ -11,6 +11,7 @@ has Mu:U $.type = Any;
 has &.inflate;
 has &.deflate;
 has Red::AST $.presence;
+has Bool $.custom-inflate = False;
 
 method returns { $!type }
 method args { () }

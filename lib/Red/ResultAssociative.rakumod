@@ -25,6 +25,12 @@ sub __RED_OPERATOR_LOADED__ { True }
 #| return a list of keys
 #| run a SQL query to get it
 method keys {
+    if self.key-of ~~ Numeric && !(self.key-of =:= Bool) {
+        my $keys = $!rs.map({
+            Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(self.key-of))
+        });
+        return gather for $keys.Seq { take .Str }
+    }
     $!rs.map({ Red::AST::Function.new(:func<DISTINCT>, :args[$key-of], :returns(Str)) })
 }
 
@@ -39,7 +45,17 @@ method elems {
 
 #| return a ResultSeq for the given key
 method AT-KEY($key) {
-    my \resultseq = $!rs.grep: { Red::AST::Eq.new: $!key-of, ast-value($key), :bind-right }
+    my $value = $key;
+    my Bool $valid = True;
+    if self.key-of ~~ Numeric && !(self.key-of =:= Bool) && $key ~~ Str {
+        my $number = try $key.Numeric;
+        $valid = $number.DEFINITE && $number ~~ Numeric && $number.Str eq $key;
+        $value = $number if $valid;
+    }
+    my \resultseq = $!rs.grep: {
+        $valid ?? Red::AST::Eq.new($!key-of, ast-value($value), :bind-right)
+            !! ast-value(False)
+    }
     do if @!next-level {
         Red::ResultAssociative[$of, @!next-level.head].new: :rs(resultseq), |(:next-level(@!next-level.skip) if @!next-level.elems > 1), |(:&!reduce with &!reduce)
     } elsif &!reduce {

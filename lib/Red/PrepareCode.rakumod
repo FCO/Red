@@ -40,7 +40,7 @@ sub found-bool(@values, $try-again is rw, %bools, CX::Red::Bool $ex) is export {
 
 sub prepare-response($resp) is export {
     do given $resp {
-        when { .WHAT === Empty } {
+        when { $_ =:= Empty || ($_ ~~ Slip && $_.elems == 0) } {
             Red::AST::Empty.new
         }
         when Red::AST {
@@ -52,6 +52,18 @@ sub prepare-response($resp) is export {
     }
 }
 
+sub evaluate-map-block(&func, \type, &on-bool) {
+    my $response;
+    {
+        $response = func type;
+        CONTROL {
+            when CX::Next { $response = Red::AST::Next.new }
+            when CX::Red::Bool { on-bool($_) }
+        }
+    }
+    $response
+}
+
 #| Tries to find what a block do
 sub what-does-it-do(&func, \type --> Hash) is export {
     my Bool $try-again = False;
@@ -59,7 +71,12 @@ sub what-does-it-do(&func, \type --> Hash) is export {
     my @values;
     my %*VALS := :{};
 
-    my $ret = func type;
+    my &evaluate = {
+        evaluate-map-block(&func, type, -> CX::Red::Bool $ex {
+            found-bool @values, $try-again, %bools, $ex
+        })
+    };
+    my $ret = evaluate();
     return :{ Red::AST => prepare-response $ret } unless $try-again;
     @values.head.[1] = $ret;
     my %first-key := :{ @values.head.[0].keys.head.clone => @values.head.[0].values.head.clone };
@@ -69,23 +86,7 @@ sub what-does-it-do(&func, \type --> Hash) is export {
     for @values -> @data (%values, $response is rw) {
         $try-again = False;
         %*VALS := %values;
-        $response = func type;
-        CONTROL {
-            when CX::Next {
-                $response = Red::AST::Next.new;
-            }
-            when CX::Red::Bool {                # Will work when we can create real custom CX
-                found-bool @values, $try-again, %bools, $_
-            }
-        }
-    }
-    CONTROL {
-        when CX::Red::Bool {                # Will work when we can create real custom CX
-            found-bool @values, $try-again, %bools, $_
-        }
-        when CX::Next {
-            die
-        }
+        $response = evaluate();
     }
 
     my Red::AST %values{Red::AST};

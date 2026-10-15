@@ -6,13 +6,19 @@ model Bla {
     has Str  $.bla is column;
 }
 
+model NumericGroup {
+    has UInt $.id is serial;
+    has Int $.integer is column;
+    has Num $.fraction is column;
+}
+
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
-schema(Bla).drop;
+schema(Bla, NumericGroup).drop;
 Bla.^create-table;
 Bla.^create: :bla<test1>;
 Bla.^create: :bla<test1>;
@@ -68,5 +74,43 @@ is %e<test2>, 1;
 #
 # isa-ok %f<test2>, Int;
 # is %f<test2>, 1;
+
+subtest 'Numeric grouping preserves public keys and typed comparisons', {
+    NumericGroup.^create-table;
+    my @integers = -2, 0, 0, 3;
+    my @fractions = -1.5e0, 0e0, 0e0, 2.5e0;
+    for @integers.kv -> $index, $integer {
+        NumericGroup.^create(:$integer, :fraction(@fractions[$index]));
+    }
+    for 'integer', 'fraction' -> $column {
+        my @values = $column eq 'integer' ?? @integers !! @fractions;
+        my $groups = NumericGroup.^all.sort(*.id).map({ ."$column"() }).classify({ $_ });
+        my %expected = @values.Seq.classify({ $_ });
+        is-deeply $groups.keys.Seq.sort.Array, %expected.keys.sort.Array,
+            "$column grouping exposes the same string keys as a Hash";
+        for %expected.keys -> $key {
+            is-deeply $groups{$key}.Array, %expected{$key},
+                "$column group '$key' retains values and order";
+        }
+        for 'not-a-number', '00', ' 0', '0.0', '999' -> $key {
+            is $groups{$key}.elems, 0, "$column key '$key' does not alias an existing group";
+        }
+    }
+    for 'add' => { .map(*.integer + 2.1) },
+        'subtract' => { .map({ 2.1 - .integer }) },
+        'multiply' => { .map(*.integer * -2.1) },
+        'repeating fraction' => { .map(*.integer * (1 / 3)) },
+        'chain' => { .map(*.integer + 2.1).map(* * -1.5) } -> $case {
+        my &operation = $case.value;
+        my @actual = operation(NumericGroup.^all.sort(*.id)).Array;
+        my @expected = operation(NumericGroup.^all.sort(*.id).Array.Seq).Array;
+        is @actual.elems, @expected.elems, "{$case.key} retains row cardinality";
+        for @expected.kv -> $index, $expected {
+            isa-ok @actual[$index], Numeric, "{$case.key} returns a numeric value";
+            ok abs(@actual[$index] - $expected) <= 1e-9 * max(1, abs($expected)),
+                "{$case.key} preserves the fractional value";
+        }
+    }
+};
 
 done-testing;

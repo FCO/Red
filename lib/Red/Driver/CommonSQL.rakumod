@@ -39,6 +39,7 @@ use Red::AST::JsonRemoveItem;
 use Red::AST::JsonSetItem;
 use Red::AST::Reference;
 use Red::AST::ProjectionField;
+use Red::AST::Ordering;
 use Red::Utils;
 use Red::LockType;
 use MetamodelX::Red::VirtualView;
@@ -725,6 +726,11 @@ multi method translate(Red::AST::Divisible $_, $context?) {
         $context
 }
 
+multi method translate(Red::AST::Ordering $_, "order") {
+    my ($sql, @bind) := do given self.translate(.value, "select") { .key, .value };
+    ($sql ~ (.descending ?? ' DESC' !! ' ASC')) => @bind
+}
+
 multi method translate(Red::AST::Mul $_ where {
     .left ~~ Red::AST::Value && .left.value == -1
 }, "order") {
@@ -807,7 +813,8 @@ multi method translate(Red::AST::Value $_ where .type ~~ Instant, $context?) {
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Numeric, $context?) {
-    ~.get-value => []
+    my $value = .get-value;
+    ~($value ~~ Rat ?? $value.Num !! $value) => []
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Red::FromRelationship, $context?) {
