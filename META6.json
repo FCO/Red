@@ -76,6 +76,7 @@
     "Red::AST::Optimizer::OR": "lib/Red/AST/Optimizer/OR.rakumod",
     "Red::AST::Ordering": "lib/Red/AST/Ordering.rakumod",
     "Red::AST::ProjectionField": "lib/Red/AST/ProjectionField.rakumod",
+    "Red::AST::ProductSource": "lib/Red/AST/ProductSource.rakumod",
     "Red::AST::Reference": "lib/Red/AST/Reference.rakumod",
     "Red::AST::RollbackTransaction": "lib/Red/AST/RollbackTransaction.rakumod",
     "Red::AST::Select": "lib/Red/AST/Select.rakumod",

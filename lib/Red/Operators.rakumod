@@ -1,3 +1,5 @@
+use Red::Projection;
+use X::Red::Exceptions;
 use Red::AST;
 use Red::AST::Infixes;
 use Red::AST::Divisible;
@@ -1315,3 +1317,62 @@ multi infix:«(>)»(Red::AST $a, Red::AST::Select $b ) is export {
     Red::AST::NotIn.new: $a, $b.as-sub-select;
 }
 
+
+#| Keep products containing database queries in one SQL statement.
+multi infix:<X>(+sources where { sources.elems >= 2 && sources.grep(Red::ResultSeq).elems }) is export {
+    my @captured;
+    my $error;
+    sub finite-shape($value, %seen) {
+        return unless $value ~~ Hash | Array | List;
+        X::Red::Projection.new(:reason('SQL product containers must be finite and non-lazy')).throw
+            if $value ~~ Positional && $value.is-lazy;
+        my Str $key = $value.WHICH.Str;
+        X::Red::Projection.new(:reason('SQL product containers cannot contain cycles')).throw
+            if %seen{$key};
+        %seen{$key} = True;
+        LEAVE %seen{$key}:delete if $key.DEFINITE;
+        for ($value ~~ Hash ?? $value.values !! $value.list).list -> $child {
+            finite-shape($child, %seen);
+        }
+    }
+    try {
+        for sources -> $source {
+            if $source ~~ Red::ResultSeq {
+                @captured.push: $source;
+            } else {
+                X::Red::Projection.new(:reason('SQL products require finite, non-lazy inputs')).throw
+                    unless $source ~~ Iterable && !$source.is-lazy;
+                # Construct from the shape to detach nested containers from their owners.
+                my @values = $source.list;
+                @captured.push: @values;
+                @captured[*-1] = @values.map(-> $value {
+                    finite-shape($value, {});
+                    my $shape = Red::Projection.from-value($value);
+                    $shape.construct($shape.leaves.map({
+                        .value ~~ Blob ?? .value.clone !! .value
+                    })).item
+                }).Array;
+            }
+        }
+        CATCH { default { $error = $_ } }
+    }
+    my $result;
+    unless $error.DEFINITE {
+        try {
+            $result = @captured.first(Red::ResultSeq).cross-product(@captured);
+            CATCH { default { $error = $_ } }
+        }
+    }
+    return $result unless $error.DEFINITE;
+    $error.throw if $*RED-FALLBACK.defined && !$*RED-FALLBACK;
+    note "falling back: { $error.message }" unless $*RED-FALLBACK.defined;
+    my @inputs = sources.kv.map(-> $i, $source {
+        ($i < @captured.elems ?? @captured[$i] !! $source).item
+    });
+    # Delegate to native X, deferring SQL iterators until the fallback is consumed.
+    my @native = @inputs.map(-> $source {
+        ($source ~~ Red::ResultSeq
+            ?? (lazy gather { take $_ for $source.list }) !! $source).item
+    });
+    lazy gather { take $_ for [X] @native }
+}

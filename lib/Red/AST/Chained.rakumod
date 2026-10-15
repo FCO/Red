@@ -13,6 +13,7 @@ has                     @.table-list;
 has Red::AST::Chained   $.next;
 has Red::AST            $.source;
 has Str                 $.source-alias;
+has Red::AST            @.sources;
 has Red::Projection     $.projection;
 has Bool                $.projection-bound = False;
 has Int                 $.projection-depth = 0;

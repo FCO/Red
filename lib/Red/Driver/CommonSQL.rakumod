@@ -1,3 +1,4 @@
+use Red::AST::ProductSource;
 use Red::AST;
 use Red::Model;
 use Red::Column;
@@ -360,6 +361,40 @@ multi method translate(Red::AST::Infix $_ where { (.right | .right.?value) ~~ Re
 
 method comment-starter { "--" }
 
+method product-value(Red::AST::Value:D $value) {
+    my $placeholder = self.wildcard;
+    my $type = $value.returns;
+    my $sql = $type ~~ Int ?? "CAST($placeholder AS DECIMAL(65,0))"
+        !! $type ~~ Numeric ?? "CAST($placeholder AS DECIMAL(65,30))" !! $placeholder;
+    $sql => [self.wildcard-value($value)]
+}
+
+multi method translate(Red::AST::ProductSource $source, $context?) {
+    if $source.model ~~ Red::Model {
+        return self.table-name-wrapper($source.model.^table) ~ ' AS '
+            ~ self.table-name-wrapper($source.alias) => [];
+    }
+    if $source.query.DEFINITE {
+        my $translated = self.translate($source.query.as-select);
+        return "(\n{ $translated.key.indent(3) }\n) AS "
+            ~ self.table-name-wrapper($source.alias) => $translated.value;
+    }
+    my @bind;
+    my @rows = $source.rows;
+    my $empty = !@rows.elems;
+    @rows = [Any xx $source.names.elems], if $empty;
+    my @selects = @rows.map(-> $row {
+        'SELECT ' ~ $source.names.kv.map(-> $i, $name {
+            my $value = ast-value($row[$i], :type($source.types[$i]));
+            my $translated = self.product-value($value);
+            @bind.append: $translated.value;
+            "{ $translated.key } AS { self.table-name-wrapper($name) }"
+        }).join(', ') ~ ($empty ?? ' WHERE 1 = 0' !! '')
+    });
+    "(\n{ @selects.join("\nUNION ALL\n").indent(3) }\n) AS "
+        ~ self.table-name-wrapper($source.alias) => @bind
+}
+
 #multi method translate(Red::AST::Select $ast, 'where') {
 #    my ( $key, $value ) = do given self.translate($ast) { .key, .value };
 #    '( ' ~ $key ~ ' )' => $value // [];
@@ -441,18 +476,34 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
         $derived = "(\n{ $sql.indent(3) }\n) AS { self.table-name-wrapper($ast.source-alias) }";
         @bind.append: @values;
     }
-    my @roots = %t.pairs;
+    my %products;
+    for $ast.sources -> $source {
+        %products{$source.alias} = $source;
+    }
+    # Different model shapes can refer to separate column groups of one derived source.
+    my %roots-by-alias;
+    for %t.pairs -> $entry {
+        my $name = $entry.key.^as;
+        %roots-by-alias{$name} = %roots-by-alias{$name}:exists
+            ?? Pair.new(%roots-by-alias{$name}.key,
+                [|%roots-by-alias{$name}.value.list, |$entry.value.list]) !! $entry;
+    }
+    my @roots = %roots-by-alias.values;
     @roots = @roots.sort({
         ($^a.key.^as ne $ast.source-alias) <=> ($^b.key.^as ne $ast.source-alias)
     }) if $derived.DEFINITE;
-    my @join-binds;
     my $tables = @roots.map(-> $entry {
         $_ = $entry.key;
         my @joins = $entry.value.list;
+        my $product-root = %products{.^as}:exists;
         my $source-root = $derived.DEFINITE && .^as eq $ast.source-alias;
         [
             "{
-                do if $source-root {
+                do if %products{.^as}:exists {
+                    my $translated = self.translate(%products{.^as}:delete);
+                    @bind.append: $translated.value;
+                    $translated.key
+                } elsif $source-root {
                     $derived
                 } elsif .HOW ~~ MetamodelX::Red::VirtualView {
                     "( { .sql } ) as { .^table }"
@@ -460,7 +511,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                     self.table-name-wrapper: .^table
                 }
             }{
-                do if !$source-root && .^table ne .^as {
+                do if !$source-root && !$product-root && .^table ne .^as {
                     " as {
                         .^as
                     }"
@@ -492,7 +543,7 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                     }{
                         do with .HOW.^can("join-on") && .^join-on {
                             my ($str, @b) := do given self.translate: $_, "where" { .key, .value }
-                            @join-binds.push: |@b;
+                            @bind.push: |@b;
                             " ON { $str }"
                         }
                     }"
@@ -503,7 +554,14 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     if $derived.DEFINITE && !@roots.grep({ .key.^as eq $ast.source-alias }) {
         $tables = $tables ?? "$derived,\n$tables" !! $derived;
     }
-    @bind.push: |@join-binds;
+    if %products.elems {
+        my $products = $ast.sources.grep({ %products{.alias}:exists }).map({
+            my $translated = self.translate(%products{.alias});
+            @bind.append: $translated.value;
+            $translated.key
+        }).join(",\n");
+        $tables = $tables ?? "$tables,\n$products" !! $products;
+    }
     my ($where, @wb) := do given self.translate: $ast.filter, "where" { .key, .value }  if $ast.?filter;
     @bind.push: |@wb;
     my $order = $ast.order.map({

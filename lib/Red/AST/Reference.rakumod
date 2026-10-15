@@ -12,6 +12,11 @@ has &.inflate;
 has &.deflate;
 has Red::AST $.presence;
 has Bool $.custom-inflate = False;
+has Mu $.undefined-type = Mu;
+has Red::AST $.origin;
+
+method ref(|args) { $!origin.ref(|args) }
+method nullable { $!origin.?nullable // True }
 
 method returns { $!type }
 method args { () }

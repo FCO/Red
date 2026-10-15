@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - queries: translate Cartesian products of ResultSeqs and finite value collections to SQL
+    - queries: preserve tuple shapes, model instances, ordering, and pagination in products
 
 0.2.6  2026-10-15T18:34:50+01:00
     - tests: preserve multiplicity in unordered results and use portable CTE fixtures

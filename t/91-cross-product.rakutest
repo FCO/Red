@@ -1,0 +1,276 @@
+use Test;
+use Red;
+use Red::Type::Json;
+use Red::AST::Function;
+use X::Red::Exceptions;
+
+my $*RED-FALLBACK = False;
+my @conf = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $name = @conf.shift;
+my $*RED-DB = database $name, |%(@conf.map({ .split('=')[0] => val .split('=')[1] }));
+
+model ProductOwner {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+model ProductRow {
+    has Int $.id is serial;
+    has Int $.value is rw is column;
+    has Str $.snake-name is column;
+    has Json $.payload is column;
+    has Int $!owner-id is referencing(*.id, :model(ProductOwner));
+    has ProductOwner $.owner is relationship(*.owner-id, :no-prefetch);
+}
+model ProductPrefetched {
+    has Int $.id is serial;
+    has Int $!owner-id is referencing(*.id, :model(ProductOwner));
+    has ProductOwner $.owner is relationship{ .owner-id };
+}
+model ProductConverted {
+    has Int $.id is serial;
+    has Int $.value is column{ :inflate{ $_ + 100 } };
+}
+ProductConverted.^create-table;
+ProductConverted.^create(:value(1));
+ProductOwner.^create-table;
+ProductRow.^create-table;
+my $owner = ProductOwner.^create(:name<owner>);
+ProductRow.^create(:value($_), :snake-name("row $_"),
+    :payload(%(answer => $_)), :$owner) for 1..3;
+END {
+    ProductConverted.^drop if $*RED-DB.defined;
+    ProductRow.^drop if $*RED-DB.defined;
+    ProductOwner.^drop if $*RED-DB.defined;
+}
+
+sub sorted-rows { ProductRow.^all.sort(*.id) }
+sub projected-values() { sorted-rows.map(*.value) }
+sub sql($query) { $*RED-DB.translate($query.ast).key }
+
+subtest 'Models, filters, and fused consumers' => {
+    my $different = (ProductRow.^all X ProductOwner.^all)
+        .grep(-> ($row, $owner) { $row.owner-id == $owner.id });
+    is $different.elems, 3, 'Destructuring filters products of different model types';
+    is-deeply $different.map(-> ($row, $owner) { $row.value }).sort.Array, [1,2,3];
+    is (ProductOwner.^all.head(1) X ProductRow.^all.head(2)).elems, 2,
+        'Different model types preserve paginated operand identities';
+    my $query = (ProductRow.^all X ProductRow.^all)
+        .grep({ .[0].id == .[1].id });
+    isa-ok $query, Red::ResultSeq;
+    is sql($query).comb(/:i SELECT/).elems, 1, 'Simple model products share one SELECT';
+    unlike sql($query), /:i 'ORDER BY'/, 'Products add no implicit primary-key ordering';
+    my @rows = $query.Array;
+    is @rows.elems, 3, 'Self join preserves matching rows';
+    isa-ok @rows[0], List;
+    isa-ok @rows[0][0], ProductRow;
+    is-deeply $query.map({ .[0].value }).sort.Array, [1, 2, 3];
+    is-deeply $query.map({ .[0] }).sort(*.id).map(*.snake-name).Array,
+        ['row 1', 'row 2', 'row 3'], 'Selecting a model preserves its attributes';
+    is-deeply $query.map({ .[0].owner.name }).Array.Bag, <owner owner owner>.Bag,
+        'Relationships bind to the appropriate product input';
+    is (ProductRow.^all.grep(*.value > 1) X ProductRow.^all.grep(*.value < 3)).elems,
+        4, 'Both source filters survive aliasing';
+    throws-like { $query.delete }, X::Red::Projection;
+    throws-like { $query.save }, X::Red::Projection;
+};
+
+subtest 'Finite values and tuple grouping' => {
+    is-deeply (projected-values() X ^3).Array, ((1,2,3) X ^3).Array;
+    is-deeply (^2 X projected-values()).Array, (^2 X (1,2,3)).Array;
+    is-deeply (projected-values() X ^2 X <a b>).Array, ((1,2,3) X ^2 X <a b>).Array, 'Unparenthesized products produce flat tuples';
+    is-deeply ((projected-values() X ^2) X <a b>).Array,
+        (((1,2,3) X ^2) X <a b>).Array, 'Parentheses retain nested tuples';
+    is-deeply (<a b> X (projected-values() X ^2)).Array,
+        (<a b> X ((1,2,3) X ^2)).Array;
+    is (projected-values() X []).elems, 0, 'Empty values produce no rows';
+    is ([] X projected-values()).elems, 0;
+    is (projected-values() X [7,7]).elems, 6, 'Duplicates retain multiplicity';
+    is-deeply (projected-values() X [Any, 2]).map({ .[1] }).Array,
+        [Any, 2, Any, 2, Any, 2], 'Undefined leaves remain nullable';
+    is-deeply (projected-values() X [[], []]).map({ .[1] }).Array, [[],[],[],[],[],[]],
+        'Empty containers retain their cardinality';
+    is-deeply (projected-values() X [%(x => 2), %(x => 4)])
+        .map({ .[0] + .[1]<x> }).Array, [3,5,4,6,5,7];
+    is-deeply (projected-values() X ["quoted ' value", '雪'])
+        .grep({ .[0] == 1 }).map({ .[1] }).Array, ["quoted ' value", '雪'];
+    is-deeply ((1,2) X <a b>).Array, [(1,'a'), (1,'b'), (2,'a'), (2,'b')],
+        'Pure memory products remain native';
+};
+
+subtest 'Projection shapes and boundaries' => {
+    my $left = sorted-rows.map({ %(v => .value, nested => [.snake-name]) });
+    my $right = sorted-rows.map({ (.value, .snake-name).List }).head(2);
+    my $query = ($left X $right).grep({ .[0]<v> == .[1][0] });
+    is-deeply $query.map({ [.[0]<nested>[0], .[1][1]] }).Array,
+        [['row 1','row 1'], ['row 2','row 2']];
+    is-deeply (projected-values().head(2) X projected-values().skip(1)).Array,
+        ((1,2) X (2,3)).Array, 'Operand pagination stays inside its source';
+    my $paged-models = (sorted-rows() X sorted-rows()).head(5);
+    is-deeply $paged-models.map({ [.[0].value, .[1].value] }).Array,
+        [[1,1],[1,2],[1,3],[2,1],[2,2]],
+        'Two instances of one model remain independent after an outer boundary';
+    is-deeply $paged-models.grep({ .[0].id == .[1].id })
+        .map({ .[0].value }).Array, [1,2],
+        'Same-model groups use distinct symbolic column bindings';
+    is-deeply $paged-models.map({ [.[0].owner.name, .[1].owner.name] }).Array,
+        [['owner','owner'] xx 5], 'Relationship joins share one derived source';
+    is-deeply (sorted-rows.head(2) X ^1).map({ .[0].snake-name }).Array,
+        ['row 1','row 2'], 'Formatted model columns survive operand pagination';
+    is-deeply (sorted-rows.head(2) X ^1).map({ .[0].owner.name }).Array,
+        ['owner','owner'], 'Relationships can join a paginated model operand';
+    is-deeply (projected-values() X ^3).head(4).map({ .[0] * 10 + .[1] }).Array,
+        [10,11,12,20], 'Outer pagination happens after the product';
+    is-deeply (projected-values() X ^2).tail(2).Array, [(3,0),(3,1)];
+    is-deeply (projected-values() X ^2).reverse.Array, [(3,1),(3,0),(2,1),(2,0),(1,1),(1,0)];
+    is (projected-values() X ^3).map({ .[0] + .[1] }).sum, 27, 'Reductions stay in SQL';
+    my $unknown-filter = ProductRow.^all.grep({
+        Red::AST::Function.new(:func<ABS>, :args[.value], :returns(Int)) > 0
+    });
+    my $scoped = ($unknown-filter X ProductRow.^all);
+    is sql($scoped).comb(/:i SELECT/).elems, 2,
+        'Unclassified operand filters retain their source boundary';
+    is $scoped.elems, 9;
+    my $aggregate = ProductRow.^all.map({
+        Red::AST::Function.new(:func<SUM>, :args[.value], :returns(Int))
+    });
+    is-deeply ($aggregate X ^2).map({ .[0] + .[1] }).Array, [6,7],
+        'Aggregation completes before the product';
+    my $distinct = ProductRow.^all.map({
+        Red::AST::Function.new(:func<DISTINCT>, :args[.value], :returns(Int))
+    }).sort;
+    is-deeply ($distinct X ^1).map({ .[0] }).Array, [1,2,3],
+        'DISTINCT remains inside its operand';
+    is (ProductRow.^all.map({ [] }) X [[], []]).elems, 6,
+        'Zero-leaf projections preserve both source cardinalities';
+    is-deeply (ProductRow.^all.map(*.payload) X ^1)
+        .map({ .[0]<answer> }).sort.Array, [1,2,3], 'JSON types survive a source boundary';
+};
+
+subtest 'Snapshots, unsupported inputs, and independence' => {
+    my @literal = [1], [2];
+    my $query = (projected-values() X @literal);
+    @literal[0][0] = 99;
+    @literal.push: [3];
+    is-deeply $query.map({ .[1][0] }).Array, [1,2,1,2,1,2],
+        'Mutable literal containers are captured independently';
+    my $count = 0;
+    my $once = (1,2).map({ $count++; $_ }).Seq;
+    my $captured = (projected-values() X $once);
+    is $count, 2, 'A finite Seq is captured once at construction';
+    is $captured.elems, 6;
+    is $count, 2, 'Execution reuses the snapshot';
+    throws-like { (projected-values() X (1..*)).sink }, X::Red::Projection;
+    my Int $lazy-pulls = 0;
+    my $nested-lazy = (lazy gather { loop { $lazy-pulls++; take 1 } }).List;
+    throws-like { (projected-values() X [$nested-lazy]).sink }, X::Red::Projection;
+    is $lazy-pulls, 0, 'Nested lazy inputs are rejected without being drained';
+    my @cycle;
+    @cycle.push: @cycle;
+    throws-like { (projected-values() X [@cycle.item]).sink }, X::Red::Projection;
+    throws-like { (projected-values() X [1,'2']).sink }, X::Red::Projection;
+    throws-like { (projected-values() X [[1], %(x=>1)]).sink }, X::Red::Projection;
+    my $source = projected-values();
+    my $product = ($source X ^2);
+    is $product.grep({ .[1] == 1 }).elems, 3;
+    is $product.elems, 6;
+    is-deeply $source.Array, [1,2,3], 'Inputs and sibling queries remain independent';
+    {
+        my $*RED-FALLBACK = True;
+        isa-ok (projected-values() X (1..*)), Seq, 'Infinite inputs use the lazy native fallback';
+        is-deeply (projected-values() X (1..*)).head(3).Array, [(1,1),(1,2),(1,3)];
+    }
+};
+subtest 'Lazy statements, converters, and bindings' => {
+    {
+        my $*RED-DB = database 'Mock';
+        my Int $calls = 0;
+        $*RED-DB.die-on-unexpected;
+        $*RED-DB.when: :once, rx:i/SELECT/, :run{
+            $calls++;
+            [{ :data_1(12) }]
+        };
+        my $query = (ProductRow.^all.map(*.value) X [2])
+            .map({ .[0] + .[1] });
+        is $calls, 0, 'Building and mapping a product executes no SQL';
+        is-deeply $query.Array, [12];
+        is $calls, 1, 'Iterating the product executes one statement';
+        $*RED-DB.verify;
+    }
+    {
+        my $*RED-DB = database 'Mock';
+        my $*RED-FALLBACK = True;
+        my Int $calls = 0;
+        $*RED-DB.die-on-unexpected;
+        $*RED-DB.when: :once, rx:i/SELECT/, :run{
+            $calls++;
+            [{ :data_1(1) }]
+        };
+        my $query = (ProductRow.^all.map(*.value) X (1..*));
+        is $calls, 0, 'Constructing a native fallback does not execute SQL';
+        is-deeply $query.head(2).Array, [(1,1),(1,2)];
+        is $calls, 1, 'The native fallback consumes its SQL input lazily';
+        $*RED-DB.verify;
+    }
+    my $left = sorted-rows.grep(*.snake-name eq 'row 1').map(*.value);
+    my $right = sorted-rows.grep(*.snake-name eq 'row 2').map(*.value);
+    my $query = ($left X ["quoted ' value", '雪'] X $right)
+        .map({ .[1] ~ ':' ~ (.[0] + .[2]) });
+    is-deeply $query.Array, ["quoted ' value:3", '雪:3'],
+        'Bindings from SELECT and all sources keep their SQL order';
+    my $translated = $*RED-DB.translate($query.ast);
+    is $translated.value.grep("quoted ' value").elems, 1,
+        'Literal strings are bound exactly once';
+    if $name eq 'Pg' {
+        is-deeply $translated.key.comb(/\$ \d+/).map(*.substr(1).Int).sort.Array,
+            (1..$translated.value.elems).Array, 'PostgreSQL placeholder numbering is global';
+    }
+    is-deeply (projected-values() X [2,10]).grep({ .[1] > 3 })
+        .map({ .[1] }).Array, [10,10,10], 'Literal numeric comparisons use numeric SQL types';
+    is-deeply (projected-values() X [Date.new('2026-01-01')]).grep({ .[0] == 1 })
+        .map({ .[1] }).Array, [Date.new('2026-01-01')], 'Literal dates retain their type';
+    is-deeply (projected-values() X [False, True]).grep({ .[0] == 1 })
+        .map({ .[1] }).Array, [False, True], 'Literal booleans retain their type';
+    is-deeply (ProductRow.^all.map({ .payload<missing> }) X ^1)
+        .map({ .[0].elems }).Array, [0,0,0], 'Absent JSON paths stay absent';
+    is-deeply (ProductConverted.^all X ^1).map({ .[0] }).Array.map(*.value).Array,
+        [101], 'Model materialization applies a custom converter exactly once';
+    is-deeply (ProductConverted.^all.map(*.value) X ^1).map({ .[0] }).Array,
+        [101], 'Converters survive projected input boundaries';
+    is-deeply (ProductRow.^all.grep(*.owner.name eq 'owner') X ^1)
+        .map({ .[0].value }).sort.Array, [1,2,3],
+        'Relationship filters inside an operand retain their source scope';
+    throws-like { (ProductRow.^all.skip-locked X ^1).sink },
+        X::Red::Projection, 'Row locks cannot be moved across product boundaries';
+    throws-like { (ProductPrefetched.^all X ^1).sink },
+        X::Red::Projection, 'Prefetch cannot be moved across product boundaries';
+    my $other = database 'Mock';
+    throws-like { (ProductRow.^all X ProductRow.^all.with($other)).sink },
+        X::Red::Projection, 'Different driver instances cannot share a statement';
+
+    {
+        my $*RED-FALLBACK = True;
+        my Int $count = 0;
+        my $once = (1,2).map({ $count++; $_ }).Seq;
+        my $fallback = (projected-values() X $once X (1..*));
+        is-deeply $fallback.head(2).Array, [(1,1,1), (1,1,2)],
+            'Fallback reuses snapshots captured before an unsupported operand';
+        is $count, 2, 'Fallback does not enumerate a captured Seq twice';
+    }
+};
+subtest 'Independent relationship targets after pagination' => {
+    for <left middle right>.kv -> $i, $name {
+        my $owner = ProductOwner.^create(:$name);
+        ProductRow.^create(:value(10 + $i), :snake-name($name),
+            :payload(%(answer => $i)), :$owner);
+    }
+    my $rows = ProductRow.^all.grep(*.value >= 10).sort(*.value);
+    my $query = ($rows X $rows).head(5)
+        .map({ [.[0].owner.name, .[1].owner.name] });
+    is-deeply $query.Array,
+        [['left','left'], ['left','middle'], ['left','right'],
+         ['middle','left'], ['middle','middle']],
+        'Each projected model retains its own foreign-key binding';
+    is sql($query).comb(/:i JOIN/).elems, 2,
+        'Independent relationship targets use distinct JOIN aliases';
+};
+done-testing;

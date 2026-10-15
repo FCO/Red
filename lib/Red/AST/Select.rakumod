@@ -23,6 +23,7 @@ has                     @.prefetch;
 has Red::LockType       $.for;
 has Red::AST            $.source;
 has Str                 $.source-alias;
+has Red::AST            @.sources;
 
 method returns {
     do if $.of.^columns == 1 {

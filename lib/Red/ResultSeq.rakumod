@@ -33,6 +33,8 @@ use Red::Type::Json;
 use Red::AST::Reference;
 use Red::AST::ProjectionField;
 use Red::AST::Ordering;
+use Red::AST::ProductSource;
+use MetamodelX::Red::VirtualView;
 
 =head2 Red::ResultSeq
 
@@ -142,6 +144,157 @@ method transform-item(*%data) is hidden-from-sql-commenting {
     self.of.bless: |%data
 }
 
+#| Builds one SQL statement for a product of queries and captured value collections.
+method cross-product(@inputs) {
+    my $driver = self.with // get-RED-DB;
+    my @sources;
+    my @shapes;
+    my @order;
+    my @identity;
+    my Red::AST $filter;
+    my Bool $identity-lost = False;
+    for @inputs -> $input {
+        my $alias = Red::Projection.allocate-alias;
+        my $shape;
+        if $input ~~ Red::ResultSeq {
+            X::Red::Projection.new(:reason('Product inputs must share one driver instance')).throw
+                unless ($input.with // get-RED-DB) === $driver;
+            X::Red::Projection.new(:reason('Products do not support updating maps or row locks')).throw
+                if $input.update.elems || $input.for.DEFINITE;
+            my @input-identity = do {
+                if $input.chain.identity-lost || $input.group.elems { () }
+                elsif $input.chain.row-identity.elems { $input.chain.row-identity }
+                elsif $input.chain.projection.DEFINITE { () }
+                else { $input.of.^id.map(*.column) }
+            };
+            $identity-lost ||= !@input-identity.elems;
+            my $query = $input.ast;
+            X::Red::Projection.new(:reason('Product inputs require SELECT queries')).throw
+                unless $query ~~ Red::AST::Select;
+            X::Red::Projection.new(:reason('Products do not support prefetched inputs')).throw
+                if $query.prefetch.elems;
+            if !$input.chain.projection.DEFINITE && !$input.chain.source.DEFINITE
+                && !$input.chain.sources.elems && !$input.limit.DEFINITE
+                && !$input.offset.DEFINITE && !$input.group.elems
+                && (!$input.filter.DEFINITE || Red::Projection.safe-to-repeat($input.filter))
+                && $input.order.map({ Red::Projection.safe-to-repeat($_) }).all
+                && !($input.of.HOW ~~ MetamodelX::Red::VirtualView)
+                && !$query.tables.grep({ $_ !=== $input.of }).elems {
+                my $model = $input.of.^orig.^alias($alias);
+                $model.HOW does role { method tables(\type) { [type] } };
+                my @old = $input.of.^columns.map(*.column);
+                my @new = $model.^columns.map(*.column);
+                sub rebind(Red::AST $expression) {
+                    my $result = $expression;
+                    for @old.kv -> $i, $column {
+                        $result = $result.replace($column, @new[$i]);
+                    }
+                    $result
+                }
+                if $input.filter.DEFINITE {
+                    my $condition = rebind($input.filter);
+                    $filter = $filter.DEFINITE
+                        ?? Red::AST::AND.new($filter, $condition) !! $condition;
+                }
+                @order.append: $input.order.map({ rebind($_) });
+                @identity.append: @input-identity.map({ rebind($_) });
+                @sources.push: Red::AST::ProductSource.new(:$alias, :$model);
+                @shapes.push: Red::Projection.from-value($model);
+                next;
+            }
+            $shape = $input.chain.projection.DEFINITE
+                ?? $input.chain.projection !! Red::Projection.from-value($input.of);
+            my @columns = $input.of.^columns;
+            my @leaves = $shape.leaves;
+            my @fields = $query.fields;
+            my @references = @leaves.kv.map(-> $i, $leaf {
+                my $column = @columns[$i].column;
+                my Red::AST $presence;
+                if $column.returns ~~ Json {
+                    my $name = "red_product_presence_$i";
+                    @fields.push: Red::AST::ProjectionField.new(
+                        :value(Red::Projection.json-presence($leaf)), :$name);
+                    $presence = Red::AST::Reference.new(:table($alias), :$name, :type(Bool));
+                }
+                Red::AST::Reference.new(:table($alias), :name($column.attr-name), :$presence,
+                    :undefined-type($leaf.^can('undefined-type') ?? $leaf.undefined-type !! Mu),
+                    :custom-inflate(so $leaf.?custom-inflate
+                        || ($leaf ~~ Red::Column && (so $leaf.attr.args<inflate>:exists
+                            || ($leaf.returns.HOW ~~ Metamodel::ClassHOW
+                                && so $leaf.returns.^can('inflator'))))),
+                    :type($column.returns), :inflate($column.inflate), :deflate($column.deflate))
+                    but ::('Red::ColumnMethods')
+            });
+            for $input.order.kv -> $i, $expression {
+                my $ordering = Red::AST::Ordering.from-expression($expression);
+                my $name = "red_product_order_$i";
+                @fields.push: Red::AST::ProjectionField.new(:value($ordering.value), :$name);
+                @order.push: $ordering.clone(:value(Red::AST::Reference.new(
+                    :table($alias), :$name, :type($ordering.returns))));
+            }
+            for @input-identity.kv -> $i, $expression {
+                my $name = "red_product_identity_$i";
+                @fields.push: Red::AST::ProjectionField.new(:value($expression), :$name);
+                @identity.push: Red::AST::Reference.new(
+                    :table($alias), :$name, :type($expression.returns));
+            }
+            @sources.push: Red::AST::ProductSource.new(:$alias,
+                :query($query.clone(:@fields)));
+            $shape = $shape.replace-leaves(@references);
+        } else {
+            my @shapes = $input.map({ Red::Projection.from-value($_) });
+            $shape = @shapes.head // Red::Projection.from-value(Any);
+            X::Red::Projection.new(:reason('Product values must have a uniform shape')).throw
+                unless @shapes.map(*.signature).all eq $shape.signature;
+            my @types = $shape.leaves.map(*.returns);
+            my @undefined = Mu xx @types.elems;
+            for @shapes -> $row {
+                for $row.leaves.kv -> $i, $leaf {
+                    unless $leaf.value.DEFINITE {
+                        X::Red::Projection.new(:reason('Nullable product values must share one type')).throw
+                            if @undefined[$i] !=== Mu && @undefined[$i] !=== $leaf.returns;
+                        @undefined[$i] = $leaf.returns;
+                        next;
+                    }
+                    @types[$i] = $leaf.returns unless @types[$i] !=== Any;
+                    X::Red::Projection.new(:reason('Product values must have uniform leaf types')).throw
+                        unless $leaf.returns === @types[$i];
+                }
+            }
+            my Int $null-index = 0;
+            $shape = $shape.with-undefined-types(@undefined, $null-index);
+            my @names = |(^@types.elems).map({ "value_$_" }), 'ordinal';
+            my @rows = @shapes.kv.map(-> $i, $row {
+                [|$row.leaves.map(*.value), $i]
+            });
+            @sources.push: Red::AST::ProductSource.new(:$alias, :@rows, :@names,
+                :types[|@types, Int]);
+            $shape = $shape.replace-leaves(@types.kv.map(-> $i, $type {
+                Red::AST::Reference.new(:table($alias), :name("value_$i"), :$type,
+                    :undefined-type(@undefined[$i]),
+                    :inflate(Red::Projection.literal-inflator($type)),
+                    :deflate(*.self))
+                    but ::('Red::ColumnMethods')
+            }));
+            my $ordinal = Red::AST::Reference.new(:table($alias), :name<ordinal>, :type(Int));
+            @identity.push: $ordinal;
+            @order.push: Red::AST::Ordering.from-expression($ordinal);
+        }
+        @shapes.push: $shape;
+    }
+    my $projection = Red::Projection.new(:kind<list>, :children(@shapes));
+    my @expressions = $projection.leaves;
+    @expressions = ast-value(1) unless @expressions;
+    my @*table-list;
+    my $model = self.of.^specialise(|@expressions);
+    my @columns = $model.^columns;
+    my role ProductModel[Mu:U \m] { method of { m } }
+    self.clone(:with($driver), :chain(Red::AST::Chained.new(
+        :@sources, :$projection, :@order, :$filter, :$identity-lost, :row-identity(@identity),
+        :post(-> $row { $projection.construct(@columns.map({ .get_value($row) })) })
+    ))) but ProductModel[$model]
+}
+
 #| The symbolic element passed to a block, independently of the storage model.
 method !projection-subject() {
     return self.of unless $!chain.projection.DEFINITE;
@@ -210,7 +363,9 @@ method !projection-input(Bool :$fuse = False, Bool :$preserve-order = True) {
                             || ($node.returns.HOW ~~ Metamodel::ClassHOW
                                 && so $node.returns.^can('inflator'))))
                 }).elems),
-                :type($attr.type), :inflate($column.inflate), :deflate($column.deflate))
+                :type($attr.type), :inflate($column.inflate), :deflate($column.deflate),
+                :undefined-type(@leaves[$i].^can('undefined-type')
+                    ?? @leaves[$i].undefined-type !! Mu))
                 but ::('Red::ColumnMethods')
         };
         $source = $source.clone(:fields[|$source.fields, |@fields.skip($exported)]);
@@ -410,7 +565,7 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
         my $model-return = %when.elems == 1 && %when.values.head ~~ Red::AST::Value
             && %when.values.head.type ~~ Red::Model;
         return seq!create-projection(Red::Projection.from-branches(%when), &filter)
-            unless $model-return;
+            unless $model-return && !$!chain.projection.DEFINITE;
     } else {
         X::Red::Projection.new(:reason("Projected values cannot be updated")).throw
             if $!chain.projection.DEFINITE || $input.chain.source.DEFINITE;
@@ -805,7 +960,7 @@ method ast(Bool :$sub-select --> Red::AST) is hidden-from-sql-commenting {
             :@prefetch,     :$sub-select,
             :$!for,
             :source($!chain.source), :source-alias($!chain.source-alias),
-            :fields($!chain.fields),
+            :fields($!chain.fields), :sources($!chain.sources),
         ;
     }
 }

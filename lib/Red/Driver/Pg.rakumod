@@ -427,3 +427,10 @@ multi method map-exception(DB::Pg::Error::FatalError $x where /"duplicate key va
 multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /relation \s+ \"$<table>=(\w+)\" \s+ already \s+ exists/) {
     X::Red::Driver::Mapped::TableExists.new: :driver<Pg>, :orig-exception($x), :table($<table>.Str)
 }
+
+# PostgreSQL otherwise infers parameter-only UNION columns as text.
+method product-value(Red::AST::Value:D $value) {
+    my $translated = self.wildcard => [self.wildcard-value($value)];
+    "CAST({ $translated.key } AS { self.default-type-for-type($value.returns) })"
+        => $translated.value
+}

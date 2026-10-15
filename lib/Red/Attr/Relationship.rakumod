@@ -1,3 +1,4 @@
+use Red::AST::Reference;
 use Red::AST;
 use Red::AST::Infixes;
 use Red::AST::Value;
@@ -188,13 +189,14 @@ method !relationship-ast($t1, $t2) {
     my $*RED-INTERNAL = True;
     return rel1 $t1, $t2 if &rel1.count > 1;
     my \col1 = |rel1 $t1;
-    return col1 if col1 ~~ Red::AST && col1 !~~ Red::Column;
+    return col1 if col1 ~~ Red::AST && col1 !~~ Red::Column | Red::AST::Reference;
 
     col1.map({
         X::Red::RelationshipNotColumn.new(
             :relationship(self),
             :points-to($_)
-        ).throw unless $_ ~~ Red::Column;
+        ).throw unless $_ ~~ Red::Column
+            || ($_ ~~ Red::AST::Reference && .origin ~~ Red::Column);
 
         Red::AST::Eq.new: $_, .ref: $t2
     }).reduce: -> $agg, $i? {

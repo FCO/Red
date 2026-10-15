@@ -1,5 +1,6 @@
 use Red::Model;
 use Red::AST::Value;
+use Red::AST::Reference;
 use Red::Attr::Column;
 
 =head2 MetamodelX::Red::Comparate
@@ -15,7 +16,11 @@ method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr --> Empty) {
             type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) is rw {
                 die "Cannot look up attributes in a { type.^name } type object" without $*RED-INTERNAL;
                 Proxy.new:
-                FETCH => -> $ { $attr.column },
+                FETCH => -> $ {
+                    my $column = $attr.column;
+                    $column.computation ~~ Red::AST::Reference
+                        ?? $column.computation.clone(:origin($column)) !! $column
+                },
                 STORE => -> $, $value {
                     my &deflator = $attr.column.deflate;
                     my $val = do given $value {
@@ -30,7 +35,9 @@ method add-comparate-methods(Mu:U \type, Red::Attr::Column $attr --> Empty) {
         } else {
             type.^add_multi_method: $attr.name.substr(2), method (Mu:U:) {
                 die "Cannot look up attributes in a { type.^name } type object" without $*RED-INTERNAL;
-                $attr.column
+                my $column = $attr.column;
+                $column.computation ~~ Red::AST::Reference
+                    ?? $column.computation.clone(:origin($column)) !! $column
             }
         }
         $!added-method{"{ type.^name }|$attr"}++

@@ -805,3 +805,38 @@ MyModel.^all.grep(*.col1 > 3).map({ .col1 = 42 }).save;
 
 The projection representation has internal rebinding and materialization hooks
 for future shapes; it is not a public custom-object projection API.
+
+## Cartesian products in SQL
+
+Use `X` with at least one `ResultSeq` to build a lazy SQL product:
+
+```raku
+my $matches = (Order.^all X Customer.^all)
+    .grep(-> ($order, $customer) { $order.customer-id == $customer.id });
+my $expanded = (Order.^all.sort(*.id) X ^10)
+    .map(-> ($order, $number) { %(order => $order.id, number => $number) });
+```
+
+Each result is a `List` tuple. Models inside the tuple are ordinary model instances.
+Further `grep`, `map`, `sort`, and reductions use the tuple as their input and stay
+in the same SQL statement. Simple model inputs share one SELECT; pagination and
+projection boundaries retain their own SELECTs.
+
+Arrays, Lists, finite Ranges, and finite non-lazy Seqs are captured when the product
+is built, including nested containers. They must have a uniform shape and matching
+leaf types; undefined values are nullable. Values use statement bindings, and duplicate
+values keep their multiplicity. Empty collections produce no rows. Marked lazy or
+infinite collections are never drained to build a SQL value table.
+
+`A X B X C` produces `(a, b, c)`, while `(A X B) X C` produces `((a, b), c)`.
+Order each database input explicitly when iteration order matters. The resulting
+ordering combines operand orderings from left to right and literal collection ordinals.
+Unordered database inputs have no guaranteed total order; products add no implicit
+primary-key sort.
+
+Database inputs must use the same driver instance. Prefetch, row locks, updating maps,
+and unsupported literal shapes use the usual `$*RED-FALLBACK` policy. Set it to `False`
+to require SQL and receive an `X::Red::Projection` error for unsupported products.
+Composite results cannot be created, saved, or deleted as a whole; individual models
+retain their ordinary persistence methods. Products containing only ordinary collections
+retain native Raku behavior.

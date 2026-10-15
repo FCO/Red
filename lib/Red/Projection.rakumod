@@ -16,16 +16,46 @@ has Str $.kind is required;
 has Red::AST $.expression;
 has Red::Projection @.children;
 has Str @.keys;
+has Mu $.model;
+has Mu $.undefined-type = Mu;
+
+#| Parameter-only relations can be returned as strings by database drivers.
+method literal-inflator(::?CLASS:U: Mu:U $type --> Callable:D) {
+    -> $value {
+        given $type {
+            when Bool { so $value.Int }
+            when Int { $value.Int }
+            when Rat { $value.Rat }
+            when Num { $value.Num }
+            when Str { $value.Str }
+            when DateTime { $value ~~ DateTime ?? $value !! DateTime.new($value) }
+            when Date { $value ~~ Date ?? $value !! Date.new($value) }
+            when Blob { $type.new($value.list) }
+            default { $value }
+        }
+    }
+}
 
 method from-value(::?CLASS:U: $value --> Red::Projection:D) {
     if $value ~~ Red::AST::Value {
         my $literal = $value.value;
+        return self.from-value($literal) if $literal ~~ ::('Red::Model');
         return self.from-value($literal) if $literal ~~ Hash | Array | List;
         X::Red::Projection.new(:reason("Unsupported projection value: { $literal.^name }")).throw
             if $literal.DEFINITE && $literal !~~ Str | Numeric | Bool | Date | DateTime | Blob;
     }
+    if $value ~~ ::('Red::Model') && !$value.DEFINITE {
+        return self.new(:kind<model>, :model($value.^orig),
+            :keys($value.^columns.map({ .name.substr(2) })),
+            :children($value.^columns.map({
+                my $column = .column;
+                self.from-value($column.computation ~~ ::('Red::AST::Reference')
+                    ?? $column.computation.clone(:origin($column)) !! $column)
+            })));
+    }
     if $value ~~ Red::AST {
-        return self.new: :kind<leaf>, :expression($value);
+        return self.new: :kind<leaf>, :expression($value),
+            :undefined-type($value.^can('undefined-type') ?? $value.undefined-type !! Mu);
     }
     if $value ~~ Hash {
         my @keys = $value.keys.sort;
@@ -102,7 +132,8 @@ method safe-to-repeat(::?CLASS:U: $value --> Bool:D) {
 }
 
 method signature(--> Str:D) {
-    ($!kind, @!keys.List, @!children.map(*.signature).List).raku
+    ($!kind, ($!kind eq 'model' ?? $!model.WHICH.Str !! ''),
+        @!keys.List, @!children.map(*.signature).List).raku
 }
 
 method leaves(--> List:D) {
@@ -120,6 +151,12 @@ method rebind-leaves(@expressions, Int $index is rw --> Red::Projection:D) {
     self.clone: :children(@!children.map({ .rebind-leaves(@expressions, $index) }))
 }
 
+#| Preserve the type objects supplied as nullable literal values.
+method with-undefined-types(@types, Int $index is rw --> Red::Projection:D) {
+    return self.clone(:undefined-type(@types[$index++])) if $!kind eq 'leaf';
+    self.clone(:children(@!children.map({ .with-undefined-types(@types, $index) })))
+}
+
 method construct(@values) {
     my Int $index = 0;
     self.materialize(@values, $index)
@@ -127,8 +164,38 @@ method construct(@values) {
 
 #| Internal extension point for reconstructing one result element.
 method materialize(@values, Int $index is rw) {
-    return @values[$index++] if $!kind eq 'leaf';
-    if $!kind eq 'hash' {
+    if $!kind eq 'leaf' {
+        my $value = @values[$index++];
+        return $!undefined-type if $!undefined-type !=== Mu
+            && $value !~~ Red::AST && !$value.DEFINITE;
+        return $value;
+    }
+    if $!kind eq 'model' {
+        my @members = @!children.map({ .materialize(@values, $index).item });
+        if @members.grep({ $_ ~~ Red::AST }).elems {
+            return @members.head.class if @members.head ~~ ::('Red::Column');
+            my Str $table = @members.head.table;
+            my $alias = $!model.^alias($table ~ '_model_' ~ @members.head.name);
+            my role ModelSource[Str $source, Str $group] {
+                method as(|) { $source }
+                method tables(\type) { [type] }
+                method create-rel-name(Mu \type, $name) { "{$source}_{$group}_$name" }
+            }
+            $alias.HOW does ModelSource[$table, @members.head.name];
+            for $alias.^columns.kv -> $i, $attr {
+                $attr.args<computation> = @members[$i];
+                $attr.args<model> = $alias;
+                $attr.args<class> = $alias;
+                $attr.create-column($alias);
+            }
+            return $alias;
+        } else {
+            my $object = $!model.new(|@!keys.kv.map(-> $i, $key { $key => @members[$i] }).Hash);
+            $object.^clean-up;
+            $object.^saved-on-db;
+            return $object;
+        }
+    } elsif $!kind eq 'hash' {
         return @!keys.kv.map(-> $i, $key {
             $key => @!children[$i].materialize(@values, $index)
         }).Hash;
