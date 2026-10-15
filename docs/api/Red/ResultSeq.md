@@ -34,6 +34,16 @@ method Seq() returns Mu
 
 Returns a Seq with the result of the SQL query
 
+### method cross-product
+
+```raku
+method cross-product(
+    @inputs
+) returns Mu
+```
+
+Builds one SQL statement for a product of queries and captured value collections.
+
 ### method projection-subject
 
 ```raku
@@ -113,7 +123,7 @@ Sets the query to return the rows in a randomic order (does not run the query)
 ```raku
 method classify(
     &func,
-    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|4494128302192) ... },
+    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|5626627248064) ... },
     :&reduce
 ) returns Red::ResultAssociative
 ```

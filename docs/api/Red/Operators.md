@@ -2760,3 +2760,13 @@ multi sub infix:«(>)»(
 
 X (>) Y # Where Y is a select
 
+### multi sub infix:<X>
+
+```raku
+multi sub infix:<X>(
+    +sources where { ... }
+) returns Mu
+```
+
+Keep products containing database queries in one SQL statement.
+
