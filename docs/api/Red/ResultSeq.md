@@ -123,7 +123,7 @@ Sets the query to return the rows in a randomic order (does not run the query)
 ```raku
 method classify(
     &func,
-    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|5135121927264) ... },
+    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|5550390529984) ... },
     :&reduce
 ) returns Red::ResultAssociative
 ```
@@ -153,6 +153,16 @@ method head() returns Mu
 ```
 
 Gets the first row returned by the query (run the query)
+
+### method head
+
+```raku
+method head(
+    UInt(Numeric) $num
+) returns Mu
+```
+
+Returns a ResultSeq that gets the first N rows returned by the query
 
 ### method reverse
 
