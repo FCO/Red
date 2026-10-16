@@ -1,0 +1,298 @@
+use Test;
+use Red;
+use Red::Index;
+use Red::AST::CreateIndex;
+use Red::AST::Function;
+use Red::AST::Value;
+use lib $?FILE.IO.parent.add('lib');
+use IndexedFixture;
+
+model IndexedContact {
+    has Int $.id is serial;
+    has Int $.account-id is indexed<account-email>;
+    has Str $.email is indexed('account-email', { .lc });
+    has Str $.handle is unique{ .lc };
+    has Str $.code is unique;
+    has Str $.tag is column{ :indexed };
+    has Str $.label is rw is column{ :indexed{ .lc } };
+    has Str $.alias is column{ :unique{ .lc } };
+    has $.email-only is index{ .email.lc };
+    has $.account-handle is unique-index{ .account-id, .email.lc };
+}
+
+model IndexedGroups {
+    has Int $.id is serial;
+    has Int $.account-id is unique<account-email>;
+    has Str $.email is unique('account-email', { .lc });
+    has Str $.part-a is indexed<a b>;
+    has Str $.part-b is indexed(<a b>, { .lc });
+}
+
+my @conf = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @conf.shift;
+my $*RED-DB = database $driver, |%(@conf.map: {
+    do given .split('=') { .[0] => val .[1] }
+});
+my $*RED-DEBUG = so %*ENV<RED_DEBUG>;
+
+subtest 'metadata and trait contexts', {
+    is IndexedContact.^columns.elems, 8, 'index declarations are not columns';
+    is IndexedContact.^indexes.elems, 8, 'one definition per index or group';
+    my $group = IndexedContact.^indexes.first(*.logical-name eq 'account-email');
+    is-deeply $group.keys.map(*.find-column-name).flat.Array,
+        ['account_id', 'email'], 'group preserves declaration order';
+    like $*RED-DB.translate($group).key, /:i 'LOWER'/, 'column block becomes LOWER';
+    is IndexedContact.^unique-constraints.elems, 1,
+        'expression indexes do not become raw-column identities';
+    is IndexedGroups.^unique-constraints.elems, 0,
+        'mixed groups do not create a constraint on only the plain keys';
+    is IndexedGroups.^indexes.elems, 3, 'multiple named groups accept one transformation';
+    is-deeply IndexedContact.^indexes».name.Array,
+        IndexedContact.^indexes».name.Array, 'names are stable';
+};
+
+subtest 'creation, uniqueness and repeated creation', {
+    schema(IndexedContact, IndexedGroups).drop.create;
+    lives-ok { IndexedContact.^create-indexes }, 'repeat is safe';
+    lives-ok { IndexedGroups.^create-indexes }, 'repeat is safe for mixed groups';
+    my @catalog = $*RED-DB.indexes-for-table(IndexedContact.^table);
+    for IndexedContact.^indexes.grep({ !.inline }) -> $index {
+        ok @catalog.first({ .<name> eq $index.name }).defined,
+            "catalog contains {$index.logical-name}";
+    }
+    my %record = :account-id(1), :email<Alice@example.test>, :handle<Alice>,
+        :code<C1>, :tag<T>, :label<L>, :alias<A1>;
+    my $contact = IndexedContact.^create: |%record;
+    throws-like { IndexedContact.^create: |%record, :code<C2>, :alias<A2>, :email<other>,
+        :handle<ALICE> }, X::Red::Driver::Mapped::Unique,
+        'functional unique index rejects case variants';
+    is $contact.email, 'Alice@example.test', 'stored values are unchanged';
+    unlike $contact.raku, /'email-only'|'account-handle'/, 'index metadata is not row data';
+    $contact.label = 'changed';
+    $contact.^save;
+    is IndexedContact.^load($contact.id).label, 'changed', 'updates still identify the row';
+    IndexedGroups.^create: :account-id(1), :email<first>, :part-a<L>, :part-b<R>;
+    lives-ok { IndexedGroups.^create: :account-id(1), :email<second>, :part-a<L>, :part-b<R> },
+        'mixed unique group permits distinct expressions within the same account';
+    throws-like { IndexedGroups.^create: :account-id(1), :email<FIRST>, :part-a<L>, :part-b<R> },
+        X::Red::Driver::Mapped::Unique, 'mixed unique group enforces all keys';
+};
+
+model IndexExisting {
+    has Int $.id is serial;
+    has Str $.email is unique{ .lc };
+    has Str $.code is unique;
+    has Str $.tag is indexed;
+}
+
+subtest 'existing tables and old unique constraints', {
+    $*RED-DB.execute('DROP TABLE IF EXISTS ' ~ $*RED-DB.table-name-wrapper(IndexExisting.^table));
+    $*RED-DB.execute('CREATE TABLE ' ~ $*RED-DB.table-name-wrapper(IndexExisting.^table)
+        ~ ' (id INTEGER PRIMARY KEY, email VARCHAR(255), code VARCHAR(255) UNIQUE, tag VARCHAR(255))');
+    my $before = $*RED-DB.indexes-for-table(IndexExisting.^table).elems;
+    lives-ok { IndexExisting.^create-indexes }, 'add declarations to existing table';
+    is $*RED-DB.indexes-for-table(IndexExisting.^table).elems, $before + 2,
+        'old unnamed unique constraint is reused';
+    lives-ok { IndexExisting.^create-indexes(:with($*RED-DB)) }, 'explicit driver is supported';
+    $*RED-DB.execute('INSERT INTO ' ~ $*RED-DB.table-name-wrapper(IndexExisting.^table)
+        ~ " (id, email, code, tag) VALUES (1, 'Alice', 'C1', 'T')");
+    throws-like { $*RED-DB.execute('INSERT INTO '
+        ~ $*RED-DB.table-name-wrapper(IndexExisting.^table)
+        ~ " (id, email, code, tag) VALUES (2, 'ALICE', 'C2', 'T')") },
+        X::Red::Driver::Mapped::Unique, 'uniqueness applies to existing tables';
+};
+
+model IndexConflict {
+    has Int $.id is serial;
+    has Str $.pending-key is indexed;
+    has Str $.email is indexed;
+}
+
+subtest 'catalog conflicts are detected before creating indexes', {
+    schema(IndexConflict).drop.create;
+    my $index = IndexConflict.^indexes.first(*.logical-name eq 'email');
+    my $pending = IndexConflict.^indexes.first(*.logical-name eq 'pending-key');
+    $*RED-DB.execute('DROP INDEX ' ~ $*RED-DB.table-name-wrapper($pending.name)
+        ~ ($driver eq 'MySQL' ?? ' ON ' ~ $*RED-DB.table-name-wrapper($pending.table) !! ''));
+    $*RED-DB.execute('DROP INDEX ' ~ $*RED-DB.table-name-wrapper($index.name)
+        ~ ($driver eq 'MySQL' ?? ' ON ' ~ $*RED-DB.table-name-wrapper($index.table) !! ''));
+    $*RED-DB.execute('CREATE INDEX ' ~ $*RED-DB.table-name-wrapper($index.name)
+        ~ ' ON ' ~ $*RED-DB.table-name-wrapper($index.table) ~ ' (id)');
+    throws-like { IndexConflict.^create-indexes }, X::Red::Index,
+        'same name with different keys is rejected';
+    nok $*RED-DB.indexes-for-table($pending.table).first({ .<name> eq $pending.name }).defined,
+        'a later conflict prevents executing earlier pending indexes';
+};
+
+subtest 'invalid definitions', {
+    model InvalidIndexKey {
+        has Int $.id is serial;
+        has $.bad is index{ 42 };
+    }
+    throws-like { InvalidIndexKey.^indexes }, X::Red::Index, 'plain values are not expressions';
+    model EmptyIndexKey {
+        has Int $.id is serial;
+        has $.bad is index{ () };
+    }
+    throws-like { EmptyIndexKey.^indexes }, X::Red::Index, 'empty indexes are rejected';
+    model ConstantIndexKey {
+        has Int $.id is serial;
+        has $.bad is index{ ast-value(42) };
+    }
+    throws-like { ConstantIndexKey.^indexes }, X::Red::Index, 'keys must reference a column';
+    model CrossTableIndexKey {
+        has Int $.id is serial;
+        has $.bad is index{ IndexedContact.email.lc };
+    }
+    throws-like { CrossTableIndexKey.^indexes }, X::Red::Index, 'cross-table references fail';
+    model ConflictingIndexKinds {
+        has Str $.left is indexed<both>;
+        has Str $.right is unique<both>;
+    }
+    throws-like { ConflictingIndexKinds.^indexes }, X::Red::Index, 'group uniqueness must agree';
+};
+
+model IndexOptions {
+    has Int $.id is serial;
+    has Str $.simple is indexed;
+    has Str $.explicit is column is indexed;
+    has Str $.configured is column{ :indexed('configured-group', { .lc }) };
+    has Str $.unique-configured is column{ :unique('unique-group', { .lc }) };
+    has Str $.off is column{ :!indexed, :!unique };
+    has Str $.both-keys is indexed is unique;
+    has $.prefix-form is index{ lc .simple };
+    has $.literal-expression is index{ .simple.substr(0, 2) };
+}
+
+subtest 'equivalent option forms and literals in DDL', {
+    is IndexOptions.^indexes.elems, 8, 'disabled options create no indexes';
+    is IndexOptions.^columns.elems, 7, 'every indexed attribute is a column';
+    schema(IndexOptions).drop;
+    lives-ok { IndexOptions.^create-table }, 'direct creation supports all option forms';
+    lives-ok { IndexOptions.^create-indexes }, 'DDL with literal arguments is repeatable';
+    my $ddl = $*RED-DB.translate(IndexOptions.^indexes.first(*.logical-name eq 'literal-expression'));
+    is $ddl.value.elems, 0, 'index expressions have no bind parameters';
+    lives-ok { IndexOptions.^create-table(:if-not-exists) }, 'existing table creation remains safe';
+    my $alias = IndexOptions.^alias('index_options_alias', :base(IndexOptions), :relationship({ .id }));
+    is-deeply $alias.^indexes».name.Array, IndexOptions.^indexes».name.Array,
+        'query aliases preserve definitions without changing DDL names';
+};
+
+my constant ROLE-LOWER = { .lc };
+my constant ROLE-EMAIL-KEY = { .role-email.lc };
+role IndexFields {
+    has Str $.role-email is indexed(ROLE-LOWER);
+    has $.role-email-key is index(ROLE-EMAIL-KEY);
+}
+model IndexRole does IndexFields {
+    has Int $.id is serial;
+}
+model IndexChild is IndexRole {
+    has Str $.child-code is indexed;
+}
+
+subtest 'precompiled declarations', {
+    is IndexedFixture.^indexes.elems, 3, 'precompiled traits retain their definitions';
+    schema(IndexedFixture).drop.create;
+    lives-ok { IndexedFixture.^create-indexes }, 'precompiled blocks resolve after loading';
+};
+
+subtest 'roles and inheritance', {
+    is IndexRole.^indexes.elems, 2, 'role contributes column and standalone indexes';
+    is IndexChild.^indexes.elems, 3, 'inherited definitions are not duplicated';
+    schema(IndexRole, IndexChild).drop.create;
+    lives-ok { IndexRole.^create-indexes; IndexChild.^create-indexes },
+        'inherited blocks resolve against the concrete model';
+};
+
+model IndexPlainUniques {
+    has Int $.id is serial;
+    has Str $.first-code is unique;
+    has Str $.second-code is unique;
+}
+
+subtest 'traditional uniques remain independent', {
+    schema(IndexPlainUniques).drop.create;
+    lives-ok { IndexPlainUniques.^create-indexes }, 'recognize traditional constraints';
+    IndexPlainUniques.^create: :first-code<F1>, :second-code<S1>;
+    throws-like { IndexPlainUniques.^create: :first-code<F1>, :second-code<S2> },
+        X::Red::Driver::Mapped::Unique, 'first unique is enforced independently';
+    throws-like { IndexPlainUniques.^create: :first-code<F2>, :second-code<S1> },
+        X::Red::Driver::Mapped::Unique, 'second unique is enforced independently';
+};
+
+model IndexAddUnique {
+    has Int $.id is serial;
+    has Str $.email is unique{ .lc };
+    has Str $.code is unique;
+}
+
+subtest 'adding uniqueness and reporting duplicate existing data', {
+    $*RED-DB.execute('DROP TABLE IF EXISTS ' ~ $*RED-DB.table-name-wrapper(IndexAddUnique.^table));
+    my $table = $*RED-DB.table-name-wrapper(IndexAddUnique.^table);
+    $*RED-DB.execute("CREATE TABLE $table (id INTEGER PRIMARY KEY, email VARCHAR(255), code VARCHAR(255))");
+    $*RED-DB.execute("INSERT INTO $table VALUES (1, 'Alice', 'C1'), (2, 'ALICE', 'C2')");
+    throws-like { IndexAddUnique.^create-indexes }, X::Red::Driver::Mapped::Unique,
+        'existing duplicates prevent functional uniqueness';
+    $*RED-DB.execute("DELETE FROM $table WHERE id = 2");
+    lives-ok { IndexAddUnique.^create-indexes }, 'creation succeeds after fixing data';
+    throws-like { $*RED-DB.execute("INSERT INTO $table VALUES (3, 'Other', 'C1')") },
+        X::Red::Driver::Mapped::Unique, 'traditional unique is also added to existing tables';
+};
+
+subtest 'catalog SQL normalization preserves meaning', {
+    is canonical-index-key('LOWER("email")'), canonical-index-key('lower((email)::text)'),
+        'normalize PostgreSQL implicit text casts';
+    isnt canonical-index-key(q[lower(email) || '::text']),
+        canonical-index-key(q[lower(email) || '']), 'preserve cast-like string literals';
+    isnt canonical-index-key(q[lower(email) || 'A']),
+        canonical-index-key(q[lower(email) || 'a']), 'preserve literal case';
+    isnt canonical-index-key('"Email"'), canonical-index-key('email'),
+        'preserve quoted identifier case';
+    isnt canonical-index-key('id::text'), canonical-index-key('id'),
+        'standalone text casts remain distinct from numeric keys';
+    isnt canonical-index-key('(a + b) * c'), canonical-index-key('a + (b * c)'),
+        'preserve arithmetic grouping';
+    is-deeply sql-index-keys(q[CREATE INDEX "odd(name" ON x (lower("email"), substr("email", 1, 2), 'a,b')]),
+        ['lower("email")', 'substr("email", 1, 2)', "'a,b'"], 'parse nested keys and quoted delimiters';
+};
+
+
+model IndexPreflightGood {
+    has Int $.id is serial;
+    has Str $.email is indexed;
+}
+model IndexPreflightBad {
+    has Int $.id is serial;
+    has $.bad is index{ 42 };
+}
+
+subtest 'schema preflight validates all models before DDL', {
+    my $schema = schema(IndexPreflightGood, IndexPreflightBad);
+    $schema.drop;
+    throws-like { $schema.create }, X::Red::Index, 'invalid definition rejects schema creation';
+    for IndexPreflightGood, IndexPreflightBad -> $model {
+        dies-ok { $*RED-DB.execute('SELECT * FROM '
+            ~ $*RED-DB.table-name-wrapper($model.^table)) },
+            "{$model.^name} was not partially created";
+    }
+};
+
+if $driver eq 'SQLite' {
+    subtest 'temporary-table catalog shadowing', {
+        $*RED-DB.execute('CREATE TABLE index_shadow (email TEXT)');
+        $*RED-DB.execute('CREATE INDEX index_shadow_key ON index_shadow (email)');
+        $*RED-DB.execute('CREATE TEMP TABLE index_shadow (email TEXT)');
+        $*RED-DB.execute('CREATE INDEX temp.index_shadow_key ON index_shadow (lower(email))');
+        my $temporary = $*RED-DB.indexes-for-table('index_shadow').head;
+        is canonical-index-key($temporary<keys>[0]), canonical-index-key('lower(email)'),
+            'temporary index definition takes precedence over the main schema';
+        $*RED-DB.execute('DROP TABLE temp.index_shadow');
+        my $main = $*RED-DB.indexes-for-table('index_shadow').head;
+        is canonical-index-key($main<keys>[0]), canonical-index-key('email'),
+            'main index is visible after removing the temporary table';
+        $*RED-DB.execute('DROP TABLE main.index_shadow');
+    };
+}
+
+done-testing;

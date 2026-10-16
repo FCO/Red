@@ -1,5 +1,6 @@
 use Red::Column;
 use Red::Attr::Column;
+use Red::Attr::Index;
 use Red::ResultSeq;
 use Red::Phaser;
 use MetamodelX::Red::VirtualView;
@@ -89,6 +90,23 @@ multi trait_mod:<is>(Attribute $attr, Bool :$unique! where $_ == True --> Empty)
 #| This trait marks an attribute (column) as UNIQUE receiving data to ve used on column definition.
 multi trait_mod:<is>(Attribute $attr, :$unique! --> Empty) is export {
     trait_mod:<is>($attr, :column{:$unique})
+}
+
+#| Mark a column as indexed, optionally naming groups and transforming its key.
+multi trait_mod:<is>(Attribute $attr, :$indexed! --> Empty) is export {
+    trait_mod:<is>($attr, :column{:$indexed})
+}
+
+#| Declare an independent index; its block receives the symbolic model.
+multi trait_mod:<is>(Attribute $attr, :&index! --> Empty) is export {
+    $attr does Red::Attr::Index;
+    $attr.configure-index(&index);
+}
+
+#| Declare an independent unique index.
+multi trait_mod:<is>(Attribute $attr, :&unique-index! --> Empty) is export {
+    $attr does Red::Attr::Index;
+    $attr.configure-index(&unique-index, :unique);
 }
 
 =head3 is id

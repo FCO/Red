@@ -22,12 +22,42 @@ use Red::SchemaReader;
 use Red::Driver::SQLite::SchemaReader;
 use Red::Type::Json;
 use Red::Projection;
+use Red::Index;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
 has $.database = q<:memory:>;
 has DBDish::SQLite::Connection $!dbh;
 
 method schema-reader { Red::Driver::SQLite::SchemaReader }
+
+method indexes-for-table(Str $table --> Array) {
+    my @indexes;
+    my $temporary = self.execute(
+        'SELECT name FROM sqlite_temp_master WHERE type = \'table\' AND name = ?', $table).row;
+    my $schema = $temporary ?? 'temp' !! 'main';
+    my $catalog = $temporary ?? 'sqlite_temp_master' !! 'sqlite_master';
+    my $statement = self.execute(
+        'SELECT name, "unique", partial FROM pragma_index_list(?, ?)', $table, $schema);
+    for self.index-catalog-rows($statement) -> $row {
+        my $name = $row<name>;
+        my $definition = self.execute(
+            "SELECT sql FROM $catalog WHERE type = 'index' AND name = ? AND tbl_name = ?",
+            $name, $table).row;
+        my @keys;
+        if $definition<sql>.defined {
+            @keys = sql-index-keys($definition<sql>);
+        } else {
+            my $columns = self.execute(
+                'SELECT name FROM pragma_index_info(?, ?) ORDER BY seqno', $name, $schema);
+            for self.index-catalog-rows($columns) -> $column {
+                @keys.push: self.table-name-wrapper($column<name>);
+            }
+        }
+        @indexes.push: { :$name, :unique(so $row<unique>),
+            :partial(so $row<partial>), :keys(@keys.Array) };
+    }
+    @indexes.Array
+}
 
 #| Data accepted by the SQLite driver constructor:
 #| dbh     : DBDish::SQLite object
@@ -69,6 +99,9 @@ multi method prepare(Str $query) {
 }
 
 method create-schema(%models where .values.all ~~ Red::Model) {
+    for %models.values -> $model {
+        self.translate($_) for $model.^indexes;
+    }
     do for %models.kv -> Str() $name, Red::Model $model {
         $name => $model.^create-table
     }

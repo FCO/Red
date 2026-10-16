@@ -35,6 +35,8 @@ use X::Red::Exceptions;
 use Red::Phaser;
 use Red::Event;
 use Red::PrepareCode;
+use Red::Index;
+use Red::Attr::Index;
 
 =head2 MetamodelX::Red::Model
 
@@ -56,6 +58,8 @@ has Red::Column %!references;
 has %!attr-to-column;
 has $.rs-class;
 has @!constraints;
+has @!indexes;
+has Bool $!indexes-composed;
 has $.table;
 has $.database;
 has Bool $!temporary;
@@ -76,6 +80,64 @@ method column-names(|) { @!columns>>.column>>.name }
 
 #| Returns a hash of model constraints classified by type.
 method constraints(|) { @!constraints.unique.classify: *.key, :as{ .value } }
+
+#| Ordered index metadata, including traditional unique constraints.
+method indexes(Mu:U \model) {
+    unless $!indexes-composed {
+        @!indexes = model-indexes(model);
+        $!indexes-composed = True;
+    }
+    @!indexes.List
+}
+
+multi method create-indexes(Mu:U \model, Str :$with!, |c) {
+    my $*RED-DB = %GLOBAL::RED-DEFAULT-DRIVERS{$with};
+    self.create-indexes(model, |c)
+}
+
+multi method create-indexes(Mu:U \model, Red::Driver :$with!, |c) {
+    my $*RED-DB = $with;
+    self.create-indexes(model, |c)
+}
+
+#| Add declared indexes to an existing table without replacing existing objects.
+multi method create-indexes(Mu:U \model) {
+    my $driver = get-RED-DB;
+    my @indexes = model.^indexes;
+    return True unless @indexes;
+    $driver.translate($_) for @indexes;
+    my @existing = $driver.indexes-for-table(model.^table);
+    my @pending;
+    for @indexes.kv -> $i, $index {
+        my @keys = $index.keys.map({ $driver.index-key-fingerprint($driver.index-key($_)) });
+        my $same-name = @existing.first({ .<name> eq $index.name });
+        my &equivalent = -> $found {
+            so $found<unique> == $index.unique
+                && ($found<keys>.map({ $driver.index-key-fingerprint($_) }).List eqv @keys.List)
+                && !($found<partial> // False) && ($found<valid> // True);
+        };
+        if $same-name.defined {
+            index-error("Existing index {$index.name} has a different definition")
+                unless equivalent($same-name);
+            next;
+        }
+        # Old Red versions emitted unnamed UNIQUE constraints.
+        next if $index.inline && @existing.first({ equivalent($_) }).defined;
+        @pending.push: $i;
+    }
+    for @pending -> $i {
+        my $data = @indexes[$i];
+        CATCH {
+            default {
+                self.emit(model, $data, :error($_));
+                .rethrow;
+            }
+        }
+        $driver.execute: $data;
+        self.emit(model, $data);
+    }
+    True
+}
 
 #| Returns a hash of foreign keys of the model.
 method references(|) { %!references }
@@ -198,8 +260,28 @@ method compose(Mu \type) {
 
     self.compose-dirtable: type;
 
-    for type.^columns.grep(*.column.unique-groups.elems > 0).categorize(*.column.unique-groups).values -> @grp {
-        type.^add-unique-constraint: -> | { @grp>>.column }
+    # A group containing a transformed key must not also create a UNIQUE
+    # constraint on just its untransformed members.
+    my %unique-groups;
+    my %transformed;
+    my @unique-order;
+    for type.^columns -> $attr {
+        next unless $attr.args<unique>:exists;
+        my %option = index-options($attr.args<unique>);
+        next if %option<disabled>;
+        my @names = %option<names>.list;
+        my Bool $named = so @names;
+        @names = ($attr.column.attr-name,) unless @names;
+        for @names -> $name {
+            my $group = $named ?? "named:$name" !! "column:$name";
+            @unique-order.push: $group unless %unique-groups{$group}:exists;
+            %unique-groups{$group}.push: $attr.column;
+            %transformed{$group} = True if %option<expression>.DEFINITE;
+        }
+    }
+    for @unique-order -> $name {
+        next if %transformed{$name};
+        type.^add-unique-constraint: -> | { %unique-groups{$name}.list }
     }
 
     if type.^constraints<pk>:!exists {
@@ -258,6 +340,7 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
 
         my role RAlias[Red::Model:U \rtype, Str $rname, \alias, \rel, \base, \join-type, @cols] {
             method columns(|)     { @cols }
+            method indexes(|)     { rtype.^indexes }
             method table(|)       { rtype.^table }
             method as(|)          { self.table-formatter: $rname }
             method orig(|)        { rtype }
@@ -322,6 +405,8 @@ method alias(|c (Red::Model:U \type, Str $name = "{type.^name}_{$alias_num++}", 
 method add-column(::T Red::Model:U \type, Red::Attr::Column $attr) {
     if $attr.name eq @!columns.none.name {
         @!columns.push: $attr;
+        @!indexes = ();
+        $!indexes-composed = False;
         my $name = $attr.name.substr: 2;
         with $attr.args{"references" | "model-name"} {
             self.add-reference: $name, $attr.column
@@ -416,6 +501,8 @@ multi method create-table(\model where { .HOW !~~ MetamodelX::Red::View | Metamo
     die X::Red::InvalidTableName.new: :table(model.^table)
         unless get-RED-DB.is-valid-table-name: model.^table
     ;
+    # Resolve and translate every index before creating any database objects.
+    get-RED-DB.translate($_) for model.^indexes;
     my $data = Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
@@ -434,6 +521,7 @@ multi method create-table(\model where { .HOW !~~ MetamodelX::Red::View | Metamo
     ;
     get-RED-DB.execute: |$data;
     self.emit: model, $data;
+    model.^create-indexes if model.^indexes.grep({ !.inline });
     CATCH {
         default {
             self.emit: model, $data, :error($_);

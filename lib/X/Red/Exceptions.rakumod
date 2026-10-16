@@ -2,6 +2,11 @@ use Red::Column;
 
 class X::Red is Exception {}
 
+class X::Red::Index is X::Red {
+    has Str $.reason is required;
+    method message { "Invalid index: $!reason" }
+}
+
 class X::Red::Projection is X::Red {
     has Str $.reason is required;
     method message { $!reason }

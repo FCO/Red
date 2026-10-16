@@ -1,4 +1,5 @@
 use Red::AST;
+use Red::Attr::Index;
 
 =head2 Red::Model
 
@@ -9,7 +10,9 @@ has $!filter;
 #method gist { self.^attributes; #`{self.perl} }
 
 multi method raku(::?CLASS:D:) {
-    my @attrs = self.^attributes.grep({ !.^can("relationship-ast") && .has_accessor}).map: {
+    my @attrs = self.^attributes.grep({
+        $_ !~~ Red::Attr::Index && !.^can("relationship-ast") && .has_accessor
+    }).map: {
         "{ .name.substr(2) } => { .get_value(self).raku }"
     }
     "{ self.^name }.new({ @attrs.join: ", " })"

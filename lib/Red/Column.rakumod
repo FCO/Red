@@ -218,10 +218,11 @@ submethod TWEAK(:$unique) {
     }
     with $unique {
         when Bool {
-            $!attr.package.^add-unique-constraint: { self }
+            # Unique constraints are assembled after all columns are composed.
         }
+        when Callable { }
         when Positional {
-            self.unique-groups.append: |$unique
+            self.unique-groups.append: |$unique unless $unique.flat.grep(Callable)
         }
         default {
             self.unique-groups.push: $unique

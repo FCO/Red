@@ -12,6 +12,7 @@ use Red::AST::JsonOperation;
 use Red::Projection;
 use Red::AST::JsonSetItem;
 use Red::LockType;
+use Red::Index;
 need UUID;
 
 unit class Red::Driver::Pg does Red::Driver::CommonSQL;
@@ -24,6 +25,30 @@ has Str $!dbname;
 has $.dbh;
 
 method schema-reader {}
+
+method indexes-for-table(Str $table --> Array) {
+    my @indexes;
+    my $statement = self.execute(q:to/SQL/, self.table-name-wrapper($table));
+        SELECT c.relname AS name, i.indisunique AS is_unique,
+               i.indpred IS NOT NULL AS partial, i.indexrelid AS oid,
+               i.indnkeyatts AS key_count, i.indisvalid AND i.indisready AS valid
+        FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+        WHERE i.indrelid = to_regclass($1)
+        SQL
+    for self.index-catalog-rows($statement) -> $row {
+        my @keys;
+        my $keys = self.execute(q:to/SQL/, $row<oid>, $row<key_count>);
+            SELECT pg_get_indexdef($1::oid, n, true) AS key
+            FROM generate_series(1, $2::integer) AS n ORDER BY n
+            SQL
+        for self.index-catalog-rows($keys) -> $key {
+            @keys.push: $key<key>;
+        }
+        @indexes.push: { :name($row<name>), :unique(so $row<is_unique>),
+            :partial(so $row<partial>), :valid(so $row<valid>), :keys(@keys.Array) };
+    }
+    @indexes.Array
+}
 
 # Data accepted by the Pg driver constructor:
 # dbh     : DB::Pg object
@@ -408,6 +433,15 @@ multi method inflate(Str $value, DateTime :$to!) { DateTime.new: $value }
 multi method inflate(Blob $value, :$to!)         { $to.new: $value }
 multi method deflate(Instant:D $value) { ~$value.DateTime.utc }
 multi method deflate(DateTime:D $value) { ~$value.utc }
+
+# CREATE UNIQUE INDEX reports SQLSTATE 23505 with a different message than
+# INSERT/UPDATE. Preserve the same typed uniqueness error for existing data.
+multi method map-exception(DB::Pg::Error::FatalError $x where {
+    .state eq '23505' && .message.starts-with('could not create unique index')
+}) {
+    X::Red::Driver::Mapped::Unique.new:
+        :driver<Pg>, :orig-exception($x), :fields[$x.constraint // '']
+}
 
 multi method map-exception(DB::Pg::Error::FatalError $x where .?message ~~ /"duplicate key value violates unique constraint " \"$<field>=(\w+)\"/) {
     X::Red::Driver::Mapped::Unique.new: :driver<Pg>, :orig-exception($x), :fields($<field>.Str)

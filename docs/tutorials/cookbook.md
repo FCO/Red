@@ -131,6 +131,84 @@ model BankAccount {
 }
 ```
 
+## Indexes and unique expressions
+
+`is indexed` implies `is column`, just like `is unique`. A block on either trait
+receives the symbolic column as its argument and topic, and builds the SQL index
+key without changing the stored value:
+
+```raku
+model Contact {
+    has Int $.id is serial;
+    has Int $.account-id is indexed<account-email>;
+    has Str $.email is indexed('account-email', { .lc });
+    has Str $.handle is unique{ .lc };
+    has Str $.tag is column{ :indexed };
+    has Str $.label is column{ :indexed('label-search', { .lc }) };
+
+    has $.email-search is index{ .email.lc };
+    has $.account-handle is unique-index{ .account-id, .handle.lc };
+}
+```
+
+The two `account-email` contributions create one ordered index on
+`(account_id, LOWER(email))`. Reusing a name groups columns within one model;
+`is indexed<a b>` or `is unique<a b>` contributes to several groups. To apply one
+transformation in several groups, use `is indexed(<a b>, { .lc })` or its
+`unique` equivalent. Without a name, each column has an individual index.
+`False` disables an option; it does not remove the column.
+
+`is index` and `is unique-index` declare metadata attributes, not stored columns.
+Their blocks receive the symbolic model and return a key or an ordered list of
+keys. Column blocks return one key. Groups follow column declaration order as
+reported by `.^columns`; use an independent declaration for explicit key order.
+All keys must reference stored columns of the same model. Subqueries and aggregate
+functions are not supported index expressions. The database also enforces its own
+rules about allowed functions, collations and NULL uniqueness.
+
+`is unique{ .lc }` enforces uniqueness on `LOWER(column)`, preserving the original
+column value. Traditional `is unique` declarations continue to be column
+constraints and retain their existing identity behavior; expression indexes do
+not become identifiers for updates or deletes.
+
+`.^create-table` and `schema(...).create` create the indexes automatically.
+For an existing table, use:
+
+```raku
+Contact.^create-indexes;
+Contact.^create-indexes(:with($driver));
+```
+
+This includes traditional `is unique` declarations that are missing from the
+existing table. Repeating the call reuses matching definitions, including unnamed
+unique constraints created by older Red versions. A conflicting definition with
+the same SQL name throws `X::Red::Index`. Red does not replace indexes or reconcile
+an existing schema. Index creation can fail if existing data violates uniqueness;
+previously created indexes are retained if a later statement fails. Fix the data
+and retry. `.^create-table(:if-not-exists)` keeps its existing behavior; use
+`.^create-indexes` explicitly to add indexes to an existing table.
+
+Inspect the ordered definitions with `Contact.^indexes`. Each definition exposes
+`table`, `name` (SQL name), `logical-name`, `unique`, `inline` (traditional unique
+constraint), and `keys` (DDL AST expressions). Generated SQL names include the
+table and logical name, use `idx`/`uidx` suffixes, and shorten long names with a
+stable hash. Conflicting logical names or generated names are errors.
+
+SQLite and PostgreSQL include catalog support. Other drivers must implement the
+index catalog hook before creating these new index declarations. Until the
+MySQL driver is updated, traditional unique constraints still work during table
+creation, but new index declarations require that driver update.
+
+On Rakudo versions that cannot compile literal blocks in role trait arguments,
+use a constant callable defined outside the role:
+
+```raku
+my constant LOWER-KEY = { .lc };
+role Searchable {
+    has Str $.email is indexed(LOWER-KEY);
+}
+```
+
 ## Create inter dependent table
 
 How to create a table that depends of another table that depends on the first one?

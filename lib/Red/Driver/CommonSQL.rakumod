@@ -17,6 +17,8 @@ use Red::AST::Between;
 use Red::AST::Divisible;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
+use Red::AST::CreateIndex;
+use Red::Index;
 use Red::AST::CreateView;
 use Red::AST::LastInsertedRow;
 use Red::AST::CreateColumn;
@@ -118,7 +120,7 @@ method reserved-words {<
 
 has &.table-formatter is rw;
 
-method table-name-wrapper($name) { qq["$name"] }
+method table-name-wrapper($name) { '"' ~ $name.subst('"', '""', :g) ~ '"' }
 
 multi method diff-to-ast($table, "+", "col", Red::Cli::Column $_ --> Hash()) {
     1 => Red::AST::CreateColumn.new(
@@ -197,25 +199,29 @@ method ping {
 }
 
 method create-schema(%models where .values.all ~~ Red::Model) {
+    # Fail on invalid or unsupported definitions before executing any DDL.
+    for %models.values -> $model {
+        self.translate($_) for $model.^indexes;
+    }
     for %models.kv -> Str() $name, Red::Model \model {
         my $*RED-IGNORE-REFERENCE = True;
+        my @constraints;
+        for model.^constraints.kv -> $kind, @groups {
+            for @groups -> @group {
+                my @columns = Array[Red::Column].new: |@group;
+                if $kind eq 'unique' {
+                    @constraints.push: Red::AST::Unique.new: :@columns;
+                } elsif $kind eq 'pk' {
+                    @constraints.push: Red::AST::Pk.new: :@columns;
+                }
+            }
+        }
         my $data = Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
             :columns(model.^columns.map: *.column),
             |(:comment(Red::AST::TableComment.new: :msg(.Str), :table(model.^table)) with model.WHY),
-            :constraints[
-                |do given model.^constraints {
-                    |do for .kv -> $k, @v {
-                        my @columns = Array[Red::Column].new: flat |@v;
-                        do if $k eq "unique" {
-                            Red::AST::Unique.new: :@columns
-                        } elsif $k eq "pk" {
-                            Red::AST::Pk.new: :@columns
-                        }
-                    }
-                }
-            ],
+            :@constraints,
         ;
         self.execute: $data;
         model.^emit: $data
@@ -246,7 +252,44 @@ method create-schema(%models where .values.all ~~ Red::Model) {
             model.^emit: $data
         }
     }
+    .^create-indexes(:with(self)) for %models.values.grep({ .^indexes.grep({ !.inline }) });
     %models.keys Z=> True xx *
+}
+
+#| Return catalog entries with name, uniqueness, ordered keys and partial flag.
+method indexes-for-table(Str $table --> Array) {
+    index-error("Index catalog inspection is unsupported by {self.^name}")
+}
+
+#| Drivers may terminate row iteration with Nil or IterationEnd.
+method index-catalog-rows($statement --> Seq) {
+    gather loop {
+        my $row = $statement.row;
+        last if $row =:= IterationEnd || !$row;
+        take $row;
+    }
+}
+
+method index-key(Red::AST $key --> Str) {
+    my $translated = self.translate($key, 'index');
+    index-error('Index DDL cannot contain bound parameters') if $translated.value.elems;
+    $translated.key
+}
+
+#| Dialects can normalize their own catalog's expression spelling here.
+method index-key-fingerprint(Str $key --> Str) { canonical-index-key($key) }
+
+multi method translate(Red::AST::IndexColumn $_, $context?) {
+    self.table-name-wrapper(.name) => []
+}
+
+multi method translate(Red::AST::CreateIndex $_, $context?) {
+    my @keys = .keys.map(-> $key {
+        my $sql = self.index-key($key);
+        $key ~~ Red::AST::IndexColumn ?? $sql !! "($sql)"
+    });
+    "CREATE{.unique ?? ' UNIQUE' !! ''} INDEX {self.table-name-wrapper(.name)} "
+        ~ "ON {self.table-name-wrapper(.table)} ({@keys.join(', ')})" => []
 }
 
 proto method translate(Red::AST, $? --> Pair) {*}

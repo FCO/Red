@@ -1,6 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
+    - schema: declare named, composite and expression indexes with indexed/index/unique-index traits
+    - schema: support unique expressions and add declared indexes to existing tables with ^create-indexes
+    - sqlite/pg: inspect existing indexes and preserve legacy unique constraints
     - queries: translate Cartesian products of ResultSeqs and finite value collections to SQL
     - queries: preserve tuple shapes, model instances, ordering, and pagination in products
 

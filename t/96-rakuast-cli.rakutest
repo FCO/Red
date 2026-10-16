@@ -1,0 +1,33 @@
+use Test;
+
+unless (%*ENV<RAKUDO_RAKUAST> // '0') eq '1' {
+    plan :skip-all('The optional compiler requires the RakuAST frontend');
+    exit;
+}
+
+my $source = q:to/RAKU/;
+use Red;
+use Red::Compiler::RakuAST;
+CHECK red-compile;
+model CliCompilerRow {
+    has Int $.id is serial;
+}
+my $*RED-DB = database 'Pg';
+my $*RED-FALLBACK = False;
+my $used = 0;
+my $*RED-COMPILER-REPORT = -> |event {
+    $used++ if event.hash<status> eq 'used' && event.hash<engine> eq 'direct';
+};
+my $rows = CliCompilerRow.^all.grep({ .id <= 1 });
+die 'The direct factory was not used' unless $used == 1;
+say CliCompilerRow.^name;
+RAKU
+
+my $process = run $*EXECUTABLE, '-Ilib', '-e', $source, :out, :err;
+my $output = $process.out.slurp-rest;
+my $errors = $process.err.slurp-rest;
+is $process.exitcode, 0, 'Explicit imports support model declarations in RakuAST one-liners';
+diag $errors if $process.exitcode;
+is $output.trim, 'CliCompilerRow', 'The one-liner constructs its query with a direct factory';
+
+done-testing;
