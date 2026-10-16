@@ -15,7 +15,8 @@ jobs:
         os:
           - ubuntu-latest
         raku-version:
-          - "2022.07"
+          - "2026.06"
+          - "2026.09"
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -62,7 +63,7 @@ jobs:
           path: .ci/mysql-driver
       - uses: Raku/setup-raku@v1
         with:
-          raku-version: "2026.06"
+          raku-version: "2026.09"
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -99,7 +100,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: Raku/setup-raku@v1
         with:
-          raku-version: "2026.06"
+          raku-version: "2026.09"
       - name: Install dependencies
         run: |
           sudo apt-get update
@@ -137,7 +138,7 @@ jobs:
       - uses: actions/checkout@v3
       - uses: Raku/setup-raku@v1
         with:
-          raku-version: "2022.07"
+          raku-version: "2026.09"
       - name: Install dependencies
         run: |
           sudo apt-get update

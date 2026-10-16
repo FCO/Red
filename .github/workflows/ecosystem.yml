@@ -1,7 +1,7 @@
 name: ecosystem
 
-# on:
-#   - push
+on:
+  workflow_dispatch:
 
 jobs:
   perl6:
