@@ -666,7 +666,7 @@ multi method head is hidden-from-sql-commenting {
     self.do-it(:limit(min(1, $.limit))).head
 }
 
-# TODO: Return a Red::ResultSeq
+#| Returns a ResultSeq that gets the first N rows returned by the query
 multi method head(UInt(Numeric) $num) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     self.clone: :chain($!chain.clone: :limit(min $num, $.limit))
