@@ -5,7 +5,7 @@ MetamodelX::Red::Comparate
 
 ```raku
 method add-comparate-methods(
-    Mu:U \type,
+    ::T Mu:U \type,
     Red::Attr::Column $attr
 ) returns Empty
 ```

@@ -21,6 +21,26 @@ method constraints(
 
 Returns a hash of model constraints classified by type.
 
+### method indexes
+
+```raku
+method indexes(
+    Mu:U \model
+) returns Mu
+```
+
+Ordered index metadata, including traditional unique constraints.
+
+### multi method create-indexes
+
+```raku
+multi method create-indexes(
+    Mu:U \model
+) returns Mu
+```
+
+Add declared indexes to an existing table without replacing existing objects.
+
 ### method references
 
 ```raku

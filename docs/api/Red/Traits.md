@@ -140,6 +140,39 @@ multi sub trait_mod:<is>(
 
 This trait marks an attribute (column) as UNIQUE receiving data to ve used on column definition.
 
+### multi sub trait_mod:<is>
+
+```raku
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :$indexed!
+) returns Empty
+```
+
+Mark a column as indexed, optionally naming groups and transforming its key.
+
+### multi sub trait_mod:<is>
+
+```raku
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :&index!
+) returns Empty
+```
+
+Declare an independent index; its block receives the symbolic model.
+
+### multi sub trait_mod:<is>
+
+```raku
+multi sub trait_mod:<is>(
+    Attribute $attr,
+    :&unique-index!
+) returns Empty
+```
+
+Declare an independent unique index.
+
 ### is id
 
 ### multi sub trait_mod:<is>
