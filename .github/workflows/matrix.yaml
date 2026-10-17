@@ -59,7 +59,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: FCO/Red-Driver-MySQL
-          ref: 39f842b550bf07cabe0d6226260c2b60504a08c4
+          ref: abe3a0ee01f62dc7f4da371c74a4a3bdddf77ddb
           path: .ci/mysql-driver
       - uses: Raku/setup-raku@v1
         with:
