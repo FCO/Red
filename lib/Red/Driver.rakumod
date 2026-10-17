@@ -7,6 +7,9 @@ use Red::Event;
 use Red::AST::BeginTransaction;
 use Red::AST::CommitTransaction;
 use Red::AST::RollbackTransaction;
+use Red::AST::Savepoint;
+use Red::AST::RollbackToSavepoint;
+use Red::AST::ReleaseSavepoint;
 
 =head2 Red::Driver
 
@@ -39,6 +42,24 @@ method commit {
 method rollback {
     #die "Not in a transaction!" unless $*RED-TRANSACTION-RUNNING;
     self.prepare(Red::AST::RollbackTransaction.new).map: *.execute;
+    self
+}
+
+#| Creates a savepoint on the current connection
+method savepoint(Str:D $name) {
+    self.prepare(Red::AST::Savepoint.new(:$name)).map: *.execute;
+    self
+}
+
+#| Rolls back to a savepoint, leaving it active
+method rollback-to-savepoint(Str:D $name) {
+    self.prepare(Red::AST::RollbackToSavepoint.new(:$name)).map: *.execute;
+    self
+}
+
+#| Releases a savepoint without committing the surrounding transaction
+method release-savepoint(Str:D $name) {
+    self.prepare(Red::AST::ReleaseSavepoint.new(:$name)).map: *.execute;
     self
 }
 

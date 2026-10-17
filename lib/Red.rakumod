@@ -671,6 +671,32 @@ $object.^save;
 Question.^all.grep: { .answer == 42 }; # returns a result seq
 =end code
 
+=head4 transactions and savepoints
+
+C<red-do :transaction> commits when its block succeeds and rolls back when it fails.
+Nested transactional blocks on the same connection use savepoints. They can see
+uncommitted outer changes, and their successful changes remain subject to an outer
+rollback. Catch an inner exception to roll back only that inner block and continue
+the outer transaction; an exception that propagates out rolls back the outer block too.
+
+=begin code :lang<raku>
+red-do :transaction, {
+    Person.^create: :name<Alice>;
+    try {
+        red-do :transaction, {
+            Person.^create: :name<Bob>;
+            # A failure here rolls back Bob, leaving Alice in the outer transaction.
+        }
+    }
+};
+=end code
+
+Drivers provide C<savepoint($name)>, C<rollback-to-savepoint($name)> and
+C<release-savepoint($name)> on the current connection. Rolling back to a savepoint
+leaves that savepoint active; releasing it does not commit the surrounding transaction.
+Savepoints do not coordinate concurrent tasks. Await asynchronous database work before
+leaving a transactional block, and avoid overlapping access to its connection.
+
 =head4 phasers
 
 =item C<before-create>

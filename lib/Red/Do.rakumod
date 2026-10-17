@@ -124,16 +124,32 @@ multi red-do(&block, Str:D :$with = "default", :$async! where so *) is export {
     start run-red-do %GLOBAL::RED-DEFAULT-DRIVERS{$with}, &block
 }
 
+my atomicint $savepoint-counter = 0;
+
+#| Runs nested transactions as savepoints on the current transaction's connection.
 multi red-do(
     *@blocks,
     Bool :$async,
     Bool :$transaction! where so *,
     *%pars where *.none.key eq "with"
 ) is export {
-    red-do |@blocks, :$async, |%pars, :with(get-RED-DB) if $*RED-TRANSACTION-RUNNING;
+    if $*RED-TRANSACTION-RUNNING && get-RED-DB() === $*RED-TRANSACTION-DB {
+        my $with = get-RED-DB;
+        my Str $name = 'red_savepoint_' ~ ++⚛$savepoint-counter;
+        $with.savepoint($name);
+        return do {
+            KEEP $with.release-savepoint($name);
+            UNDO {
+                $with.rollback-to-savepoint($name);
+                $with.release-savepoint($name);
+            }
+            red-do |@blocks, :$async, |%pars, :$with;
+        }
+    }
     {
         my $with = get-RED-DB.begin;
         my $*RED-TRANSACTION-RUNNING = True;
+        my $*RED-TRANSACTION-DB = $with;
         KEEP $with.commit;
         UNDO $with.rollback;
         red-do |@blocks, :$async, |%pars, :$with;

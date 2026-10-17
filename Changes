@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - transactions: use savepoints for nested red-do transactions on the same connection
     - schema: declare named, composite and expression indexes with indexed/index/unique-index traits
     - schema: support unique expressions and add declared indexes to existing tables with ^create-indexes
     - sqlite/pg: inspect existing indexes and preserve legacy unique constraints

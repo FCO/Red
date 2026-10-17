@@ -30,6 +30,9 @@ use Red::AST::DateTimeFuncs;
 use Red::AST::BeginTransaction;
 use Red::AST::CommitTransaction;
 use Red::AST::RollbackTransaction;
+use Red::AST::Savepoint;
+use Red::AST::RollbackToSavepoint;
+use Red::AST::ReleaseSavepoint;
 use Red::AST::Generic::Prefix;
 use Red::AST::Generic::Postfix;
 use Red::AST::AddForeignKeyOnTable;
@@ -305,6 +308,18 @@ multi method translate(Red::AST::CommitTransaction, $context?) {
 multi method translate(Red::AST::RollbackTransaction, $context?) {
                                     "ROLLBACK" => []
                                 }
+
+multi method translate(Red::AST::Savepoint $_, $context?) {
+    "SAVEPOINT { self.table-name-wrapper(.name) }" => []
+}
+
+multi method translate(Red::AST::RollbackToSavepoint $_, $context?) {
+    "ROLLBACK TO SAVEPOINT { self.table-name-wrapper(.name) }" => []
+}
+
+multi method translate(Red::AST::ReleaseSavepoint $_, $context?) {
+    "RELEASE SAVEPOINT { self.table-name-wrapper(.name) }" => []
+}
 
 multi method translate(Red::AST::DropColumn $_, $context?) {
                                     "ALTER TABLE {
