@@ -82,6 +82,19 @@ Receives a block and optionally a connection name. Runs the block with the conne
 multi sub red-do(
     *@blocks,
     Bool :$async,
+    Bool :$transaction! where { ... },
+    *%pars where { ... }
+) returns Mu
+```
+
+Runs nested transactions as savepoints on the current transaction's connection.
+
+### multi sub red-do
+
+```raku
+multi sub red-do(
+    *@blocks,
+    Bool :$async,
     *%pars where { ... }
 ) returns Mu
 ```

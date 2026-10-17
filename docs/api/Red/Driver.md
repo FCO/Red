@@ -33,6 +33,36 @@ method rollback() returns Mu
 
 Rollback transaction
 
+### method savepoint
+
+```raku
+method savepoint(
+    Str:D $name
+) returns Mu
+```
+
+Creates a savepoint on the current connection
+
+### method rollback-to-savepoint
+
+```raku
+method rollback-to-savepoint(
+    Str:D $name
+) returns Mu
+```
+
+Rolls back to a savepoint, leaving it active
+
+### method release-savepoint
+
+```raku
+method release-savepoint(
+    Str:D $name
+) returns Mu
+```
+
+Releases a savepoint without committing the surrounding transaction
+
 ### method auto-register
 
 ```raku
