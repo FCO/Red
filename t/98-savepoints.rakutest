@@ -1,0 +1,183 @@
+use Test;
+use Red;
+use X::Red::Exceptions;
+use Red::AST::Savepoint;
+use Red::AST::RollbackToSavepoint;
+use Red::AST::ReleaseSavepoint;
+
+my @conf = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @conf.shift;
+my $*RED-DB = database $driver, |%(@conf.map: {
+    do given .split('=') { .[0] => val .[1] }
+});
+my $*RED-DEBUG = $_ with %*ENV<RED_DEBUG>;
+
+model SavepointParent {
+    has UInt $.id is serial;
+    has Str $.name is column is unique;
+}
+
+model SavepointChild {
+    has UInt $.id is serial;
+    has UInt $.parent-id is referencing(*.id, :model<SavepointParent>);
+}
+
+my class TestRollback is Exception {}
+
+schema(SavepointParent, SavepointChild).drop.create;
+LEAVE schema(SavepointParent, SavepointChild).drop;
+
+sub reset {
+    SavepointChild.^all.delete;
+    SavepointParent.^all.delete;
+}
+
+sub names {
+    SavepointParent.^all.map(*.name).Seq.sort.List
+}
+
+subtest 'Savepoint SQL quotes names as identifiers', {
+    my Str $name = 'select"; ` --';
+    for Red::AST::Savepoint => 'SAVEPOINT',
+        Red::AST::RollbackToSavepoint => 'ROLLBACK TO SAVEPOINT',
+        Red::AST::ReleaseSavepoint => 'RELEASE SAVEPOINT' -> $operation {
+        my $ast = $operation.key.new(:$name);
+        my $sql = $*RED-DB.translate($ast);
+        is $sql.key, $operation.value ~ ' ' ~ $*RED-DB.table-name-wrapper($name),
+            'Savepoint names are quoted, including embedded delimiters';
+        is-deeply $sql.value, [], 'Identifiers are not bind parameters';
+        is-deeply $ast.args, $name, 'AST retains the savepoint name';
+    }
+};
+
+subtest 'Nested transactions see outer writes and execute once', {
+    reset;
+    my Int $outer-runs = 0;
+    my Int $inner-runs = 0;
+    my $result = red-do :transaction, {
+        $outer-runs++;
+        my $parent = SavepointParent.^create: :name<outer>;
+        my $connection = $*RED-DB;
+        my $inner-result = red-do :transaction, {
+            $inner-runs++;
+            ok $*RED-DB === $connection, 'Nested transaction uses the same driver';
+            is SavepointParent.^load($parent.id).name, 'outer', 'Outer writes are visible';
+            SavepointChild.^create: :parent-id($parent.id);
+            42
+        };
+        is $inner-result, 42, 'Nested return value is preserved';
+        'finished'
+    };
+    is $result, 'finished', 'Outer return value is preserved';
+    is $outer-runs, 1, 'Outer block executes once';
+    is $inner-runs, 1, 'Inner block executes once';
+    is SavepointChild.^all.elems, 1, 'Foreign-key write commits with the parent';
+};
+
+subtest 'Outer rollback undoes released savepoints', {
+    reset;
+    throws-like {
+        red-do :transaction, {
+            SavepointParent.^create: :name<outer>;
+            red-do :transaction, {
+                SavepointParent.^create: :name<inner>;
+            };
+            TestRollback.new.throw;
+        }
+    }, TestRollback;
+    is SavepointParent.^all.elems, 0, 'Both outer and inner writes are rolled back';
+};
+
+subtest 'Caught inner failure rolls back only the inner work', {
+    reset;
+    my $error = TestRollback.new;
+    red-do :transaction, {
+        SavepointParent.^create: :name<before>;
+        try {
+            red-do :transaction, {
+                SavepointParent.^create: :name<discarded>;
+                $error.throw;
+            };
+            CATCH {
+                default { ok $_ === $error, 'The original exception propagates' }
+            }
+        }
+        is-deeply names(), ('before',), 'Only work before the savepoint remains';
+        SavepointParent.^create: :name<after>;
+    };
+    is-deeply names(), <after before>.List, 'The outer transaction can continue and commit';
+};
+
+subtest 'Database errors are recoverable at an inner savepoint', {
+    reset;
+    red-do :transaction, {
+        SavepointParent.^create: :name<unique>;
+        throws-like {
+            red-do :transaction, {
+                SavepointParent.^create: :name<discarded>;
+                SavepointParent.^create: :name<unique>;
+            }
+        }, X::Red::Driver::Mapped::Unique;
+        SavepointParent.^create: :name<continued>;
+    };
+    is-deeply names(), <continued unique>.List,
+        'Rollback to savepoint recovers the connection after a constraint violation';
+};
+
+subtest 'Uncaught nested failure rolls back the entire transaction', {
+    reset;
+    throws-like {
+        red-do :transaction, {
+            SavepointParent.^create: :name<outer>;
+            red-do :transaction, {
+                SavepointParent.^create: :name<inner>;
+                TestRollback.new.throw;
+            }
+        }
+    }, TestRollback;
+    is SavepointParent.^all.elems, 0, 'No writes survive the propagated failure';
+};
+
+subtest 'Multiple levels and consecutive savepoints remain independent', {
+    reset;
+    red-do :transaction, {
+        SavepointParent.^create: :name<root>;
+        red-do :transaction, {
+            SavepointParent.^create: :name<middle>;
+            throws-like {
+                red-do :transaction, {
+                    SavepointParent.^create: :name<discarded>;
+                    TestRollback.new.throw;
+                }
+            }, TestRollback;
+            red-do :transaction, {
+                SavepointParent.^create: :name<deep>;
+            }
+        };
+        red-do :transaction, {
+            SavepointParent.^create: :name<sibling>;
+        }
+    };
+    is-deeply names(), <deep middle root sibling>.List,
+        'Each savepoint ends without closing its parents or siblings';
+};
+
+subtest 'Driver savepoint operations preserve the named marker after rollback', {
+    reset;
+    red-do :transaction, {
+        my Str $name = 'manual"` savepoint';
+        ok $*RED-DB.savepoint($name) === $*RED-DB, 'savepoint returns the driver';
+        for <first second> -> $value {
+            SavepointParent.^create: :name($value);
+            ok $*RED-DB.rollback-to-savepoint($name) === $*RED-DB,
+                'rollback-to-savepoint returns the driver';
+            is SavepointParent.^all.elems, 0, 'The same savepoint can be rolled back again';
+        }
+        ok $*RED-DB.release-savepoint($name) === $*RED-DB,
+            'release-savepoint returns the driver';
+        SavepointParent.^create: :name<kept>;
+    };
+    is-deeply names(), ('kept',), 'Releasing a savepoint leaves its transaction usable';
+};
+
+done-testing;
