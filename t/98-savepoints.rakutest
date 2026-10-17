@@ -60,7 +60,8 @@ subtest 'Nested transactions see outer writes and execute once', {
         my $connection = $*RED-DB;
         my $inner-result = red-do :transaction, {
             $inner-runs++;
-            ok $*RED-DB === $connection, 'Nested transaction uses the same driver';
+            ok $*RED-DB.transaction-guard.root === $connection.transaction-guard.root,
+                'Nested transaction uses the same physical transaction';
             is SavepointParent.^load($parent.id).name, 'outer', 'Outer writes are visible';
             SavepointChild.^create: :parent-id($parent.id);
             42

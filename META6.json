@@ -142,6 +142,7 @@
     "Red::SchemaReader": "lib/Red/SchemaReader.rakumod",
     "Red::Statement": "lib/Red/Statement.rakumod",
     "Red::Traits": "lib/Red/Traits.rakumod",
+    "Red::Transaction::Guard": "lib/Red/Transaction/Guard.rakumod",
     "Red::Type": "lib/Red/Type.rakumod",
     "Red::Type::Json": "lib/Red/Type/Json.rakumod",
     "Red::Type::Map": "lib/Red/Type/Map.rakumod",

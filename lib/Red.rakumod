@@ -695,7 +695,91 @@ Drivers provide C<savepoint($name)>, C<rollback-to-savepoint($name)> and
 C<release-savepoint($name)> on the current connection. Rolling back to a savepoint
 leaves that savepoint active; releasing it does not commit the surrounding transaction.
 Savepoints do not coordinate concurrent tasks. Await asynchronous database work before
-leaving a transactional block, and avoid overlapping access to its connection.
+leaving an automatic transactional block, and avoid overlapping access to its connection.
+
+=head5 Explicit transaction guards
+
+Declare a named C<:$guard> parameter to take explicit control of a transaction.
+The block receives a C<Red::Transaction::Guard>; a positional parameter, if declared,
+still receives the transaction's driver. A slurpy named parameter alone does not
+enable manual control. Blocks that declare neither C<:$guard> nor the named
+placeholder C<$:guard> retain automatic commit and rollback.
+Automatic scopes retain Raku's C<KEEP>/C<UNDO> behavior: a nonlocal C<return> or
+C<fail> unwinds the scope and rolls it back.
+
+=begin code :lang<raku>
+my $work = red-do :transaction, -> :$guard! {
+    $guard.start: -> :&commit {
+        Person.^create: :name<Alice>;
+        commit();
+    }
+};
+await $work;
+=end code
+
+You can also use Raku's named placeholder C<$:guard> instead of writing
+C<-> :$guard!>. Using it inside a block implicitly declares the required named
+parameter, so C<red-do> recognizes it as a manual transaction. Both direct commit
+and asynchronous work are supported:
+
+=begin code :lang<raku>
+red-do :transaction, {
+    Person.^create: :name<Alice>;
+    $:guard.commit;
+};
+
+my $work = red-do :transaction, {
+    $:guard.start: -> :&commit {
+        Person.^create: :name<Bob>;
+        commit();
+    }
+};
+await $work;
+=end code
+
+Each guard starts with one participant, which C<red-do> releases automatically
+when its block exits, including with C<:async>. The last release rolls back an
+unfinished scope. Do not release that initial participant yourself.
+
+C<.do(&block)> reserves a participant, runs the block immediately and releases
+when it finishes, returning its result. C<.start(&block)> reserves before scheduling
+and returns a Promise; completion releases the participant. Failed scheduling returns
+the reservation. Both restore the guard's transaction context and inject
+C<:&commit> and C<:&rollback> only when explicitly declared in the block's
+signature. An escaping exception immediately rolls back and propagates (breaking the
+Promise for C<.start>). A Promise returned by C<.do> does not extend its
+participation; use C<.start> for asynchronous work. Returning a pending Promise
+from C<.do> emits C<X::Red::Transaction::AsyncResult>, a resumable warning
+that suggests C<.start> without awaiting or replacing the result. Already completed
+Promises do not warn. To silence an intentional pending result, handle this type in
+C<CONTROL> and call C<.resume>.
+
+For explicit lifetime control, C<retain()> adds a participant and C<release()>
+removes one. Both return the guard. Each additional participant must be released exactly
+once. To use a guard after its C<red-do> block returns, retain it or schedule work
+with C<.start> before exiting. For manually scheduled work, reserve before
+scheduling, release in its C<LEAVE>, and return the reservation if scheduling fails.
+
+C<commit()> confirms immediately, without waiting for participants. Explicit
+C<rollback()> and exceptions escaping the block also close an open scope immediately.
+Pending participants must still release after closure; these releases execute no SQL.
+Retaining a closed guard, releasing with no remaining participants, or committing a
+closed guard raises C<X::Red::Transaction>. Explicit rollback remains idempotent.
+An exception after commit cannot undo it. Garbage collection provides no cleanup guarantee.
+
+A nested guard controls a savepoint with its own participant count. Its last release
+rolls back only that savepoint. Its parent cannot run queries, open another child,
+or commit until that child closes. Parent rollback also invalidates all descendants.
+Drivers, statements, iterators and lazy queries belonging to a closed scope reject
+further database access. Ordinary driver use outside the scope is unaffected; direct
+access to a native database handle bypasses these guards.
+
+Guards keep the reserved session usable by asynchronous work that inherits the block's
+context. Participant bookkeeping is synchronized, but does not permit simultaneous
+database operations: overlapping database access is rejected with
+C<X::Red::Transaction>. No returned Promise is required to retain a manual transaction.
+With C<:async>, an automatic transaction's Promise resolves after commit; a manual
+transaction's Promise represents only execution of its block, not guard completion.
 
 =head4 phasers
 

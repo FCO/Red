@@ -4,6 +4,7 @@ use X::Red::Exceptions;
 use Red::Class;
 use Red::Event;
 use Red::DB;
+use Red::Transaction::Guard;
 
 =head1 Red::Do
 
@@ -116,6 +117,10 @@ multi red-do(&block, Red::Driver:D :$with, :$async where not *) is export {
     run-red-do $with, &block
 }
 
+multi red-do(&block, Red::Driver:D :$with, :$async! where so *) is export {
+    start run-red-do $with, &block
+}
+
 #| Receives a block and optionally a connection name.
 #| Runs the block with the connection with that name
 #| asynchronously
@@ -124,7 +129,39 @@ multi red-do(&block, Str:D :$with = "default", :$async! where so *) is export {
     start run-red-do %GLOBAL::RED-DEFAULT-DRIVERS{$with}, &block
 }
 
-my atomicint $savepoint-counter = 0;
+sub rollback-and-rethrow(Red::Transaction::Guard:D $guard, Exception:D $cause) {
+    my Exception $cleanup;
+    try {
+        $guard.rollback;
+        CATCH { default { $cleanup = $_ } }
+    }
+    X::Red::Transaction::Cleanup.new(:$cause, :$cleanup).throw if $cleanup.defined;
+    $cause.rethrow;
+}
+
+sub automatic-transaction(Red::Transaction::Guard:D $guard, &block) {
+    CATCH { default { rollback-and-rethrow($guard, $_) } }
+    KEEP $guard.commit;
+    UNDO $guard.rollback;
+    block()
+}
+
+sub run-transaction(Red::Transaction::Guard:D $guard, @blocks, %pars, Bool $manual) {
+    my $*RED-DB = $guard.scoped-driver;
+    my $*RED-TRANSACTION-RUNNING = True;
+    my $*RED-TRANSACTION-DB = $*RED-DB;
+    CATCH { default { rollback-and-rethrow($guard, $_) } }
+    LEAVE $guard.release if $manual;
+    if $manual {
+        return @blocks[0](:$guard)
+            unless @blocks[0].signature.params.grep({ !.named });
+        return @blocks[0]($*RED-DB, :$guard);
+    }
+    automatic-transaction $guard, {
+        my @results = @blocks.map({ red-do $_, |%pars, :with($*RED-DB) }).eager;
+        @results.elems == 1 ?? @results.head !! @results
+    };
+}
 
 #| Runs nested transactions as savepoints on the current transaction's connection.
 multi red-do(
@@ -133,27 +170,32 @@ multi red-do(
     Bool :$transaction! where so *,
     *%pars where *.none.key eq "with"
 ) is export {
-    if $*RED-TRANSACTION-RUNNING && get-RED-DB() === $*RED-TRANSACTION-DB {
-        my $with = get-RED-DB;
-        my Str $name = 'red_savepoint_' ~ ++⚛$savepoint-counter;
-        $with.savepoint($name);
-        return do {
-            KEEP $with.release-savepoint($name);
-            UNDO {
-                $with.rollback-to-savepoint($name);
-                $with.release-savepoint($name);
-            }
-            red-do |@blocks, :$async, |%pars, :$with;
+    X::Red::Transaction.new(:reason('Transaction blocks must be callable')).throw
+        unless @blocks && @blocks.all ~~ Callable;
+    my Bool $manual = so @blocks.grep({
+        with .?signature {
+            so .params.grep({ .named_names.grep(* eq 'guard') })
+        } else {
+            False
         }
+    });
+    X::Red::Transaction.new(:reason('A manual transaction requires a single block')).throw
+        if $manual && @blocks.elems != 1;
+    my $source = get-RED-DB;
+    my $parent = $source.?transaction-guard;
+    my $guard = $parent.defined
+        ?? $parent.child
+        !! Red::Transaction::Guard.new(:driver($source.begin));
+    if $async {
+        CATCH {
+            default {
+                $guard.rollback;
+                .rethrow;
+            }
+        }
+        return start run-transaction($guard, @blocks, %pars, $manual);
     }
-    {
-        my $with = get-RED-DB.begin;
-        my $*RED-TRANSACTION-RUNNING = True;
-        my $*RED-TRANSACTION-DB = $with;
-        KEEP $with.commit;
-        UNDO $with.rollback;
-        red-do |@blocks, :$async, |%pars, :$with;
-    }
+    run-transaction($guard, @blocks, %pars, $manual)
 }
 
 #| Receives list of pairs with connection name and block

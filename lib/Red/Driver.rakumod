@@ -20,6 +20,9 @@ has Supplier $!supplier .= new;
 #| Supply of events of that driver
 has Supply   $.events    = $!supplier.Supply;
 
+#| Public backend name, independent of internal transaction wrappers.
+method driver-name { self.^name }
+
 method new-connection {
     self.WHAT.new: |self.^attributes.map({ .name.substr(2) => .get_value: self }).Hash
 }
@@ -74,7 +77,7 @@ multi method emit($data?) {
     self.emit:
             Red::Event.new:
                     :db(self),
-                    :db-name(self.^name),
+                    :db-name(self.driver-name),
                     :$data,
                     |(:metadata($_) with %*RED-METADATA)
 }
@@ -87,7 +90,7 @@ multi method emit(Red::Event $event) {
     $!supplier.emit:
             $event.clone:
                     :db(self),
-                    :db-name(self.^name),
+                    :db-name(self.driver-name),
                     |(:db-name($_) with $*RED-DO-WITH),
                     |(:metadata($_) with %*RED-METADATA),
 }

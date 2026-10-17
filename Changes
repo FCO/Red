@@ -1,6 +1,11 @@
 Revision history for Red
 
 {{$NEXT}}
+    - transactions: warn when guard.do returns a pending Promise without retaining its work
+    - transactions: add guard.do/start with callbacks and automatically release manual blocks
+    - transactions: add retain/release participants with rollback on the last release
+    - transactions: add explicit :$guard commit/rollback control, including asynchronous scopes
+    - transactions: reject closed scopes and overlapping access, and clean up active cursors
     - transactions: use savepoints for nested red-do transactions on the same connection
     - schema: declare named, composite and expression indexes with indexed/index/unique-index traits
     - schema: support unique expressions and add declared indexes to existing tables with ^create-indexes

@@ -87,7 +87,7 @@ method begin {
 }
 
 method commit { $!dbh.commit.finish }
-method rollback { $!dbh.rollback }
+method rollback { $!dbh.rollback.finish }
 
 multi method translate(Red::AST::DateTimePart $part, $context?) {
     my ($sql, @bind) := do given self.translate($part.base, $context) { .key, .value }

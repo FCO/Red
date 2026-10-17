@@ -90,7 +90,12 @@ method cache is hidden-from-sql-commenting {
 
 has Pair              @.update;
 has Red::AST::Comment @.comments;
-has Red::Driver       $.with;
+# Queries built in a transaction must not silently switch to the caller's driver
+# when evaluated later. Outside transactions, retain the usual unbound behavior.
+has Red::Driver       $.with = do {
+    my $driver = try get-RED-DB;
+    $driver.defined && $driver.^can('transaction-guard') ?? $driver !! Red::Driver
+};
 has                   $.obj;
 has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new: |(:filter(.^id-filter) with $!obj);
 has Lock::Async       $!lock .= new;

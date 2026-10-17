@@ -1,6 +1,34 @@
 use Red::Column;
+use nqp;
 
 class X::Red is Exception {}
+
+class X::Red::Transaction is X::Red {
+    has Str $.reason = 'Invalid transaction operation';
+    method message { $!reason }
+}
+
+# A resumable warning, rather than a transaction failure caught by CATCH.
+class X::Red::Transaction::AsyncResult is CX::Warn {
+    method message {
+        'Guard.do returned a pending Promise; its participation ends when the block returns. '
+            ~ 'Use Guard.start to keep the transaction alive for asynchronous work.'
+    }
+
+    method warn {
+        my $exception := nqp::newexception();
+        nqp::setmessage($exception, self.message);
+        nqp::setextype($exception, nqp::const::CONTROL_WARN);
+        nqp::setpayload($exception, self);
+        nqp::throw($exception);
+    }
+}
+
+class X::Red::Transaction::Cleanup is X::Red::Transaction {
+    has Exception $.cause is required;
+    has Exception $.cleanup is required;
+    method message { "{ $!cause.message }; rollback also failed: { $!cleanup.message }" }
+}
 
 class X::Red::Index is X::Red {
     has Str $.reason is required;

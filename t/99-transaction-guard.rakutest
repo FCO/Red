@@ -1,0 +1,836 @@
+use Test;
+use Red;
+use Red::Transaction::Guard;
+use X::Red::Exceptions;
+
+my @conf = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @conf.shift;
+my $*RED-DB = database $driver, |%(@conf.map: {
+    do given .split('=') { .[0] => val .[1] }
+});
+my $*RED-FALLBACK = False;
+
+model GuardRecord {
+    has UInt $.id is serial;
+    has Str $.label is column is unique;
+}
+
+my class GuardTestError is Exception {
+    has Str $.message = 'transaction test error';
+}
+
+schema(GuardRecord).drop.create;
+LEAVE schema(GuardRecord).drop;
+
+sub reset { GuardRecord.^all.delete }
+sub labels { GuardRecord.^all.map(*.label).Seq.sort.List }
+
+subtest 'Explicit commit and automatic initial release', {
+    reset;
+    my $saved;
+    my $result = red-do :transaction, -> $db, :$guard! {
+        isa-ok $guard, Red::Transaction::Guard;
+        ok $db === $*RED-DB, 'The positional argument is the scoped driver';
+        $saved = $guard;
+        GuardRecord.^create: :label<committed>;
+        ok $guard.commit === $guard, 'commit returns the guard';
+        42
+    };
+    is $result, 42, 'The block result is preserved';
+    is-deeply labels(), ('committed',), 'Automatic release does not undo a completed commit';
+    ok $saved.rollback === $saved, 'Repeated rollback is harmless';
+    throws-like { $saved.commit }, X::Red::Transaction;
+};
+
+subtest 'The initial participation is released automatically', {
+    reset;
+    my $result = red-do :transaction, -> $_, :$guard! {
+        GuardRecord.^create: :label<discarded>;
+        17
+    };
+    is $result, 17, 'Rollback does not replace the return value';
+    is GuardRecord.^all.elems, 0, 'Automatic release rolls back when commit is omitted';
+};
+
+subtest 'Named-only and optional guard parameters are supported', {
+    reset;
+    my $result = red-do :transaction, -> :$guard {
+        GuardRecord.^create: :label<optional>;
+        $guard.commit;
+        19
+    };
+    is $result, 19;
+    is-deeply labels(), ('optional',);
+};
+
+subtest 'A returned guard remains usable after the block returns', {
+    reset;
+    my ($guard, $db);
+    is red-do(:transaction, -> $connection, :$guard! {
+        $db = $connection;
+        $guard.retain;
+        GuardRecord.^create: :label<later>;
+        'returned'
+    }), 'returned';
+    # Obtain the guard from its driver without relying on the block's return value.
+    $guard = $db.transaction-guard;
+    is $db.execute('SELECT COUNT(*) AS total FROM guard_record').row<total>, 1,
+        'The session remains active after normal return';
+    $guard.commit;
+    $guard.release;
+    is-deeply labels(), ('later',), 'The guard can commit from the caller';
+};
+
+subtest 'Synchronous exceptions roll back and preserve the original exception', {
+    reset;
+    my $error = GuardTestError.new;
+    my $saved;
+    try {
+        red-do :transaction, -> $_, :$guard! {
+            $saved = $guard;
+            GuardRecord.^create: :label<discarded>;
+            $error.throw;
+        };
+        CATCH { default { ok $_ === $error, 'Original exception identity is preserved' } }
+    }
+    is GuardRecord.^all.elems, 0, 'The synchronous failure rolled back';
+    throws-like { $saved.commit }, X::Red::Transaction;
+    throws-like {
+        red-do :transaction, -> $_, :$guard! {
+            GuardRecord.^create: :label<kept>;
+            $guard.commit;
+            $error.throw;
+        }
+    }, GuardTestError;
+    is-deeply labels(), ('kept',), 'An exception after commit does not undo it';
+};
+
+subtest 'An asynchronous task can outlive the red-do block', {
+    reset;
+    my $entered = Promise.new;
+    my $continue = Promise.new;
+    my Promise $task;
+    my $result = red-do :transaction, -> $_, :$guard! {
+        $task = $guard.start: {
+            $entered.keep(True);
+            await $continue;
+            GuardRecord.^create: :label<async>;
+            $guard.commit;
+            23
+        };
+        'scheduled'
+    };
+    await $entered;
+    is $result, 'scheduled', 'The enclosing block returned before the task continued';
+    $continue.keep(True);
+    is await($task), 23, 'The task can still access and commit the transaction';
+    is-deeply labels(), ('async',), 'Its writes persist';
+};
+
+subtest 'A guard task rolls back on failure', {
+    reset;
+    my $continue = Promise.new;
+    my $task = red-do :transaction, -> $_, :$guard! {
+        $guard.start: {
+            await $continue;
+            GuardRecord.^create: :label<discarded>;
+            GuardTestError.new.throw;
+        }
+    };
+    $continue.keep(True);
+    throws-like { await $task }, GuardTestError;
+    is GuardRecord.^all.elems, 0, 'The task owns its rollback scope';
+};
+
+subtest 'Built-in async has separate automatic and manual completion', {
+    reset;
+    my $automatic = red-do :transaction, :async, {
+        GuardRecord.^create: :label<automatic>;
+        31
+    };
+    isa-ok $automatic, Promise;
+    is await($automatic), 31, 'Automatic async resolves after commit';
+    is-deeply labels(), ('automatic',), 'Automatic async committed';
+    my $manual = red-do :transaction, :async, -> $_, :$guard! {
+        GuardRecord.^create: :label<manual>;
+        $guard.retain
+    };
+    my $guard = await $manual;
+    isa-ok $guard, Red::Transaction::Guard;
+    $guard.commit;
+    $guard.release;
+    is-deeply labels(), <automatic manual>.List, 'Manual async remains open until commit';
+    is await(red-do :with($*RED-DB), :async, { 33 }), 33,
+        'Async dispatch also accepts an explicit driver instance';
+};
+
+subtest 'Closed drivers, statements and result iterators reject use', {
+    reset;
+    my ($db, $statement, $iterator, $lazy-query);
+    red-do :transaction, -> $connection, :$guard! {
+        $db = $connection;
+        GuardRecord.^create: :label<kept>;
+        $statement = $db.prepare('SELECT id FROM guard_record');
+        $statement.execute;
+        $iterator = GuardRecord.^all.iterator;
+        $lazy-query = GuardRecord.^all;
+        $guard.commit;
+        throws-like { GuardRecord.^all.elems }, X::Red::Transaction,
+            'ORM access in the closed scope is rejected';
+    };
+    throws-like { $db.prepare('SELECT id FROM guard_record') }, X::Red::Transaction;
+    throws-like { $db.execute('SELECT id FROM guard_record') }, X::Red::Transaction;
+    throws-like { $statement.execute }, X::Red::Transaction;
+    throws-like { $statement.prepare('SELECT id FROM guard_record') }, X::Red::Transaction;
+    throws-like { $statement.row }, X::Red::Transaction;
+    throws-like { $iterator.pull-one }, X::Red::Transaction;
+    throws-like { $lazy-query.elems }, X::Red::Transaction,
+        'A query built in this scope cannot escape its lifetime by evaluating later';
+    throws-like { $db.savepoint('late') }, X::Red::Transaction;
+    throws-like { $db.rollback-to-savepoint('late') }, X::Red::Transaction;
+    throws-like { $db.release-savepoint('late') }, X::Red::Transaction;
+    is-deeply labels(), ('kept',), 'The original driver outside the scope remains usable';
+};
+
+subtest 'Open children prevent parent queries and commit', {
+    reset;
+    red-do :transaction, -> $_, :$guard! {
+        GuardRecord.^create: :label<parent>;
+        my $child-db;
+        my $child = red-do :transaction, -> $db, :$guard! {
+            $child-db = $db;
+            GuardRecord.^create: :label<child>;
+            $guard.retain
+        };
+        throws-like { $guard.commit }, X::Red::Transaction;
+        throws-like { GuardRecord.^all.elems }, X::Red::Transaction;
+        throws-like { red-do :transaction, { 42 } }, X::Red::Transaction;
+        $child.commit;
+        $child.release;
+        throws-like { $child-db.execute('SELECT id FROM guard_record') },
+            X::Red::Transaction, 'The child stays closed while its parent is open';
+        GuardRecord.^create: :label<after>;
+        $guard.commit;
+    };
+    is-deeply labels(), <after child parent>.List, 'The parent resumes after child commit';
+};
+
+subtest 'Parent rollback invalidates all descendants', {
+    reset;
+    my ($child, $grandchild, $child-db, $root-session);
+    red-do :transaction, -> $_, :$guard! {
+        $root-session = $*RED-DB.dbh if $driver eq 'Pg';
+        GuardRecord.^create: :label<parent>;
+        $child = red-do :transaction, -> $db, :$guard! {
+            $child-db = $db;
+            GuardRecord.^create: :label<child>;
+            $grandchild = red-do :transaction, -> $_, :$guard! {
+                GuardRecord.^create: :label<grandchild>;
+                $guard.retain
+            };
+            $guard.retain
+        };
+        $guard.rollback;
+    };
+    is GuardRecord.^all.elems, 0, 'Rollback undoes the entire subtree';
+    throws-like { $child.commit }, X::Red::Transaction;
+    throws-like { $grandchild.commit }, X::Red::Transaction;
+    throws-like { $child-db.execute('SELECT id FROM guard_record') }, X::Red::Transaction;
+    lives-ok {
+        $child.rollback; $grandchild.rollback;
+        $child.release; $grandchild.release;
+    }, 'Descendant cleanup is harmless';
+    if $driver eq 'Pg' {
+        my $session = $*RED-DB.dbh.db;
+        ok $session === $root-session,
+            'Rollback returns the reserved Pg session to its pool despite retained guards';
+        $session.finish;
+    }
+};
+
+subtest 'Automatic parents cannot leave a manual child open', {
+    reset;
+    my $child;
+    throws-like {
+        red-do :transaction, {
+            GuardRecord.^create: :label<parent>;
+            $child = red-do :transaction, -> $_, :$guard! {
+                GuardRecord.^create: :label<child>;
+                $guard.retain
+            };
+        }
+    }, X::Red::Transaction;
+    is GuardRecord.^all.elems, 0, 'Failed automatic commit rolls back both scopes';
+    throws-like { $child.commit }, X::Red::Transaction;
+    $child.release;
+};
+
+subtest 'Only an explicit named guard parameter enables manual control', {
+    reset;
+    my $result = red-do :transaction, -> $_, *%options {
+        is-deeply %options, {}, 'A named slurpy does not request a guard';
+        GuardRecord.^create: :label<automatic>;
+        12
+    };
+    is $result, 12;
+    is-deeply labels(), ('automatic',), 'This block still commits automatically';
+    my $error = GuardTestError.new;
+    my $failure = red-do :transaction, {
+        GuardRecord.^create: :label<discarded>;
+        Failure.new($error)
+    };
+    isa-ok $failure, Failure;
+    ok $failure.exception === $error, 'An automatic Failure retains its exception';
+    is-deeply labels(), ('automatic',), 'Returning Failure rolls back automatically';
+    red-do :transaction, {
+        GuardRecord.^create: :label<nil>;
+        Nil
+    };
+    is-deeply labels(), ('automatic',), 'An undefined automatic result rolls back';
+    is red-do(:transaction, {
+        GuardRecord.^create: :label<false>;
+        False
+    }), False, 'False is a successful defined result';
+    is-deeply labels(), <automatic false>.List, 'A false return value still commits';
+};
+
+subtest 'Automatic phasers handle nonlocal return and fail', {
+    reset;
+    sub attempt {
+        red-do :transaction, {
+            GuardRecord.^create: :label<discarded>;
+            fail GuardTestError.new;
+        }
+    }
+    my $failure = attempt;
+    isa-ok $failure, Failure;
+    isa-ok $failure.exception, GuardTestError;
+    is GuardRecord.^all.elems, 0, 'A nonlocal fail still rolls back';
+    sub succeed {
+        red-do :transaction, {
+            GuardRecord.^create: :label<returned>;
+            return 57;
+        }
+        0
+    }
+    is succeed(), 57, 'A nonlocal return keeps its value';
+    is GuardRecord.^all.elems, 0, 'Nonlocal return retains the established rollback behavior';
+};
+
+# The fake driver permits deterministic control of failures and overlapping calls.
+my class GuardProbeDriver {
+    has Int $.commits is rw = 0;
+    has Int $.rollbacks is rw = 0;
+    has Exception $.commit-error;
+    has Exception $.rollback-error;
+    has Exception $.savepoint-error;
+    method begin { self }
+    method savepoint(Str $name) { self }
+    method release-savepoint(Str $name) { self }
+    method rollback-to-savepoint(Str $name) {
+        $!savepoint-error.throw if $!savepoint-error.defined;
+        self
+    }
+    method execute(Str $query) {
+        GuardTestError.new(:message("Unexpected query: $query")).throw
+    }
+    method commit {
+        $!commits++;
+        $!commit-error.throw if $!commit-error.defined;
+        self
+    }
+    method rollback {
+        $!rollbacks++;
+        $!rollback-error.throw if $!rollback-error.defined;
+        self
+    }
+}
+
+subtest 'Competing operations are rejected without blocking', {
+    my $guard = Red::Transaction::Guard.new(:driver(GuardProbeDriver.new));
+    my $entered = Promise.new;
+    my $continue = Promise.new;
+    my $task = start $guard.protect: {
+        $entered.keep(True);
+        await $continue;
+    };
+    await $entered;
+    throws-like { $guard.commit }, X::Red::Transaction;
+    throws-like { $guard.rollback }, X::Red::Transaction;
+    throws-like { $guard.assert-usable }, X::Red::Transaction;
+    throws-like { $guard.scoped-driver.execute('SELECT 1') }, X::Red::Transaction;
+    $continue.keep(True);
+    await $task;
+    lives-ok { $guard.commit }, 'The rejected attempt did not damage the guard';
+};
+
+subtest 'Commit failure rolls back and cleanup failure retains both errors', {
+    my $primary = GuardTestError.new(:message<commit>);
+    my $cleanup = GuardTestError.new(:message<rollback>);
+    my $driver = GuardProbeDriver.new(:commit-error($primary));
+    my $guard = Red::Transaction::Guard.new(:$driver);
+    try {
+        $guard.commit;
+        CATCH { default { ok $_ === $primary, 'The original commit exception propagates' } }
+    }
+    is $driver.rollbacks, 1, 'Commit failure attempts rollback';
+    throws-like { $guard.assert-usable }, X::Red::Transaction;
+    $driver = GuardProbeDriver.new(:commit-error($primary), :rollback-error($cleanup));
+    $guard = Red::Transaction::Guard.new(:$driver);
+    throws-like { $guard.commit }, X::Red::Transaction::Cleanup,
+        :cause($primary), :cleanup($cleanup);
+    throws-like { $guard.assert-usable }, X::Red::Transaction;
+};
+
+subtest 'A synchronous failure and failed rollback retain both exceptions', {
+    my $primary = GuardTestError.new(:message<body>);
+    my $cleanup = GuardTestError.new(:message<rollback>);
+    my $*RED-DB = GuardProbeDriver.new(:rollback-error($cleanup));
+    throws-like {
+        red-do :transaction, -> :$guard! { $primary.throw }
+    }, X::Red::Transaction::Cleanup, :cause($primary), :cleanup($cleanup);
+};
+
+subtest 'Failed child rollback aborts the root instead of resuming its parent', {
+    my $error = GuardTestError.new(:message<savepoint>);
+    my $driver = GuardProbeDriver.new(:savepoint-error($error));
+    my $guard = Red::Transaction::Guard.new(:$driver);
+    my $child = $guard.child;
+    throws-like { $child.rollback }, GuardTestError;
+    is $driver.rollbacks, 1, 'The native root transaction is rolled back';
+    throws-like { $guard.assert-usable }, X::Red::Transaction;
+    throws-like { $child.assert-usable }, X::Red::Transaction;
+    lives-ok { $guard.rollback; $child.rollback }, 'Later cleanup is harmless';
+};
+
+subtest 'Participants release exactly once and the last release rolls back', {
+    my $driver = GuardProbeDriver.new;
+    my $guard = Red::Transaction::Guard.new(:$driver);
+    ok $guard.retain === $guard, 'retain returns the guard';
+    ok $guard.release === $guard, 'release returns the guard';
+    is $driver.rollbacks, 0, 'One participant remains';
+    $guard.assert-usable;
+    $guard.release;
+    is $driver.rollbacks, 1, 'The last participant rolls back';
+    throws-like { $guard.release }, X::Red::Transaction;
+    throws-like { $guard.retain }, X::Red::Transaction;
+    $guard.rollback;
+    is $driver.rollbacks, 1, 'Cleanup cannot roll back twice';
+};
+
+subtest 'Immediate closure preserves pending participant balances', {
+    for <commit rollback> -> $action {
+        my $driver = GuardProbeDriver.new;
+        my $guard = Red::Transaction::Guard.new(:$driver);
+        $guard.retain;
+        $guard."$action"();
+        is $driver.commits, ($action eq 'commit' ?? 1 !! 0);
+        is $driver.rollbacks, ($action eq 'rollback' ?? 1 !! 0);
+        throws-like { $guard.retain }, X::Red::Transaction;
+        lives-ok { $guard.release; $guard.release }, 'Pending releases remain valid';
+        throws-like { $guard.release }, X::Red::Transaction;
+        is $driver.rollbacks, ($action eq 'rollback' ?? 1 !! 0), 'No additional SQL';
+    }
+};
+
+subtest 'An escaping exception closes retained participants immediately', {
+    reset;
+    my $saved;
+    throws-like {
+        red-do :transaction, -> :$guard! {
+            $saved = $guard.retain;
+            GuardRecord.^create: :label<discarded>;
+            GuardTestError.new.throw;
+        }
+    }, GuardTestError;
+    is GuardRecord.^all.elems, 0;
+    lives-ok { $saved.release }, 'The outstanding participant can still release';
+    throws-like { $saved.release }, X::Red::Transaction;
+};
+
+subtest 'Savepoint participants are independent and parent release invalidates children', {
+    reset;
+    red-do :transaction, -> :$guard! {
+        GuardRecord.^create: :label<parent>;
+        red-do :transaction, -> :$guard! {
+            $guard.retain;
+            GuardRecord.^create: :label<child>;
+            $guard.release;
+            is GuardRecord.^all.elems, 2, 'The child remains open with one participant';
+        };
+        is GuardRecord.^all.elems, 1, 'Last child release rolls back only its savepoint';
+        $guard.commit;
+    };
+    is-deeply labels(), ('parent',);
+    my $root = Red::Transaction::Guard.new(:driver(GuardProbeDriver.new));
+    my $child = $root.child;
+    $child.retain;
+    $root.release;
+    throws-like { $child.retain }, X::Red::Transaction;
+    lives-ok { $child.release; $child.release }, 'Invalidated children retain their balances';
+    throws-like { $child.release }, X::Red::Transaction;
+};
+
+subtest 'Concurrent releases are counted and finalize exactly once', {
+    my $driver = GuardProbeDriver.new;
+    my $guard = Red::Transaction::Guard.new(:$driver);
+    $guard.retain for ^31;
+    my $go = Promise.new;
+    my @tasks = (^32).map: {
+        start { await $go; $guard.release }
+    };
+    $go.keep(True);
+    lives-ok { await @tasks }, 'All participants release successfully';
+    is $driver.rollbacks, 1, 'Only the final participant executes rollback';
+    throws-like { $guard.release }, X::Red::Transaction;
+};
+
+subtest 'Concurrent retains reserve all participants before their releases', {
+    my $driver = GuardProbeDriver.new;
+    my $guard = Red::Transaction::Guard.new(:$driver);
+    my $go = Promise.new;
+    my $release = Promise.new;
+    my @reserved = (^16).map({ Promise.new });
+    my @tasks = (^16).map: -> $i {
+        start {
+            await $go;
+            $guard.retain;
+            @reserved[$i].keep(True);
+            await $release;
+            $guard.release;
+        }
+    };
+    $go.keep(True);
+    await @reserved;
+    $guard.release;
+    is $driver.rollbacks, 0, 'The initial release preserves the reserved participants';
+    $release.keep(True);
+    lives-ok { await @tasks }, 'Every concurrent retain is balanced';
+    is $driver.rollbacks, 1;
+};
+
+subtest 'Release waits for active database work without losing participation', {
+    my $driver = GuardProbeDriver.new;
+    my $guard = Red::Transaction::Guard.new(:$driver);
+    my $entered = Promise.new;
+    my $continue = Promise.new;
+    my $task = start $guard.protect: {
+        $entered.keep(True);
+        await $continue;
+    };
+    await $entered;
+    my $releasing = Promise.new;
+    my $release = start { $releasing.keep(True); $guard.release };
+    await $releasing;
+    $continue.keep(True);
+    lives-ok { await $task, $release }, 'Release completes after database ownership returns';
+    is $driver.rollbacks, 1;
+};
+
+subtest 'Last release propagates cleanup failures and closes the guard', {
+    my $error = GuardTestError.new(:message<rollback>);
+    my $driver = GuardProbeDriver.new(:rollback-error($error));
+    my $guard = Red::Transaction::Guard.new(:$driver);
+    throws-like { $guard.release }, GuardTestError;
+    is $driver.rollbacks, 1;
+    throws-like { $guard.assert-usable }, X::Red::Transaction;
+    throws-like { $guard.release }, X::Red::Transaction;
+    throws-like { $guard.retain }, X::Red::Transaction;
+    my $primary = GuardTestError.new(:message<savepoint>);
+    $driver = GuardProbeDriver.new(:savepoint-error($primary), :rollback-error($error));
+    $guard = Red::Transaction::Guard.new(:$driver);
+    my $child = $guard.child;
+    throws-like { $child.release }, X::Red::Transaction::Cleanup,
+        :cause($primary), :cleanup($error);
+    lives-ok { $guard.release }, 'The failed root still accepts its pending release';
+};
+
+subtest 'do restores context, injects callbacks and preserves results', {
+    reset;
+    my $guard = red-do :transaction, -> :$guard! { $guard.retain };
+    LEAVE $guard.release;
+    my $outside = $*RED-DB;
+    is $guard.do(-> :&commit!, :&rollback! {
+        ok $*RED-DB === $guard.scoped-driver, 'The guard restores its driver';
+        ok $*RED-TRANSACTION-RUNNING, 'The transaction context is active';
+        ok $*RED-TRANSACTION-DB === $*RED-DB;
+        GuardRecord.^create: :label<do>;
+        commit();
+        61
+    }), 61, 'do returns the block result';
+    ok $*RED-DB === $outside, 'The caller context is restored';
+    is-deeply labels(), ('do',);
+    throws-like { $guard.do({ flunk 'Closed guard must not invoke the block' }) },
+        X::Red::Transaction;
+};
+
+subtest 'Callbacks are opt-in and rollback is bound to the same guard', {
+    reset;
+    red-do :transaction, -> :$guard! {
+        is $guard.do(-> *%options {
+            is-deeply %options, {}, 'A slurpy alone receives no callbacks';
+            62
+        }), 62;
+        $guard.do: -> :&rollback {
+            GuardRecord.^create: :label<discarded>;
+            rollback();
+        };
+    };
+    is GuardRecord.^all.elems, 0;
+};
+
+subtest 'start reserves before the initial block returns and injects commit', {
+    reset;
+    my $continue = Promise.new;
+    my $saved;
+    my $task = red-do :transaction, -> :$guard! {
+        $saved = $guard;
+        $guard.start: -> :&commit! {
+            await $continue;
+            GuardRecord.^create: :label<start>;
+            commit();
+            63
+        }
+    };
+    isa-ok $task, Promise;
+    $continue.keep(True);
+    is await($task), 63;
+    is-deeply labels(), ('start',);
+    throws-like { $saved.release }, X::Red::Transaction,
+        'Both automatic participations have been released';
+};
+
+subtest 'No commit rolls back after synchronous or asynchronous work', {
+    reset;
+    red-do :transaction, -> :$guard! {
+        $guard.do: { GuardRecord.^create: :label<sync-discarded> };
+        is GuardRecord.^all.elems, 1, 'The initial participant keeps the scope open';
+    };
+    is GuardRecord.^all.elems, 0;
+    my $continue = Promise.new;
+    my $task = red-do :transaction, -> :$guard! {
+        $guard.start: {
+            await $continue;
+            GuardRecord.^create: :label<async-discarded>;
+            64
+        }
+    };
+    $continue.keep(True);
+    is await($task), 64;
+    is GuardRecord.^all.elems, 0, 'Task completion releases the last participant';
+};
+
+subtest 'do does not extend its participation for a returned Promise', {
+    my $driver = GuardProbeDriver.new;
+    my $guard = Red::Transaction::Guard.new(:$driver);
+    my $promise = Promise.new;
+    my Int $warnings = 0;
+    {
+        CONTROL {
+            when X::Red::Transaction::AsyncResult {
+                $warnings++;
+                like .message, /'Guard.start'/, 'The warning suggests start';
+                .resume;
+            }
+        }
+        ok $guard.do({ $promise }) === $promise, 'The Promise is returned unchanged';
+    }
+    is $warnings, 1, 'A pending Promise produces one typed, resumable warning';
+    is $promise.status, Planned, 'do did not await the Promise';
+    is $driver.rollbacks, 0, 'The warning did not trigger rollback';
+    $guard.release;
+    is $driver.rollbacks, 1, 'Only the initial participant remained after do returned';
+    $promise.keep(True);
+};
+
+subtest 'do and start outside red-do restore the context for nested savepoints', {
+    reset;
+    my $guard = red-do :transaction, -> :$guard! { $guard.retain };
+    $guard.do: {
+        GuardRecord.^create: :label<parent>;
+        red-do :transaction, -> :$guard! {
+            $guard.do: -> :&commit! {
+                GuardRecord.^create: :label<child>;
+                commit();
+            };
+        };
+    };
+    is await($guard.start(-> :&commit! {
+        red-do :transaction, -> :$guard! {
+            $guard.do: -> :&rollback! {
+                GuardRecord.^create: :label<discarded>;
+                rollback();
+            };
+        };
+        commit();
+        65
+    })), 65;
+    $guard.release;
+    is-deeply labels(), <child parent>.List;
+};
+
+subtest 'A failed participant immediately invalidates other retained participants', {
+    reset;
+    my $guard = red-do :transaction, -> :$guard! { $guard.retain };
+    my $continue = Promise.new;
+    my $task = $guard.start: {
+        await $continue;
+        GuardRecord.^create: :label<discarded>;
+        GuardTestError.new.throw;
+    };
+    $continue.keep(True);
+    throws-like { await $task }, GuardTestError;
+    throws-like { $guard.commit }, X::Red::Transaction;
+    is GuardRecord.^all.elems, 0;
+    lives-ok { $guard.release }, 'The outstanding participant still releases normally';
+};
+
+subtest 'Body and cleanup exceptions are preserved by do and start', {
+    my $primary = GuardTestError.new(:message<body>);
+    my $cleanup = GuardTestError.new(:message<rollback>);
+    for <do start> -> $method {
+        my $driver = GuardProbeDriver.new(:rollback-error($cleanup));
+        my $guard = Red::Transaction::Guard.new(:$driver);
+        throws-like {
+            my $result = $guard."$method"({ $primary.throw });
+            await $result if $method eq 'start';
+        }, X::Red::Transaction::Cleanup, :cause($primary), :cleanup($cleanup);
+        is $driver.rollbacks, 1;
+        lives-ok { $guard.release }, 'The failed participant has already released';
+        throws-like { $guard.release }, X::Red::Transaction;
+    }
+};
+
+subtest 'A scheduling failure returns the reserved participation', {
+    my $error = GuardTestError.new(:message<scheduling>);
+    my class RejectScheduler is ThreadPoolScheduler {
+        method cue(|) { $error.throw }
+    }
+    my $driver = GuardProbeDriver.new;
+    my $guard = Red::Transaction::Guard.new(:$driver);
+    {
+        my $*SCHEDULER = RejectScheduler.new;
+        throws-like { $guard.start({ flunk 'The task must not run' }) }, GuardTestError;
+    }
+    is $driver.rollbacks, 0, 'The initial participant is still open';
+    $guard.release;
+    is $driver.rollbacks, 1, 'The failed scheduling left no additional reservation';
+    throws-like { $guard.release }, X::Red::Transaction;
+};
+
+subtest 'A child start keeps its savepoint open until its task completes', {
+    reset;
+    red-do :transaction, -> :$guard! {
+        GuardRecord.^create: :label<parent>;
+        my $continue = Promise.new;
+        my $task = red-do :transaction, -> :$guard! {
+            $guard.start: -> :&commit! {
+                await $continue;
+                GuardRecord.^create: :label<async-child>;
+                commit();
+                66
+            }
+        };
+        throws-like { $guard.commit }, X::Red::Transaction;
+        $continue.keep(True);
+        is await($task), 66;
+        $guard.commit;
+    };
+    is-deeply labels(), <async-child parent>.List;
+    my $saved;
+    my $manual = red-do :transaction, :async, -> :$guard! {
+        $saved = $guard;
+        67
+    };
+    is await($manual), 67;
+    throws-like { $saved.release }, X::Red::Transaction,
+        'Built-in async also releases its initial participation';
+    throws-like { $saved.start({ flunk 'A closed guard must not schedule work' }) },
+        X::Red::Transaction;
+};
+
+subtest 'do does not warn for completed Promises or other results', {
+    my $driver = GuardProbeDriver.new;
+    my $guard = Red::Transaction::Guard.new(:$driver);
+    my $kept = Promise.new;
+    $kept.keep(71);
+    my $broken = Promise.new;
+    $broken.break(GuardTestError.new);
+    my Int $warnings = 0;
+    {
+        CONTROL {
+            when X::Red::Transaction::AsyncResult { $warnings++; .resume }
+        }
+        ok $guard.do({ $kept }) === $kept, 'A kept Promise is preserved';
+        ok $guard.do({ $broken }) === $broken, 'A broken Promise is preserved';
+        is $guard.do({ 72 }), 72;
+        is $guard.do({ False }), False;
+        nok $guard.do({ Nil }).defined;
+    }
+    isa-ok $broken.cause, GuardTestError;
+    is $warnings, 0;
+    $guard.release;
+    is $driver.rollbacks, 1, 'Every do participation was released';
+};
+
+subtest 'Named placeholder guards support direct commit and asynchronous work', {
+    reset;
+    is red-do(:transaction, {
+        GuardRecord.^create: :label<placeholder-sync>;
+        $:guard.commit;
+        73
+    }), 73, 'The named placeholder receives the guard and preserves the result';
+    is-deeply labels(), ('placeholder-sync',), 'Direct placeholder commit persists';
+
+    my $continue = Promise.new;
+    my $task = red-do :transaction, {
+        $:guard.start: -> :&commit! {
+            await $continue;
+            GuardRecord.^create: :label<placeholder-async>;
+            commit();
+            74
+        }
+    };
+    isa-ok $task, Promise;
+    $continue.keep(True);
+    is await($task), 74, 'The task remains usable after the placeholder block returns';
+    is-deeply labels(), <placeholder-async placeholder-sync>.List,
+        'The task commits through its injected callback';
+};
+
+subtest 'Callable placeholders receive commit and rollback in do and start', {
+    for <do start> -> $method {
+        for <commit rollback> -> $action {
+            reset;
+            my $continue = Promise.new;
+            my &work = $action eq 'commit'
+                ?? {
+                    await $continue;
+                    GuardRecord.^create: :label<placeholder-callback>;
+                    &:commit();
+                    75
+                }
+                !! {
+                    await $continue;
+                    GuardRecord.^create: :label<placeholder-callback>;
+                    &:rollback();
+                    76
+                };
+            $continue.keep(True) if $method eq 'do';
+            my $result = red-do :transaction, -> :$guard! {
+                $guard."$method"(&work)
+            };
+            if $method eq 'start' {
+                isa-ok $result, Promise;
+                $continue.keep(True);
+                $result = await $result;
+            }
+            is $result, ($action eq 'commit' ?? 75 !! 76),
+                "$method preserves the result with a $action placeholder";
+            is-deeply labels(), ($action eq 'commit' ?? ('placeholder-callback',) !! ()),
+                "$method injects the $action placeholder with the expected effect";
+        }
+    }
+};
+
+done-testing;
