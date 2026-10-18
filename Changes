@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.7  2026-10-18T05:55:59+01:00
     - relationships: support .^create on empty scalar relationships with automatic foreign keys (#475)
     - relationships: resolve string/type models consistently and isolate creation contexts per source
     - queries: keep aggregate projection models isolated during concurrent query construction (#554)
