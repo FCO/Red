@@ -9,6 +9,14 @@ Base role for a Red::Driver::*
 
 Supply of events of that driver
 
+### method driver-name
+
+```raku
+method driver-name() returns Mu
+```
+
+Public backend name, independent of internal transaction wrappers.
+
 ### method begin
 
 ```raku

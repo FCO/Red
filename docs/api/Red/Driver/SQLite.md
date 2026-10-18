@@ -1,4 +1,4 @@
-class submethod BUILD (Red::Driver::SQLite $:: DBDish::SQLite::Connection :$!dbh, Str :$!database = ":memory:", *%_) { #`(Submethod|6199041285064) ... }
+class submethod BUILD (Red::Driver::SQLite $:: DBDish::SQLite::Connection :$!dbh, Str :$!database = ":memory:", *%_) { #`(Submethod|5963860494464) ... }
 --------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Data accepted by the SQLite driver constructor: dbh     : DBDish::SQLite object database: File name or C<:memory:> to a in memory DB (default)

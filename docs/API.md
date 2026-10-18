@@ -84,4 +84,5 @@ API Pages
 - [Red::SchemaReader](api/Red/SchemaReader)
 - [Red::Statement](api/Red/Statement)
 - [Red::Traits](api/Red/Traits)
+- [Red::Transaction::Guard](api/Red/Transaction/Guard)
 - [Red::Utils](api/Red/Utils)

@@ -2,6 +2,16 @@
 
 Base role to DB statements Returned by .query
 
+### method guarded-by
+
+```raku
+method guarded-by(
+    Mu:D $guard
+) returns Mu
+```
+
+Attaches the lifetime of the transaction which prepared this statement.
+
 ### method execute
 
 ```raku
