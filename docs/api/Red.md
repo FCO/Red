@@ -507,6 +507,61 @@ For a belongs-to relationship, Red saves the foreign key on the existing source 
 
 Existing relationships continue to return their related instances. An empty relationship still tests false and undefined, but code that checks specifically for `Nil` should use `.defined` instead. Creation uses `.^create`, while plural relationships continue to use `.create`.
 
+#### named indexes and schema constraints
+
+Independent schema declarations use ordinary attributes that do not become columns or appear in row data. Existing `is indexed`, `is unique`, `is index{...}` and `is unique-index{...}` forms remain supported.
+
+```raku
+model Measurement {
+    has UInt $.id is serial;
+    has Rat $.percent is column;
+    has Str $.name is column;
+    has Int $.active is column;
+
+    has $!percent-valid is check{ sql-and(.percent >= 0, .percent <= 1) };
+    has $!name-tree is index({ .name }, :using<btree>);
+    has $!name-search is index({ .name },
+        :using<gin>, :opclass<gin_trgm_ops>, :driver<Pg>);
+    has $!active-name is unique-index({ .name },
+        :where{ .active == 1 }, :driver<Pg>);
+}
+```
+
+`:using` selects an access method. PostgreSQL supports `btree`, `hash`, `gin`, `gist`, `spgist` and `brin`; the common API supports `btree`. `:opclass` selects a PostgreSQL operator class. For multiple keys, supply a list with one string per key, using an empty string for the default class. A class can be qualified with its schema. `:where` defines a partial index on PostgreSQL or SQLite; MySQL rejects an unguarded partial index.
+
+`:driver<Pg>` explicitly selects a declaration only for that backend. The names are `Pg`, `SQLite` and `MySQL`, or a custom driver's final class-name component. Without this option an unsupported declaration raises `X::Red::Index`; Red does not substitute another index method or weaken a constraint. Conditional constraints are intentionally absent on the other backends.
+
+`CHECK` is included by `.^create-table` and `schema.create` and is enforced by the database for both inserts and updates, including writes outside Red. Use `sql-and`, `sql-or` and `sql-not` for compound predicates. Raku's short-circuit `&&` and `||` are rejected in schema predicates rather than changing SQL's three-valued logic. SQL's usual NULL semantics apply: a CHECK is not a substitute for NOT NULL.
+
+`.^create-indexes` adds indexes to existing tables and checks existing names, key order, uniqueness, access method, operator classes and partial predicates. It rejects incompatible definitions instead of silently accepting them. It does not add or alter CHECK or EXCLUDE constraints on an existing table; those require an explicit schema migration.
+
+#### PostgreSQL ranges, regex and exclusion constraints
+
+`sql-operator` builds an AST for PostgreSQL range and regex operators such as `@> `, `<@ `, `&&` and `~*`. Values are bound in queries and quoted as literals in schema DDL. `sql-range` builds a native range constructor, defaulting to `numrange` with `[)` bounds. Its `:type` can also select `int4range`, `int8range`, `tsrange`, `tstzrange` or `daterange`.
+
+```raku
+model TrackSegment {
+    has UInt $.id is serial;
+    has Int $.track-id is column;
+    has Str $.percent-range is column{ :type<numrange> };
+
+    has $!range-valid is check(
+        { sql-operator('@>', sql-range(0, 1, :bounds<[]>), .percent-range) },
+        :driver<Pg>
+    );
+    has $!no-overlap is exclude(
+        { .track-id => '=', .percent-range => '&&' },
+        :using<gist>, :driver<Pg>
+    );
+}
+
+my @segments = TrackSegment.^all.grep({
+    sql-operator('&&', .percent-range, sql-range(0.2, 0.4))
+});
+```
+
+The exclusion constraint rejects overlapping ranges on the same track. Native range columns and operators require PostgreSQL. Bounds containment permits empty ranges; reject them with a separate constraint if the domain requires it. Applications must provision needed extensions explicitly: `pg_trgm` supplies `gin_trgm_ops`, and `btree_gist` supplies GiST classes for scalar keys such as the integer track identifier. Red does not install extensions automatically.
+
 #### custom table name
 
 ```raku

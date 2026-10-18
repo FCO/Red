@@ -41,6 +41,7 @@ API Pages
 - [Red::AST::LastInsertedRow](api/Red/AST/LastInsertedRow)
 - [Red::AST::Minus](api/Red/AST/Minus)
 - [Red::AST::MultiSelect](api/Red/AST/MultiSelect)
+- [Red::AST::Native](api/Red/AST/Native)
 - [Red::AST::Next](api/Red/AST/Next)
 - [Red::AST::Optimizer::AND](api/Red/AST/Optimizer/AND)
 - [Red::AST::Optimizer::OR](api/Red/AST/Optimizer/OR)
