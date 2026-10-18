@@ -13,6 +13,9 @@ use Red::Projection;
 use Red::AST::JsonSetItem;
 use Red::LockType;
 use Red::Index;
+use Red::AST::Native;
+use Red::AST::CreateIndex;
+use Red::AST::Constraints;
 need UUID;
 
 unit class Red::Driver::Pg does Red::Driver::CommonSQL;
@@ -26,28 +29,126 @@ has $.dbh;
 
 method schema-reader {}
 
+method supports-index-method(Str $method --> Bool) {
+    so $method eq any('', |<btree hash gin gist spgist brin>)
+}
+method supports-operator-classes { True }
+method supports-partial-indexes { True }
+method index-method-clause($definition --> Str) {
+    $definition.using.chars ?? ' USING ' ~ self.table-name-wrapper($definition.using) !! ''
+}
+
+method validate-index-definition($definition) {
+    self.Red::Driver::CommonSQL::validate-index-definition($definition);
+    index-error('Only B-tree supports unique indexes among these PostgreSQL methods')
+        if $definition ~~ Red::AST::CreateIndex && $definition.unique
+            && $definition.using ne any('', 'btree');
+}
+
+multi method translate(Red::AST::Native::Operator $_, $context?) {
+    my $ddl = ($context // '') eq 'index';
+    my $left = self.translate(.left,
+        !$ddl && .left ~~ Red::AST::Value ?? 'bind' !! $context);
+    my $right = self.translate(.right,
+        !$ddl && .right ~~ Red::AST::Value ?? 'bind' !! $context);
+    "({$left.key} {.operator} {$right.key})" => [|$left.value, |$right.value]
+}
+
+multi method translate(Red::AST::Native::Range $_, $context?) {
+    my @bind;
+    my @values = .values.map(-> $value {
+        my $translated = self.translate($value,
+            ($context // '') ne 'index' && $value ~~ Red::AST::Value ?? 'bind' !! $context);
+        @bind.append: $translated.value;
+        $translated.key
+    });
+    "{.range-type}({@values.join(', ')})" => @bind
+}
+
+multi method translate(Red::AST::Exclude $_, $context?) {
+    return '' => [] unless self.schema-definition-applies($_);
+    self.validate-index-definition($_);
+    index-error('GIN and BRIN indexes cannot implement exclusion constraints')
+        if .using eq any(<gin brin>);
+    my @keys = self.index-keys-sql($_);
+    my $keys = @keys.kv.map(-> $i, $key { "$key WITH {.operators[$i]}" }).join(', ');
+    "CONSTRAINT {self.table-name-wrapper(.name)} EXCLUDE{self.index-method-clause($_)} "
+        ~ "($keys)"
+        ~ (.predicate.DEFINITE ?? ' WHERE (' ~ self.index-key(.predicate) ~ ')' !! '') => []
+}
+
 method indexes-for-table(Str $table --> Array) {
     my @indexes;
     my $statement = self.execute(q:to/SQL/, self.table-name-wrapper($table));
         SELECT c.relname AS name, i.indisunique AS is_unique,
                i.indpred IS NOT NULL AS partial, i.indexrelid AS oid,
-               i.indnkeyatts AS key_count, i.indisvalid AND i.indisready AS valid
+               i.indnkeyatts AS key_count, am.amname AS method,
+               pg_get_expr(i.indpred, i.indrelid, true) AS predicate,
+               i.indisexclusion AS is_exclusion,
+               i.indisvalid AND i.indisready AND i.indnatts = i.indnkeyatts AS valid
         FROM pg_index i JOIN pg_class c ON c.oid = i.indexrelid
+        JOIN pg_am am ON am.oid = c.relam
         WHERE i.indrelid = to_regclass($1)
         SQL
     for self.index-catalog-rows($statement) -> $row {
         my @keys;
+        my @opclasses;
         my $keys = self.execute(q:to/SQL/, $row<oid>, $row<key_count>);
-            SELECT pg_get_indexdef($1::oid, n, true) AS key
-            FROM generate_series(1, $2::integer) AS n ORDER BY n
+            SELECT pg_get_indexdef($1::oid, n, true) AS key, opc.oid AS opclass_oid,
+                   opc.opcname AS opclass_name, ns.nspname AS opclass_schema,
+                   opc.opcdefault AS is_default
+            FROM generate_series(1, $2::integer) AS n
+            JOIN pg_index idx ON idx.indexrelid = $1::oid
+            JOIN pg_opclass opc ON opc.oid = idx.indclass[n - 1]
+            JOIN pg_namespace ns ON ns.oid = opc.opcnamespace ORDER BY n
             SQL
         for self.index-catalog-rows($keys) -> $key {
-            @keys.push: $key<key>;
+            my $sql = $key<key>;
+            my @spellings = $key<opclass_name>,
+                self.table-name-wrapper($key<opclass_name>),
+                "$key<opclass_schema>.$key<opclass_name>",
+                ($key<opclass_schema opclass_name>.map({ self.table-name-wrapper($_) }).join('.'));
+            for @spellings -> $spelling {
+                if $sql.ends-with(' ' ~ $spelling) {
+                    $sql = $sql.substr(0, $sql.chars - $spelling.chars - 1);
+                    last;
+                }
+            }
+            @keys.push: $sql;
+            @opclasses.push: { :oid($key<opclass_oid>), :default(so $key<is_default>) };
         }
         @indexes.push: { :name($row<name>), :unique(so $row<is_unique>),
-            :partial(so $row<partial>), :valid(so $row<valid>), :keys(@keys.Array) };
+            :partial(so $row<partial>), :valid(so $row<valid>), :keys(@keys.Array),
+            :method($row<method>), :predicate($row<predicate> // ''),
+            :exclusion(so $row<is_exclusion>), :opclasses(@opclasses.Array) };
     }
     @indexes.Array
+}
+
+method index-definition-matches($definition, $found --> Bool) {
+    return False if $found<exclusion>;
+    return False unless self.Red::Driver::CommonSQL::index-definition-matches(
+        $definition.clone(:opclasses([])), $found);
+    return False unless $found<opclasses>.elems == $definition.keys.elems;
+    for $found<opclasses>.kv -> $i, $opclass {
+        my $wanted = $definition.opclasses[$i] // '';
+        if !$wanted.chars {
+            return False unless $opclass<default>;
+            next;
+        }
+        my @parts = $wanted.split('.');
+        my $method = $definition.using || 'btree';
+        my $namespace = @parts.elems == 2 ?? @parts.head !! '';
+        my $expected = self.execute(q:to/SQL/, @parts.tail, $method, $namespace).row;
+            SELECT opc.oid AS oid FROM pg_opclass opc
+            JOIN pg_namespace ns ON ns.oid = opc.opcnamespace
+            JOIN pg_am am ON am.oid = opc.opcmethod
+            WHERE opc.opcname = $1 AND am.amname = $2
+              AND (($3 = '' AND pg_opclass_is_visible(opc.oid)) OR ns.nspname = $3)
+            SQL
+        return False unless $expected<oid>.defined && $expected<oid> == $opclass<oid>;
+    }
+    True
 }
 
 # Data accepted by the Pg driver constructor:

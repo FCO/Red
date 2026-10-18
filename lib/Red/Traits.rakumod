@@ -3,9 +3,17 @@ use Red::Attr::Column;
 use Red::Attr::Index;
 use Red::ResultSeq;
 use Red::Phaser;
+use X::Red::Exceptions;
 use MetamodelX::Red::VirtualView;
 use MetamodelX::Red::View;
 unit module Red::Traits;
+
+sub validate-schema-options(%options) {
+    my %allowed = set <using driver opclass where>;
+    my @unknown = %options.keys.grep({ !%allowed{$_} });
+    X::Red::Index.new(:reason("Unknown schema options: {@unknown.sort.join(', ')}")).throw
+        if @unknown;
+}
 
 =head2 Red::Traits
 
@@ -103,10 +111,45 @@ multi trait_mod:<is>(Attribute $attr, :&index! --> Empty) is export {
     $attr.configure-index(&index);
 }
 
+multi trait_mod:<is>(Attribute $attr, :$index! (&expression, *%options) --> Empty) is export {
+    validate-schema-options(%options);
+    $attr does Red::Attr::Index;
+    $attr.configure-index(&expression, |%options);
+}
+
 #| Declare an independent unique index.
 multi trait_mod:<is>(Attribute $attr, :&unique-index! --> Empty) is export {
     $attr does Red::Attr::Index;
     $attr.configure-index(&unique-index, :unique);
+}
+
+multi trait_mod:<is>(Attribute $attr, :$unique-index! (&expression, *%options) --> Empty)
+    is export {
+    validate-schema-options(%options);
+    $attr does Red::Attr::Index;
+    $attr.configure-index(&expression, :unique, |%options);
+}
+
+multi trait_mod:<is>(Attribute $attr, :&check! --> Empty) is export {
+    $attr does Red::Attr::Index;
+    $attr.configure-index(&check, :kind<check>);
+}
+
+multi trait_mod:<is>(Attribute $attr, :$check! (&expression, *%options) --> Empty) is export {
+    validate-schema-options(%options);
+    $attr does Red::Attr::Index;
+    $attr.configure-index(&expression, :kind<check>, |%options);
+}
+
+multi trait_mod:<is>(Attribute $attr, :&exclude! --> Empty) is export {
+    $attr does Red::Attr::Index;
+    $attr.configure-index(&exclude, :kind<exclude>, :using<gist>);
+}
+
+multi trait_mod:<is>(Attribute $attr, :$exclude! (&expression, *%options) --> Empty) is export {
+    validate-schema-options(%options);
+    $attr does Red::Attr::Index;
+    $attr.configure-index(&expression, :kind<exclude>, :using<gist>, |%options);
 }
 
 =head3 is id

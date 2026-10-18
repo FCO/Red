@@ -18,6 +18,7 @@ use Red::AST::Divisible;
 use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::CreateIndex;
+use Red::AST::Native;
 use Red::Index;
 use Red::AST::CreateView;
 use Red::AST::LastInsertedRow;
@@ -205,10 +206,11 @@ method create-schema(%models where .values.all ~~ Red::Model) {
     # Fail on invalid or unsupported definitions before executing any DDL.
     for %models.values -> $model {
         self.translate($_) for $model.^indexes;
+        self.translate($_) for $model.^schema-constraints;
     }
     for %models.kv -> Str() $name, Red::Model \model {
         my $*RED-IGNORE-REFERENCE = True;
-        my @constraints;
+        my @constraints = model.^schema-constraints.grep({ self.schema-definition-applies($_) });
         for model.^constraints.kv -> $kind, @groups {
             for @groups -> @group {
                 my @columns = Array[Red::Column].new: |@group;
@@ -282,17 +284,79 @@ method index-key(Red::AST $key --> Str) {
 #| Dialects can normalize their own catalog's expression spelling here.
 method index-key-fingerprint(Str $key --> Str) { canonical-index-key($key) }
 
+method schema-definition-applies($definition --> Bool) {
+    !$definition.driver.chars || $definition.driver eq self.driver-name.split('::').tail
+}
+
+method supports-index-method(Str $method --> Bool) { so $method eq any('', 'btree') }
+method supports-operator-classes { False }
+method supports-partial-indexes { False }
+method index-method-clause($definition --> Str) { '' }
+
+method validate-index-definition($definition) {
+    index-error("Unsupported index method '{$definition.using}' on {self.driver-name}")
+        unless self.supports-index-method($definition.using);
+    index-error("Operator classes are unsupported on {self.driver-name}")
+        if $definition.opclasses.grep(*.chars) && !self.supports-operator-classes;
+    index-error("Partial indexes are unsupported on {self.driver-name}")
+        if $definition.predicate.DEFINITE && !self.supports-partial-indexes;
+}
+
+method index-keys-sql($definition --> Array) {
+    $definition.keys.kv.map(-> $i, $key {
+        my $sql = self.index-key($key);
+        $sql = "($sql)" unless $key ~~ Red::AST::IndexColumn;
+        my $opclass = $definition.opclasses[$i] // '';
+        $sql ~= ' ' ~ $opclass.split('.').map({ self.table-name-wrapper($_) }).join('.')
+            if $opclass.chars;
+        $sql
+    }).Array
+}
+
+# Catalogs without method/opclass metadata describe only the default B-tree API.
+method index-definition-matches($definition, $found --> Bool) {
+    my @keys = $definition.keys.map({ self.index-key-fingerprint(self.index-key($_)) });
+    my $predicate = $definition.predicate.DEFINITE ?? self.index-key($definition.predicate) !! '';
+    so $found<unique> == $definition.unique
+        && ($found<keys>.map({ self.index-key-fingerprint($_) }).List eqv @keys.List)
+        && ($found<method> // 'btree') eq ($definition.using || 'btree')
+        && (($found<partial> // False) == $definition.predicate.DEFINITE)
+        && self.index-key-fingerprint($found<predicate> // '')
+            eq self.index-key-fingerprint($predicate)
+        && !($definition.opclasses.grep(*.chars))
+        && ($found<valid> // True)
+}
+
 multi method translate(Red::AST::IndexColumn $_, $context?) {
     self.table-name-wrapper(.name) => []
 }
 
 multi method translate(Red::AST::CreateIndex $_, $context?) {
-    my @keys = .keys.map(-> $key {
-        my $sql = self.index-key($key);
-        $key ~~ Red::AST::IndexColumn ?? $sql !! "($sql)"
-    });
+    return '' => [] unless self.schema-definition-applies($_);
+    self.validate-index-definition($_);
+    my @keys = self.index-keys-sql($_);
     "CREATE{.unique ?? ' UNIQUE' !! ''} INDEX {self.table-name-wrapper(.name)} "
-        ~ "ON {self.table-name-wrapper(.table)} ({@keys.join(', ')})" => []
+        ~ "ON {self.table-name-wrapper(.table)}{self.index-method-clause($_)} "
+        ~ "({@keys.join(', ')})"
+        ~ (.predicate.DEFINITE ?? ' WHERE ' ~ self.index-key(.predicate) !! '') => []
+}
+
+multi method translate(Red::AST::Check $_, $context?) {
+    return '' => [] unless self.schema-definition-applies($_);
+    "CONSTRAINT {self.table-name-wrapper(.name)} CHECK ({self.index-key(.expression)})" => []
+}
+
+multi method translate(Red::AST::Exclude $_, $context?) {
+    return '' => [] unless self.schema-definition-applies($_);
+    index-error("EXCLUDE is unsupported on {self.driver-name}")
+}
+
+multi method translate(Red::AST::Native::Operator $_, $context?) {
+    index-error("Native operator {.operator} requires PostgreSQL")
+}
+
+multi method translate(Red::AST::Native::Range $_, $context?) {
+    index-error('SQL range constructors require PostgreSQL')
 }
 
 proto method translate(Red::AST, $? --> Pair) {*}

@@ -21,6 +21,7 @@ use Red::DB;
 use Red::Schema;
 use Red::Formatter;
 use Red::AST::Infixes;
+use Red::AST::Native;
 
 class Red:ver<0.2.7>:api<2> {
     our %experimentals;
@@ -39,6 +40,7 @@ class Red:ver<0.2.7>:api<2> {
         Red::Traits::EXPORT::ALL::,
         Red::Operators::EXPORT::ALL::,
         Red::Schema::EXPORT::ALL::,
+        Red::AST::Native::EXPORT::ALL::,
         ‘&database’ => &database,
         |@experimentals.map(-> $feature { |experimental( $feature ) })
     }
@@ -655,6 +657,90 @@ Existing relationships continue to return their related instances. An empty
 relationship still tests false and undefined, but code that checks specifically
 for C<Nil> should use C<.defined> instead. Creation uses C<.^create>, while
 plural relationships continue to use C<.create>.
+
+=head4 named indexes and schema constraints
+
+Independent schema declarations use ordinary attributes that do not become
+columns or appear in row data. Existing C<is indexed>, C<is unique>,
+C<is index{...}> and C<is unique-index{...}> forms remain supported.
+
+=begin code :lang<raku>
+model Measurement {
+    has UInt $.id is serial;
+    has Rat $.percent is column;
+    has Str $.name is column;
+    has Int $.active is column;
+
+    has $!percent-valid is check{ sql-and(.percent >= 0, .percent <= 1) };
+    has $!name-tree is index({ .name }, :using<btree>);
+    has $!name-search is index({ .name },
+        :using<gin>, :opclass<gin_trgm_ops>, :driver<Pg>);
+    has $!active-name is unique-index({ .name },
+        :where{ .active == 1 }, :driver<Pg>);
+}
+=end code
+
+C<:using> selects an access method. PostgreSQL supports C<btree>, C<hash>,
+C<gin>, C<gist>, C<spgist> and C<brin>; the common API supports C<btree>.
+C<:opclass> selects a PostgreSQL operator class. For multiple keys, supply a list
+with one string per key, using an empty string for the default class. A class can
+be qualified with its schema. C<:where> defines a partial index on PostgreSQL or
+SQLite; MySQL rejects an unguarded partial index.
+
+C<:driver<Pg>> explicitly selects a declaration only for that backend. The names
+are C<Pg>, C<SQLite> and C<MySQL>, or a custom driver's final class-name component.
+Without this option an unsupported declaration raises C<X::Red::Index>; Red
+does not substitute another index method or weaken a constraint. Conditional
+constraints are intentionally absent on the other backends.
+
+C<CHECK> is included by C<.^create-table> and C<schema.create> and is enforced
+by the database for both inserts and updates, including writes outside Red.
+Use C<sql-and>, C<sql-or> and C<sql-not> for compound predicates. Raku's
+short-circuit C<&&> and C<||> are rejected in schema predicates rather than
+changing SQL's three-valued logic. SQL's usual NULL semantics apply: a CHECK is
+not a substitute for NOT NULL.
+
+C<.^create-indexes> adds indexes to existing tables and checks existing names,
+key order, uniqueness, access method, operator classes and partial predicates.
+It rejects incompatible definitions instead of silently accepting them. It does
+not add or alter CHECK or EXCLUDE constraints on an existing table; those require
+an explicit schema migration.
+
+=head4 PostgreSQL ranges, regex and exclusion constraints
+
+C<sql-operator> builds an AST for PostgreSQL range and regex operators such as
+C<< @> >>, C<< <@ >>, C<&&> and C<~*>. Values are bound in queries and quoted as
+literals in schema DDL. C<sql-range> builds a native range constructor, defaulting
+to C<numrange> with C<[)> bounds. Its C<:type> can also select C<int4range>,
+C<int8range>, C<tsrange>, C<tstzrange> or C<daterange>.
+
+=begin code :lang<raku>
+model TrackSegment {
+    has UInt $.id is serial;
+    has Int $.track-id is column;
+    has Str $.percent-range is column{ :type<numrange> };
+
+    has $!range-valid is check(
+        { sql-operator('@>', sql-range(0, 1, :bounds<[]>), .percent-range) },
+        :driver<Pg>
+    );
+    has $!no-overlap is exclude(
+        { .track-id => '=', .percent-range => '&&' },
+        :using<gist>, :driver<Pg>
+    );
+}
+
+my @segments = TrackSegment.^all.grep({
+    sql-operator('&&', .percent-range, sql-range(0.2, 0.4))
+});
+=end code
+
+The exclusion constraint rejects overlapping ranges on the same track. Native
+range columns and operators require PostgreSQL. Bounds containment permits empty
+ranges; reject them with a separate constraint if the domain requires it.
+Applications must provision needed extensions explicitly: C<pg_trgm> supplies
+C<gin_trgm_ops>, and C<btree_gist> supplies GiST classes for scalar keys such as
+the integer track identifier. Red does not install extensions automatically.
 
 =head4 custom table name
 

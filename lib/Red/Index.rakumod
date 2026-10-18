@@ -1,7 +1,14 @@
 use Red::AST;
 use Red::AST::CreateIndex;
 use Red::AST::Function;
+use Red::AST::Constraints;
 use Red::Attr::Index;
+use Red::Attr::Column;
+use Red::AST::Infixes;
+use Red::AST::Value;
+use Red::AST::Unary;
+use Red::AST::Infix;
+use CX::Red::Bool;
 use Red::Column;
 use Red::Utils;
 use X::Red::Exceptions;
@@ -18,6 +25,27 @@ sub evaluate-index(Callable $expression, $context) {
         default { index-error("Cannot resolve index expression: {.message}") }
     }
     $expression($context)
+}
+
+sub schema-predicate(Callable $expression, Mu:U $model --> Red::AST) {
+    CATCH {
+        when X::Red::Index { .rethrow }
+        default { index-error("Cannot resolve schema predicate: {.message}") }
+    }
+    my %*VALS := :{};
+    my $result;
+    {
+        CONTROL {
+            when CX::Red::Bool {
+                index-error('Use sql-and/sql-or/sql-not in schema predicates to preserve SQL NULL semantics')
+            }
+        }
+        $result = $expression($model);
+    }
+    my $value = $result ~~ Red::AST ?? $result !! ast-value($result);
+    index-error('A schema predicate must return a boolean expression')
+        unless $value.returns ~~ Bool;
+    index-expression($value, $model)
 }
 
 #| Normalize the value shared by the attribute trait and is column configuration.
@@ -67,11 +95,24 @@ sub index-expression($value, Mu:U $model --> Red::AST) is export {
             }).Array;
         }
     }
+    # PostgreSQL records the implicit conversion of integer constants adjacent
+    # to numeric casts. Emit it explicitly so DDL and catalog identities agree.
+    if $value ~~ Red::AST::Infix {
+        for <left right>, <right left> -> ($side, $other) {
+            my $cast = %changes{$side};
+            my $literal = %changes{$other};
+            if $cast ~~ Red::AST::Cast && $cast.type.lc eq any(<num numeric>)
+                && $literal ~~ Red::AST::Value && $literal.type =:= Int {
+                %changes{$other} = Red::AST::Cast.new($literal, $cast.type);
+            }
+        }
+    }
     $value.clone: |%changes
 }
 
-sub index-name(Str $table, Str $logical, Bool $unique --> Str) {
-    my $name = "{$table}_{kebab-to-snake-case($logical)}_{$unique ?? 'uidx' !! 'idx'}";
+sub index-name(Str $table, Str $logical, Bool $unique,
+    Str :$suffix = ($unique ?? 'uidx' !! 'idx') --> Str) {
+    my $name = "{$table}_{kebab-to-snake-case($logical)}_$suffix";
     # A shared 63-byte bound is portable across the supported databases.
     return $name if $name.encode('utf8').bytes <= 63;
     my Int $hash = 2166136261;
@@ -81,6 +122,72 @@ sub index-name(Str $table, Str $logical, Bool $unique --> Str) {
     my $prefix = $name;
     $prefix = $prefix.substr(0, *-1) while $prefix.encode('utf8').bytes > 54;
     $prefix ~ '_' ~ $hash.fmt('%08x')
+}
+
+sub schema-options($attr, Mu:U $model, Int $count --> Hash) {
+    my %options = $attr.schema-options;
+    my Str $using = (%options<using> // '').lc;
+    my Str $driver = %options<driver> // '';
+    index-error('Index methods and drivers must be identifiers')
+        if ($using.chars && $using !~~ /^ <[a..z_]> <[a..z0..9_]> * $/)
+            || ($driver.chars && $driver !~~ /^ <[A..Za..z_]> <[A..Za..z0..9_]> * $/);
+    my @opclasses;
+    if %options<opclass>.DEFINITE {
+        if %options<opclass> ~~ Positional {
+            @opclasses.push($_) for %options<opclass>.list;
+        } else {
+            @opclasses.push(%options<opclass>);
+        }
+    } else {
+        @opclasses = '' xx $count;
+    }
+    index-error('Provide one operator class per index key (use an empty string for defaults)')
+        unless @opclasses.elems == $count && @opclasses.all ~~ Str;
+    for @opclasses.grep(*.chars) -> $name {
+        index-error('Operator classes must be optionally schema-qualified identifiers')
+            unless $name.split('.').elems <= 2
+                && $name.split('.').map({ so $_ ~~ /^ <[A..Za..z_]> <[A..Za..z0..9_]> * $/ }).all;
+    }
+    my $predicate = Red::AST;
+    if %options<where>.DEFINITE {
+        $predicate = schema-predicate(%options<where>, $model);
+    }
+    %( :$using, :$driver, :opclasses(@opclasses.Array), :$predicate )
+}
+
+#| Named CHECK and EXCLUDE definitions share expression lowering with indexes.
+sub model-schema-constraints(Mu:U $model --> Array) is export {
+    my $*RED-INTERNAL = True;
+    my @constraints;
+    for $model.^attributes.grep(Red::Attr::Index).grep(*.index-kind ne 'index') -> $attr {
+        index-error('A schema declaration cannot also be a column') if $attr ~~ Red::Attr::Column;
+        my $kind = $attr.index-kind;
+        my $name = index-name($model.^table, $attr.name.substr(2), False,
+            :suffix($kind eq 'check' ?? 'check' !! 'excl'));
+        if $kind eq 'check' {
+            my %options = schema-options($attr, $model, 0);
+            index-error('CHECK accepts only an expression and :driver')
+                if %options<using>.chars || %options<predicate>.DEFINITE;
+            @constraints.push: Red::AST::Check.new(:$name, :driver(%options<driver>),
+                :expression(schema-predicate($attr.index-expression, $model)));
+        } else {
+            my $result = evaluate-index($attr.index-expression, $model);
+            my @pairs = $result ~~ Positional ?? $result.list !! ($result,);
+            index-error('EXCLUDE requires expression/operator pairs')
+                unless @pairs && @pairs.all ~~ Pair;
+            my @operators = @pairs.map(*.value);
+            index-error('Unsupported exclusion operator')
+                unless @operators.map({ $_ ~~ Str && $_ eq any(
+                    '=', '<>', '&&', '@>', '<@', '-|-', '<<', '>>', '&<', '&>'
+                ) }).all;
+            my %options = schema-options($attr, $model, @pairs.elems);
+            my @opclasses = |(%options<opclasses>:delete);
+            my @keys = @pairs.map({ index-expression(.key, $model) });
+            @constraints.push: Red::AST::Exclude.new(:$name, |%options,
+                :@keys, :@operators, :@opclasses);
+        }
+    }
+    @constraints
 }
 
 sub model-indexes(Mu:U $model --> Array) is export {
@@ -122,7 +229,7 @@ sub model-indexes(Mu:U $model --> Array) is export {
             }
         }
     }
-    for $model.^attributes.grep(Red::Attr::Index) -> $attr {
+    for $model.^attributes.grep(Red::Attr::Index).grep(*.index-kind eq 'index') -> $attr {
         my $logical = $attr.name.substr(2);
         index-error("Conflicting index declarations: $logical")
             if @definitions.first({ .<logical> eq $logical }).defined;
@@ -132,6 +239,8 @@ sub model-indexes(Mu:U $model --> Array) is export {
         for @keys -> $key {
             contribute($logical, $attr.unique-index, $key, False, "independent:$logical");
         }
+        @definitions[%groups{"independent:$logical"}]<options> =
+            schema-options($attr, $model, @keys.elems);
     }
     my %names;
     @definitions.map(-> %definition {
@@ -140,9 +249,12 @@ sub model-indexes(Mu:U $model --> Array) is export {
             unless @keys.map({ .transpose-grep(* ~~ Red::AST::IndexColumn).elems > 0 }).all;
         my $name = index-name($model.^table, %definition<logical>, %definition<unique>);
         index-error("Index name collision: $name") if %names{$name}++;
+        my %options = %definition<options> // %();
+        my @opclasses = |(%options<opclasses>:delete // []);
         Red::AST::CreateIndex.new:
             :table($model.^table), :$name, :logical-name(%definition<logical>),
-            :unique(%definition<unique>), :inline(%definition<inline>), :@keys;
+            :unique(%definition<unique>), :inline(%definition<inline>), :@keys, :@opclasses,
+            |%options;
     }).Array
 }
 
@@ -226,6 +338,35 @@ sub canonical-index-key(Str $sql --> Str) is export {
         @tokens.pop;
     }
     @tokens.join(' ')
+}
+
+#| Read the predicate following the balanced index key list, preserving literals.
+sub sql-index-predicate(Str $sql --> Str) is export {
+    my @chars = $sql.comb;
+    my Str $quote = '';
+    my Int $depth = 0;
+    my Int $i = 0;
+    while $i < @chars.elems {
+        my $char = @chars[$i++];
+        if $quote.chars {
+            if $char eq $quote {
+                if $i < @chars.elems && @chars[$i] eq $quote { $i++ }
+                else { $quote = '' }
+            }
+        } elsif $char eq any("'", '"', '`', '[') {
+            $quote = $char eq '[' ?? ']' !! $char;
+        } elsif $char eq '(' {
+            $depth++;
+        } elsif $char eq ')' {
+            if --$depth == 0 {
+                my $tail = @chars[$i..*].join.trim;
+                return $tail ~~ /^ :i 'WHERE' \s+ /
+                    ?? $tail.subst(/^ :i 'WHERE' \s+ /, '').subst(/ ';' \s* $ /, '').trim
+                    !! '';
+            }
+        }
+    }
+    ''
 }
 
 #| Read an index key list without splitting commas inside expressions or literals.

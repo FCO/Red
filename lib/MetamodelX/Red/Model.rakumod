@@ -90,6 +90,8 @@ method indexes(Mu:U \model) {
     @!indexes.List
 }
 
+method schema-constraints(Mu:U \model) { model-schema-constraints(model).List }
+
 multi method create-indexes(Mu:U \model, Str :$with!, |c) {
     my $*RED-DB = %GLOBAL::RED-DEFAULT-DRIVERS{$with};
     self.create-indexes(model, |c)
@@ -103,18 +105,15 @@ multi method create-indexes(Mu:U \model, Red::Driver :$with!, |c) {
 #| Add declared indexes to an existing table without replacing existing objects.
 multi method create-indexes(Mu:U \model) {
     my $driver = get-RED-DB;
-    my @indexes = model.^indexes;
+    my @indexes = model.^indexes.grep({ $driver.schema-definition-applies($_) });
     return True unless @indexes;
     $driver.translate($_) for @indexes;
     my @existing = $driver.indexes-for-table(model.^table);
     my @pending;
     for @indexes.kv -> $i, $index {
-        my @keys = $index.keys.map({ $driver.index-key-fingerprint($driver.index-key($_)) });
         my $same-name = @existing.first({ .<name> eq $index.name });
         my &equivalent = -> $found {
-            so $found<unique> == $index.unique
-                && ($found<keys>.map({ $driver.index-key-fingerprint($_) }).List eqv @keys.List)
-                && !($found<partial> // False) && ($found<valid> // True);
+            $driver.index-definition-matches($index, $found)
         };
         if $same-name.defined {
             index-error("Existing index {$index.name} has a different definition")
@@ -511,11 +510,13 @@ multi method create-table(\model where { .HOW !~~ MetamodelX::Red::View | Metamo
     ;
     # Resolve and translate every index before creating any database objects.
     get-RED-DB.translate($_) for model.^indexes;
+    get-RED-DB.translate($_) for model.^schema-constraints;
     my $data = Red::AST::CreateTable.new:
             :name(model.^table),
             :temp(model.^temp),
             :columns(model.^columns.map(*.column.clone: :class(model))),
             :constraints[
+                |model.^schema-constraints.grep({ get-RED-DB.schema-definition-applies($_) }),
                 |@!constraints.unique.map: {
                     when .key ~~ "unique" {
                         Red::AST::Unique.new: :columns[|.value]

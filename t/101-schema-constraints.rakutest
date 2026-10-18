@@ -1,0 +1,262 @@
+use Test;
+use Red:api<2>;
+use Red::Index;
+use Red::Driver::Pg;
+use Red::Driver::SQLite;
+
+model SchemaRules {
+    has UInt $.id is serial;
+    has Rat $.percent is rw is column;
+    has Str $.label is column;
+    has Int $.active is column = 1;
+    has $!percent-valid is check{ sql-and(.percent >= 0, .percent <= 1) };
+    has $!label-tree is index({ .label }, :using<btree>);
+    has $!label-search is index({ .label },
+        :using<gin>, :opclass<gin_trgm_ops>, :driver<Pg>);
+}
+
+model PartialRule {
+    has UInt $.id is serial;
+    has Str $.label is column;
+    has Int $.active is column;
+    has $!active-label is unique-index({ .label }, :where{ .active == 1 }, :driver<SQLite>);
+    has $!pg-active-label is unique-index({ .label }, :where{ .active == 1 }, :driver<Pg>);
+}
+
+model RangeTrack {
+    has UInt $.id is serial;
+    has Int $.track-id is column;
+    has Str $.percent-range is column{ :type<numrange> };
+    has $!range-valid is check(
+        { sql-operator('@>', sql-range(0, 1, :bounds<[]>), .percent-range) }, :driver<Pg>);
+    has $!no-overlap is exclude(
+        { .track-id => '=', .percent-range => '&&' }, :using<gist>, :driver<Pg>);
+}
+
+model UnsupportedMethod {
+    has UInt $.id is serial;
+    has Str $.label is column;
+    has $!label-search is index({ .label }, :using<gin>);
+}
+
+model NullAndRule {
+    has UInt $.id is serial;
+    has Int $.a is column{ :nullable };
+    has Int $.b is column{ :nullable };
+    has $!both is check{ sql-and(.a == 1, .b == 1) };
+}
+
+model NullNotOrRule {
+    has UInt $.id is serial;
+    has Int $.a is column{ :nullable };
+    has Int $.b is column{ :nullable };
+    has $!neither is check{ sql-not(sql-or(.a == 1, .b == 1)) };
+}
+
+model PgOperatorClasses {
+    has UInt $.id is serial;
+    has Str $.label is column;
+    has $!default-class is index({ .label }, :using<btree>, :opclass<text_ops>, :driver<Pg>);
+    has $!mixed-classes is index({ .id, .label },
+        :opclass(['', 'text_pattern_ops']), :driver<Pg>);
+}
+
+my @conf = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @conf.shift;
+my $*RED-DB = database $backend, |%(@conf.map: {
+    do given .split('=') { .[0] => val .[1] }
+});
+my $*RED-DEBUG = so %*ENV<RED_DEBUG>;
+my $pg = Red::Driver::Pg.CREATE;
+my $sqlite = Red::Driver::SQLite.CREATE;
+
+if $backend eq 'Pg' {
+    $*RED-DB.execute('CREATE EXTENSION IF NOT EXISTS pg_trgm');
+    $*RED-DB.execute('CREATE EXTENSION IF NOT EXISTS btree_gist');
+}
+
+subtest 'metadata stays independent of the selected driver', {
+    is SchemaRules.^columns.elems, 4, 'CHECK and index declarations are not columns';
+    is SchemaRules.^schema-constraints.elems, 1, 'CHECK has separate metadata';
+    is SchemaRules.^indexes.elems, 2, 'Both driver variants remain in metadata';
+    my $search = SchemaRules.^indexes.first(*.logical-name eq 'label-search');
+    is $search.using, 'gin';
+    is-deeply $search.opclasses.Array, ['gin_trgm_ops'];
+    is $sqlite.translate($search).key, '', 'Explicitly conditional index is skipped';
+    like $pg.translate($search).key, /'USING "gin"'/, 'PostgreSQL method is emitted';
+    like $pg.translate($search).key, /'"label" "gin_trgm_ops"'/,
+        'Operator class belongs to its key';
+    is-deeply $pg.translate($search).value, [], 'Index DDL has no binds';
+    throws-like { $pg.translate($search.clone(:unique)) }, X::Red::Index,
+        'Unsupported unique access method is rejected before DDL';
+    throws-like { $sqlite.translate(UnsupportedMethod.^indexes.head) }, X::Red::Index,
+        'Unsupported unguarded method is rejected';
+};
+
+subtest 'portable CHECK is enforced by INSERT and UPDATE', {
+    schema(SchemaRules).drop.create;
+    my $row = SchemaRules.^create: :percent(0.5), :label<Alpha>;
+    is $row.percent, 0.5;
+    unlike $row.raku, /'percent-valid'|'label-search'/, 'Declarations are not row data';
+    dies-ok { SchemaRules.^create: :percent(1.5), :label<invalid> }, 'CHECK rejects INSERT';
+    $row.percent = -0.5;
+    dies-ok { $row.^save }, 'CHECK rejects UPDATE';
+    is SchemaRules.^load($row.id).percent, 0.5, 'Invalid UPDATE did not change stored data';
+    lives-ok { SchemaRules.^create-indexes }, 'Index recreation is idempotent';
+};
+
+subtest 'compound CHECK retains SQL NULL semantics', {
+    schema(NullAndRule, NullNotOrRule).drop.create;
+    lives-ok { NullAndRule.^create }, 'UNKNOWN passes CHECK';
+    dies-ok { NullAndRule.^create(:b(0)) }, 'UNKNOWN AND FALSE is FALSE';
+    dies-ok { NullAndRule.^create(:a(0)) }, 'FALSE AND UNKNOWN is FALSE';
+    lives-ok { NullAndRule.^create(:a(1)) }, 'TRUE AND UNKNOWN is UNKNOWN';
+    lives-ok { NullNotOrRule.^create(:a(0), :b(0)) }, 'NOT(FALSE OR FALSE) is TRUE';
+    lives-ok { NullNotOrRule.^create(:b(0)) }, 'NOT(UNKNOWN OR FALSE) is UNKNOWN';
+    dies-ok { NullNotOrRule.^create(:b(1)) }, 'NOT(UNKNOWN OR TRUE) is FALSE';
+    model RakuBooleanRule {
+        has UInt $.id is serial;
+        has Int $.a is column;
+        has Int $.b is column;
+        has $!both is check{ .a == 1 && .b == 1 };
+    }
+    throws-like { RakuBooleanRule.^schema-constraints }, X::Red::Index,
+        'Raku short-circuit expressions are rejected instead of weakening CHECK';
+};
+
+subtest 'constraints are preflighted before schema creation', {
+    model SchemaPreflightGood {
+        has UInt $.id is serial;
+    }
+    model SchemaPreflightBad {
+        has UInt $.id is serial;
+        has Str $.label is column;
+        has $!invalid is unique-index({ .label }, :using<gin>);
+    }
+    throws-like { schema(SchemaPreflightGood, SchemaPreflightBad).create }, X::Red::Index,
+        'All declarations are preflighted before any table is created';
+    dies-ok {
+        $*RED-DB.execute('SELECT 1 FROM '
+            ~ $*RED-DB.table-name-wrapper(SchemaPreflightGood.^table));
+    }, 'No table from the failed schema was created';
+    model UnsupportedCheck {
+        has UInt $.id is serial;
+        has Str $.label is column;
+        has $!regex is check{ sql-operator('~*', .label, '^a') };
+    }
+    if $backend eq 'Pg' {
+        pass 'Native operator is supported on Pg';
+    } else {
+        throws-like { schema(UnsupportedCheck).create }, X::Red::Index,
+            'No automatic weakening of an unsupported CHECK';
+    }
+    lives-ok { $sqlite.translate(RangeTrack.^schema-constraints.head) },
+        'Explicitly Pg-only CHECK can be skipped';
+    is $sqlite.translate(RangeTrack.^schema-constraints.tail).key, '',
+        'Explicitly Pg-only exclusion can be skipped';
+    throws-like { $sqlite.translate(RangeTrack.^schema-constraints.tail.clone(:driver(''))) },
+        X::Red::Index, 'An unguarded exclusion requires support';
+};
+
+subtest 'partial unique indexes keep their predicate and identity', {
+    schema(PartialRule).drop.create;
+    lives-ok { PartialRule.^create-indexes }, 'Repeating creation preserves partial indexes';
+    if $backend eq 'MySQL' {
+        pass 'Both explicitly selected partial indexes are omitted on MySQL';
+        my $index = PartialRule.^indexes.head.clone(:driver(''));
+        throws-like { $*RED-DB.translate($index) }, X::Red::Index,
+            'MySQL rejects an unguarded partial index';
+    } else {
+        PartialRule.^create: :label<same>, :active(0);
+        PartialRule.^create: :label<same>, :active(0);
+        PartialRule.^create: :label<same>, :active(1);
+        dies-ok { PartialRule.^create: :label<same>, :active(1) },
+            'Uniqueness applies only to rows matching the predicate';
+        my $definition = PartialRule.^indexes.first({ $*RED-DB.schema-definition-applies($_) });
+        my $existing = $*RED-DB.indexes-for-table(PartialRule.^table)
+            .first({ .<name> eq $definition.name });
+        ok $*RED-DB.index-definition-matches($definition, $existing), 'Catalog matches predicate';
+        nok $*RED-DB.index-definition-matches(
+            $definition.clone(:predicate(Red::AST)), $existing), 'Full index is different';
+    }
+};
+
+subtest 'native operators bind values in queries', {
+    my $*RED-INTERNAL = True;
+    my Int $*bind-counter = 0;
+    my $ast = sql-operator('~*', SchemaRules.label, "a' OR true --");
+    my $sql = $pg.translate($ast);
+    unlike $sql.key, /'OR true'/, 'Pattern is not interpolated into SQL';
+    is-deeply $sql.value, ["a' OR true --"], 'Pattern is a bind value';
+    throws-like { sql-operator('; DROP TABLE x', SchemaRules.label, 'x') }, X::Red::Index,
+        'Operator tokens are validated';
+    throws-like { sql-range(0, 1, :type<bad>) }, X::Red::Index, 'Range types are validated';
+};
+
+subtest 'PostgreSQL ranges, exclusion and GIN catalog', {
+    if $backend ne 'Pg' {
+        skip 'PostgreSQL integration', 1;
+    } else {
+        schema(RangeTrack).drop.create;
+        my $first = RangeTrack.^create: :track-id(10), :percent-range('[0.1,0.4)');
+        lives-ok { RangeTrack.^create: :track-id(10), :percent-range('[0.4,0.6)') },
+            'Touching half-open intervals are allowed';
+        lives-ok { RangeTrack.^create: :track-id(11), :percent-range('[0.2,0.3)') },
+            'Different tracks can overlap';
+        dies-ok { RangeTrack.^create: :track-id(10), :percent-range('[0.2,0.3)') },
+            'Overlapping intervals on the same track are excluded';
+        dies-ok { RangeTrack.^create: :track-id(10), :percent-range('[0.7,1.1)') },
+            'Range CHECK rejects values outside [0,1]';
+        is RangeTrack.^all.grep({ sql-operator('&&', .percent-range,
+            sql-range(0.2, 0.3)) }).elems, 2, 'Range operators work in queries';
+        is SchemaRules.^all.grep({ sql-operator('~*', .label, '^alpha$') }).elems, 1,
+            'Case-insensitive regex works in queries';
+        my $index = SchemaRules.^indexes.first(*.using eq 'gin');
+        my $found = $*RED-DB.indexes-for-table(SchemaRules.^table)
+            .first({ .<name> eq $index.name });
+        is $found<method>, 'gin', 'Catalog records the access method';
+        ok $*RED-DB.index-definition-matches($index, $found), 'GIN opclass matches';
+        nok $*RED-DB.index-definition-matches($index.clone(:using<btree>), $found),
+            'B-tree and GIN are not equivalent';
+        lives-ok { SchemaRules.^create-indexes }, 'GIN creation remains idempotent';
+        schema(PgOperatorClasses).drop.create;
+        lives-ok { PgOperatorClasses.^create-indexes },
+            'Explicit default and per-key operator classes are idempotent';
+        my $mixed = PgOperatorClasses.^indexes.first(*.logical-name eq 'mixed-classes');
+        my $catalog = $*RED-DB.indexes-for-table(PgOperatorClasses.^table)
+            .first({ .<name> eq $mixed.name });
+        my @opclasses = '', 'text_ops';
+        nok $*RED-DB.index-definition-matches($mixed.clone(:@opclasses), $catalog),
+            'Different operator classes are not equivalent';
+    }
+};
+
+subtest 'predicate parser respects quoted WHERE and parentheses', {
+    is sql-index-predicate(q[CREATE INDEX "a(where)" ON x (lower('WHERE ()')) WHERE active = 1]),
+        'active = 1';
+    is sql-index-predicate(q[CREATE INDEX x ON y (lower('WHERE'))]), '';
+};
+
+subtest 'schema options validate identifiers and key counts', {
+    model InvalidSchemaMethod {
+        has UInt $.id is serial;
+        has $!bad is index({ .id }, :using('btree; DROP TABLE x'));
+    }
+    model InvalidSchemaClass {
+        has UInt $.id is serial;
+        has $!bad is index({ .id }, :opclass('x); DROP TABLE y'));
+    }
+    model InvalidClassCount {
+        has UInt $.id is serial;
+        has Str $.label is column;
+        has $!bad is index({ .id, .label }, :opclass<text_ops>);
+    }
+    throws-like { .^indexes }, X::Red::Index
+        for InvalidSchemaMethod, InvalidSchemaClass, InvalidClassCount;
+    my $attr = Attribute.new(:name('$!misspelled'), :package(SchemaRules), :type(Mu));
+    my $options = \({ .id }, :usign<gin>);
+    throws-like { trait_mod:<is>($attr, :index($options)) }, X::Red::Index,
+        'Misspelled options are rejected instead of creating a default index';
+};
+
+done-testing;

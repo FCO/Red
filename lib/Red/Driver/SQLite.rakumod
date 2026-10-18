@@ -29,6 +29,7 @@ has $.database = q<:memory:>;
 has DBDish::SQLite::Connection $!dbh;
 
 method schema-reader { Red::Driver::SQLite::SchemaReader }
+method supports-partial-indexes { True }
 
 method indexes-for-table(Str $table --> Array) {
     my @indexes;
@@ -54,7 +55,8 @@ method indexes-for-table(Str $table --> Array) {
             }
         }
         @indexes.push: { :$name, :unique(so $row<unique>),
-            :partial(so $row<partial>), :keys(@keys.Array) };
+            :partial(so $row<partial>), :keys(@keys.Array),
+            :predicate($definition<sql>.defined ?? sql-index-predicate($definition<sql>) !! '') };
     }
     @indexes.Array
 }
@@ -101,6 +103,7 @@ multi method prepare(Str $query) {
 method create-schema(%models where .values.all ~~ Red::Model) {
     for %models.values -> $model {
         self.translate($_) for $model.^indexes;
+        self.translate($_) for $model.^schema-constraints;
     }
     do for %models.kv -> Str() $name, Red::Model $model {
         $name => $model.^create-table

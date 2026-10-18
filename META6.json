@@ -70,6 +70,7 @@
     "Red::AST::LastInsertedRow": "lib/Red/AST/LastInsertedRow.rakumod",
     "Red::AST::Minus": "lib/Red/AST/Minus.rakumod",
     "Red::AST::MultiSelect": "lib/Red/AST/MultiSelect.rakumod",
+    "Red::AST::Native": "lib/Red/AST/Native.rakumod",
     "Red::AST::Next": "lib/Red/AST/Next.rakumod",
     "Red::AST::Operator": "lib/Red/AST/Operator.rakumod",
     "Red::AST::Optimizer::AND": "lib/Red/AST/Optimizer/AND.rakumod",

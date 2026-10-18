@@ -17,6 +17,10 @@ class Red::AST::CreateIndex does Red::AST {
     has Bool $.unique = False;
     has Bool $.inline = False;
     has Red::AST @.keys;
+    has Str $.using = '';
+    has Str $.driver = '';
+    has Str @.opclasses;
+    has Red::AST $.predicate;
 
     method returns { Nil }
     method args { |@!keys }
