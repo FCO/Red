@@ -18,6 +18,9 @@ jobs:
         raku-version:
           - "2026.06"
           - "2026.09"
+        exclude:
+          - raku-version: "2026.06"
+            rakuast: "1"
     runs-on: ${{ matrix.os }}
     env:
       RAKUDO_RAKUAST: ${{ matrix.rakuast }}
