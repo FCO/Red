@@ -508,7 +508,7 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
     my role CMModel [Mu:U \m] {
         has &.last-filter = &filter;
         has $.last-rs  = SELF;
-        method of { model }
+        method of { m }
     }
     @*table-list .= unique;
     SELF.clone(

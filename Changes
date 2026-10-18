@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - queries: keep aggregate projection models isolated during concurrent query construction (#554)
     - transactions: warn when guard.do returns a pending Promise without retaining its work
     - transactions: add guard.do/start with callbacks and automatically release manual blocks
     - transactions: add retain/release participants with rollback on the last release

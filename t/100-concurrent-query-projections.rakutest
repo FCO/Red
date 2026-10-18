@@ -1,0 +1,83 @@
+use Test;
+use Red;
+use Red::AST::Function;
+use Red::AST::Infixes;
+use Red::AST::Value;
+
+model ConcurrentUpload {
+    has Int $.id is serial;
+    has Str $.filename is column;
+    has Int $.uploaded is column;
+}
+
+model ConcurrentRefresh {
+    has Int $.id is serial;
+    has Int $.refresh-time is column;
+}
+
+my @config = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @config.shift;
+my %connection = @config.map({
+    do given .split('=') { .[0] => val .[1] }
+});
+my $*RED-DB = database $driver, |%connection;
+
+sub count-expression() {
+    Red::AST::Function.new(:func<count>, :args[Red::AST::Value.new(:value('*'))])
+}
+
+sub query(Int $kind) {
+    if $kind == 0 {
+        # The projection used by ResultSeq.Bool.
+        ConcurrentUpload.^all.grep(*.filename eq 'foo').create-map(
+            Red::AST::Gt.new(count-expression(), Red::AST::Value.new(:value(0)))
+        ).head(1).ast
+    } else {
+        # The projection used by ResultSeq.elems, with an aggregate subquery (#554).
+        my $latest = ConcurrentRefresh.^rs.max(*.refresh-time);
+        ConcurrentUpload.^all.grep(*.uploaded > $latest)
+            .create-map(count-expression()).head(1).ast
+    }
+}
+
+my @expected = (^2).map({ $*RED-DB.translate(query($_)).key }).Array;
+like @expected[0], /'count(' .* ') > 0'/, 'existence query has its own projection';
+like @expected[1], /'max(' .* 'refresh_time'/, 'count query contains the refresh subquery';
+
+my @workers = (^8).map(-> $worker {
+    start {
+        for ^40 -> $iteration {
+            my $kind = ($worker + $iteration) % 2;
+            my $sql = $*RED-DB.translate(query($kind)).key;
+            die "Concurrent query changed projection: $sql" unless $sql eq @expected[$kind];
+        }
+    }
+});
+lives-ok { await @workers }, 'concurrent queries retain their own projection models';
+
+sub populate() {
+    schema(ConcurrentUpload, ConcurrentRefresh).create;
+    ConcurrentRefresh.^create(:refresh-time(10));
+    ConcurrentUpload.^create(:filename<foo>, :uploaded(20));
+}
+
+# Server databases share read-only fixtures; SQLite connections own in-memory databases.
+populate() unless $driver eq 'SQLite';
+my @readers = (^8).map({
+    start {
+        my $*RED-DB = database $driver, |%connection;
+        populate() if $driver eq 'SQLite';
+        for ^10 {
+            die 'Existing upload was not found'
+                unless ConcurrentUpload.^all.grep(*.filename eq 'foo').so;
+            die 'Missing upload was found'
+                if ConcurrentUpload.^all.grep(*.filename eq 'missing').so;
+            my $latest = ConcurrentRefresh.^rs.max(*.refresh-time);
+            die 'Upload count changed'
+                unless ConcurrentUpload.^all.grep(*.uploaded > $latest).elems == 1;
+        }
+    }
+});
+lives-ok { await @readers }, 'concurrent Bool and elems return the expected database results';
+
+done-testing;

@@ -6,7 +6,14 @@ use Red::AST::Reference;
 
 unit role MetamodelX::Red::Specialisable;
 
+my Lock $specialise-lock .= new;
+
 multi method specialise($self, +@ret where .all ~~ Red::AST) is hidden-from-sql-commenting {
+    # Generated models compose shared roles; keep their metamodel construction atomic.
+    $specialise-lock.protect: { self!specialise($self, |@ret) }
+}
+
+method !specialise($self, *@ret) is hidden-from-sql-commenting {
     my \Meta  = $self.^orig.HOW.WHAT;
     my \model = Meta.new(:table($self.^table)).new_type: :name($self.^name);
     model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, $self.^table;
