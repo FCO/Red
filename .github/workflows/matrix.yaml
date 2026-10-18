@@ -6,18 +6,21 @@ on:
     tags-ignore:
       - "*"
   pull_request:
-env:
-  RAKUDO_RAKUAST: "0"
 jobs:
   raku:
+    name: Raku ${{ matrix.raku-version }} (RakuAST=${{ matrix.rakuast }})
     strategy:
+      fail-fast: false
       matrix:
+        rakuast: ["0", "1"]
         os:
           - ubuntu-latest
         raku-version:
           - "2026.06"
           - "2026.09"
     runs-on: ${{ matrix.os }}
+    env:
+      RAKUDO_RAKUAST: ${{ matrix.rakuast }}
     steps:
       - uses: actions/checkout@v3
       - uses: Raku/setup-raku@v1
@@ -32,9 +35,15 @@ jobs:
         run: prove6 -lj8 t
 
   mysql:
+    name: MySQL (RakuAST=${{ matrix.rakuast }})
+    strategy:
+      fail-fast: false
+      matrix:
+        rakuast: ["0", "1"]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      RAKUDO_RAKUAST: ${{ matrix.rakuast }}
       RED_SOURCE: ${{ github.workspace }}
       MYSQL_HOST: 127.0.0.1
       MYSQL_PORT: "3306"
@@ -74,9 +83,15 @@ jobs:
         run: prove6 -j8 -e "raku $GITHUB_WORKSPACE/.ci/mysql-driver/tools/red-test-exec.raku" t
 
   pg:
+    name: PostgreSQL (RakuAST=${{ matrix.rakuast }})
+    strategy:
+      fail-fast: false
+      matrix:
+        rakuast: ["0", "1"]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     env:
+      RAKUDO_RAKUAST: ${{ matrix.rakuast }}
       PGHOST: 127.0.0.1
       PGPORT: "5432"
       PGUSER: postgres
@@ -115,11 +130,18 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: postgresql-test-results
+          name: postgresql-test-results-rakuast-${{ matrix.rakuast }}
           path: pg-test-results.log
 
   json-pg:
+    name: PostgreSQL JSON (RakuAST=${{ matrix.rakuast }})
+    strategy:
+      fail-fast: false
+      matrix:
+        rakuast: ["0", "1"]
     runs-on: ubuntu-latest
+    env:
+      RAKUDO_RAKUAST: ${{ matrix.rakuast }}
     services:
       postgres:
         image: postgres:15
