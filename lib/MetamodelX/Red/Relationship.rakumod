@@ -85,7 +85,7 @@ multi method add-relationship(
         Mu:U $self,
         Attribute $attr,
         &reference,
-        Red::Model :$model-type!,
+        Mu:U       :$model-type!,
         Bool       :$optional,
         Bool       :$prefetch = $attr.type !~~ Positional,
         Bool       :$no-prefetch = !$prefetch,

@@ -93,6 +93,7 @@ method Hash(--> Hash()) {
         |(:deflate($_)              with &!deflate          ),
         |(:computation($_)          with $!computation      ),
         |(:model-name($_)           with $!model-name       ),
+        |(:model-type($!model-type) if $!model-type !=== Red::Model),
         |(:column-name($_)          with $!column-name      ),
         |(:require($_)              with $!require          ),
     )
@@ -111,7 +112,8 @@ method migration-hash(--> Hash()) {
 
 #| Subclass used to lazy evaluation of parameter types
 class ReferencesProxy does Callable {
-    has Str     $.model-name    is required;
+    has Str     $.model-name;
+    has Mu:U    $.model-type    = Red::Model;
     has Str     $.column-name;
     has Str     $.require       = $!model-name;
     has         $.model;
@@ -120,7 +122,7 @@ class ReferencesProxy does Callable {
 
     method model($alias = Nil --> Mu:U) {
         if !$!tried-model {
-            my $model = ::($!model-name);
+            my $model = $!model-type !=== Red::Model ?? $!model-type !! ::($!model-name);
             if !$model && $model ~~ Failure {
                 require ::($!require);
                 $model = ::($!model-name);
@@ -141,6 +143,14 @@ class ReferencesProxy does Callable {
 
     method CALL-ME($alias = Nil) {
         my $*RED-INTERNAL = True;
+        if $alias.DEFINITE {
+            # Resolving a value on an instance must not pass through model(),
+            # whose return value is deliberately constrained to a type object.
+            self.model($alias.WHAT);
+            return &!references($alias) if &!references;
+            my $column = self.model.^columns.first(*.column.attr-name eq $!column-name);
+            return $alias.^get-attr($column);
+        }
         if &!references {
             my $model = self.model($alias);
             my $ret = &!references.($model);
@@ -172,7 +182,7 @@ method references(--> Callable) is rw {
                 &!references;
             }
         }
-        elsif $!model-name && $!column-name {
+        elsif $!column-name && ($!model-name || $!model-type !=== Red::Model) {
             ReferencesProxy.new(:$!model-name, :$!column-name, :$!require, :$!model-type);
         }
         else {

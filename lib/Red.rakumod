@@ -632,6 +632,30 @@ with C<require>:
                                              :require<MyApp::Schema::Related> };
 =end code
 
+=head4 creating through a scalar relationship
+
+An empty scalar relationship returns an undefined, false type object carrying
+the relationship's creation context, rather than C<Nil>. Call C<.^create> on
+that object to create the related row and fill the foreign key automatically:
+
+=begin code :lang<raku>
+my $parent = $child.parent.^create(:name<parent>);
+
+# For a relationship declared with :has-one (use Red <has-one>):
+my $profile = $account.profile.^create(:description<profile>);
+=end code
+
+For a belongs-to relationship, Red saves the foreign key on the existing source
+row. For C<:has-one>, Red supplies the source key to the new related row. The
+source must already be saved. Both writes participate in one transaction; a
+failed operation rolls back its writes and restores the source's attribute and
+dirty state. Inside a transaction, the operation uses a savepoint.
+
+Existing relationships continue to return their related instances. An empty
+relationship still tests false and undefined, but code that checks specifically
+for C<Nil> should use C<.defined> instead. Creation uses C<.^create>, while
+plural relationships continue to use C<.create>.
+
 =head4 custom table name
 
 =begin code :lang<raku>

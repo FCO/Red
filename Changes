@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - relationships: support .^create on empty scalar relationships with automatic foreign keys (#475)
+    - relationships: resolve string/type models consistently and isolate creation contexts per source
     - queries: keep aggregate projection models isolated during concurrent query construction (#554)
     - transactions: warn when guard.do returns a pending Promise without retaining its work
     - transactions: add guard.do/start with callbacks and automatically release manual blocks

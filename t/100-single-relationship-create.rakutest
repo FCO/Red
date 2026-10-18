@@ -1,0 +1,228 @@
+use Test;
+use Red <has-one>;
+use X::Red::Exceptions;
+
+my Bool $fail-update = False;
+class UpdateFailed is Exception {}
+
+model NamedParent {
+    has UInt $.id is serial;
+    has Str $.name is column = 'parent';
+    has $.child is relationship(*.parent-id, :model<NamedChild>, :has-one);
+    has @.children is relationship(*.parent-id, :model<NamedChild>);
+}
+
+model NamedChild {
+    has UInt $.id is serial;
+    has UInt $.parent-id is referencing(*.id, :model<NamedParent>);
+    has Str $.label is rw is column = 'child';
+    has $.parent is relationship(*.parent-id, :model<NamedParent>);
+
+    method reject-update() is after-update {
+        UpdateFailed.new.throw if $fail-update;
+    }
+}
+
+model TypedChild { ... }
+model TypedParent {
+    has UInt $.id is serial;
+    has Str $.name is column = 'parent';
+    has TypedChild $.child is relationship(*.parent-id, :model(TypedChild), :has-one);
+    has $.untyped-child is relationship(*.parent-id, :model(TypedChild), :has-one);
+    has $.column-child is relationship(*.parent-id, :model<ColumnChild>, :has-one);
+}
+
+model TypedChild {
+    has UInt $.id is serial;
+    has UInt $.parent-id is referencing(*.id, :model(TypedParent));
+    has TypedParent $.parent is relationship(*.parent-id, :model(TypedParent));
+    has $.untyped-parent is relationship(*.parent-id, :model(TypedParent));
+}
+
+model ColumnChild {
+    has UInt $.id is serial;
+    has UInt $.parent-id is referencing(:column<id>, :model(TypedParent));
+    has $.parent is relationship(*.parent-id, :model(TypedParent));
+}
+
+model KeyParent {
+    has UInt $.account-key is serial;
+    has Str $.region is column is unique;
+    has $.child is relationship({ .owner-key, .area }, :model<KeyChild>, :has-one);
+}
+
+model KeyChild {
+    has UInt $.id is serial;
+    has UInt $.owner-key is referencing(:column<account-key>, :model<KeyParent>);
+    has Str $.area is referencing(:column<region>, :model<KeyParent>);
+    has $.parent is relationship({ .owner-key, .area }, :model<KeyParent>);
+}
+
+my @conf = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @conf.shift;
+my $*RED-DB = database $driver, |%(@conf.map: {
+    do given .split('=') { .[0] => val .[1] }
+});
+my $*RED-DEBUG = $_ with %*ENV<RED_DEBUG>;
+my $schema = schema(
+    NamedParent, NamedChild, TypedParent, TypedChild, ColumnChild, KeyParent, KeyChild
+);
+$schema.drop.create;
+LEAVE $schema.drop;
+
+subtest 'Empty has-one returns an undefined creation context', {
+    my $parent = NamedParent.^create;
+    my $context = $parent.child;
+    nok $context.defined, 'Empty relationship is undefined';
+    nok so $context, 'Empty relationship is false';
+    ok $context.^orig =:= NamedChild, 'Context retains the target model';
+    is NamedChild.^all.elems, 0, 'Accessing the relationship does not create a row';
+    my $child = $context.^create: :label<profile>, :parent-id(99999);
+    isa-ok $child, NamedChild;
+    is $child.parent-id, $parent.id, 'Relationship supplies the FK';
+    is NamedChild.^load($child.id).parent-id, $parent.id, 'FK is persisted';
+    is $parent.child.id, $child.id, 'Filled relationship returns the existing object';
+    is $child.parent.id, $parent.id, 'Inverse relationship resolves';
+};
+
+subtest 'Belongs-to creation updates the source', {
+    my $child = NamedChild.^create;
+    my $parent = $child.parent.^create: :name<created-parent>;
+    isa-ok $parent, NamedParent;
+    is $child.parent-id, $parent.id, 'FK is updated in memory';
+    is NamedChild.^load($child.id).parent-id, $parent.id, 'FK is saved';
+    is $child.parent.name, 'created-parent', 'Relationship resolves after create';
+    is $parent.child.id, $child.id, 'Has-one resolves after inverse creation';
+};
+
+subtest 'Creation contexts remain isolated across interleaved accesses', {
+    my $first = NamedChild.^create;
+    my $second = NamedChild.^create;
+    my $a = $first.parent;
+    my $b = $second.parent;
+    my $again = $first.parent;
+    my $pb = $b.^create: :name<second>;
+    my $pa = $a.^create: :name<first>;
+    is NamedChild.^load($first.id).parent-id, $pa.id, 'First context retains its source';
+    is NamedChild.^load($second.id).parent-id, $pb.id, 'Second context retains its source';
+    isnt $pa.id, $pb.id, 'Separate related rows are created';
+
+    my $p1 = NamedParent.^create;
+    my $p2 = NamedParent.^create;
+    my $c1 = $p1.child;
+    my $c2 = $p2.child;
+    is $c2.^create.parent-id, $p2.id, 'Second has-one context uses its source';
+    is $c1.^create.parent-id, $p1.id, 'First has-one context uses its source';
+};
+
+subtest 'Model types work with typed and untyped attributes', {
+    for <child untyped-child> -> $name {
+        my $parent = TypedParent.^create;
+        my $child = $parent."$name"().^create;
+        is $child.parent-id, $parent.id, "$name fills the FK";
+        is TypedChild.^load($child.id).parent.id, $parent.id, "$name persists the relation";
+    }
+    for <parent untyped-parent> -> $name {
+        my $child = TypedChild.^create;
+        my $parent = $child."$name"().^create;
+        is $child.parent-id, $parent.id, "$name updates the source";
+        is TypedChild.^load($child.id).parent.id, $parent.id, "$name saves the source";
+    }
+    my $column-child = ColumnChild.^create;
+    my $column-parent = $column-child.parent.^create;
+    is ColumnChild.^load($column-child.id).parent-id, $column-parent.id,
+        'Model type with :column also supports belongs-to creation';
+    my $parent = TypedParent.^create;
+    is $parent.column-child.^create.parent-id, $parent.id,
+        'Model type with :column also supports has-one creation';
+};
+
+subtest 'All reference columns are mapped, including named column references', {
+    my $parent = KeyParent.^create: :region<west>;
+    my $child = $parent.child.^create;
+    is $child.owner-key, $parent.account-key, 'Renamed primary key is copied';
+    is $child.area, 'west', 'Second referenced column is copied';
+    is KeyChild.^load($child.id).parent.region, 'west', 'Multiple-column relation reloads';
+
+    my $other = KeyChild.^create;
+    my $created = $other.parent.^create: :region<east>;
+    is $other.owner-key, $created.account-key, 'Inverse creation sets renamed FK';
+    is $other.area, 'east', 'Inverse creation sets second FK';
+    is KeyChild.^load($other.id).parent.region, 'east', 'Both FKs are persisted';
+
+    my $partial = KeyChild.^create: :owner-key($parent.account-key);
+    nok $partial.parent.defined, 'A partially populated relationship is still empty';
+    my $replacement = $partial.parent.^create: :region<north>;
+    is KeyChild.^load($partial.id).parent.region, 'north', 'Creation fills all reference columns';
+};
+
+subtest 'Failed FK updates roll back database and source state', {
+    my $child = NamedChild.^create;
+    $child.label = 'pending';
+    my $dirty = $child.^dirty-columns.clone;
+    my $count = NamedParent.^all.elems;
+    $fail-update = True;
+    LEAVE $fail-update = False;
+    throws-like { $child.parent.^create }, UpdateFailed;
+    is NamedParent.^all.elems, $count, 'Related insert was rolled back';
+    nok NamedChild.^load($child.id).parent-id.defined, 'Persisted FK was rolled back';
+    nok $child.parent-id.defined, 'In-memory FK was restored';
+    is $child.label, 'pending', 'Pending attribute value is preserved';
+    is-deeply $child.^dirty-columns, $dirty, 'Original dirty state is preserved';
+    is NamedChild.^load($child.id).label, 'child', 'Other updated columns were rolled back';
+};
+
+subtest 'Caught failures use savepoints and leave outer transactions usable', {
+    my $child = NamedChild.^create;
+    my $count = NamedParent.^all.elems;
+    red-do :transaction, {
+        NamedParent.^create: :name<before>;
+        $fail-update = True;
+        throws-like { $child.parent.^create }, UpdateFailed;
+        $fail-update = False;
+        is NamedParent.^all.elems, $count + 1, 'Only the inner operation was rolled back';
+        $child.parent.^create: :name<after>;
+    };
+    is NamedParent.^all.elems, $count + 2, 'Outer transaction committed successfully';
+    is NamedChild.^load($child.id).parent.name, 'after', 'Successful retry saved the FK';
+};
+
+subtest 'Outer rollback undoes successful relationship creation', {
+    my $count = NamedChild.^all.elems;
+    throws-like {
+        red-do :transaction, {
+            my $parent = NamedParent.^create;
+            $parent.child.^create;
+            UpdateFailed.new.throw;
+        }
+    }, UpdateFailed;
+    is NamedChild.^all.elems, $count, 'Related row participates in the outer transaction';
+};
+
+subtest 'Creation requires a persisted source', {
+    throws-like { NamedChild.new.parent.^create }, X::Red::RelationshipCreate;
+    throws-like { NamedParent.new.child.^create }, X::Red::RelationshipCreate;
+};
+
+subtest 'Explicit drivers work without an ambient database', {
+    my $db = $*RED-DB;
+    my $child = NamedChild.^create;
+    my $context = $child.parent;
+    my $parent = do {
+        my $*RED-DB;
+        $context.^create: :with($db), :name<explicit-driver>
+    };
+    is NamedChild.^load($child.id).parent-id, $parent.id, 'Explicit driver saves the FK';
+};
+
+subtest 'Query accessors and plural creation retain their behavior', {
+    my $parent = NamedParent.^create: :name<query-parent>;
+    my $child = $parent.children.create: :label<query-child>;
+    is NamedChild.^all.grep(*.parent.name eq 'query-parent').head.id, $child.id,
+        'Relationship grep still builds a join';
+    is NamedChild.^all.grep(*.id == $child.id).map(*.parent.name).head, 'query-parent',
+        'Relationship map still builds a join';
+    is $parent.child.label, 'query-child', 'Has-one finds a row created through a plural relation';
+};
+
+done-testing;

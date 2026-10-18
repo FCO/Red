@@ -92,6 +92,11 @@ class X::Red::RelationshipNotColumn is X::Red {
     }
 }
 
+class X::Red::RelationshipCreate is X::Red {
+    has Str $.reason is required;
+    method message { "Cannot create through relationship: $!reason" }
+}
+
 class X::Red::RelationshipNotRelated is X::Red {
     has Attribute   $.relationship;
     has Red::Column $.points-to;
