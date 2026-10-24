@@ -7,13 +7,14 @@ unit class Red::Compiler::Runtime;
 has $.receiver;
 
 method dispatch(Str $method, Capture $arguments) is raw is hidden-from-sql-commenting {
-    my %named = $arguments.hash;
-    my $template = %named<red-ast>:delete;
     my $allowed = try $*RED-DONT-FAIL-WITHOUT-OPERATORS;
     if $!receiver ~~ ::('Red::ResultSeq') {
+        my $template = $arguments<red-ast>;
         my $*RED-DONT-FAIL-WITHOUT-OPERATORS = so ($allowed || $template.operators);
-        $!receiver."$method"(|$arguments.list, |%named, :red-ast($template))
+        $!receiver."$method"(|$arguments)
     } else {
+        my %named = $arguments.hash;
+        %named<red-ast>:delete;
         $!receiver."$method"(|$arguments.list, |%named)
     }
 }

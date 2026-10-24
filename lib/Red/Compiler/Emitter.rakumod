@@ -40,8 +40,8 @@ method build(@plan --> Callable:D) {
                 my $value = parent($template, $subject);
                 $template.unsupported("Unknown model member: $name")
                     unless $value ~~ ::('Red::Model') && !$value.DEFINITE
-                        && ($value.^columns.grep({ .name.substr(2) eq $name }).elems
-                            || $value.^relationships.keys.grep({ .name.substr(2) eq $name }).elems);
+                        && ($value.^columns.first({ .name.substr(2) eq $name }).DEFINITE
+                            || $value.^relationships.keys.first({ .name.substr(2) eq $name }).DEFINITE);
                 $value."$name"()
             };
         }

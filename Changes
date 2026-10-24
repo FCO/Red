@@ -9,7 +9,9 @@ Revision history for Red
     - performance: use native candidate matching during row inflation
     - tests: cover repeated model access and add a model access benchmark
     - performance: update plan-cache recency in constant time on cache hits
+    - performance: forward compiled query arguments without rebuilding their capture
     - performance: frame plan-key strings without general-purpose serialization
+    - performance: replace literal name separators without regex matching
     - performance: stop encoding discarded plan keys while retaining fallback bindings
     - performance: create temporary projection query classes on first use
     - performance: install projection initializers directly and defer intermediate query classes
