@@ -142,7 +142,13 @@ predicate. Runtime captures, connections, query objects and SQL plans are never
 saved in the module. Other expressions continue to use CHECK-generated factories;
 this does not eliminate the runtime SELECT envelope or every AST allocation.
 
-## Measuring cache bookkeeping
+## Measuring model access and cache bookkeeping
+
+`raku -Ilib tools/benchmark-model-access.raku` measures loading and reading models,
+repeated field reads, and field writes without saving. It uses an in-memory SQLite
+database, checks the results, warms each task, alternates task order between rounds,
+and emits JSON samples. Use `--rows`, `--load-iterations`, `--access-iterations` and
+`--rounds` to control the workload. Database setup and module compilation are excluded.
 
 `raku -Ilib tools/benchmark-query-cache.raku` isolates cache lookup costs with 1, 16
 and 128 entries. It measures both a warmed working set and continual eviction, checks

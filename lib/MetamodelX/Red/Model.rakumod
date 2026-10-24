@@ -862,8 +862,13 @@ multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
 }
 
 method new-from-data(\of, $data) is hidden-from-backtrace {
-    my %cols-by-attr = of.^columns.map: { .column.attr-name => .column  }
-    my %cols-by-col  = of.^columns.map: { .column.name => .column }
+    my %cols-by-attr;
+    my %cols-by-col;
+    for of.^columns -> $attribute {
+        my $column = $attribute.column;
+        %cols-by-attr{$column.attr-name} = $column;
+        %cols-by-col{$column.name} = $column;
+    }
     my %pre-fetches;
     my $obj = of.^orig.new: |(%($data).kv
         .map(-> $c, $v {
@@ -882,14 +887,12 @@ method new-from-data(\of, $data) is hidden-from-backtrace {
                     die "Column '$c' not found" without $col;
                     die "Inflator not defined for column '$c'" without $col.inflate;
                     my $inflated = $col.inflate.($v, |($col.attr.type if $col.inflate.count > 1));
-                    $inflated = get-RED-DB.inflate(
+                    my $driver = get-RED-DB;
+                    my $target = $col.attr.type;
+                    $inflated = $driver.inflate(
                             $inflated,
-                            :to(of.^attributes.first(*.name.substr(2) eq $c).type)
-                    ) if \(
-                        get-RED-DB,
-                        $inflated,
-                        :to(of.^attributes.first(*.name.substr(2) eq $c).type)
-                    ) ~~ get-RED-DB.^lookup("inflate").candidates.any.signature;
+                            :to($target)
+                    ) if $driver.^lookup('inflate').cando(\($driver, $inflated, :to($target)));
                     $col.attr-name => $inflated
                 }
             } else { Empty }

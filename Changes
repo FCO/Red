@@ -5,11 +5,16 @@ Revision history for Red
     - compiler: preserve comparison operator coercions and casts in compiled queries
     - fixes: bypass query-plan caching for cyclic positional values without losing later bindings
     - fixes: preserve arithmetic grouping in string casts and SQLite JSON array paths
+    - performance: avoid column allocations during model access and key checks
+    - performance: use native candidate matching during row inflation
+    - tests: cover repeated model access and add a model access benchmark
     - performance: update plan-cache recency in constant time on cache hits
     - performance: frame plan-key strings without general-purpose serialization
     - performance: stop encoding discarded plan keys while retaining fallback bindings
+    - performance: resolve hydration target types directly from column metadata
     - queries: return uncached builder results when plan-cache capacity is zero
     - compiler: persist symbolic scalar comparison AST prototypes in module precompilation
+    - performance: build hydration column maps in one pass and stop member lookup early
     - queries: cache SQL plans without sharing cursors, connections or query results
     - compiler: reuse scalar comparison predicates with private captured parameters
     - compiler: keep the unsupported-template exception outside the GLOBAL stash
