@@ -11,7 +11,11 @@ Revision history for Red
     - performance: update plan-cache recency in constant time on cache hits
     - performance: frame plan-key strings without general-purpose serialization
     - performance: stop encoding discarded plan keys while retaining fallback bindings
+    - performance: create temporary projection query classes on first use
+    - performance: install projection initializers directly and defer intermediate query classes
+    - performance: reuse generic projection storage methods with private row state
     - performance: resolve hydration target types directly from column metadata
+    - tests: verify projection class identity, constructor isolation and concurrent initialization
     - queries: return uncached builder results when plan-cache capacity is zero
     - compiler: persist symbolic scalar comparison AST prototypes in module precompilation
     - performance: build hydration column maps in one pass and stop member lookup early

@@ -144,6 +144,19 @@ this does not eliminate the runtime SELECT envelope or every AST allocation.
 
 ## Measuring model access and cache bookkeeping
 
+Temporary projection storage models retain their own metadata and captured expressions.
+Their parameterized `ResultSeq` classes are composed when first requested through the
+metamodel, `.^all`, or the model's `ResultSeq` package symbol. Declared models continue
+to initialize their query classes when defined. Chained projections can use the storage
+metadata directly while building SQL expressions.
+The shared storage parent supplies generic model methods. Column metadata, helper
+attributes, captured expressions, row values and dirty flags retain their individual owners.
+
+`raku -Ilib tools/benchmark-query-construction.raku` measures filters, arithmetic
+projections and chained projections. It checks query results before timing construction,
+warms the tasks, and alternates their order. Set `RAKUDO_RAKUAST=1` to include the
+optional CHECK compiler. `--iterations` and `--rounds` control the sample size.
+
 `raku -Ilib tools/benchmark-model-access.raku` measures loading and reading models,
 repeated field reads, and field writes without saving. It uses an in-memory SQLite
 database, checks the results, warms each task, alternates task order between rounds,

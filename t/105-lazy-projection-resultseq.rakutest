@@ -1,0 +1,121 @@
+use Test;
+use Red;
+use Red::Compiler::RakuAST;
+
+CHECK red-compile if (%*ENV<RAKUDO_RAKUAST> // '0') eq '1';
+
+model LazyProjectionRow {
+    has Int $.id is serial;
+    has Int $.number is column;
+}
+
+my @config = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @config.shift;
+my $*RED-DB = database $driver, |%(@config.map({
+    my ($key, $value) = .split('=');
+    $key => val($value)
+}));
+my $*RED-FALLBACK = False;
+my $schema = schema(LazyProjectionRow);
+$schema.drop.create;
+LEAVE $schema.drop;
+LazyProjectionRow.^create(:number($_)) for 1..3;
+
+sub projection($offset) { LazyProjectionRow.^all.map({ .number + $offset }) }
+
+subtest 'Projection storage and query classes retain their private expressions' => {
+    my $first = projection(10);
+    my $second = projection(20);
+    is-deeply $first.Array.sort.Array, [11, 12, 13], 'First capture';
+    is-deeply $second.Array.sort.Array, [21, 22, 23], 'Second capture';
+    my $type = $first.of;
+    my $class = $type.WHO<ResultSeq>;
+    ok $class ~~ Red::ResultSeq[$type], 'Package symbol retains the parameterized role';
+    is $class.of, $type, 'Query class retains its storage model';
+    is $class, $type.HOW.rs-class, 'Metamodel and package symbol expose the same class';
+    is $class.new.of, $type, 'The generated query class can construct a query';
+    is-deeply $second.Array.sort.Array, [21, 22, 23],
+        'Creating the first class leaves other captures alone';
+};
+
+subtest 'Query classes can be requested through the metamodel or package' => {
+    my $query = projection(30);
+    my $type = $query.of;
+    my $class = $type.HOW.rs-class;
+    is $type.WHO<ResultSeq>, $class, 'Metamodel access publishes the package symbol';
+    is $type.^all.of, $type, 'Model-level all retains the generated type';
+    my $other = projection(40).of;
+    throws-like { $other.WHO<ResultSeq> = Any }, X::Assignment::RO,
+        'The deferred package symbol remains read-only';
+    ok $other.WHO<ResultSeq> ~~ Red::ResultSeq[$other], 'Rejected assignment leaves a valid class';
+    ok LazyProjectionRow.WHO<ResultSeq> ~~ Red::ResultSeq[LazyProjectionRow],
+        'Declared models retain their usual package symbol';
+};
+
+subtest 'Chained projections retain filters and pagination boundaries' => {
+    my $chained = projection(10).grep({ $_ > 11 }).map({ $_ * 2 });
+    is-deeply $chained.Array.sort.Array, [24, 26], 'Chained arithmetic retains the filter';
+    my $page = projection(10).sort({ $_ }).head(2).map({ $_ + 100 });
+    is-deeply $page.Array.sort.Array, [111, 112], 'A projection after pagination retains its boundary';
+};
+
+subtest 'Constructor wrappers remain private to each projection model' => {
+    my $first = projection(70);
+    my $second = projection(80);
+    my $calls = 0;
+    my $handle = $first.of.^lookup('TWEAK').wrap(-> |args {
+        $calls++;
+        callsame
+    });
+    LEAVE $handle.restore;
+    is-deeply $first.Array.sort.Array, [71, 72, 73], 'Wrapped model still initializes its fields';
+    is $calls, 3, 'The wrapper runs for each row of the first projection';
+    is-deeply $second.Array.sort.Array, [81, 82, 83], 'The other projection keeps its values';
+    is $calls, 3, 'The other projection does not invoke the first constructor wrapper';
+};
+
+subtest 'Storage values and dirty state remain private to each instance' => {
+    my $type = projection(90).of;
+    my $column = $type.^columns.head;
+    my $name = $column.name.substr(2);
+    my $first = $type.new(|%($name => 11));
+    my $second = $type.new(|%($name => 22));
+    my $other-type = projection(100).of;
+    my $other-column = $other-type.^columns.head;
+    my $other-name = $other-column.name.substr(2);
+    my $other = $other-type.new(|%($other-name => 33));
+    $first.^set-attr($name, 44);
+    is $column.get_value($first), 44, 'Update the first storage instance';
+    is $column.get_value($second), 22, 'Another instance keeps its own values';
+    is $other-column.get_value($other), 33, 'Another storage type keeps its own values';
+    .^clean-up for $first, $second, $other;
+    $first.^set-dirty($column);
+    ok $first.^is-dirty, 'The changed instance is dirty';
+    nok $second.^is-dirty, 'Another instance remains clean';
+    nok $other.^is-dirty, 'Another storage type remains clean';
+    $first.^saved-on-db;
+    ok $first.^is-on-db, 'The first instance records its saved state';
+    nok $second.^is-on-db, 'Another instance keeps its own saved state';
+    nok $other.^is-on-db, 'Another storage type keeps its own saved state';
+};
+
+subtest 'Concurrent first access publishes one class per model' => {
+    my @types = (50, 60).map({ projection($_).of });
+    my @jobs = (^16).map(-> $index {
+        start {
+            my $type = @types[$index % 2];
+            my $query = $type.^all;
+            ($index % 2) => $query.WHAT
+        }
+    });
+    my @results = await @jobs;
+    for ^2 -> $index {
+        my @classes = @results.grep(*.key == $index).map(*.value);
+        is @classes.unique.elems, 1, 'One query class is published for concurrent readers';
+        ok @classes.head ~~ Red::ResultSeq[@types[$index]], 'Correct parameterized role';
+    }
+    ok @results.first(*.key == 0).value !=== @results.first(*.key == 1).value,
+        'Different projection models retain separate query classes';
+};
+
+done-testing;
