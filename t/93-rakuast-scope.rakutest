@@ -1,0 +1,30 @@
+use Test;
+use Red::Compiler::RakuAST;
+use X::Red::Exceptions;
+
+CHECK { red-compile if (%*ENV<RAKUDO_RAKUAST> // '0') eq '1' }
+
+unless (%*ENV<RAKUDO_RAKUAST> // '0') eq '1' {
+    plan :skip-all('The optional compiler requires the RakuAST frontend');
+    exit;
+}
+
+my $*RED-FALLBACK = False;
+my $*RED-DB;
+my $rows;
+{
+    use Red;
+    $*RED-DB = database 'Pg';
+    model ScopedCompilerRow {
+        has Int $.value is column;
+    }
+    $rows = ScopedCompilerRow.^all;
+    lives-ok { $rows.map(*.value) }, 'Compilation preserves imported operators';
+}
+
+throws-like { $rows.map(*.value) }, X::Red::NoOperatorsDefined,
+    'Compilation does not grant operators outside their lexical scope';
+throws-like { $rows.grep(*.value > 1) }, X::Red::NoOperatorsDefined,
+    'Compiled grep preserves the operator scope check';
+
+done-testing;

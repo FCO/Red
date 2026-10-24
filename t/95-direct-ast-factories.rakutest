@@ -1,0 +1,110 @@
+use Test;
+use Red;
+use Red::Compiler::Emitter;
+use Red::Compiler::Template;
+use Red::AST::Value;
+use Red::Type::Json;
+
+my $*RED-FALLBACK = False;
+my $*RED-DB = database 'Pg';
+
+model DirectFactoryRow {
+    has Int $.number is rw is column;
+    has Str $.label is column;
+    has Json $.payload is rw is column;
+}
+
+class DirectOnlyTemplate is Red::Compiler::Template {
+    method evaluate(|) { die 'The expression interpreter was called' }
+    method validate(|) { die 'The validation interpreter was called' }
+    method path(|) { die 'The path interpreter was called' }
+}
+
+sub direct(@plan, :@getters = []) {
+    DirectOnlyTemplate.new(:@plan, :@getters,
+        :builder(Red::Compiler::Emitter.build(@plan)),
+        :validator(Red::Compiler::Emitter.validator(@plan)))
+}
+
+sub query($template) {
+    DirectFactoryRow.^all.map(-> $row { die 'The original callback was called' },
+        :red-ast($template))
+}
+
+subtest 'Generated factories bypass all expression interpreters' => {
+    my @field = ['field', ['subject'], 'number'];
+    my @label = ['field', ['subject'], 'label'];
+    my @json = ['field', ['subject'], 'payload'];
+    my @plans =
+        ['literal', 42],
+        @field.Array,
+        ['op', 'Sum', @field.Array, ['literal', 2]],
+        ['negate', @field.Array],
+        ['so', @field.Array],
+        ['not', @field.Array],
+        ['array', @field.Array, @label.Array],
+        ['list', @field.Array, @label.Array],
+        ['hash', ['value', @field.Array], ['label', @label.Array]],
+        ['string', ['literal', 'value: '], @field.Array],
+        ['case', ['op', 'Gt', @field.Array, ['literal', 2]],
+            ['hash', ['value', @field.Array]], ['hash', ['value', ['literal', 0]]]],
+        ['call', 'uc', @label.Array],
+        ['index', @json.Array, 'value'],
+        ['lookup', @json.Array, ['literal', 'value']],
+        ['exists', @json.Array, ['literal', 'value']],
+        ['sequence', ['let', 0, @field.Array],
+            ['op', 'Sum', ['local', 0], ['literal', 1]]];
+    for @plans.kv -> $index, $plan {
+        my $interpreted = Red::Compiler::Template.new(:plan($plan.list));
+        my $expected = $*RED-DB.translate(query($interpreted).ast);
+        my $actual = $*RED-DB.translate(query(direct($plan)).ast);
+        is-deeply $actual, $expected, "Factory $index preserves SQL and bindings";
+    }
+    throws-like { Red::Compiler::Emitter.build(['unknown']) },
+        X::Red::Compiler::Unsupported, 'Unknown operations fail during specialization';
+};
+
+subtest 'Direct factories preserve private captures and fallback guards' => {
+    my $value = 10;
+    my $reads = 0;
+    my @plan = ['op', 'Sum', ['field', ['subject'], 'number'], ['capture', 0]];
+    my $template = direct(@plan, :getters([-> { $reads++; $value }]));
+    my $first = query($template);
+    my $first-sql = $*RED-DB.translate($first.ast);
+    $value = 20;
+    my $second = query($template);
+    isnt $*RED-DB.translate($second.ast).raku, $first-sql.raku,
+        'A new binding reads the current capture';
+    is-deeply $*RED-DB.translate($first.ast), $first-sql,
+        'Earlier bindings retain their values';
+    is $reads, 2, 'Captures are evaluated once per binding';
+    my $invalid = direct(['op', 'Sum', ['field', ['subject'], 'missing'], ['capture', 0]],
+        :getters([-> { $reads++; 1 }]));
+    throws-like { $invalid.bind(DirectFactoryRow) }, X::Red::Compiler::Unsupported,
+        'Invalid subjects fail during direct validation';
+    is $reads, 2, 'Invalid paths do not execute getters';
+    my $json-only = direct(['exists', ['subject'], ['literal', 'value']]);
+    $json-only = $json-only.clone(:!prevalidate);
+    throws-like { $json-only.branches(%(value => 1)) }, X::Red::Compiler::Unsupported,
+        'A pure direct factory retains the JSON subject guard';
+};
+
+subtest 'Direct mutations retain buffered update effects' => {
+    my @plan = ['assign', ['field', ['subject'], 'number'], ['literal', 12]];
+    my $expected = query(Red::Compiler::Template.new(:@plan));
+    my $actual = query(direct(@plan));
+    is-deeply $*RED-DB.translate($actual.ast), $*RED-DB.translate($expected.ast),
+        'Direct assignments use the same updating map path';
+    my $readonly = direct(['assign', ['field', ['subject'], 'label'], ['literal', 'new']]);
+    throws-like { $readonly.bind(DirectFactoryRow) }, X::Red::Compiler::Unsupported,
+        'Read-only columns are rejected before effects';
+    my @effects;
+    my @*UPDATE := @effects;
+    my $abandoned = direct(['sequence', @plan.Array,
+        ['field', ['subject'], 'missing']]).clone(:!prevalidate);
+    throws-like { $abandoned.branches(DirectFactoryRow) }, X::Red::Compiler::Unsupported,
+        'A direct factory can fail after recording an update';
+    is @effects.elems, 0, 'Abandoned direct effects never reach the outer update context';
+};
+
+done-testing;
