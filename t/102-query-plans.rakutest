@@ -1,0 +1,413 @@
+use Test;
+use nqp;
+use Red;
+use Red::Compiler::Template;
+use Red::Compiler::Emitter;
+use Red::Compiler::RakuAST;
+use Red::QueryPlan;
+use Red::QueryPlan::Cache;
+use Red::AST::BoundFilter;
+use Red::AST::Value;
+use Red::AST::Case;
+
+CHECK red-compile if (%*ENV<RAKUDO_RAKUAST> // '0') eq '1';
+
+my @config = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @config.shift;
+my $*RED-DB = database $driver, |%(@config.map({
+    my ($key, $value) = .split('=');
+    $key => val($value)
+}));
+my $*RED-FALLBACK = False;
+my %counts;
+my @events;
+my @sql;
+my $*RED-COMPILER-REPORT = -> |event { @events.push: event.hash };
+$*RED-DB does role {
+    method compile-query(|args) { %counts<compile>++; callsame }
+    method optimize(|args) { %counts<optimize>++; callsame }
+    method prepare(|args) {
+        if args.list.head ~~ Str {
+            %counts<prepare>++;
+            @sql.push: args.list.head;
+        }
+        callsame
+    }
+};
+
+model QueryPlanRow {
+    has Int $.id is serial;
+    has Int $.number is rw is column;
+    has Str $.label is column;
+}
+my $schema = schema(QueryPlanRow);
+$schema.drop.create;
+LEAVE $schema.drop;
+QueryPlanRow.^create(:number($_), :label("row$_")) for 1..4;
+sub numbers($query) { $query.List.map(*.number).sort.Array }
+sub reset() { %counts = (); @events = (); @sql = () }
+
+subtest 'Repeated execution reuses SQL, not results or cursors' => {
+    my $query = QueryPlanRow.^all.grep(*.number > 1);
+    reset;
+    is-deeply numbers($query), [2, 3, 4], 'First execution';
+    is-deeply numbers($query), [2, 3, 4], 'Second execution';
+    is %counts<compile>, 1, 'SQL is compiled once';
+    is %counts<optimize>, 1, 'AST is optimized once';
+    is %counts<prepare>, 2, 'Each execution gets its own statement';
+    QueryPlanRow.^create(:number(5), :label<row5>);
+    is-deeply numbers($query), [2, 3, 4, 5], 'The next execution observes new data';
+    QueryPlanRow.^all.grep(*.number == 5).delete;
+};
+
+subtest 'Clones and mutable pagination cannot reuse stale SQL' => {
+    my $query = QueryPlanRow.^all.sort(*.number);
+    reset;
+    is-deeply numbers($query), [1, 2, 3, 4], 'Base query';
+    is-deeply numbers($query.head(2)), [1, 2], 'Limit changes the plan';
+    is-deeply numbers($query.grep(*.number > 2)), [3, 4], 'Filter changes the plan';
+    my $page = $query.skip(1);
+    is-deeply numbers($page), [2, 3, 4], 'Initial offset';
+    $page.chain.offset = 2;
+    is-deeply numbers($page), [3, 4], 'Changing the public offset invalidates the key';
+    is-deeply numbers($query), [1, 2, 3, 4], 'Earlier query remains unchanged';
+};
+
+subtest 'Changing the driver cannot reuse a connection or cursor' => {
+    my $query = QueryPlanRow.^all.sort(*.number);
+    is-deeply numbers($query), [1, 2, 3, 4], 'Original connection';
+    my $other = database $driver, |%(@config.map({
+        my ($key, $value) = .split('=');
+        $key => val($value)
+    }));
+    my $sqlite = $driver eq 'SQLite';
+    if $sqlite {
+        my $*RED-DB = $other;
+        QueryPlanRow.^create-table;
+        QueryPlanRow.^create(:number(99), :label<other>);
+    }
+    my $changed = $query.with($other);
+    is-deeply numbers($changed), ($sqlite ?? [99] !! [1, 2, 3, 4]),
+        'The explicit driver handles this execution';
+    is-deeply numbers($query), [1, 2, 3, 4], 'Original query retains its driver behavior';
+};
+
+subtest 'A bound custom driver retains its own prepare path' => {
+    my $mock = database 'Mock';
+    my @plan = ['op', 'Gt', ['field', ['subject'], 'number'], ['capture', 0]];
+    my $template = Red::Compiler::Template.new(:@plan, :getters([-> { 1 }]));
+    my $query = QueryPlanRow.^all.with($mock).grep({ .number > 1 }, :red-ast($template));
+    nok $query.filter ~~ Red::AST::BoundFilter::Predicate,
+        'The explicitly bound driver decides whether parameterized predicates are supported';
+};
+
+subtest 'Compiled filters share AST and SQL with private capture snapshots' => {
+    my $minimum = 1;
+    my $reads = 0;
+    my @plan = ['op', 'Gt', ['field', ['subject'], 'number'], ['capture', 0]];
+    my $template = Red::Compiler::Template.new(:@plan,
+        :getters([-> { $reads++; $minimum }]),
+        :builder(-> | { die 'The runtime AST factory ran' }),
+        :validator(Red::Compiler::Emitter.validator(@plan)));
+    sub query() {
+        QueryPlanRow.^all.grep(-> $row { die 'The original callback ran' },
+            :red-ast($template))
+    }
+    isa-ok $template.filter-prototype, Red::AST::Gt, 'Template retains a symbolic AST';
+    isa-ok $template.filter-prototype.left, Red::AST::BoundFilter::Field;
+    isa-ok $template.filter-prototype.right, Red::AST::BoundFilter::Parameter;
+    reset;
+    my $first = query();
+    $minimum = 2;
+    my $second = query();
+    is $reads, 2, 'One capture read per query construction';
+    isa-ok $first.filter, Red::AST::BoundFilter::Predicate;
+    is nqp::where($first.filter.filter), nqp::where($second.filter.filter), 'Predicate AST is shared';
+    is-deeply numbers($second), [3, 4], 'Execute second query first';
+    is-deeply numbers($first), [2, 3, 4], 'First query retains its captured value';
+    is %counts<compile>, 1, 'SQL plan is shared between calls';
+    is @events.grep(*<status> eq 'filter-miss').elems, 1, 'Factory runs once';
+    is @events.grep(*<status> eq 'filter-hit').elems, 1, 'Second call reuses predicate';
+    my $translated = $*RED-DB.translate($first.ast);
+    is-deeply $translated.value.Array, [1], 'Direct translation exposes real bind values';
+    is-deeply numbers($first.grep(*.number < 4)), [2, 3],
+        'Further composition retains the private bindings';
+};
+
+subtest 'Symbolic prototypes preserve operand order' => {
+    my @plan = ['op', 'Lt', ['capture', 0], ['field', ['subject'], 'number']];
+    my $template = Red::Compiler::Template.new(:@plan, :getters([-> { 2 }]),
+        :builder(-> | { die 'The runtime AST factory ran' }));
+    my $query = QueryPlanRow.^all.grep({ 2 < .number }, :red-ast($template));
+    is-deeply numbers($query), [3, 4], 'Capture on the left retains comparison direction';
+    isa-ok $template.filter-prototype.left, Red::AST::BoundFilter::Parameter;
+    isa-ok $template.filter-prototype.right, Red::AST::BoundFilter::Field;
+};
+
+subtest 'The CHECK compiler uses the cache automatically' => sub {
+    unless (%*ENV<RAKUDO_RAKUAST> // '0') eq '1' {
+        plan :skip-all('Requires the RakuAST frontend');
+        return;
+    }
+    sub query($minimum) { QueryPlanRow.^all.grep({ .number > $minimum }) }
+    reset;
+    my $first = query(1);
+    my $second = query(3);
+    is-deeply numbers($first), [2, 3, 4], 'First compiled query';
+    is-deeply numbers($second), [4], 'Fresh parameters';
+    is %counts<compile>, 1, 'Compiled callbacks share SQL automatically';
+};
+
+subtest 'Compiled predicates compose without merging separate captures' => {
+    my @plan = ['op', 'Gt', ['field', ['subject'], 'number'], ['capture', 0]];
+    my $template = Red::Compiler::Template.new(:@plan, :getters([-> { 1 }]));
+    my $first = QueryPlanRow.^all.grep({ .number > 1 }, :red-ast($template));
+    my $second-template = $template.clone(:getters([-> { 3 }]));
+    my $both = $first.grep({ .number > 3 }, :red-ast($second-template));
+    is-deeply numbers($both), [4], 'Different bound predicates both survive AND';
+    is-deeply numbers($first), [2, 3, 4], 'Composition leaves the first query independent';
+};
+
+subtest 'Transaction lifetime is still checked on a cache hit' => {
+    my $escaped;
+    red-do :transaction, {
+        $escaped = QueryPlanRow.^all.grep(*.number > 2);
+        is-deeply numbers($escaped), [3, 4], 'First execution inside the transaction';
+        is-deeply numbers($escaped), [3, 4], 'Cached execution inside the transaction';
+    };
+    throws-like { numbers($escaped) }, X::Red::Transaction,
+        'A cached plan cannot revive a closed transaction';
+};
+
+subtest 'Live iterators have independent statements' => {
+    my $query = QueryPlanRow.^all.sort(*.number);
+    my $first = $query.iterator;
+    my $second = $query.iterator;
+    is $first.pull-one.number, 1, 'First cursor starts at the first row';
+    is $second.pull-one.number, 1, 'Second cursor starts independently';
+    is $first.pull-one.number, 2, 'First cursor was not reset';
+    loop { last if $first.pull-one =:= IterationEnd }
+    loop { last if $second.pull-one =:= IterationEnd }
+};
+
+subtest 'Comments are refreshed without recompiling SQL' => {
+    my $query = QueryPlanRow.^all.grep(*.number > 2);
+    my $*RED-COMMENT-SQL = True;
+    reset;
+    $query.comments.push: Red::AST::Comment.new(:msg<first-marker>);
+    numbers($query);
+    $query.comments.push: Red::AST::Comment.new(:msg<second-marker>);
+    numbers($query);
+    is %counts<compile>, 1, 'Adding diagnostic comments retains the SQL plan';
+    ok @sql.tail.contains('second-marker'), 'The next statement receives the latest comment';
+};
+
+subtest 'Scalar parameter types preserve comparison semantics' => {
+    for 5/2, 2.5e0, 2 ** 40 -> $value {
+        my @plan = ['op', 'Gt', ['field', ['subject'], 'number'], ['capture', 0]];
+        my $capture = $value;
+        my $template = Red::Compiler::Template.new(:@plan, :getters([-> { $capture }]));
+        my $query = QueryPlanRow.^all.grep({ .number > $capture }, :red-ast($template));
+        is-deeply numbers($query), ($value < 4 ?? [3, 4] !! []),
+            "Numeric bind of type {$value.^name}";
+    }
+    my $label = 'row2';
+    my @plan = ['op', 'Eq', ['field', ['subject'], 'label'], ['capture', 0]];
+    my $template = Red::Compiler::Template.new(:@plan, :getters([-> { $label }]));
+    my $first = QueryPlanRow.^all.grep({ .label eq $label }, :red-ast($template));
+    $label = 'row4';
+    my $second = QueryPlanRow.^all.grep({ .label eq $label }, :red-ast($template));
+    is-deeply numbers($first), [2], 'First string capture';
+    is-deeply numbers($second), [4], 'Fresh string capture';
+};
+
+subtest 'Unsupported captures use ordinary factories' => {
+    my $minimum = Int;
+    my @plan = ['op', 'Gt', ['field', ['subject'], 'number'], ['capture', 0]];
+    my $template = Red::Compiler::Template.new(:@plan, :getters([-> { $minimum }]));
+    nok $template.bind(QueryPlanRow).cached-filter(QueryPlanRow).DEFINITE,
+        'Undefined values are not substituted into a scalar parameter plan';
+    $minimum = [1, 2];
+    nok $template.bind(QueryPlanRow).cached-filter(QueryPlanRow).DEFINITE,
+        'Mutable collections retain the existing behavior';
+};
+
+subtest 'Dry run cannot poison a plan or execute statements' => {
+    my $query = QueryPlanRow.^all.grep(*.number > 2);
+    reset;
+    {
+        my $*RED-DRY-RUN = True;
+        $query.iterator;
+    }
+    is %counts<prepare> // 0, 0, 'Dry run creates no statement';
+    is-deeply numbers($query), [3, 4], 'The cached plan executes after dry run';
+};
+
+subtest 'Imported modules retain compiled factories without sharing runtime captures' => sub {
+    unless (%*ENV<RAKUDO_RAKUAST> // '0') eq '1' {
+        plan :skip-all('Requires the RakuAST frontend');
+        return;
+    }
+    my $directory = $*TMPDIR.add("red-plan-precomp-{$*PID}-{1000000.rand.Int}");
+    $directory.mkdir;
+    sub remove-tree(IO::Path:D $path) {
+        if $path.d && !$path.l {
+            remove-tree($_) for $path.dir;
+            $path.rmdir;
+        } else {
+            $path.unlink;
+        }
+    }
+    LEAVE remove-tree($directory) if $directory.DEFINITE && $directory.e;
+    $?FILE.IO.parent.add('lib/QueryPlanCompilerFixture.rakumod')
+        .copy($directory.add('QueryPlanCompilerFixture.rakumod'));
+    my $library = $?FILE.IO.parent.parent.add('lib').absolute;
+    my $program = q:to/PROGRAM/;
+        use Red;
+        use QueryPlanCompilerFixture;
+        say precomp-token();
+        my $*RED-DB = database 'SQLite';
+        my @events;
+        my $*RED-COMPILER-REPORT = -> |event { @events.push: event.hash };
+        my $first = cached-query(1);
+        my $second = cached-query(2);
+        say $*RED-DB.translate($first.ast).value[0];
+        say $*RED-DB.translate($second.ast).value[0];
+        say @events.grep(*<status> eq 'filter-miss').elems;
+        say @events.grep(*<status> eq 'filter-hit').elems;
+        say @events.grep({ .<status> eq 'filter-miss' && .<prototype> }).elems;
+        PROGRAM
+    my $token;
+    for ^2 -> $invocation {
+        my $process = run $*EXECUTABLE, "-I$library", "-I$directory", '-e', $program,
+            :out, :err;
+        my $output = $process.out.slurp-rest;
+        my $errors = $process.err.slurp-rest;
+        is $process.exitcode + $process.signal, 0, "Module invocation $invocation succeeds";
+        diag $errors if $process.exitcode || $process.signal;
+        my ($current-token, $results) = $output.split("\n", 2);
+        $token //= $current-token;
+        is $current-token, $token, 'Second process loads the same precompiled module';
+        is $results, "1\n2\n1\n1\n1\n", 'Captures and runtime cache start fresh in each process';
+    }
+};
+
+subtest 'Diagnostic opt-out bypasses both runtime caches' => {
+    my $*RED-QUERY-PLAN-CACHE = False;
+    my $value = 2;
+    my @plan = ['op', 'Gt', ['field', ['subject'], 'number'], ['capture', 0]];
+    my $template = Red::Compiler::Template.new(:@plan, :getters([-> { $value }]));
+    nok $template.bind(QueryPlanRow).cached-filter(QueryPlanRow).DEFINITE,
+        'Predicate factory caching is disabled';
+    my $query = QueryPlanRow.^all.grep(*.number > 2);
+    reset;
+    is-deeply numbers($query), [3, 4], 'First uncached execution';
+    is-deeply numbers($query), [3, 4], 'Second uncached execution';
+    is %counts<compile> // 0, 0, 'The plan compiler is bypassed';
+    is %counts<optimize>, 2, 'Each execution uses the original preparation path';
+};
+
+subtest 'Plan cache is bounded and does not cache failures' => {
+    my $cache = Red::QueryPlan::Cache.new(:capacity(2));
+    $cache.fetch('a', { 1 });
+    $cache.fetch('b', { 2 });
+    is $cache.fetch('a', { 0 }).key, 'hit', 'Touch a cached key';
+    $cache.fetch('c', { 3 });
+    is $cache.fetch('b', { 4 }).key, 'miss', 'Least recently used key is evicted';
+    dies-ok { $cache.fetch('error', { die 'builder failed' }) }, 'Builder failure propagates';
+    is $cache.fetch('error', { 5 }).value, 5, 'Failed entries are not retained';
+    my @jobs = (^8).map({ start { $cache.fetch('parallel', { 42 }).value } });
+    is-deeply (await @jobs).Array, [42 xx 8], 'Concurrent lookups publish consistent values';
+};
+
+subtest 'An empty cache returns builder values without retaining them' => {
+    my $cache = Red::QueryPlan::Cache.new(:capacity(0));
+    my $builds = 0;
+    for ^3 {
+        my $entry = $cache.fetch('same-key', { ++$builds });
+        is $entry.key, 'miss', 'Zero capacity always rebuilds';
+        is $entry.value, $builds, 'Eviction does not discard the current result';
+    }
+    throws-like { Red::QueryPlan::Cache.new(:capacity(-1)) }, X::TypeCheck,
+        'Negative capacity is rejected';
+};
+
+subtest 'Uncacheable plans retain later parameters and comments' => {
+    my @plan = ['op', 'Gt', ['field', ['subject'], 'number'], ['capture', 0]];
+    my $template = Red::Compiler::Template.new(:@plan, :getters([-> { 1 }]));
+    my $bound = QueryPlanRow.^all.grep({ .number > 1 }, :red-ast($template));
+    my $column = QueryPlanRow.^columns.first(*.name eq '$!number').column;
+    my $extra = Red::AST::Eq.new($column,
+        Red::AST::Value.new(:value(3), :$column));
+    my $query = QueryPlanRow.^all.where(Red::AST::AND.new($extra, $bound.filter));
+    $query.comments.push: Red::AST::Comment.new(:msg<fallback-marker>);
+    my $description = Red::QueryPlan.describe($query.ast);
+    nok $description<key>.DEFINITE, 'Column deflators bypass caching';
+    is $description<parameters>.elems, 1, 'Parameters after an uncacheable node are retained';
+    my $*RED-COMMENT-SQL = True;
+    reset;
+    is-deeply numbers($query), [3], 'Fallback executes with bound parameters';
+    is-deeply numbers($query), [3], 'A second execution also retains bindings';
+    is %counts<compile>, 2, 'Uncacheable SQL is rebuilt each time';
+    ok @sql.tail.contains('fallback-marker'), 'Fallback retains current comments';
+};
+
+subtest 'Cyclic positional values bypass fingerprinting without losing later bindings' => {
+    my @items;
+    @items.push(@items);
+    my @plan = ['op', 'Gt', ['field', ['subject'], 'number'], ['capture', 0]];
+    my $template = Red::Compiler::Template.new(:@plan, :getters([-> { 1 }]));
+    my $query = QueryPlanRow.^all.grep({ .number > 1 }, :red-ast($template));
+    my $ast = Red::AST::AND.new(ast-value(@items), $query.filter);
+    my $description = Red::QueryPlan.describe($ast);
+    nok $description<key>.DEFINITE, 'A cyclic container is not cacheable';
+    ok $description<reasons>.grep(* eq 'cyclic positional value'),
+        'The fallback reports the cycle';
+    is $description<parameters>.elems, 1, 'Later parameter groups are still collected';
+    my @shared = 1, 2;
+    my $repeated = Red::AST::Eq.new(ast-value(@shared), ast-value(@shared));
+    ok Red::QueryPlan.describe($repeated)<key>.DEFINITE,
+        'Reusing an acyclic container is not mistaken for a cycle';
+    @items.pop;
+};
+
+subtest 'Uncacheable case branches retain bound predicate parameters' => {
+    my @plan = ['op', 'Gt', ['field', ['subject'], 'number'], ['capture', 0]];
+    my $template = Red::Compiler::Template.new(:@plan, :getters([-> { 1 }]));
+    my $predicate = QueryPlanRow.^all.grep({ .number > 1 }, :red-ast($template)).filter;
+    my Red::AST %when{Red::AST};
+    %when{$predicate} = ast-value(1);
+    my $case = Red::AST::Case.new(:%when, :else(ast-value(0)));
+    my $description = Red::QueryPlan.describe($case);
+    nok $description<key>.DEFINITE, 'Associative branches retain the uncached path';
+    is $description<parameters>.elems, 1, 'Predicate keys retain their binding groups';
+    is-deeply QueryPlanRow.^all.map({ $case }).Array.sort.Array, [0, 1, 1, 1],
+        'A projected case expression executes with private predicate bindings';
+    my %cyclic;
+    %cyclic<self> := %cyclic;
+    LEAVE %cyclic<self>:delete;
+    my $cycle = Red::QueryPlan.describe(ast-value(%cyclic));
+    nok $cycle<key>.DEFINITE, 'A cyclic associative value is not cacheable';
+    ok $cycle<reasons>.grep(* eq 'cyclic associative value'), 'The cycle is reported';
+};
+
+subtest 'Plan keys distinguish literal types and embedded delimiters' => {
+    my @values = '', '42', 42, 'a|b', 'a]b', 'a)b', 'Str:3:abc',
+        "a\nb", '"quoted"', "a\0b", 'ação';
+    my @keys = @values.map({ Red::QueryPlan.describe(ast-value($_))<key> });
+    is @keys.grep({ .DEFINITE }).elems, @values.elems, 'Ordinary scalar literals are cacheable';
+    is @keys.unique.elems, @values.elems, 'Distinct literals have distinct keys';
+    my @pairs = ['a', 'b|c'], ['a|b', 'c'], ['a)', 'b'], ['a', ')b'];
+    my @pair-keys = @pairs.map(-> @pair {
+        Red::QueryPlan.describe(Red::AST::Eq.new(
+            ast-value(@pair[0]), ast-value(@pair[1])))<key>
+    });
+    is @pair-keys.unique.elems, @pairs.elems, 'Separators cannot merge adjacent values';
+    my $column = QueryPlanRow.^columns.first.column;
+    my @columns = $column.clone(:name<a>, :name-alias<b|c>),
+        $column.clone(:name<a|b>, :name-alias<c>);
+    isnt Red::QueryPlan.describe(@columns[0])<key>,
+        Red::QueryPlan.describe(@columns[1])<key>, 'Column metadata boundaries remain distinct';
+};
+
+done-testing;

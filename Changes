@@ -1,9 +1,19 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fixes: retain bound predicate parameters inside uncached CASE branches and cyclic hashes
     - compiler: preserve comparison operator coercions and casts in compiled queries
+    - fixes: bypass query-plan caching for cyclic positional values without losing later bindings
     - fixes: preserve arithmetic grouping in string casts and SQLite JSON array paths
+    - performance: update plan-cache recency in constant time on cache hits
+    - performance: frame plan-key strings without general-purpose serialization
+    - performance: stop encoding discarded plan keys while retaining fallback bindings
+    - queries: return uncached builder results when plan-cache capacity is zero
+    - compiler: persist symbolic scalar comparison AST prototypes in module precompilation
+    - queries: cache SQL plans without sharing cursors, connections or query results
+    - compiler: reuse scalar comparison predicates with private captured parameters
     - compiler: keep the unsupported-template exception outside the GLOBAL stash
+    - tests: verify plan reuse and add a query construction/execution benchmark
     - compiler: specialize direct Red::AST factories and validators during CHECK
     - compiler: reuse capture-free templates without sharing captured values between queries
     - compiler: compile membership predicates and preserve word-list quoting semantics

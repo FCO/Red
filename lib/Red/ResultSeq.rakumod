@@ -4,6 +4,7 @@ use Red::Utils;
 use Red::Model;
 use Red::Column;
 use Red::Driver;
+use Red::QueryPlan::Cache;
 use Red::AST::Next;
 use Red::AST::Case;
 use Red::AST::Empty;
@@ -100,6 +101,7 @@ has Red::Driver       $.with = do {
 has                   $.obj;
 has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new: |(:filter(.^id-filter) with $!obj);
 has Lock::Async       $!lock .= new;
+has Red::QueryPlan::Cache $!query-plan-cache .= new;
 has Red::LockType     $.for;
 has                   @.prefetches;
 has Bool              $.prefetches-set = False;
@@ -116,7 +118,8 @@ multi method with(Str $with) {
 
 method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {
     my $*RED-INTERNAL = True;
-    Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post, |(:driver($_) with $!with)
+    Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post,
+        :plan-cache($!query-plan-cache), |(:driver($_) with $!with)
 }
 
 #| Returns a Seq with the result of the SQL query
@@ -436,13 +439,20 @@ method !create-projection(Red::Projection:D $projection, &filter) {
 }
 
 #| Resolve a compiled callback against the current SQL stage, retaining legacy fallback.
-method !query-block(&callback, $compiled is rw, $subject, Bool :$ordering = False) {
+method !query-block(&callback, $compiled is rw, $subject, Bool :$ordering = False,
+    Bool :$cache-filter = False) {
     if $compiled.DEFINITE {
         my $unsupported = False;
         my Red::AST %branches{Red::AST};
         try {
             $compiled = $compiled.bind($subject) unless $compiled.bound;
-            %branches = $compiled.branches($subject);
+            my $cached = $cache-filter ?? $compiled.cached-filter($subject,
+                :driver($!with.DEFINITE ?? $!with !! (try get-RED-DB))) !! Nil;
+            if $cached.DEFINITE {
+                %branches{Red::AST} = $cached;
+            } else {
+                %branches = $compiled.branches($subject);
+            }
             CATCH {
                 when X::Red::Compiler::Unsupported {
                     $unsupported = True;
@@ -485,11 +495,13 @@ method grep(&filter, :$red-ast is copy) is hidden-from-sql-commenting {
     }
     my Red::AST $*RED-GREP-FILTER;
     my $input = self!projection-input(:fuse);
-    my Red::AST %branches{Red::AST} = self!query-block(&filter, $red-ast, $input!projection-subject);
+    my Red::AST %branches{Red::AST} = self!query-block(
+        &filter, $red-ast, $input!projection-subject, :cache-filter);
     if self.chain.projection.DEFINITE && $input === self
         && !Red::Projection.safe-to-repeat(%branches) {
         $input = self!projection-input;
-        %branches = self!query-block(&filter, $red-ast, $input!projection-subject);
+        %branches = self!query-block(
+            &filter, $red-ast, $input!projection-subject, :cache-filter);
     }
     my $filter = do given %branches {
         do if [eqv] .values {

@@ -1,4 +1,8 @@
 use Red::AST;
+use Red::DB;
+use Red::AST::BoundFilter;
+use Red::QueryPlan::Cache;
+use nqp;
 use Red::AST::Value;
 use Red::AST::Infixes;
 use Red::AST::Unary;
@@ -23,6 +27,30 @@ has Bool $.operators = False;
 has Bool $.prevalidate = True;
 has &.builder;
 has &.validator;
+has Red::QueryPlan::Cache $.filter-cache .= new;
+has Red::QueryPlan::Cache $.sql-cache .= new;
+has Str $!filter-shape-key;
+has Red::AST $.filter-prototype;
+
+submethod TWEAK() {
+    $!filter-shape-key = @!plan.raku;
+    # This object is constructed at CHECK by the RakuAST compiler and embedded
+    # in its template literal. Only symbolic slots enter the precompilation.
+    if @!plan[0] eq 'op' && @!plan[1] eq any(<Eq Ne Lt Le Gt Ge>) {
+        my ($left, $right) = @!plan[2, 3];
+        sub slot($part) {
+            return Red::AST::BoundFilter::Field.new(:name($part[2]))
+                if $part[0] eq 'field' && $part[1][0] eq 'subject';
+            return Red::AST::BoundFilter::Parameter.new(:index($part[1]), :type(Any))
+                if $part[0] eq 'capture';
+            Nil
+        }
+        my $a = slot($left);
+        my $b = slot($right);
+        $!filter-prototype = ::('Red::AST::' ~ @!plan[1]).new($a, $b)
+            if $a.DEFINITE && $b.DEFINITE;
+    }
+}
 
 method unsupported(Str $reason) {
     X::Red::Compiler::Unsupported.new(:$reason).throw
@@ -226,6 +254,60 @@ method evaluate(@plan, $subject) {
         }
         default { self.unsupported('Unknown compiled query expression') }
     }
+}
+
+# Only direct field/scalar comparisons are value-independent in this first version.
+# All other expressions retain the existing factory and fallback behavior.
+method cached-filter($subject, :$driver = try get-RED-DB) {
+    my $*RED-INTERNAL = True;
+    my $enabled = try $*RED-QUERY-PLAN-CACHE;
+    return Nil if $enabled.WHAT === Bool && !$enabled;
+    return Nil unless $driver.DEFINITE && $driver.?supports-query-plans;
+    return Nil unless @!plan[0] eq 'op'
+        && @!plan[1] eq any(<Eq Ne Lt Le Gt Ge>) && $subject ~~ ::('Red::Model')
+        && !$subject.DEFINITE;
+    my ($field, $capture) = @!plan[2, 3];
+    ($field, $capture) = ($capture, $field) if $field[0] eq 'capture';
+    return Nil unless $field[0] eq 'field' && $field[1][0] eq 'subject'
+        && $capture[0] eq 'capture' && @!values.elems == 1;
+    my $value = @!values[$capture[1]];
+    return Nil unless $value.DEFINITE && ($value.WHAT === Int
+        || $value.WHAT === Str || $value.WHAT === Rat || $value.WHAT === Num);
+    return Nil if $value ~~ Int && ($value < -(2 ** 63) || $value >= 2 ** 63);
+    return Nil if $value ~~ Numeric && ($value.Num.isNaN || $value.Num.abs == Inf);
+    my $column = $subject.^columns.first({ .name.substr(2) eq $field[2] });
+    return Nil unless $column.DEFINITE && ($column.type === Int
+        || $column.type === Str || $column.type === Rat || $column.type === Num);
+    # Parameter slots cannot replace scalar coercions performed by the source operator.
+    my $source-op = @!plan[4] // '';
+    return Nil if $source-op eq any('==', '!=', '<', '<=', '>', '>=')
+        && !($column.type ~~ Numeric && $value ~~ Numeric);
+    return Nil if $source-op eq any(<eq ne lt le gt ge>)
+        && !($column.type === Str && $value.WHAT === Str);
+    my $key = nqp::where(nqp::decont($subject)).Str ~ '|' ~ $value.WHAT.WHICH.Str
+        ~ '|' ~ $column.WHICH.Str ~ '|' ~ $column.args.raku ~ '|' ~ $!filter-shape-key;
+    my $entry = $!filter-cache.fetch($key, {
+        if $!filter-prototype.DEFINITE {
+            my $parameter = Red::AST::BoundFilter::Parameter.new(
+                :index($capture[1]), :type($value.WHAT));
+            my $member = $subject."{$field[2]}"();
+            my $left-is-field = $!filter-prototype.left
+                ~~ Red::AST::BoundFilter::Field;
+            my $left = $left-is-field ?? $member !! $parameter;
+            my $right = $left-is-field ?? $parameter !! $member;
+            @!plan[5] ~~ Callable ?? @!plan[5]($left, $right)
+                !! $!filter-prototype.clone(:$left, :$right)
+        } else {
+            my @values = Red::AST::BoundFilter::Parameter.new(
+                :index($capture[1]), :type($value.WHAT));
+            self.clone(:@values).branches($subject).values.head
+        }
+    });
+    my $report = try $*RED-COMPILER-REPORT;
+    $report(:status('filter-' ~ $entry.key),
+        :prototype($!filter-prototype.DEFINITE)) if $report ~~ Callable;
+    Red::AST::BoundFilter::Predicate.new(:filter($entry.value),
+        :values(@!values.List), :cache($!sql-cache))
 }
 
 method branches($subject --> Hash:D) {
