@@ -943,7 +943,9 @@ multi method translate(Red::AST::Cast $_, $context?) {
         .bind ?? self.translate(.value, "bind") !! qq|'{ .value }'| => []
     }
     default {
-        self.translate: .value, .bind ?? "bind" !! $context
+        my $translated = self.translate: .value, .bind ?? "bind" !! $context;
+        (.value ~~ Red::AST::Infix ?? "({$translated.key})" !! $translated.key)
+            => $translated.value
     }
 }
 

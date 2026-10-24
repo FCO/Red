@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fixes: preserve arithmetic grouping in string casts and SQLite JSON array paths
     - schema: add named CHECK and PostgreSQL EXCLUDE constraints with driver selection
     - indexes: support access methods, per-key operator classes and partial predicates
     - pg: add range constructors and native range/regex expression helpers
