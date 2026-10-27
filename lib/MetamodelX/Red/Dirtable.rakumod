@@ -137,18 +137,19 @@ method compose-dirtable(Mu \type) {
         my $*RED-INTERNAL = True;
         my @columns = instance.^columns;
 
-        my %new = |@columns.map: {
-            my Mu $built := .build;
+        my %new;
+        for @columns -> $column {
+            my Mu $built := $column.build;
             $built := $built.(self, Mu) if $built ~~ Method;
-            $built := .type.red-type-default
-                if $built =:= Mu && .type.HOW ~~ Metamodel::ClassHOW
-                    && .type.^can("red-type-default");
+            $built := $column.type.red-type-default
+                if $built =:= Mu && $column.type.HOW ~~ Metamodel::ClassHOW
+                    && $column.type.^can("red-type-default");
             next if $built =:= Mu;
-            if instance.^is-id: $_ {
-                instance.^set-id: .name => $built
+            if instance.^is-id: $column {
+                instance.^set-id: $column.name => $built
             }
-            .column.attr-name => $built
-        };
+            %new{$column.column-attr-name} = $built;
+        }
 
         for %data.kv -> $k, $v { %new{$k} = $v }
 
@@ -161,18 +162,25 @@ method compose-dirtable(Mu \type) {
         for @columns -> \col {
             my \proxy = Proxy.new:
                 FETCH => method {
-                    $col-data-attr.get_value(instance).{ col.column.attr-name }
+                    $col-data-attr.get_value(instance).{ col.column-attr-name }
                 },
                 STORE => method (\value) is hidden-from-backtrace {
-                    die X::Assignment::RO.new(value => $col-data-attr.get_value(instance).{ col.column.attr-name }) unless col.rw;
-                    die X::TypeCheck::Assignment.new(symbol => col.name, got => value, expected => col.type) unless value =:= Nil || value ~~ col.type;
+                    my $attr-name = col.column-attr-name;
+                    unless col.rw {
+                        die X::Assignment::RO.new(
+                            value => $col-data-attr.get_value(instance).{ $attr-name });
+                    }
+                    unless value =:= Nil || value ~~ col.type {
+                        die X::TypeCheck::Assignment.new(
+                            symbol => col.name, got => value, expected => col.type);
+                    }
                     if instance.^is-id: col {
                         instance.^set-id: col.name => value
                     }
                     instance.^set-dirty: col;
-                    $dirty-old-values-attr.get_value(instance).{ col.column.attr-name } =
-                        $col-data-attr.get_value(instance).{ col.column.attr-name };
-                    $col-data-attr.get_value(instance).{ col.column.attr-name } = value =:= Nil ?? col.type !! value # handle default
+                    my $data := $col-data-attr.get_value(instance);
+                    $dirty-old-values-attr.get_value(instance).{ $attr-name } = $data{$attr-name};
+                    $data{$attr-name} = value =:= Nil ?? col.type !! value
                 }
             #use nqp;
             #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
@@ -217,6 +225,11 @@ method compose-dirtable(Mu \type) {
 
 #| Accepts a Set of attributes of model and enables dirtiness flag for them,
 #| which means that the values were changed and need a database sync.
+multi method set-dirty(\obj, Red::Attr::Column $attr) {
+    $!dirty-cols-attr.get_value(obj).{$attr}++;
+    Nil
+}
+
 multi method set-dirty(\obj, Set() $attr) {
     $!dirty-cols-attr.get_value(obj).{$_}++ for $attr.keys
 }
@@ -246,11 +259,11 @@ multi method set-attr(\instance, Str $name, \value) {
 }
 
 multi method get-attr(\instance, Red::Attr::Column $attr) {
-    samewith instance, $attr.column.attr-name
+    samewith instance, $attr.column-attr-name
 }
 
 multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
-    samewith instance, $attr.column.attr-name, value
+    samewith instance, $attr.column-attr-name, value
 }
 
 multi method get-old-attr(\instance, Str $name) {
@@ -262,10 +275,10 @@ multi method set-old-attr(\instance, Str $name, \value) {
 }
 
 multi method get-old-attr(\instance, Red::Attr::Column $attr) {
-    samewith instance, $attr.column.attr-name
+    samewith instance, $attr.column-attr-name
 }
 
 multi method set-old-attr(\instance, Red::Attr::Column $attr, \value) {
-    samewith instance, $attr.column.attr-name, value
+    samewith instance, $attr.column-attr-name, value
 }
 

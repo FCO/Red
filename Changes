@@ -3,6 +3,10 @@ Revision history for Red
 {{$NEXT}}
     - Promote has-one, refreshable and is-handling to stable features.
     - Continue accepting their historical experimental flags as no-ops for compatibility.
+    - Avoid temporary column allocations during field access, key checks and row hydration.
+    - Build model defaults and hydration metadata in one pass while preserving live metadata and relationships.
+    - Compose temporary projection ResultSeq classes lazily with isolated row state and synchronized initialization.
+    - Add model access, projection storage and concurrent class initialization tests and benchmarks.
     - schema: add named CHECK and PostgreSQL EXCLUDE constraints with driver selection
     - indexes: support access methods, per-key operator classes and partial predicates
     - pg: add range constructors and native range/regex expression helpers
