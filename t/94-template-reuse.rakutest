@@ -1,0 +1,79 @@
+use Test;
+use Red;
+use Red::Compiler::RakuAST;
+use Red::Compiler::Template;
+use Red::AST::Value;
+
+CHECK { red-compile if (%*ENV<RAKUDO_RAKUAST> // '0') eq '1' }
+
+my $*RED-FALLBACK = False;
+my $*RED-DB = database 'Pg';
+
+model TemplateReuseRow {
+    has Int $.value is column;
+}
+
+subtest 'Capture-free bindings retain subject validation' => {
+    my $template = Red::Compiler::Template.new(:plan(['field', ['subject'], 'value']));
+    ok $template.bind(TemplateReuseRow) === $template,
+        'A capture-free binding reuses its template';
+    throws-like { $template.bind(%(value => 1)) }, X::Red::Compiler::Unsupported,
+        'A reused template still rejects an incompatible subject';
+    lives-ok { $template.bind(TemplateReuseRow) },
+        'A failed binding does not poison later bindings';
+    my $pure = Red::Compiler::Template.new(:plan(['field', ['subject'], 'value']),
+        :!prevalidate);
+    throws-like { $pure.bind(%(value => 1)).branches(%(value => 1)) },
+        X::Red::Compiler::Unsupported,
+        'Evaluation still rejects an incompatible subject without prevalidation';
+    my $identity = Red::Compiler::Template.new(:plan(['subject']), :!prevalidate);
+    for 3, 7 -> $value {
+        my $subject = ast-value($value);
+        ok $identity.bind($subject).evaluate($identity.plan, $subject) === $subject,
+            'Shared templates evaluate against the current subject';
+    }
+};
+
+subtest 'Captures remain private to each binding' => {
+    my $value = 10;
+    my $reads = 0;
+    my $template = Red::Compiler::Template.new(:plan(['capture', 0]),
+        :getters([-> { $reads++; $value }]));
+    my $first = $template.bind(TemplateReuseRow);
+    $value = 20;
+    my $second = $template.bind(TemplateReuseRow);
+    is $first.evaluate($first.plan, TemplateReuseRow), 10, 'First binding keeps its value';
+    is $second.evaluate($second.plan, TemplateReuseRow), 20, 'Next binding reads a fresh value';
+    is $reads, 2, 'Each binding reads the capture once';
+    nok $template.bound, 'The shared source template is never bound';
+};
+
+subtest 'Repeated compiled calls keep their current subject' => {
+    sub project($rows) { $rows.map(*.value) }
+    my $used = 0;
+    my $direct = 0;
+    my $*RED-COMPILER-REPORT = -> |event {
+        $used++ if event.hash<status> eq 'used';
+        $direct++ if event.hash<status> eq 'used' && event.hash<engine> eq 'direct';
+    };
+    my $first = project(TemplateReuseRow.^all);
+    my $second = project(TemplateReuseRow.^all);
+    is $*RED-DB.translate($first.ast).key, $*RED-DB.translate($second.ast).key,
+        'Repeated query construction generates the same SQL';
+    class NativeValue { method value { 3 } }
+    is-deeply project([NativeValue.new]).Array, [3], 'Native receivers keep their callback';
+    is $used, 2, 'Both ResultSeq calls use the compiled template'
+        if (%*ENV<RAKUDO_RAKUAST> // '0') eq '1';
+    is $direct, 2, 'Instrumented calls construct Red::AST directly'
+        if (%*ENV<RAKUDO_RAKUAST> // '0') eq '1';
+    sub increment($rows) { $rows.map(* + 1) }
+    my $plain = increment(TemplateReuseRow.^all.map(*.value));
+    my $shifted = increment(TemplateReuseRow.^all.map(*.value + 10));
+    my $plain-sql = $*RED-DB.translate($plain.ast).key;
+    my $shifted-sql = $*RED-DB.translate($shifted.ast).key;
+    isnt $plain-sql, $shifted-sql, 'Shared templates bind to different projected expressions';
+    is $*RED-DB.translate($plain.ast).key, $plain-sql,
+        'A subsequent binding does not mutate an earlier query';
+};
+
+done-testing;

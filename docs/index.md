@@ -15,6 +15,7 @@ If you are looking for tutorials, you can visit:
 * [Special Variables](tutorials/vars.md)
 * [Red Cookbook](tutorials/cookbook.md)
 * [Experimental](tutorials/experimental.md)
+* [Optional RakuAST query compiler](tutorials/rakuast.md)
 * [Examples](https://github.com/FCO/Red/tree/master/examples)
 
 #### API documentation

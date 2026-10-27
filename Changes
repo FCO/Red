@@ -14,6 +14,14 @@ Revision history for Red
     - Retain formatter coercions, repeated separators, Unicode and embedded control characters.
     - Read generated projection getters from the receiving storage instance instead of a ResultSeq.
     - Cover independent columns, instances and updated values without issuing database queries.
+    - Preserve arithmetic grouping and parameter order in casts and SQLite JSON array paths.
+    - Add opt-in CHECK-time RakuAST query compilation with symbolic fallback and private captures.
+    - Specialize query factories and preserve argument captures, writable returns and comparison coercions.
+    - Add opt-in fallback diagnostics through :warn, $*RED-COMPILER-WARN and RED_COMPILER_WARN.
+    - Cache SQL plans and scalar predicate shapes without sharing connections, cursors or results.
+    - Bound cache growth and retain parameters and comments through uncached and cyclic values.
+    - Use portable object identity for plan traversal and predicate cache keys.
+    - Add compiler, cache, binding-isolation tests and query construction benchmarks.
     - schema: add named CHECK and PostgreSQL EXCLUDE constraints with driver selection
     - indexes: support access methods, per-key operator classes and partial predicates
     - pg: add range constructors and native range/regex expression helpers
