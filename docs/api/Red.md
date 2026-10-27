@@ -444,6 +444,8 @@ Red is a *WiP* ORM for Raku.
 
   * `is nullable`
 
+  * `is handling`
+
 ### features:
 
 #### relationships
@@ -499,7 +501,7 @@ An empty scalar relationship returns an undefined, false type object carrying th
 ```raku
 my $parent = $child.parent.^create(:name<parent>);
 
-# For a relationship declared with :has-one (use Red <has-one>):
+# For a relationship declared with :has-one:
 my $profile = $account.profile.^create(:description<profile>);
 ```
 
@@ -679,6 +681,36 @@ Guards keep the reserved session usable by asynchronous work that inherits the b
 ```raku
 model Bla is temp { ... }
 ```
+
+#### is handling
+
+The `is handling` trait "exports" `ResultSeq` methods to the model itself, so they can be called directly on the model's type object. Each positional value is the name of a `ResultSeq` method to expose; passing a pair renames it:
+
+```raku
+model Bla is handling<map grep> { has Int $.a is column }
+
+Bla.map(*.a);              # same as Bla.^all.map(*.a)
+Bla.grep(*.a < 5);         # same as Bla.^all.grep(*.a < 5)
+
+model Ble is handling(map => "update", grep => "where") { has Int $.a is column }
+
+Ble.update(*.a);           # same as Ble.^all.map(*.a), renamed
+Ble.where(*.a < 5);        # same as Ble.^all.grep(*.a < 5), renamed
+```
+
+#### refresh
+
+The `.^refresh` meta-method reloads a model instance's columns with the actual data from the database. It accepts a list of column (attribute) names, or nothing at all to refresh every column:
+
+```raku
+my $post = Post.^load: 42;
+# ... some external process updates the row ...
+$post.^refresh;                # refreshes all columns
+$post.^refresh: "title";       # refreshes only the "title" column
+$post.^refresh: <title body>;  # refreshes "title" and "body"
+```
+
+Refreshed columns are also marked clean on the model's dirty tracking.
 
 #### Create table
 

@@ -355,6 +355,19 @@ multi sub trait_mod:<is>(
 
 Trait that defines a relationship receiving a column name, a model name and opitionaly a require, optional, no-prefetch and has-one.
 
+### is handling
+
+### multi sub trait_mod:<is>
+
+```raku
+multi sub trait_mod:<is>(
+    Mu:U $model,
+    :$handling
+) returns Empty
+```
+
+Trait that "exports" ResultSeq methods to the model itself. Each value can be a method name or a pair of method name => new name to be used on the model.
+
 ### is before-create
 
 ### multi sub trait_mod:<is>
