@@ -48,7 +48,7 @@ method !specialise($self, *@ret) is hidden-from-sql-commenting {
         );
         $attr does Red::Attr::Column(%data);
         model.^add_attribute: $attr;
-        model.^add_multi_method: $name, my method (Mu:D:) { $self.^all.get_value: "\$!$name" }
+        model.^add_multi_method: $name, my method (Mu:D:) { $attr.get_value(self) }
         $attr
     }
     model.^add_method: "no-table", my method no-table { True }

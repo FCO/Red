@@ -1,0 +1,40 @@
+use Test;
+use Red;
+use Red::AST::Value;
+
+subtest 'Generated getters read each column from the receiving storage instance' => {
+    my Int $queries = 0;
+    my $*RED-DB = database 'Mock';
+    $*RED-DB does role {
+        method prepare(|args) {
+            $queries++;
+            callsame
+        }
+    };
+    my $*RED-INTERNAL = True;
+    my @*table-list;
+    my %getters;
+    model GetterSource { has Int $.number is column }
+    GetterSource.HOW does role {
+        method add_multi_method(Mu $type, Str $name, Mu $method, |) {
+            # Invoke the registered getter directly: automatic accessors can mask it.
+            %getters{$name} //= $method if $name eq any(<data_1 data_2>);
+            callsame
+        }
+    };
+    my $type = GetterSource.^specialise(ast-value(1), ast-value('value'));
+    is-deeply %getters.keys.sort.Array, <data_1 data_2>.Array,
+        'Capture the generated getters for both columns';
+    my $first = $type.new(:data_1(11), :data_2('first'));
+    my $second = $type.new(:data_1(22), :data_2('second'));
+    is %getters<data_1>($first), 11, 'First column of the first instance';
+    is %getters<data_2>($first), 'first', 'Second column of the first instance';
+    is %getters<data_1>($second), 22, 'First column of the second instance';
+    is %getters<data_2>($second), 'second', 'Second column of the second instance';
+    $first.^set-attr('data_1', 44);
+    is %getters<data_1>($first), 44, 'Read the current stored value';
+    is %getters<data_1>($second), 22, 'Another instance retains its value';
+    is $queries, 0, 'Reading generated getters does not prepare database queries';
+};
+
+done-testing;
