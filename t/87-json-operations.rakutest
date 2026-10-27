@@ -85,6 +85,13 @@ subtest "Nested and dynamic paths", {
     is JsonDocument.^all.map({ .data<nested><items>[.item-index] }).head, 20,
         "Column-valued array index";
     is JsonDocument.^all.map(*.data<nested><items>.AT-POS(-1)).head, 30, "Negative array index";
+    is JsonDocument.^all.map({ .data<nested><items>[.item-index - 1] }).head, 10,
+        "Arithmetic array index retains grouping";
+    is JsonDocument.^all.map({ .data<nested><items>[.item-index - 2] }).head, 30,
+        "Arithmetic array index can resolve to a negative index";
+    my $offset = 2;
+    is JsonDocument.^all.map({ .data<nested><items>[.item-index - $offset] }).head, 30,
+        "Arithmetic array index retains captured parameter bindings";
     JsonDocument.^all.map({ .data<nested><items>[.item-index] = 42 }).save;
     is JsonDocument.^all.map(*.data<nested><items>[1]).head, 42, "Dynamic array update";
     JsonDocument.^all.map({ .data{.key} = 19 }).save;

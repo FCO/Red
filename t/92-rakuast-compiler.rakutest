@@ -1,0 +1,316 @@
+use Test;
+use Red;
+use Red::Compiler::RakuAST;
+use Red::Compiler::Template;
+use Red::Type::Json;
+use Red::AST;
+use Red::AST::Value;
+use Red::AST::Infixes;
+
+CHECK {
+    if (%*ENV<RAKUDO_RAKUAST> // '0') eq '1' {
+        my @events;
+        red-compile(:report(-> |event { @events.push: event.hash }));
+        for '*.number', '-*', '* > 2', '{ True }', '{ %(:value(.number)) }',
+            '{ .payload<value>:exists }', '{ .payload{$key}:!exists }',
+            '{ $^value + 2 }', '{ .number, .label }' -> $source {
+            my $normalized = $source.subst(/\s/, '', :g);
+            my @matches = @events.grep({ .<source>.subst(/\s/, '', :g) eq $normalized });
+            die "No compiled template for $source"
+                unless @matches && @matches.map(*<status>).all eq 'compiled';
+        }
+        for '{ .number += 10 }', '{ .payload<added> = 42 }',
+            '{ .payload<added>:delete }', '{ .number++ }',
+            '{ my $value = .number + 1; $value * 2 }' -> $source {
+            my $normalized = $source.subst(/\s/, '', :g);
+            my @matches = @events.grep({ .<source>.subst(/\s/, '', :g) eq $normalized });
+            die "A mutation was not compiled: $source"
+                unless @matches && @matches.map(*<status>).all eq 'compiled';
+        }
+    }
+}
+
+unless (%*ENV<RAKUDO_RAKUAST> // '0') eq '1' {
+    plan :skip-all('The optional compiler requires the RakuAST frontend');
+    exit;
+}
+
+my $*RED-FALLBACK = False;
+my $*RED-COMPILER-REPORT = -> |event {
+    note event.hash.raku if %*ENV<RED_COMPILER_DEBUG>;
+};
+my @config = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @config.shift;
+my $*RED-DB = database $driver, |%(@config.map({
+    my ($key, $value) = .split('=');
+    $key => val($value)
+}));
+
+model CompiledRow {
+    has Int $.id is serial;
+    has Int $.number is rw is column;
+    has Str $.label is column;
+    has Json $.payload is column;
+}
+
+model CompiledComparisonRow {
+    has Int $.number is column;
+    has Str $.digits is column;
+}
+
+my $schema = schema(CompiledRow);
+$schema.drop;
+$schema.create;
+LEAVE $schema.drop;
+CompiledRow.^create(:number($_), :label("row$_"),
+    :payload(%(value => $_, items => [$_, $_ + 1]))) for 1..4;
+
+subtest 'Compiled projections and filters' => {
+    my $minimum = 2;
+    my $query = CompiledRow.^all.map({ .number + 1 })
+        .grep({ $_ > $minimum }).map({ "value: $_" });
+    is-deeply $query.Array, ['value: 3', 'value: 4', 'value: 5'],
+        'Interpolation compiles without invoking AST.Str';
+    is-deeply CompiledRow.^all.map({ "value: {.number + 1}!" }).Array,
+        ['value: 2!', 'value: 3!', 'value: 4!', 'value: 5!'],
+        'Arithmetic interpolation retains grouping between string segments';
+    my $sql = $*RED-DB.translate($query.ast).key;
+    is $sql.comb(/:i SELECT/).elems, 1, 'Safe stages fuse';
+    my $captured = CompiledRow.^all.map({ .number }).grep({ $_ > $minimum });
+    $minimum = 3;
+    is-deeply $captured.Array, [3, 4], 'Captures are bound when the query is built';
+    is-deeply CompiledRow.^all.map({ .number }).grep({ $_ > $minimum }).Array,
+        [4], 'A new invocation reads current captures';
+    is-deeply CompiledRow.^all.map(*.number).sort(-*).Array, [4, 3, 2, 1],
+        'Whatever sorting compiles';
+    is CompiledRow.^all.map(*.number).first(* > 2), 3, 'First uses the template';
+};
+
+subtest 'Container and named parameter projections' => {
+    is-deeply CompiledRow.^all.map(-> $row { $row.number + 2 }).Array,
+        [3, 4, 5, 6], 'Pointy block parameters resolve';
+    is-deeply CompiledRow.^all.map({ %(value => .number, label => .label) })
+        .map({ .<value> + 2 }).Array, [3, 4, 5, 6], 'Hash fields resolve';
+    is-deeply CompiledRow.^all.map({ [.number, .label] })
+        .map({ .[0] + 2 }).Array, [3, 4, 5, 6], 'Array indexes resolve';
+    is-deeply CompiledRow.^all.map({ [.number, .label] })
+        .map(-> ($number, $label) { $number + 2 }).Array,
+        [3, 4, 5, 6], 'Destructured parameters resolve';
+    is-deeply CompiledRow.^all.grep({ .number > 1 && .number < 4 })
+        .map(*.number).Array, [2, 3], 'Boolean predicates compile';
+    is-deeply CompiledRow.^all.map({ .number > 2 ?? 'large' !! 'small' }).Array,
+        ['small', 'small', 'large', 'large'], 'Conditional projections compile';
+    is-deeply CompiledRow.^all.map(*.number).map({ "$_" }).head(0).Array, [],
+        'Empty pagination remains lazy';
+    is-deeply CompiledRow.^all.map({ .number }).map({ "$_" }).Array,
+        ['1', '2', '3', '4'], 'A single interpolated value is a string';
+    is-deeply CompiledRow.^all.map({ [.number, .label] }).map({ .elems }).Array,
+        [2, 2, 2, 2], 'Container element counts compile';
+    is-deeply CompiledRow.^all.grep({ .payload<value> == 2 }).map(*.number).Array,
+        [2], 'JSON paths in predicates compile';
+    is-deeply CompiledRow.^all.map({ if .number > 2 { 'large' } else { 'small' } }).Array,
+        ['small', 'small', 'large', 'large'], 'Complete if statements compile';
+    is-deeply CompiledRow.^all.map({ True }).Array,
+        [True, True, True, True], 'Boolean constants retain their type';
+    is-deeply CompiledRow.^all.grep({ .label.contains('2') })
+        .map(*.number).Array, [2], 'Known string operations compile';
+    is-deeply CompiledRow.^all.grep({ so (.number > 0) }).map(*.number).Array,
+        [1, 2, 3, 4], 'Boolean coercion constructs a unary AST directly';
+};
+
+subtest 'Compiled templates do not execute the original callback' => {
+    my $template = Red::Compiler::Template.new(:plan(['field', ['subject'], 'number']));
+    my $query = CompiledRow.^all.map(-> $row { die 'Original callback executed' },
+        :red-ast($template));
+    is-deeply $query.Array, [1, 2, 3, 4], 'The original callback remains dormant';
+    sub increment($value) { $value + 1 }
+    is-deeply CompiledRow.^all.map({ increment(.number) }).Array, [2, 3, 4, 5],
+        'Unsupported calls retain existing symbolic evaluation';
+    {
+        multi infix:<+>(Red::AST $left, Int $right) {
+            Red::AST::Sum.new($left, ast-value(100 + $right))
+        }
+        is-deeply CompiledRow.^all.map({ .number + 1 }).Array,
+            [102, 103, 104, 105], 'Custom operators retain their implementation';
+    }
+};
+
+subtest 'Native receivers retain native behavior' => {
+    is-deeply (1, 2, 3).map({ $_ + 1 }).Array, [2, 3, 4], 'Native map';
+    my $minimum = 1;
+    is-deeply (1, 2, 3).grep({ $_ > $minimum }).Array, [2, 3], 'Native grep';
+    is (1, 2, 3).first(* > 1), 2, 'Native first';
+    is-deeply (1, 2, 3).sort(-*).Array, [3, 2, 1], 'Native sort';
+    is-deeply (1, 2, 3).grep(* > 1, :k).Array, [1, 2], 'Native named adverbs';
+    my @values = 1, 2, 3;
+    @values.first(* > 1) = 20;
+    is-deeply @values, [1, 20, 3], 'Native writable return values';
+};
+
+subtest 'Capture binding and guarded dispatch' => {
+    my $reads = 0;
+    my $query = CompiledRow.^all.map(*.number).map(-> $value { die 'Called' },
+        :red-ast(Red::Compiler::Template.new(
+            :plan(['op', 'Div', ['capture', 0], ['subject']]),
+            :getters([-> { $reads++; 12 }]))));
+    is $reads, 1, 'A SELECT boundary does not bind captures twice';
+    is-deeply $query.Array, [12e0, 6e0, 4e0, 3e0], 'Bound captures survive a boundary';
+    my $errors = 0;
+    my $broken = Red::Compiler::Template.new(:plan(['capture', 0]),
+        :getters([-> { $errors++; die 'Capture failed' }]));
+    throws-like { CompiledRow.^all.map(-> $row { die 'Callback retried' },
+        :red-ast($broken)) }, X::AdHoc, :message('Capture failed');
+    is $errors, 1, 'Capture errors propagate without retry';
+    my $receivers = 0;
+    sub values() { $receivers++; [1, 2] }
+    is-deeply values().map({ $_ + 1 }).Array, [2, 3], 'Receiver expression works';
+    is $receivers, 1, 'Receiver expression is evaluated once';
+    class NativeReceiver {
+        method map(&callback, :$offset = 0, *%named) {
+            die 'Internal metadata leaked' if %named<red-ast>:exists;
+            callback(3) + $offset
+        }
+    }
+    is NativeReceiver.new.map({ $_ + 1 }, :offset(2)), 6,
+        'Custom receiver keeps dispatch and named arguments';
+};
+
+subtest 'Compiler selection and safe fallback regressions' => {
+    my $compiled = 0;
+    my $*RED-COMPILER-REPORT = -> |event {
+        $compiled++ if event.hash<status> eq 'used';
+    };
+    is-deeply CompiledRow.^all.map(*.number).grep(* > 2).sort(-*).Array,
+        [4, 3], 'Whatever stages use their templates';
+    is CompiledRow.^all.map(*.number).first(* > 2), 3,
+        'Whatever first uses its template';
+    is-deeply CompiledRow.^all.map({ %(:value(.number)) }).map({ .<value> }).Array,
+        [1, 2, 3, 4], 'Hash colonpairs use their templates';
+    is-deeply CompiledRow.^all.map({ True }).Array, [True, True, True, True],
+        'Enum booleans use their templates';
+    is-deeply CompiledRow.^all.grep({ .payload<value>:exists }).map(*.number).Array,
+        [1, 2, 3, 4], 'Existence produces a predicate';
+    my $key = 'missing';
+    is-deeply CompiledRow.^all.grep({ .payload{$key}:!exists }).map(*.number).Array,
+        [1, 2, 3, 4], 'Negated existence and captured keys compile';
+    is-deeply CompiledRow.^all.grep({ .payload<items>[.number - 1]:exists })
+        .map(*.number).Array, [1, 2], 'Column expressions work as JSON indexes';
+    is-deeply CompiledRow.^all.map({ .number, .label }).map({ .[0] }).Array,
+        [1, 2, 3, 4], 'Unparenthesized list projections compile';
+    is-deeply CompiledRow.^all.map(*.number).map({ $^value + 2 }).Array,
+        [3, 4, 5, 6], 'Placeholder parameters compile';
+    is-deeply CompiledRow.^all.grep({ .label.starts-with('row') }).map(*.number).Array,
+        [1, 2, 3, 4], 'Known string methods compile';
+    cmp-ok $compiled, '>=', 20, 'Compiled templates were actually evaluated';
+};
+
+subtest 'Comparisons retain numeric and textual coercion semantics' => {
+    my $comparisons = 0;
+    my $*RED-COMPILER-REPORT = -> |event {
+        my %event = event.hash;
+        $comparisons++ if %event<status> eq 'used' && %event<plan>[0] eq 'op'
+            && %event<plan>[4].DEFINITE;
+    };
+    my $comparison-schema = schema(CompiledComparisonRow);
+    $comparison-schema.drop.create;
+    LEAVE $comparison-schema.drop;
+    CompiledComparisonRow.^create(:number(.key), :digits(.value))
+        for 1 => '01', 2 => '2', 10 => '10';
+    sub values($query) { $query.map(*.number).Array.sort.Array }
+    my $digits = '01';
+    my $threshold = 2;
+    my &numeric-literal = -> $row { $row.digits == 1 };
+    my &numeric-capture = -> $row { $row.digits == $digits };
+    my &textual-order = -> $row { $row.number lt $threshold };
+    my &textual-equality = -> $row { $row.number eq $digits };
+    my &numeric-order = -> $row { $row.number > $threshold };
+    for False, True -> $enabled {
+        my $*RED-QUERY-PLAN-CACHE = $enabled;
+        is-deeply values(CompiledComparisonRow.^all.grep({ .digits == 1 })),
+            values(CompiledComparisonRow.^all.grep(&numeric-literal)),
+            "Numeric comparison of a text column (cache=$enabled)";
+        is-deeply values(CompiledComparisonRow.^all.grep({ .digits == $digits })),
+            values(CompiledComparisonRow.^all.grep(&numeric-capture)),
+            "Numeric coercion of a string capture (cache=$enabled)";
+        is-deeply values(CompiledComparisonRow.^all.grep({ .number lt $threshold })),
+            values(CompiledComparisonRow.^all.grep(&textual-order)),
+            "Textual ordering of a numeric column (cache=$enabled)";
+        is-deeply values(CompiledComparisonRow.^all.grep({ .number eq $digits })),
+            values(CompiledComparisonRow.^all.grep(&textual-equality)),
+            "Textual equality with a string capture (cache=$enabled)";
+        is-deeply values(CompiledComparisonRow.^all.grep({ .number > $threshold })),
+            values(CompiledComparisonRow.^all.grep(&numeric-order)),
+            "Numeric predicate specialization retains casts (cache=$enabled)";
+    }
+    cmp-ok $comparisons, '>=', 8, 'Coercing comparisons use compiled factories';
+};
+
+subtest 'Compiled mutations retain the updating map path' => {
+    my $used = 0;
+    my $*RED-COMPILER-REPORT = -> |event { $used++ if event.hash<status> eq 'used' };
+    my $before = $used;
+    lives-ok { CompiledRow.^all.map({ .number += 10 }).save },
+        'Compound assignment does not break CHECK';
+    is-deeply CompiledRow.^all.map(*.number).Array, [11, 12, 13, 14],
+        'Compound assignment persists';
+    cmp-ok $used - $before, '>=', 2, 'Compound assignment uses a template';
+    lives-ok { CompiledRow.^all.map({ .payload<added> = 42 }).save },
+        'Indexed assignment remains an update';
+    is CompiledRow.^all.grep({ .payload<added> == 42 }).elems, 4,
+        'Indexed assignment persists';
+    lives-ok { CompiledRow.^all.map({ .payload<added>:delete }).save },
+        'Deletion remains an update';
+    is CompiledRow.^all.grep({ .payload<added>:exists }).elems, 0,
+        'Deletion removes the JSON key';
+    cmp-ok $used, '>=', 6, 'Updates, assignments, and deletion use templates';
+    is-deeply CompiledRow.^all.map({ my $value = .number + 1; $value * 2 }).Array,
+        [24, 26, 28, 30], 'Local declarations and multiple statements compile';
+    is-deeply CompiledRow.^all.grep(*.label in <row1 row3>).map(*.number).Array,
+        [11, 13], 'Quoted word lists compile as membership values';
+    my @chosen = 11, 14;
+    is-deeply CompiledRow.^all.grep({ .number in @chosen }).map(*.number).Array,
+        [11, 14], 'Captured arrays compile in membership predicates';
+    lives-ok { CompiledRow.^all.map({ .number++ }).save }, 'Postfix increments compile';
+    is-deeply CompiledRow.^all.map(*.number).Array, [12, 13, 14, 15],
+        'Postfix increment persists';
+    lives-ok { CompiledRow.^all.map({ --.number }).save }, 'Prefix decrements compile';
+    lives-ok { CompiledRow.^all.map({ .payload<value> += 2 }).save },
+        'Compound JSON updates compile';
+    is-deeply CompiledRow.^all.grep({ .payload<value> >= 3 }).map(*.number).Array,
+        [11, 12, 13, 14], 'Compound JSON updates persist';
+    is-deeply CompiledRow.^all.map({ "row: { .label }" }).Array,
+        ['row: row1', 'row: row2', 'row: row3', 'row: row4'],
+        'Interpolation blocks compile without changing block-valued projections';
+    my $retried = 0;
+    my $partial = Red::Compiler::Template.new(:plan([
+        'sequence',
+        ['assign', ['field', ['subject'], 'number'], ['literal', 1000]],
+        ['unsupported-test-expression']
+    ]));
+    CompiledRow.^all.map(-> $row { $retried++; $row.number += 1 },
+        :red-ast($partial)).save;
+    is $retried, 1, 'An unsupported runtime shape invokes the original callback once';
+    is-deeply CompiledRow.^all.map(*.number).Array, [12, 13, 14, 15],
+        'Abandoned template effects are discarded before fallback';
+    my $constant = 0;
+    sub constant-value() { $constant++; 23 }
+    my $captured = CompiledRow.^all.map({ constant-value() });
+    is $constant, 1, 'An independent function is captured when the query is built';
+    is-deeply $captured.Array, [23, 23, 23, 23], 'Captured function values are reused';
+    my $before-local = $used;
+    is-deeply CompiledRow.^all.map({ my $value = .number; $value + 1 }).Array,
+        [13, 14, 15, 16], 'Local expressions retain row values';
+    cmp-ok $used, '>', $before-local, 'A block with local declarations uses a template';
+    is-deeply CompiledRow.^all.map(*.number).map({ $_ += 10 }).Array,
+        [22, 23, 24, 25], 'Projected scalar parameters support compound assignment';
+    is-deeply CompiledRow.^all.map({ my $value = .number; $value *= 2; $value }).Array,
+        [24, 26, 28, 30], 'Local compound assignment stays in the compiled expression';
+    is-deeply CompiledRow.^all.map(*.number).map({ $_ += 1; $_ * 2 }).Array,
+        [26, 28, 30, 32], 'Later expressions read the reassigned parameter';
+    is-deeply CompiledRow.^all.map(*.number).map({ $_++ }).Array,
+        [12, 13, 14, 15], 'A projected postfix increment returns the original value';
+    is-deeply CompiledRow.^all.map({ my $value = .number; my $old = $value++; $old }).Array,
+        [12, 13, 14, 15], 'Local postfix increments retain the old value';
+};
+
+done-testing;

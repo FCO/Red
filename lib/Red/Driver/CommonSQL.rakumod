@@ -19,6 +19,7 @@ use Red::AST::IsDefined;
 use Red::AST::CreateTable;
 use Red::AST::CreateIndex;
 use Red::AST::Native;
+use Red::AST::BoundFilter;
 use Red::Index;
 use Red::AST::CreateView;
 use Red::AST::LastInsertedRow;
@@ -53,6 +54,8 @@ use MetamodelX::Red::VirtualView;
 
 use UUID;
 unit role Red::Driver::CommonSQL does Red::Driver;
+
+method supports-query-plans(--> Bool:D) { True }
 
 method reserved-words {<
     A ABORT ABS ABSOLUTE ACCESS ACTION ADA ADD ADMIN AFTER AGGREGATE ALIAS ALL ALLOCATE ALSO ALTER ALWAYS ANALYSE
@@ -349,6 +352,26 @@ multi method translate(Red::AST::Check $_, $context?) {
 multi method translate(Red::AST::Exclude $_, $context?) {
     return '' => [] unless self.schema-definition-applies($_);
     index-error("EXCLUDE is unsupported on {self.driver-name}")
+}
+
+multi method translate(Red::AST::BoundFilter::Predicate $predicate, $context?) {
+    my @*RED-BOUND-VALUES = $predicate.values;
+    my $collect = try $*RED-COLLECT-PLAN-BINDS;
+    my $*RED-PLAN-GROUP = $collect.WHAT =:= Bool && $collect
+        ?? %*RED-PLAN-GROUPS{$predicate.binding-token.WHICH.Str} !! 0;
+    self.translate($predicate.filter, $context)
+}
+
+method translate-query-parameter(Red::AST::BoundFilter::Parameter $parameter, $context?) {
+    my $collect = try $*RED-COLLECT-PLAN-BINDS;
+    my $value = $collect.WHAT =:= Bool && $collect
+        ?? Red::AST::BoundFilter::Bind.new(:group($*RED-PLAN-GROUP), :index($parameter.index))
+        !! @*RED-BOUND-VALUES[$parameter.index];
+    self.wildcard => [$value]
+}
+
+multi method translate(Red::AST::BoundFilter::Parameter $parameter, $context?) {
+    self.translate-query-parameter($parameter, $context)
 }
 
 multi method translate(Red::AST::Native::Operator $_, $context?) {
@@ -943,7 +966,9 @@ multi method translate(Red::AST::Cast $_, $context?) {
         .bind ?? self.translate(.value, "bind") !! qq|'{ .value }'| => []
     }
     default {
-        self.translate: .value, .bind ?? "bind" !! $context
+        my $translated = self.translate: .value, .bind ?? "bind" !! $context;
+        (.value ~~ Red::AST::Infix ?? "({$translated.key})" !! $translated.key)
+            => $translated.value
     }
 }
 

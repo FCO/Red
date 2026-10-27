@@ -4,6 +4,7 @@ use Red::Utils;
 use Red::Model;
 use Red::Column;
 use Red::Driver;
+use Red::QueryPlan::Cache;
 use Red::AST::Next;
 use Red::AST::Case;
 use Red::AST::Empty;
@@ -23,6 +24,7 @@ use Red::ResultSeq::Iterator;
 use Red::HiddenFromSQLCommenting;
 use X::Red::Exceptions;
 use Red::PrepareCode;
+use Red::Compiler::Template;
 use Red::Phaser;
 use Red::ResultSeqMethods;
 use Red::Formatter::ResultSeq;
@@ -99,6 +101,7 @@ has Red::Driver       $.with = do {
 has                   $.obj;
 has Red::AST::Chained $.chain handles <filter limit offset post order group table-list> .= new: |(:filter(.^id-filter) with $!obj);
 has Lock::Async       $!lock .= new;
+has Red::QueryPlan::Cache $!query-plan-cache .= new;
 has Red::LockType     $.for;
 has                   @.prefetches;
 has Bool              $.prefetches-set = False;
@@ -115,7 +118,8 @@ multi method with(Str $with) {
 
 method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {
     my $*RED-INTERNAL = True;
-    Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post, |(:driver($_) with $!with)
+    Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post,
+        :plan-cache($!query-plan-cache), |(:driver($_) with $!with)
 }
 
 #| Returns a Seq with the result of the SQL query
@@ -434,8 +438,52 @@ method !create-projection(Red::Projection:D $projection, &filter) {
     )) but ProjectedModel[$model]
 }
 
+#| Resolve a compiled callback against the current SQL stage, retaining legacy fallback.
+method !query-block(&callback, $compiled is rw, $subject, Bool :$ordering = False,
+    Bool :$cache-filter = False, :$diagnostic, Str:D :$method!, Bool :$warned! is rw) {
+    my $reason = 'No RakuAST template was supplied';
+    if $compiled.DEFINITE {
+        my $unsupported = False;
+        my Red::AST %branches{Red::AST};
+        try {
+            $compiled = $compiled.bind($subject) unless $compiled.bound;
+            my $cached = $cache-filter ?? $compiled.cached-filter($subject,
+                :driver($!with.DEFINITE ?? $!with !! (try get-RED-DB))) !! Nil;
+            if $cached.DEFINITE {
+                %branches{Red::AST} = $cached;
+            } else {
+                %branches = $compiled.branches($subject);
+            }
+            CATCH {
+                when X::Red::Compiler::Unsupported {
+                    $unsupported = True;
+                    $reason = .reason;
+                    my $report = DYNAMIC::<$*RED-COMPILER-REPORT>;
+                    $report(:status<fallback>, :reason(.reason)) if $report ~~ Callable;
+                }
+            }
+        }
+        return %branches unless $unsupported;
+        $compiled = Any;
+    }
+    self!compiler-warning(&callback, $diagnostic, $method, $reason, $warned);
+    if $ordering {
+        my Red::AST %branches{Red::AST};
+        %branches{Red::AST} = ast-value(callback($subject));
+        return %branches;
+    }
+    what-does-it-do(&callback, $subject).Hash
+}
+
+method !compiler-warning(&callback, $diagnostic, Str:D $method, Str:D $reason,
+    Bool $warned is rw) {
+    return if $warned;
+    $warned = emit-compiler-warning(&callback, $diagnostic, :$method, :$reason);
+    Nil
+}
+
 #| Adds a new filter on the query (does not run the query)
-method grep(&filter) is hidden-from-sql-commenting {
+method grep(&filter, :$red-ast is copy) is hidden-from-sql-commenting {
     X::Red::NoOperatorsDefined.new(:meth<grep>).throw
         if !$*from-first && !::CALLERS::<&__RED_OPERATOR_LOADED__> && !::CALLERS::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
     my $*RED-INTERNAL = True;
@@ -456,12 +504,18 @@ method grep(&filter) is hidden-from-sql-commenting {
         method print(|) { die "Trying to print inside the grep's block" }
     }
     my Red::AST $*RED-GREP-FILTER;
+    my $diagnostic = $red-ast;
+    my Bool $warned = False;
     my $input = self!projection-input(:fuse);
-    my Red::AST %branches{Red::AST} = what-does-it-do(&filter, $input!projection-subject).Hash;
+    my Red::AST %branches{Red::AST} = self!query-block(
+        &filter, $red-ast, $input!projection-subject, :cache-filter,
+        :$diagnostic, :method<grep>, :$warned);
     if self.chain.projection.DEFINITE && $input === self
         && !Red::Projection.safe-to-repeat(%branches) {
         $input = self!projection-input;
-        %branches = what-does-it-do(&filter, $input!projection-subject).Hash;
+        %branches = self!query-block(
+            &filter, $red-ast, $input!projection-subject, :cache-filter,
+            :$diagnostic, :method<grep>, :$warned);
     }
     my $filter = do given %branches {
         do if [eqv] .values {
@@ -483,12 +537,12 @@ method grep(&filter) is hidden-from-sql-commenting {
 }
 
 #| Changes the query to return only the first row that matches the condition and run it (.grep(...).head)
-multi method first(&filter) is hidden-from-sql-commenting {
+multi method first(&filter, :$red-ast) is hidden-from-sql-commenting {
     X::Red::NoOperatorsDefined.new(:meth<first>).throw
         if !::CALLERS::<&__RED_OPERATOR_LOADED__> && !::CALLERS::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
     self.create-comment-to-caller;
     my $*from-first = True;
-    self.grep(&filter).head
+    self.grep(&filter, :$red-ast).head
 }
 
 multi method first() is hidden-from-sql-commenting {
@@ -522,7 +576,7 @@ multi method create-map(\SELF: *@ret where .all ~~ Red::AST, :&filter) is hidden
 }
 
 #| Change what will be returned (does not run the query)
-method map(\SELF: &filter) is hidden-from-sql-commenting {
+method map(\SELF: &filter, :$red-ast is copy) is hidden-from-sql-commenting {
     X::Red::NoOperatorsDefined.new(:meth<map>).throw
         if !::CALLERS::<&__RED_OPERATOR_LOADED__> && !::CALLERS::OUTERS::<&__RED_OPERATOR_LOADED__> && !$*RED-DONT-FAIL-WITHOUT-OPERATORS;
     my $*RED-INTERNAL = True;
@@ -547,14 +601,18 @@ method map(\SELF: &filter) is hidden-from-sql-commenting {
     my Red::AST %next{Red::AST};
     my Red::AST %when{Red::AST};
     my $input = SELF!projection-input(:fuse);
+    my $diagnostic = $red-ast;
+    my Bool $warned = False;
     my @updates = @!update;
     my @*UPDATE := @updates;
-    my Red::AST %branches{Red::AST} = what-does-it-do(&filter, $input!projection-subject).Hash;
+    my Red::AST %branches{Red::AST} = self!query-block(
+        &filter, $red-ast, $input!projection-subject, :$diagnostic, :method<map>, :$warned);
     if $!chain.projection.DEFINITE && $input === SELF
         && !Red::Projection.safe-to-repeat(%branches) {
         $input = SELF!projection-input;
         @updates = @!update;
-        %branches = what-does-it-do(&filter, $input!projection-subject).Hash;
+        %branches = self!query-block(
+            &filter, $red-ast, $input!projection-subject, :$diagnostic, :method<map>, :$warned);
     }
     for %branches -> Pair $_ {
         (.value ~~ (Red::AST::Next | Red::AST::Empty) ?? %next !! %when){.key} = .value
@@ -595,15 +653,33 @@ multi method sort(--> Red::ResultSeq) is hidden-from-sql-commenting {
 }
 
 #| Defines the order of the query (does not run the query)
-multi method sort(&order --> Red::ResultSeq) is hidden-from-sql-commenting {
+multi method sort(&order, :$red-ast is copy --> Red::ResultSeq) is hidden-from-sql-commenting {
     my $*RED-INTERNAL = True;
     self.create-comment-to-caller;
+    my $diagnostic = $red-ast;
+    my Bool $warned = False;
     my $input = self!projection-input(:fuse);
-    my @order = order $input!projection-subject;
+    my @order = do if $red-ast.DEFINITE {
+        my $value = self!query-block(&order, $red-ast, $input!projection-subject,
+            :ordering, :$diagnostic, :method<sort>, :$warned).values.head;
+        $value ~~ Red::AST::Value ?? $value.value !! $value
+    } else {
+        self!compiler-warning(&order, $diagnostic, 'sort',
+            'No RakuAST template was supplied', $warned);
+        order $input!projection-subject
+    };
     if $!chain.projection.DEFINITE && $input === self
         && !Red::Projection.safe-to-repeat(@order) {
         $input = self!projection-input;
-        @order = order $input!projection-subject;
+        @order = do if $red-ast.DEFINITE {
+            my $value = self!query-block(&order, $red-ast, $input!projection-subject,
+                :ordering, :$diagnostic, :method<sort>, :$warned).values.head;
+            $value ~~ Red::AST::Value ?? $value.value !! $value
+        } else {
+            self!compiler-warning(&order, $diagnostic, 'sort',
+                'No RakuAST template was supplied', $warned);
+            order $input!projection-subject
+        };
     }
     $input.clone: :chain($input.chain.clone: :@order)
 }
