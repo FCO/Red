@@ -1,6 +1,10 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Stage source dependencies independently of experimental compiler package managers.
+    - Bound alternative compiler tests individually and retain results after timeouts.
+    - Run Rakupp and Mutsu in independent, non-blocking GitHub Actions jobs.
+    - Provide an informational local runner with compiler detection, saved logs and an optional strict mode.
     - schema: add named CHECK and PostgreSQL EXCLUDE constraints with driver selection
     - indexes: support access methods, per-key operator classes and partial predicates
     - pg: add range constructors and native range/regex expression helpers
