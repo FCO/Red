@@ -21,6 +21,9 @@ usage() {
         'Defaults: installed alternative compilers, all of t/, exit status 0.' \
         '--strict returns 1 on failure, missing tools, or a missing selected compiler.' \
         'Dependencies must already be installed for each compiler.' \
+        'ALT_COMPILER_DEPENDENCIES optionally names a JSON list of source directories.' \
+        'ALT_COMPILER_TEST_TIMEOUT sets seconds per test (default 30).' \
+        'ALT_COMPILER_JOBS sets parallel test processes (default 4).' \
         'ALT_COMPILER_LOG_DIR optionally selects the log directory.'
 }
 
@@ -73,6 +76,11 @@ if ! command -v prove >/dev/null 2>&1; then
     failed=1
     finish
 fi
+if ! command -v python3 >/dev/null 2>&1; then
+    printf '%s\n' 'UNAVAILABLE: python3 is required for per-file timeouts; no tests ran.'
+    failed=1
+    finish
+fi
 
 ran=0
 for compiler in "${compilers[@]}"; do
@@ -89,9 +97,10 @@ for compiler in "${compilers[@]}"; do
     # --norc prevents a local .proverc from overriding the chosen executor.
     if (
         printf 'Compiler: %s\n' "$(command -v "$compiler")"
-        "$compiler" -e 'say $*RAKU.compiler'
+        python3 tools/alternative-compiler-exec.py "$compiler" -e 'say $*RAKU.compiler'
         prove --norc --recurse --ext .rakutest --verbose \
-            --exec "$compiler -Ilib" "${tests[@]}"
+            --jobs "${ALT_COMPILER_JOBS:-4}" \
+            --exec "python3 tools/alternative-compiler-exec.py $compiler" "${tests[@]}"
     ) >"$log_file" 2>&1; then
         printf '%s: PASS (%s)\n' "$compiler" "$log_file"
     else

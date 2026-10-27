@@ -59,6 +59,21 @@ jobs:
           sudo apt-get update 2>&1 | tee "$ALT_COMPILER_LOG_DIR/apt-update.log"
           sudo apt-get install -y perl libpq-dev libsqlite3-dev uuid-dev libffi-dev \
             2>&1 | tee "$ALT_COMPILER_LOG_DIR/native-dependencies.log"
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: "2026.09"
+      - name: Prepare dependency sources with Rakudo
+        env:
+          RAKUDO_RAKUAST: "0"
+          ZEF_CONFIG_STOREDIR: ${{ runner.temp }}/alternative-dependencies/store
+          ZEF_CONFIG_TEMPDIR: ${{ runner.temp }}/alternative-dependencies/extracted
+        run: |
+          raku tools/prepare-alternative-dependencies.raku \
+            2>&1 | tee "$ALT_COMPILER_LOG_DIR/dependencies.log"
+          manifest="$ALT_COMPILER_LOG_DIR/dependencies.json"
+          python3 tools/alternative-compiler-dependencies.py \
+            "$ZEF_CONFIG_TEMPDIR" "$manifest"
+          echo "ALT_COMPILER_DEPENDENCIES=$manifest" >> "$GITHUB_ENV"
       - name: Install Rakupp
         if: matrix.compiler == 'rakupp'
         run: |
@@ -85,24 +100,6 @@ jobs:
           echo "$compiler_dir/bin" >> "$GITHUB_PATH"
           mise ls github:tokuhirom/mutsu \
             2>&1 | tee "$ALT_COMPILER_LOG_DIR/version.log"
-      - name: Check out Zef for Rakupp
-        if: matrix.compiler == 'rakupp'
-        uses: actions/checkout@v4
-        with:
-          repository: ugexe/zef
-          path: .ci/alternative-zef
-      - name: Install Rakupp dependencies
-        if: matrix.compiler == 'rakupp'
-        run: |
-          rakupp -I"$GITHUB_WORKSPACE/.ci/alternative-zef/lib" \
-            "$GITHUB_WORKSPACE/.ci/alternative-zef/bin/zef" \
-            install --/test --test-depends --deps-only . \
-            2>&1 | tee "$ALT_COMPILER_LOG_DIR/dependencies.log"
-      - name: Install Mutsu dependencies
-        if: matrix.compiler == 'mutsu'
-        run: |
-          mzef install --/test --test-depends --deps-only . \
-            2>&1 | tee "$ALT_COMPILER_LOG_DIR/dependencies.log"
       - name: Run alternative compiler tests
         env:
           RED_TEST_COMPILER: ${{ matrix.compiler }}

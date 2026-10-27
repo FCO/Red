@@ -16,9 +16,19 @@ bash tools/test-alternative-compilers.sh --compiler mutsu t/35-create.rakutest
 ```
 
 Test paths are relative to the checkout. Install dependencies separately for each
-compiler before running; the script does not install anything. It uses the Perl TAP
+compiler before running; the script does not install anything. It uses Python 3 and the Perl TAP
 harness `prove`, prints a result for each compiler, and saves diagnostics in a temporary
 directory reported at startup. Set `ALT_COMPILER_LOG_DIR` to choose that directory.
+
+Tests run in four parallel processes, with a 30-second limit per test file. Set
+`ALT_COMPILER_JOBS` and `ALT_COMPILER_TEST_TIMEOUT` to adjust these limits. A timeout
+is recorded as a failure and the remaining files still run.
+
+CI stages dependency sources with Zef running on Rakudo, then passes their directories
+to the alternative interpreter with `-I`. This avoids failures in the alternative
+package managers and does not reuse Rakudo's precompiled modules. To use a source
+dependency tree locally, set `ALT_COMPILER_DEPENDENCIES` to a JSON file containing
+an array of absolute library directory paths.
 
 Local runs return status `0` even when tests fail or tools are missing. Add `--strict`
 to return a failure status instead. The experimental GitHub Actions jobs use this
