@@ -1,5 +1,5 @@
 use Test;
-use Red <has-one>;
+use Red;
 
 model Bla {
     has UInt $.id      is serial;

@@ -1,7 +1,7 @@
 #!/usr/bin/env raku
 
 use Test;
-use Red:api<2> <refreshable>;
+use Red:api<2>;
 
 # TODO: Is it breaking for Pg?
 plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
