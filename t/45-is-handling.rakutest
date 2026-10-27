@@ -2,6 +2,8 @@ use Test;
 
 use Red;
 
+my $*RED-FALLBACK = False;
+
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
 my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
@@ -11,12 +13,16 @@ my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=
 model Bla is handling<map grep> { has Int $.a is column }
 lives-ok { schema(Bla).drop.create }
 Bla.^create: :a($_) for ^10;
+isa-ok Bla.map(*.a), Red::ResultSeq, 'Handled map retains the SQL query';
+isa-ok Bla.grep(*.a < 5), Red::ResultSeq, 'Handled grep retains the SQL query';
 is Bla.map(*.a), ^10;
 is Bla.grep(*.a < 5).map(*.a), ^5;
 
 model Ble is handling(map => "update", grep => "where") { has Int $.a is column }
 lives-ok { schema(Ble).drop.create }
 Ble.^create: :a($_) for ^10;
+isa-ok Ble.update(*.a), Red::ResultSeq, 'Renamed map retains the SQL query';
+isa-ok Ble.where(*.a < 5), Red::ResultSeq, 'Renamed grep retains the SQL query';
 is Ble.update(*.a), ^10;
 is Ble.where(*.a < 5).map(*.a), ^5;
 
