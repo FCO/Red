@@ -37,6 +37,88 @@ jobs:
       - name: Run tests
         run: prove6 -lj8 t
 
+  alternative-compilers:
+    name: Experimental (${{ matrix.compiler }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    continue-on-error: true
+    defaults:
+      run:
+        shell: bash
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [rakupp, mutsu]
+    env:
+      ALT_COMPILER_LOG_DIR: ${{ github.workspace }}/.ci/alternative-compiler-logs
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare logs and native dependencies
+        run: |
+          mkdir -p "$ALT_COMPILER_LOG_DIR"
+          sudo apt-get update 2>&1 | tee "$ALT_COMPILER_LOG_DIR/apt-update.log"
+          sudo apt-get install -y perl libpq-dev libsqlite3-dev uuid-dev libffi-dev \
+            2>&1 | tee "$ALT_COMPILER_LOG_DIR/native-dependencies.log"
+      - name: Install Rakupp
+        if: matrix.compiler == 'rakupp'
+        run: |
+          curl -fsSL https://raku.online/install.sh -o "$RUNNER_TEMP/install-rakupp.sh"
+          sh "$RUNNER_TEMP/install-rakupp.sh" --yes --no-raku-alias --no-path \
+            --dir "$RUNNER_TEMP/rakupp" \
+            2>&1 | tee "$ALT_COMPILER_LOG_DIR/compiler-install.log"
+          echo "$RUNNER_TEMP/rakupp/bin" >> "$GITHUB_PATH"
+          "$RUNNER_TEMP/rakupp/bin/rakupp" --version \
+            2>&1 | tee "$ALT_COMPILER_LOG_DIR/version.log"
+      - name: Set up mise
+        if: matrix.compiler == 'mutsu'
+        uses: jdx/mise-action@v2
+        with:
+          install: false
+      - name: Install Mutsu
+        if: matrix.compiler == 'mutsu'
+        env:
+          MISE_GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          mise install github:tokuhirom/mutsu@latest \
+            2>&1 | tee "$ALT_COMPILER_LOG_DIR/compiler-install.log"
+          compiler_dir=$(mise where github:tokuhirom/mutsu@latest)
+          echo "$compiler_dir/bin" >> "$GITHUB_PATH"
+          mise ls github:tokuhirom/mutsu \
+            2>&1 | tee "$ALT_COMPILER_LOG_DIR/version.log"
+      - name: Check out Zef for Rakupp
+        if: matrix.compiler == 'rakupp'
+        uses: actions/checkout@v4
+        with:
+          repository: ugexe/zef
+          path: .ci/alternative-zef
+      - name: Install Rakupp dependencies
+        if: matrix.compiler == 'rakupp'
+        run: |
+          rakupp -I"$GITHUB_WORKSPACE/.ci/alternative-zef/lib" \
+            "$GITHUB_WORKSPACE/.ci/alternative-zef/bin/zef" \
+            install --/test --test-depends --deps-only . \
+            2>&1 | tee "$ALT_COMPILER_LOG_DIR/dependencies.log"
+      - name: Install Mutsu dependencies
+        if: matrix.compiler == 'mutsu'
+        run: |
+          mzef install --/test --test-depends --deps-only . \
+            2>&1 | tee "$ALT_COMPILER_LOG_DIR/dependencies.log"
+      - name: Run alternative compiler tests
+        env:
+          RED_TEST_COMPILER: ${{ matrix.compiler }}
+        run: |
+          status=0
+          bash tools/test-alternative-compilers.sh --strict \
+            --compiler "$RED_TEST_COMPILER" || status=$?
+          cat "$ALT_COMPILER_LOG_DIR/$RED_TEST_COMPILER.log"
+          exit "$status"
+      - name: Save alternative compiler logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: alternative-compiler-${{ matrix.compiler }}
+          path: ${{ env.ALT_COMPILER_LOG_DIR }}
+
   mysql:
     name: MySQL (RakuAST=${{ matrix.rakuast }})
     strategy:
