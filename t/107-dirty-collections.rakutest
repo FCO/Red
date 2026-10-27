@@ -1,5 +1,5 @@
 use Test;
-use Red <refreshable>;
+use Red;
 use Red::Type::Json;
 
 # NOTE: every collection column below declares a custom deflate that produces a

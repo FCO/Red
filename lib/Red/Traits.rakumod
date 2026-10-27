@@ -269,8 +269,6 @@ multi trait_mod:<is>(
     )
     --> Empty
 ) is export {
-    die "Please, use the has-one experimental feature (use Red <has-one>) to allow using it on relationships"
-    	if $has-one && !%Red::experimentals<has-one>;
     $attr.package.^add-relationship: $attr, &relationship, |(:$model with $model), |(:$require with $require), :$optional, :$no-prefetch, |(:$has-one if $has-one)
 }
 
@@ -288,8 +286,6 @@ multi trait_mod:<is>(
     )
     --> Empty
 ) is export {
-    die "Please, use the has-one experimental feature (use Red <has-one>) to allow using it on relationships"
-        if $has-one && !%Red::experimentals<has-one>;
     $attr.package.^add-relationship: $attr, &relationship, :model-type($model), :$optional, :$no-prefetch, |(:$has-one if $has-one)
 }
 
@@ -308,8 +304,6 @@ multi trait_mod:<is>(
     )
     --> Empty
 ) is export {
-    die "Please, use the has-one experimental feature (use Red <has-one>) to allow using it on relationships"
-    	if $has-one && !%Red::experimentals<has-one>;
     $attr.package.^add-relationship: $attr, :$column, :$model, :$require, :$optional, :$no-prefetch, |(:$has-one if $has-one)
 }
 
@@ -326,9 +320,18 @@ multi trait_mod:<is>(
     )
     --> Empty
 ) {
-    die "Please, use the has-one experimental feature (use Red <has-one>) to allow using it on relationships"
-    	if $has-one && !%Red::experimentals<has-one>;
     $attr.package.^add-relationship: $attr, |@relationship, :$model, :$require, :$optional, :$no-prefetch, |(:$has-one if $has-one)
+}
+
+=head3 is handling
+
+#| Trait that "exports" ResultSeq methods to the model itself. Each value can be a
+#| method name or a pair of method name => new name to be used on the model.
+multi trait_mod:<is>(Mu:U $model, :$handling --> Empty) is export {
+    for $handling<> {
+        my ($orig, $new) = $_ ~~ Pair ?? [.key, .value] !! [$_, $_];
+        $model.^add_method: $new, method (|c) { self.^all."$orig"(|c) }
+    }
 }
 
 =head3 is before-create

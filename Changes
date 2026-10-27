@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Promote experimental features to stable: has-one, refreshable, is-handling
+      (the flags in `use Red <...>` remain accepted as no-ops for compatibility)
     - fixes: track in-place mutations of Positional/Associative/Json columns
       (`.push`, item assignment, `:delete`, nested writes on inflated Json) as
       dirty on `.^save`, by comparing the current value against a deep-clone
