@@ -6,7 +6,7 @@ MetamodelX::Red::Dirtable
 ```raku
 method set-dirty(
     \obj,
-    Set(Any) $attr
+    Red::Attr::Column $attr
 ) returns Mu
 ```
 
