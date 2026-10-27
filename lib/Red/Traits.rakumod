@@ -330,7 +330,10 @@ multi trait_mod:<is>(
 multi trait_mod:<is>(Mu:U $model, :$handling --> Empty) is export {
     for $handling<> {
         my ($orig, $new) = $_ ~~ Pair ?? [.key, .value] !! [$_, $_];
-        $model.^add_method: $new, method (|c) { self.^all."$orig"(|c) }
+        $model.^add_method: $new, method (|c) {
+            sub __RED_OPERATOR_LOADED__ { True }
+            self.^all."$orig"(|c)
+        }
     }
 }
 
