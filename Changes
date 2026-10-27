@@ -1,6 +1,11 @@
 Revision history for Red
 
 {{$NEXT}}
+    - fixes: track in-place mutations of Positional/Associative/Json columns
+      (`.push`, item assignment, `:delete`, nested writes on inflated Json) as
+      dirty on `.^save`, by comparing the current value against a deep-clone
+      snapshot taken at build/clean-up time. `dirty-old-values` for such
+      columns now stores a deep-clone instead of a live container reference.
     - compiler: add fallback warnings via :warn, $*RED-COMPILER-WARN and RED_COMPILER_WARN
     - performance: resolve query-plan types once and streamline fingerprint traversal
     - performance: hydrate rows in one pass while retaining defaults and prefetched relationships

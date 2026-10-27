@@ -627,6 +627,7 @@ multi method save($obj, Bool :$insert! where * == True, Bool :$from-create, :$wi
 #| Saves that object on database (update the row)
 multi method save($obj, Bool :$update! where * == True, :$with where not .defined) {
     self.apply-row-phasers($obj, BeforeUpdate);
+    $obj.^sync-collection-dirty;
     my $ast = Red::AST::Update.new: $obj;
     my $ret := get-RED-DB.execute: $ast;
     $obj.^saved-on-db;
