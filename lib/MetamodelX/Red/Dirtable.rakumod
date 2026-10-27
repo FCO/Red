@@ -1,6 +1,7 @@
 use nqp;
 use Red::Attr::Column;
 use Red::Attr::Relationship;
+use Red::Type::Json;
 
 =head2 MetamodelX::Red::Dirtable
 
@@ -37,6 +38,45 @@ sub dirty-old-values-attr-build(|) {
     {}
 }
 
+has $!collection-snapshot-attr;
+
+method collection-snapshot-attr(|) {
+    $!collection-snapshot-attr;
+}
+
+sub collection-snapshot-attr-build(|) {
+    {}
+}
+
+#| Deep-clones a collection, preserving container types (Array[Str], Hash[Int]...).
+#| Immutable containers (List, Map, Set, Bag, Mix) and non-collection values
+#| (scalars, type objects, Dates, Models) are returned as-is — safe because
+#| they cannot be mutated in place.
+my sub deep-clone(\v) {
+    if v.DEFINITE && v ~~ Array {
+        return v.WHAT.new: v.map({ deep-clone($_) }).List
+    }
+    if v.DEFINITE && v ~~ Hash {
+        my \clone = v.WHAT.new;
+        for v.kv -> $k, \val {
+            clone.AT-KEY($k) = deep-clone(val)
+        }
+        return clone
+    }
+    v
+}
+
+#| True when the column can hold a collection-typed value.
+#| Wide on purpose: `@.`/`%.` columns declare Positional/Associative constraints,
+#| and Json columns declare Json. Immutable containers (List, Map, Set, Bag, Mix)
+#| can flow through, but `deep-clone` returns them as-is — they cannot be
+#| mutated in place, so a live reference is a safe snapshot for them.
+my sub collection-column(Red::Attr::Column \col --> Bool) {
+    so (col.type ~~ Positional
+        || col.type ~~ Associative
+        || col.type ~~ Json)
+}
+
 method set-helper-attrs(Mu \type) {
     my %attr = type.^attributes.map( -> $a { $a.name => $a }).Hash;
     if %attr<%!___COLUMNS_DATA___>  -> $a {
@@ -62,6 +102,14 @@ method set-helper-attrs(Mu \type) {
         $!dirty-old-values-attr = Attribute.new: :name<%!___DIRTY_OLD_DATA___>, :package(type), :type(Any), :!has_accessor;
         $!dirty-old-values-attr.set_build: &dirty-old-values-attr-build;
         type.^add_attribute: $!dirty-old-values-attr;
+    }
+    if %attr<%!___COLLECTION_SNAPSHOT___> -> $a {
+        $!collection-snapshot-attr //= $a;
+    }
+    else {
+        $!collection-snapshot-attr = Attribute.new: :name<%!___COLLECTION_SNAPSHOT___>, :package(type), :type(Any), :!has_accessor;
+        $!collection-snapshot-attr.set_build: &collection-snapshot-attr-build;
+        type.^add_attribute: $!collection-snapshot-attr;
     }
 }
 
@@ -99,13 +147,16 @@ submethod !TWEAK_pr(\instance: *%data) is rw {
                 }
                 instance.^set-dirty: col;
                 $dirty-old-values-attr.get_value(instance).{ col.column.attr-name } =
-                    $col-data-attr.get_value(instance).{ col.column.attr-name };
+                    collection-column(col)
+                        ?? deep-clone($col-data-attr.get_value(instance).{ col.column.attr-name })
+                        !! $col-data-attr.get_value(instance).{ col.column.attr-name };
                 $col-data-attr.get_value(instance).{ col.column.attr-name } = value =:= Nil ?? col.type !! value # handle default
             }
         #use nqp;
         #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
         col.set_value: instance<>, proxy
     }
+    self.sync-collection-snapshots(instance);
     for self.^attributes -> $attr {
         with %data{ $attr.name.substr: 2 } {
             unless $attr ~~ Red::Attr::Column {
@@ -179,13 +230,17 @@ method compose-dirtable(Mu \type) {
                     }
                     instance.^set-dirty: col;
                     my $data := $col-data-attr.get_value(instance);
-                    $dirty-old-values-attr.get_value(instance).{ $attr-name } = $data{$attr-name};
+                    $dirty-old-values-attr.get_value(instance).{ $attr-name } =
+                        collection-column(col)
+                            ?? deep-clone($data{$attr-name})
+                            !! $data{$attr-name};
                     $data{$attr-name} = value =:= Nil ?? col.type !! value
                 }
             #use nqp;
             #nqp::bindattr(nqp::decont(instance), self.WHAT, col.name, proxy);
             col.set_value: instance<>, proxy
         }
+        meta.sync-collection-snapshots(instance);
         for self.^attributes -> $attr {
             with %data{ $attr.name.substr: 2 } {
                 unless $attr ~~ Red::Attr::Column {
@@ -235,7 +290,19 @@ multi method set-dirty(\obj, Set() $attr) {
 }
 
 multi method clean-up-columns(\obj, Set() $attr) {
-    $!dirty-cols-attr.get_value(obj).{$_}-- for $attr.keys
+    $!dirty-cols-attr.get_value(obj).{$_}-- for $attr.keys;
+    # Re-sync collection snapshots for the cleaned columns, otherwise the next
+    # `sync-collection-dirty` would see the refreshed value as a spurious change
+    # (Refreshable case).
+    my $data     := $!col-data-attr.get_value(obj);
+    my $snapshot := $!collection-snapshot-attr.get_value(obj);
+    my %by-name  := obj.^columns.map({ .column.attr-name => $_ }).Hash;
+    for $attr.keys -> $key {
+        my \col = %by-name{$key} // (obj.^columns.first: * === $key) // next;
+        next unless col ~~ Red::Attr::Column && collection-column(col);
+        my $col-key = col.column.attr-name;
+        $snapshot{$col-key} = deep-clone($data{$col-key}) if $data{$col-key}:exists;
+    }
 }
 
 #| Returns `True` if any of the object attributes were changed
@@ -247,7 +314,38 @@ method dirty-columns(Any:D \obj)     { $!dirty-cols-attr.get_value(obj) }
 #| revert their values to original ones.
 method clean-up(Any:D \obj) {
     $!dirty-cols-attr.set_value: obj, SetHash.new;
-    $!dirty-old-values-attr.set_value: obj, {}
+    $!dirty-old-values-attr.set_value: obj, {};
+    self.sync-collection-snapshots(obj);
+}
+
+#| Captures a deep-clone snapshot of every collection column's current value.
+method sync-collection-snapshots(\obj) {
+    my $data     := $!col-data-attr.get_value(obj);
+    my $snapshot := $!collection-snapshot-attr.get_value(obj);
+    for obj.^columns -> \col {
+        next unless collection-column(col);
+        my $key = col.column.attr-name;
+        next unless $data{$key}:exists;
+        $snapshot{$key} = deep-clone($data{$key});
+    }
+    Nil
+}
+
+#| Compares current collection values against snapshots and marks
+#| divergent columns dirty, refreshing their snapshots.
+method sync-collection-dirty(\obj) {
+    my $data     := $!col-data-attr.get_value(obj);
+    my $snapshot := $!collection-snapshot-attr.get_value(obj);
+    for obj.^columns -> \col {
+        next unless collection-column(col);
+        my $key = col.column.attr-name;
+        next unless ($data{$key}:exists) && ($snapshot{$key}:exists);
+        unless $data{$key} eqv $snapshot{$key} {
+            obj.^set-dirty: col;
+            $snapshot{$key} = deep-clone($data{$key});
+        }
+    }
+    Nil
 }
 
 multi method get-attr(\instance, Str $name) {
