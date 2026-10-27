@@ -12,6 +12,8 @@ Revision history for Red
     - Refresh snapshots on clean-up and partial refresh without marking unchanged collections dirty.
     - Return explicitly bound drivers directly and replace literal name separators without regex matching.
     - Retain formatter coercions, repeated separators, Unicode and embedded control characters.
+    - Read generated projection getters from the receiving storage instance instead of a ResultSeq.
+    - Cover independent columns, instances and updated values without issuing database queries.
     - schema: add named CHECK and PostgreSQL EXCLUDE constraints with driver selection
     - indexes: support access methods, per-key operator classes and partial predicates
     - pg: add range constructors and native range/regex expression helpers
