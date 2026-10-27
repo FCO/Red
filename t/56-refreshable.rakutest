@@ -1,5 +1,5 @@
 use Test;
-use Red <refreshable>;
+use Red;
 
 model TestModel {
     has Int $.id   is serial;

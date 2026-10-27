@@ -145,8 +145,6 @@ multi method add-relationship(
 
 #| Adds a new relationship using an attribute of type `Red::Attr::Relationship`.
 multi method add-relationship(::Type Mu:U $self, Red::Attr::Relationship $attr) {
-    die ":has-one isn't accepted on relationship without its experimental feature (use Red <has-one>)"
-    	if $attr.has-one and not %Red::experimentals<has-one>;
     %!relationships ∪= $attr;
     my $name = $attr.name.substr: 2;
     if $attr.has_accessor {

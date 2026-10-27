@@ -1,5 +1,5 @@
 use Test;
-use Red <has-one>;
+use Red;
 use X::Red::Exceptions;
 
 my Bool $fail-update = False;

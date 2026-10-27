@@ -1,9 +1,5 @@
 # Experimental features
 
-* `is-handling`
-
-  make it possible to use the traint `is handling` that "exports" the given `ResultSeq`'s methods to the model itself
-  
 * `migrations`
 
   make it possible to test the prototype of the migration feature
@@ -16,18 +12,26 @@
 
   make Red use the `shortname` of the model to create the table's name instead of the full name
 
-* `has-one`
+* `supply`
 
-  creeates a new option to relationship: `has-one`. For more details: https://github.com/FCO/Red/issues/452
-
-* `refreshable`
-
-  adds a `.^refresh` meta-method on defined model. It accepts a list of columns names or nothing at all, and "refreshes" those columns (ar all columns if no list was defined) with the actual data from the database.
+  adds a `.^supply` meta-method on the model returning a `Supply` of rows
 
 ## How to use experimental feartures?
 
 when `use`ing Red, pass a list of wanted experimental features, For example:
 
 ```raku
-use Red <is-handling migrations formatters shortname has-one refreshable>;
+use Red <migrations formatters shortname supply>;
 ```
+
+## Promoted features
+
+The following features were promoted to stable and no longer need to be enabled.
+For backwards compatibility, `use Red <has-one refreshable is-handling>` still
+compiles, but the flags are now no-ops:
+
+* `is-handling` — see `is handling` trait (exports `ResultSeq` methods to the model itself)
+* `has-one` — see [relationships](relationship.md)
+* `refreshable` — adds `.^refresh` on model instances (accepts a list of column
+  names or nothing at all, and "refreshes" those columns — or all columns if no
+  list was defined — with the actual data from the database)
