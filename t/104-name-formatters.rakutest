@@ -1,0 +1,14 @@
+use Test;
+use Red::Utils;
+
+for ['plain', 'plain'], ['a-b-c', 'a_b_c'], ['--a--', '__a__'], ['', ''],
+    ['ação-número', 'ação_número'], ["a\n-\0b", "a\n_\0b"] -> @pair {
+    is kebab-to-snake-case(@pair[0]), @pair[1], 'Format kebab separators';
+    is snake-to-kebab-case(@pair[1]), @pair[0], 'Format snake separators';
+}
+is kebab-to-snake-case('already_snake'), 'already_snake', 'Keep existing underscores';
+is snake-to-kebab-case('already-kebab'), 'already-kebab', 'Keep existing hyphens';
+is kebab-to-snake-case(42), '42', 'Kebab formatter retains Str coercion';
+is snake-to-kebab-case(42), '42', 'Snake formatter retains Str coercion';
+
+done-testing;

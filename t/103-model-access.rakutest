@@ -1,0 +1,138 @@
+use Test;
+use Red;
+
+model ModelAccessRow {
+    has Int $.id is serial;
+    has Int $.number is rw is column;
+    has Int $.other is rw is column;
+    has Str $.label is column;
+}
+
+model AliasedHydrationRow {
+    has Int $.number is column{ :name<external_number>, :inflate(*.self) };
+}
+
+model DefaultHydrationRow {
+    has Int $.number is column = 7;
+    has Bool $.flag is column = True;
+    has Str $.label is column = 'default';
+}
+
+my @config = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @config.shift;
+my $*RED-DB = database $driver, |%(@config.map({
+    my ($key, $value) = .split('=');
+    $key => val($value)
+}));
+my $schema = schema(ModelAccessRow);
+$schema.drop.create;
+LEAVE $schema.drop;
+
+my $first = ModelAccessRow.^create(:number(1), :other(10), :label<first>);
+my $second = ModelAccessRow.^create(:number(2), :other(20), :label<second>);
+$first = ModelAccessRow.^load($first.id);
+$second = ModelAccessRow.^load($second.id);
+
+subtest 'Repeated access keeps columns and instances independent' => {
+    for ^3 {
+        is $first.number, 1, 'First number';
+        is $first.other, 10, 'Different column';
+        is $second.number, 2, 'Different instance';
+    }
+    nok $first.^is-dirty, 'Reading does not mark a model dirty';
+    $first.number = 3;
+    $first.number = 4;
+    $first.other = 30;
+    is $first.number, 4, 'Repeated writes retain the latest value';
+    is $first.other, 30, 'Writing another column retains its own value';
+    is $second.number, 2, 'Another instance is unchanged';
+    nok $second.^is-dirty, 'Another instance stays clean';
+    is-deeply $first.^dirty-columns.keys.map(*.name).sort.Array,
+        ['$!number', '$!other'], 'Both modified attributes are tracked';
+    $first.^save;
+    nok $first.^is-dirty, 'Saving clears dirty state';
+    my $loaded = ModelAccessRow.^load($first.id);
+    is $loaded.number, 4, 'Updated number is persisted';
+    is $loaded.other, 30, 'Updated second column is persisted';
+    $first.number = 5;
+    ok $first.^is-dirty, 'A write after save marks the attribute again';
+    $first.^save;
+    is ModelAccessRow.^load($first.id).number, 5, 'A second save persists the new value';
+};
+
+subtest 'Access retains assignment checks and set-based dirty operations' => {
+    throws-like { $first.label = 'changed' }, X::Assignment::RO,
+        'Reading the column does not bypass read-only checks';
+    throws-like { $first.number = 'invalid' }, X::TypeCheck::Assignment,
+        'Repeated access does not bypass type checks';
+    nok $first.^is-dirty, 'Rejected writes do not mark attributes dirty';
+    my @attributes = ModelAccessRow.^columns.grep({ .name eq any('$!number', '$!other') });
+    $first.^set-dirty(Set.new(@attributes));
+    is $first.^dirty-columns.elems, 2, 'The existing set overload still handles multiple columns';
+    $first.^clean-up;
+    nok $first.^is-dirty, 'Explicit cleanup clears all modified columns';
+};
+
+subtest 'Changing column metadata remains visible after earlier access' => {
+    my $attribute = ModelAccessRow.^columns.first(*.name eq '$!number');
+    is $first.number, 5, 'Read before changing metadata';
+    {
+        LEAVE $attribute.args<attr-name>:delete;
+        $attribute.args<attr-name> = 'other';
+        is $first.number, $first.other, 'A changed attribute mapping is observed';
+    }
+    is $first.number, 5, 'Restoring the mapping restores ordinary access';
+    nok ModelAccessRow.^is-id($attribute), 'Ordinary column is not a key';
+    {
+        LEAVE $attribute.args<id>:delete;
+        $attribute.args<id> = True;
+        ok ModelAccessRow.^is-id($attribute), 'Changed primary key metadata is observed';
+    }
+    nok ModelAccessRow.^is-id($attribute), 'Restoring metadata restores key membership';
+};
+
+subtest 'Hydration uses the declared type with SQL column names' => {
+    my $inflations = 0;
+    my $*RED-DB = database 'SQLite';
+    $*RED-DB does role {
+        multi method inflate(Str $value, Int :$to!) {
+            $inflations++;
+            $value.Int
+        }
+    };
+    my $row = AliasedHydrationRow.^new-from-data({ external_number => '42' });
+    is $row.number, 42, 'A SQL alias resolves the actual column type';
+    is $inflations, 1, 'The driver receives the declared target type';
+};
+
+subtest 'Hydration distinguishes false values from absent database values' => {
+    my $row = DefaultHydrationRow.^new-from-data({ :number(0), :!flag, :label('') });
+    is $row.number, 0, 'Zero is passed to the constructor';
+    is $row.flag, False, 'False is passed to the constructor';
+    is $row.label, '', 'An empty string is passed to the constructor';
+    my $missing = DefaultHydrationRow.^new-from-data({
+        :number(Int), :flag(Bool), :label(Str)
+    });
+    is $missing.number, 7, 'An undefined number retains the constructor default';
+    is $missing.flag, True, 'An undefined boolean retains the constructor default';
+    is $missing.label, 'default', 'An undefined string retains the constructor default';
+};
+
+subtest 'Hydration observes current column names and custom inflators' => {
+    my $attribute = AliasedHydrationRow.^columns.head;
+    is AliasedHydrationRow.^new-from-data({ external_number => 2 }).number, 2,
+        'Initial metadata is used';
+    {
+        temp $attribute.args<name> = 'renamed_number';
+        temp $attribute.args<inflate> = -> $value, $type {
+            ok $type === Int, 'A two-argument inflator receives the declared type';
+            $value * 10
+        };
+        is AliasedHydrationRow.^new-from-data({ renamed_number => 3 }).number, 30,
+            'Later loads observe both metadata changes';
+    }
+    is AliasedHydrationRow.^new-from-data({ external_number => 4 }).number, 4,
+        'Restored metadata is observed on the next load';
+};
+
+done-testing;

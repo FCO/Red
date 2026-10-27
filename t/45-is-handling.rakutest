@@ -1,6 +1,6 @@
 use Test;
 
-use Red < is-handling >;
+use Red;
 
 my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
 my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;

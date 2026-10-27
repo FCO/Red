@@ -1,6 +1,55 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Promote experimental features to stable: has-one, refreshable, is-handling
+      (the flags in `use Red <...>` remain accepted as no-ops for compatibility)
+    - fixes: track in-place mutations of Positional/Associative/Json columns
+      (`.push`, item assignment, `:delete`, nested writes on inflated Json) as
+      dirty on `.^save`, by comparing the current value against a deep-clone
+      snapshot taken at build/clean-up time. `dirty-old-values` for such
+      columns now stores a deep-clone instead of a live container reference.
+    - compiler: add fallback warnings via :warn, $*RED-COMPILER-WARN and RED_COMPILER_WARN
+    - performance: resolve query-plan types once and streamline fingerprint traversal
+    - performance: hydrate rows in one pass while retaining defaults and prefetched relationships
+    - performance: avoid failure creation when optional cache and report settings are absent
+    - performance: use lightweight hydration metadata while preserving custom column behavior
+    - performance: build model defaults directly without intermediate sequences and pairs
+    - fixes: retain bound predicate parameters inside uncached CASE branches and cyclic hashes
+    - compiler: preserve comparison operator coercions and casts in compiled queries
+    - fixes: bypass query-plan caching for cyclic positional values without losing later bindings
+    - fixes: preserve arithmetic grouping in string casts and SQLite JSON array paths
+    - performance: avoid column allocations during model access and key checks
+    - performance: use native candidate matching during row inflation
+    - tests: cover repeated model access and add a model access benchmark
+    - performance: update plan-cache recency in constant time on cache hits
+    - performance: forward compiled query arguments without rebuilding their capture
+    - performance: frame plan-key strings without general-purpose serialization
+    - performance: replace literal name separators without regex matching
+    - performance: stop encoding discarded plan keys while retaining fallback bindings
+    - performance: create temporary projection query classes on first use
+    - performance: install projection initializers directly and defer intermediate query classes
+    - performance: reuse generic projection storage methods with private row state
+    - performance: resolve hydration target types directly from column metadata
+    - tests: verify projection class identity, constructor isolation and concurrent initialization
+    - queries: return uncached builder results when plan-cache capacity is zero
+    - compiler: persist symbolic scalar comparison AST prototypes in module precompilation
+    - performance: build hydration column maps in one pass and stop member lookup early
+    - queries: cache SQL plans without sharing cursors, connections or query results
+    - compiler: reuse scalar comparison predicates with private captured parameters
+    - compiler: keep the unsupported-template exception outside the GLOBAL stash
+    - tests: verify plan reuse and add a query construction/execution benchmark
+    - compiler: specialize direct Red::AST factories and validators during CHECK
+    - compiler: reuse capture-free templates without sharing captured values between queries
+    - compiler: compile membership predicates and preserve word-list quoting semantics
+    - compiler: translate map assignments, compound assignments, increments, and JSON deletion
+    - compiler: buffer update effects and compile sequential statements and scalar locals
+    - compiler: bind row-independent constructors and function calls as runtime captures
+    - compiler: recognize primed Whatever callbacks, booleans, Hash colonpairs, and lists
+    - compiler: support dynamic JSON indexes and existence without dropping index adverbs
+    - compiler: preserve mutation fallback and safely reject compound-assignment metaoperators
+    - compiler: report translation decisions and test actual template evaluation
+    - compiler: add opt-in CHECK-time RakuAST templates for map, grep, first, and sort
+    - tests: cover compiled queries and native dispatch with a dedicated RakuAST CI job
     - schema: add named CHECK and PostgreSQL EXCLUDE constraints with driver selection
     - indexes: support access methods, per-key operator classes and partial predicates
     - pg: add range constructors and native range/regex expression helpers

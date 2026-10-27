@@ -37,6 +37,40 @@ jobs:
       - name: Run tests
         run: prove6 -lj8 t
 
+  rakuast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: red-ci-test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: "2026.09"
+      - name: Install dependencies with the legacy frontend
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev
+          zef install --/test --test-depends --deps-only .
+      - name: Test the optional RakuAST compiler
+        env:
+          RAKUDO_RAKUAST: "1"
+          RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=postgres user=postgres password=red-ci-test"
+        run: |
+          raku -Ilib t/37-json.rakutest
+          raku -Ilib t/92-rakuast-compiler.rakutest
+          raku -Ilib t/93-rakuast-scope.rakutest
+
   mysql:
     name: MySQL (RakuAST=${{ matrix.rakuast }})
     strategy:

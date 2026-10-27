@@ -1,4 +1,5 @@
 use Red::AST;
+use Red::QueryPlan;
 use Red::Column;
 use Red::SchemaReader;
 use X::Red::Exceptions;
@@ -113,6 +114,17 @@ multi method prepare(Red::AST $query) {
             $stt
         }
     }
+}
+
+method supports-query-plans(--> Bool:D) { False }
+
+#| Compile independently of the lifetime of a connection or statement.
+method compile-query(Red::AST:D $query, :@parameters = [] --> Red::QueryPlan:D) {
+    Red::QueryPlan.compile(self, $query, :@parameters)
+}
+
+multi method prepare(Red::QueryPlan:D $plan, :@parameters = [], :@comments = []) {
+    $plan.prepare(self, :@parameters, :@comments)
 }
 
 #| Checks if a name is a valid table name

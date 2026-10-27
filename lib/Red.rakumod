@@ -107,15 +107,7 @@ multi experimental("supply") {
 }
 
 multi experimental("is-handling") {
-    multi trait_mod:<is>(Mu:U $model, :$handling) {
-        for $handling<> {
-            my ($orig, $new) = $_ ~~ Pair ?? [.key, .value] !! [$_, $_];
-            $model.^add_method: $new, method (|c) { self.^all."$orig"(|c) }
-        }
-    }
-    Map(
-            '&trait_mod:<is>' => &trait_mod:<is>
-    )
+    Empty
 }
 
 multi experimental("has-one") {
@@ -123,9 +115,6 @@ multi experimental("has-one") {
 }
 
 multi experimental("refreshable") {
-    require ::('MetamodelX::Red::Refreshable');
-    @Red::experimental-roles.push: ::('MetamodelX::Red::Refreshable');
-
     Empty
 }
 
@@ -583,6 +572,7 @@ Red is a *WiP* ORM for Raku.
 =item C<is relationship{}>
 =item C<is table<>>
 =item C<is nullable>
+=item C<is handling>
 
 =head3 features:
 
@@ -643,7 +633,7 @@ that object to create the related row and fill the foreign key automatically:
 =begin code :lang<raku>
 my $parent = $child.parent.^create(:name<parent>);
 
-# For a relationship declared with :has-one (use Red <has-one>):
+# For a relationship declared with :has-one:
 my $profile = $account.profile.^create(:description<profile>);
 =end code
 
@@ -905,6 +895,40 @@ transaction's Promise represents only execution of its block, not guard completi
 =begin code :lang<raku>
 model Bla is temp { ... }
 =end code
+
+=head4 is handling
+
+The C<is handling> trait "exports" C<ResultSeq> methods to the model itself, so
+they can be called directly on the model's type object. Each positional value
+is the name of a C<ResultSeq> method to expose; passing a pair renames it:
+
+=begin code :lang<raku>
+model Bla is handling<map grep> { has Int $.a is column }
+
+Bla.map(*.a);              # same as Bla.^all.map(*.a)
+Bla.grep(*.a < 5);         # same as Bla.^all.grep(*.a < 5)
+
+model Ble is handling(map => "update", grep => "where") { has Int $.a is column }
+
+Ble.update(*.a);           # same as Ble.^all.map(*.a), renamed
+Ble.where(*.a < 5);        # same as Ble.^all.grep(*.a < 5), renamed
+=end code
+
+=head4 refresh
+
+The C<.^refresh> meta-method reloads a model instance's columns with the actual
+data from the database. It accepts a list of column (attribute) names, or
+nothing at all to refresh every column:
+
+=begin code :lang<raku>
+my $post = Post.^load: 42;
+# ... some external process updates the row ...
+$post.^refresh;                # refreshes all columns
+$post.^refresh: "title";       # refreshes only the "title" column
+$post.^refresh: <title body>;  # refreshes "title" and "body"
+=end code
+
+Refreshed columns are also marked clean on the model's dirty tracking.
 
 =head4 Create table
 

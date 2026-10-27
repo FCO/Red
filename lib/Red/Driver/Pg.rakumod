@@ -14,6 +14,7 @@ use Red::AST::JsonSetItem;
 use Red::LockType;
 use Red::Index;
 use Red::AST::Native;
+use Red::AST::BoundFilter;
 use Red::AST::CreateIndex;
 use Red::AST::Constraints;
 need UUID;
@@ -43,6 +44,14 @@ method validate-index-definition($definition) {
     index-error('Only B-tree supports unique indexes among these PostgreSQL methods')
         if $definition ~~ Red::AST::CreateIndex && $definition.unique
             && $definition.using ne any('', 'btree');
+}
+
+multi method translate(Red::AST::BoundFilter::Parameter $parameter, $context?) {
+    my $translated = self.translate-query-parameter($parameter, $context);
+    my $cast = $parameter.type ~~ Int ?? 'bigint'
+        !! $parameter.type ~~ Num ?? 'double precision'
+        !! $parameter.type ~~ Rat ?? 'numeric' !! '';
+    ($cast ?? "{$translated.key}::$cast" !! $translated.key) => $translated.value
 }
 
 multi method translate(Red::AST::Native::Operator $_, $context?) {

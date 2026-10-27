@@ -35,14 +35,14 @@ method set-helper-attrs(Mu \type) {
 
 #| Checks if the given attribute is a primary key of the model.
 multi method is-id($, Red::Attr::Column $attr) {
-    so $attr.column.id
+    $attr.column-id
 }
 
 multi method is-id($, $ --> False) {}
 
 #| Gets a list of ids
 method id(Mu \type) {
-    self.columns(type).grep(*.column.id).list
+    self.columns(type).grep(*.column-id).list
 }
 
 #| Returns a list of attributes that are either primary keys or marked as unique.

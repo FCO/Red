@@ -212,7 +212,7 @@ method sqlite-json-path(Red::AST $path) {
                 .key, .value
             };
             if $item.returns ~~ Int {
-                @sql.push: "('[' || CASE WHEN $sql < 0 THEN '#' ELSE '' END || $sql || ']')";
+                @sql.push: "('[' || CASE WHEN ($sql) < 0 THEN '#' ELSE '' END || ($sql) || ']')";
                 @bind.append: |@values, |@values;
             } else {
                 @sql.push: "('.' || JSON_QUOTE($sql))";

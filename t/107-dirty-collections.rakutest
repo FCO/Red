@@ -1,0 +1,220 @@
+use Test;
+use Red;
+use Red::Type::Json;
+
+# NOTE: every collection column below declares a custom deflate that produces a
+# Str (and the matching inflate). That is the documented way of storing
+# Positional/Associative values on SQLite (see t/63-inflate-deflate.rakutest);
+# the SQLite driver does have a generic `deflate(@value)` for Positional, but
+# Red::AST::Update currently goes through `Red::Column.deflate` only, which
+# defaults to `*.self` — updating an Array-typed column without a custom
+# deflate is a pre-existing Red bug, orthogonal to dirty tracking. Json works
+# because its deflator produces a Str via to-json.
+model DirtyCol is rw {
+    has UInt $.id            is serial;
+    has      @.arr           is column{
+        :type<text>,
+        :inflate{ .split(",").Array },
+        :deflate{ .join: "," }
+    };
+    has Str  @.strs          is column{
+        :type<text>,
+        :inflate{ Array[Str].new: .split(",") },
+        :deflate{ .join: "," }
+    };
+    has      %.map           is column{
+        :type<text>,
+        :inflate{ $_ ?? .split("&").map(*.split("=", 2)).flat.Hash !! %() },
+        :deflate{ .kv.map(*.join("=")).join: "&" }
+    };
+    has Json $.js            is rw is column{ :nullable };
+    has      @.maybe-arr     is column{
+        :type<text>,
+        :nullable,
+        :inflate{ .defined ?? .split(",").Array !! Array },
+        :deflate{ .defined ?? .join(",") !! Str }
+    };
+    has Json $.maybe-js      is rw is column{ :nullable };
+}
+
+my $*RED-DEBUG          = $_ with %*ENV<RED_DEBUG>;
+my $*RED-DEBUG-RESPONSE = $_ with %*ENV<RED_DEBUG_RESPONSE>;
+my $*RED-DEBUG-AST      = $_ with %*ENV<RED_DEBUG_AST>;
+my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
+my $driver              = @conf.shift;
+my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
+
+schema(DirtyCol).drop;
+DirtyCol.^create-table;
+
+sub fresh-obj(*%over) {
+    DirtyCol.^create:
+        :arr[<x y z>],
+        :strs(Array[Str].new: <a b c>),
+        :map{:old("1")},
+        :js{:a(0), :list[1], :deep{}},
+        |%over
+}
+
+sub reload(\obj) { DirtyCol.^load(obj.id) }
+
+# 1. push on untyped Positional column
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.arr.push: "w";
+    ok $o.^is-dirty.not, "internal push alone does not set dirty before save-sync";
+    $o.^save;
+    is-deeply reload($o).arr.List, [<x y z w>].List, "push persisted";
+}
+
+# 2. pop
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.arr.pop;
+    $o.^save;
+    is-deeply reload($o).arr.List, [<x y>].List, "pop persisted";
+}
+
+# 3. ASSIGN-POS
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.arr[0] = "q";
+    $o.^save;
+    is-deeply reload($o).arr.List, [<q y z>].List, "ASSIGN-POS persisted";
+}
+
+# 4. push on typed Array[Str]
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.strs.push: "d";
+    $o.^save;
+    my $r = reload($o);
+    is-deeply $r.strs.List, [<a b c d>].List, "typed push persisted";
+    isa-ok $r.strs, Array[Str], "typed Array[Str] preserved after reload";
+}
+
+# 5. ASSIGN-POS on typed Array[Str]
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.strs[1] = "z";
+    $o.^save;
+    is-deeply reload($o).strs.List, [<a z c>].List, "typed ASSIGN-POS persisted";
+}
+
+# 6. ASSIGN-KEY on Hash column (inflate/deflate custom)
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.map<new> = "1";
+    $o.^save;
+    is-deeply reload($o).map, {:new("1"), :old("1")}, "ASSIGN-KEY persisted";
+}
+
+# 7. DELETE-KEY on Hash column
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.map<old>:delete;
+    $o.^save;
+    is-deeply reload($o).map, {}, "DELETE-KEY persisted";
+}
+
+# 8. ASSIGN-KEY on Json column
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.js<a> = 1;
+    $o.^save;
+    is reload($o).js<a>, 1, "Json ASSIGN-KEY persisted";
+}
+
+# 9. Nested push on Json
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.js<list>.push: 2;
+    $o.^save;
+    is-deeply reload($o).js<list>, [1, 2], "Json nested push persisted";
+}
+
+# 10. Two-level nested assignment on Json
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.js<deep><x> = 1;
+    $o.^save;
+    is reload($o).js<deep><x>, 1, "Json two-level nested assignment persisted";
+}
+
+# 11. No mutation → no spurious dirty
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    ok $o.^is-dirty.not, "not dirty after clean-up without mutation";
+    dies-ok { $o.^save }, "save with no dirty columns dies";
+}
+
+# 12. mutate → save → mutate → save cycle
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.arr.push: "w";
+    $o.^save;
+    is-deeply reload($o).arr.List, [<x y z w>].List, "first save persisted";
+    $o.arr.push: "v";
+    $o.^save;
+    is-deeply reload($o).arr.List, [<x y z w v>].List, "second save after clean-up also detected";
+}
+
+# 13. direct assignment + internal mutation before save
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.arr = [<p q>];
+    $o.arr.push: "r";
+    $o.^save;
+    is-deeply reload($o).arr.List, [<p q r>].List, "direct assign + internal mutation persists final state";
+}
+
+# 14. refresh does not cause spurious dirty
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    $o.^refresh;
+    ok $o.^is-dirty.not, "refresh does not produce spurious dirty";
+}
+
+# 15. nullable column not provided — load and save without crashing
+{
+    my $o = fresh-obj;
+    $o.^clean-up;
+    ok $o.^is-dirty.not, "not dirty with nullable columns absent";
+    $o.arr.push: "w";
+    lives-ok { $o.^save }, "save does not crash on absent nullable collection columns";
+    is-deeply reload($o).arr.List, [<x y z w>].List, "save persisted";
+}
+
+# 16. Json NULL round-trip — sync does not break on type object
+{
+    my $o = fresh-obj(:js(Json));
+    $o.^clean-up;
+    lives-ok { $o.^sync-collection-dirty }, "sync-collection-dirty survives Json type object";
+    ok $o.^is-dirty.not, "Json type object (SQL NULL) is not dirty by itself";
+    # Save an unrelated change to prove sync does not mark the Json column dirty:
+    $o.arr.push: "w";
+    $o.^save;
+    is-deeply reload($o).arr.List, [<x y z w>].List, "unrelated save with NULL Json column works";
+    # Now mutate an inflated Json structure:
+    my $o2 = fresh-obj;
+    $o2.^clean-up;
+    $o2.js<a> = 42;
+    $o2.^save;
+    is reload($o2).js<a>, 42, "Json internal ASSIGN-KEY persisted";
+}
+
+done-testing
