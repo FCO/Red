@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Keep is-handling map and grep delegation on the SQL path without fallback warnings.
     - Promote has-one, refreshable and is-handling to stable features.
     - Continue accepting their historical experimental flags as no-ops for compatibility.
     - schema: add named CHECK and PostgreSQL EXCLUDE constraints with driver selection
