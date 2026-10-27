@@ -6,21 +6,22 @@ use Red::AST::Reference;
 
 unit role MetamodelX::Red::Specialisable;
 
-my Lock $specialise-lock .= new;
-
 multi method specialise($self, +@ret where .all ~~ Red::AST) is hidden-from-sql-commenting {
     # Generated models compose shared roles; keep their metamodel construction atomic.
-    $specialise-lock.protect: { self!specialise($self, |@ret) }
+    self.protect-model-composition({ self!specialise($self, |@ret) })
 }
 
 method !specialise($self, *@ret) is hidden-from-sql-commenting {
     my \Meta  = $self.^orig.HOW.WHAT;
     my \model = Meta.new(:table($self.^table)).new_type: :name($self.^name);
     model.HOW.^attributes.first(*.name eq '$!table').set_value: model.HOW, $self.^table;
+    model.HOW.?defer-resultseq(model);
     my $attr-name = 'data_0';
     my @attrs = do for @ret {
         @*table-list.push: |.tables if @*table-list.defined;
-        my $name = $self.^all.filter ~~ Red::AST::MultiSelect ?? .attr.name.substr(2) !! ++$attr-name;
+        my $multi-select = !$self.HOW.?is-projection-storage
+            && $self.^all.filter ~~ Red::AST::MultiSelect;
+        my $name = $multi-select ?? .attr.name.substr(2) !! ++$attr-name;
         my $col-name = $_ ~~ Red::Column ?? .name !! $name;
         my $attr  = Attribute.new:
             :name("\$!$name"),

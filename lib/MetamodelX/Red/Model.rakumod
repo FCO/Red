@@ -55,10 +55,14 @@ also does MetamodelX::Red::Specialisable;
 also does MetamodelX::Red::PreFetch;
 also does Red::Formatter;
 
+my class ProjectionStorage does Red::Model { }
+
 has Attribute @!columns;
 has Red::Column %!references;
 has %!attr-to-column;
 has $.rs-class;
+has Bool $!defer-resultseq;
+has Mu $!resultseq-model;
 has @!constraints;
 has @!indexes;
 has Bool $!indexes-composed;
@@ -68,6 +72,40 @@ has Bool $!temporary;
 has Bool $!default-null;
 has %!alias-cache;
 has $!alias-cache-lock = Lock.new;
+
+method protect-model-composition(&build) {
+    state Lock $lock .= new;
+    $lock.protect(&build)
+}
+
+# Runtime projection models normally need storage, not their own query class.
+method defer-resultseq(Mu:U \type) {
+    return unless self.WHAT === ::?CLASS;
+    type.^add_parent(ProjectionStorage) unless type ~~ Red::Model;
+    $!resultseq-model = type;
+    $!defer-resultseq = True;
+    # Keep the binding out of sink context, which would FETCH the Proxy immediately.
+    my \symbol = (type.WHO<ResultSeq> := Proxy.new(
+        FETCH => -> $ { self.rs-class },
+        STORE => -> $, $value { X::Assignment::RO.new(:value($value)).throw }));
+    Nil
+}
+
+method is-projection-storage(| --> Bool:D) {
+    so ($!defer-resultseq && self.WHAT === ::?CLASS)
+}
+
+method rs-class(|) {
+    return $!rs-class unless $!defer-resultseq && $!rs-class === Any;
+    self.protect-model-composition({
+        if $!rs-class === Any {
+            my $name = self.rs-class-name($!resultseq-model);
+            $!rs-class := create-resultseq($name, $!resultseq-model);
+            $!resultseq-model.WHO<ResultSeq> := $!rs-class;
+        }
+        $!rs-class
+    })
+}
 
 multi method emit(Mu $model, Red::Event $event) {
     start try get-RED-DB.emit: $event.clone: :model($model.WHAT)
@@ -227,23 +265,32 @@ method compose(Mu \type) {
 
     type.^prepare-relationships;
 
-    if $.rs-class === Any {
-        my $rs-class-name = $.rs-class-name(type);
-        # TODO
-        #my $rs-class = ::($rs-class-name);
-        #if !$rs-class && $rs-class !~~ Failure  {
-        #    $!rs-class = $rs-class;
-        #} else {
-            $!rs-class := create-resultseq($rs-class-name, type);
-            type.WHO<ResultSeq> := $!rs-class
-        #}
+    unless $!defer-resultseq {
+        if $.rs-class === Any {
+            my $rs-class-name = $.rs-class-name(type);
+            # TODO
+            #my $rs-class = ::($rs-class-name);
+            #if !$rs-class && $rs-class !~~ Failure  {
+            #    $!rs-class = $rs-class;
+            #} else {
+                $!rs-class := create-resultseq($rs-class-name, type);
+                type.WHO<ResultSeq> := $!rs-class
+            #}
+        }
+        die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
     }
-    die "{$.rs-class.^name} should do the Red::ResultSeq role" unless $.rs-class ~~ Red::ResultSeq;
-    self.add_role: type, Red::Model unless type ~~ Red::Model;
-    self.add_role: type, role :: {
-        method TWEAK(|c) {
-            self.^set-dirty: self.^columns;
-            self.?TWEAK-MODEL(|c)
+    self.add_role: type, Red::Model unless $!defer-resultseq || type ~~ Red::Model;
+    if $!defer-resultseq {
+        self.add_method: type, 'TWEAK', my method (\instance: |c) {
+            instance.^set-dirty: instance.^columns;
+            instance.?TWEAK-MODEL(|c)
+        };
+    } else {
+        self.add_role: type, role :: {
+            method TWEAK(|c) {
+                self.^set-dirty: self.^columns;
+                self.?TWEAK-MODEL(|c)
+            }
         }
     }
     my @roles-cols = self.roles_to_compose(type).grep({ .HOW !~~ Metamodel::CurriedRoleHOW }).flatmap(*.^attributes).grep: Red::Attr::Column;
@@ -864,46 +911,41 @@ multi method set-attr(\instance, Red::Attr::Column $attr, \value) {
 }
 
 method new-from-data(\of, $data) is hidden-from-backtrace {
-    my %cols-by-attr = of.^columns.map: { .column.attr-name => .column  }
-    my %cols-by-col  = of.^columns.map: { .column.name => .column }
-    my %pre-fetches;
-    my $obj = of.^orig.new: |(%($data).kv
-        .map(-> $c, $v {
-            do with $v {
-                my $pre-fetch = of.^relationships.keys.first: *.rel-name eq $c;
-                if $pre-fetch {
-                    %pre-fetches{ $c } = do if $v ~~ Str {
-                        use JSON::Fast;
-                        from-json $v
-                    } else {
-                        $v
-                    }
-                    Empty
-                } elsif !$c.contains: "." {
-                    my $col = ( %cols-by-col{$c} // %cols-by-attr{$c} );
-                    die "Column '$c' not found" without $col;
-                    die "Inflator not defined for column '$c'" without $col.inflate;
-                    my $inflated = $col.inflate.($v, |($col.attr.type if $col.inflate.count > 1));
-                    $inflated = get-RED-DB.inflate(
-                            $inflated,
-                            :to(of.^attributes.first(*.name.substr(2) eq $c).type)
-                    ) if \(
-                        get-RED-DB,
-                        $inflated,
-                        :to(of.^attributes.first(*.name.substr(2) eq $c).type)
-                    ) ~~ get-RED-DB.^lookup("inflate").candidates.any.signature;
-                    $col.attr-name => $inflated
-                }
-            } else { Empty }
-        }).Hash
-    );
-    my %pre = (%(), |$data.keys).reduce: -> %ag, $key? {
-        if $key && ($data{ $key }:exists) && $data{ $key }.defined {
-            my ($first, *@rest) := $key.split(".");
-            %ag{ $first }{ @rest.join(".") } = $data{ $key } if @rest;
-        }
-        %ag
+    my %cols-by-attr;
+    my %cols-by-col;
+    for of.^columns -> $attribute {
+        my $column = $attribute.hydration-column;
+        %cols-by-attr{$column.attr-name} = $column;
+        %cols-by-col{$column.name} = $column;
     }
+    my %pre-fetches;
+    my %pre;
+    my %arguments;
+    my @relationships = of.^relationships.keys;
+    for %($data).kv -> $name, $value {
+        next unless $value.defined;
+        my $nested = $name.contains('.');
+        if $nested {
+            my ($first, $rest) = $name.split('.', 2);
+            %pre{$first}{$rest} = $value;
+        }
+        my $pre-fetch = @relationships.first(*.rel-name eq $name);
+        if $pre-fetch {
+            use JSON::Fast;
+            %pre-fetches{$name} = $value ~~ Str ?? from-json($value) !! $value;
+        } elsif !$nested {
+            my $column = %cols-by-col{$name} // %cols-by-attr{$name};
+            die "Column '$name' not found" without $column;
+            die "Inflator not defined for column '$name'" without $column.inflate;
+            my $target = $column.attr.type;
+            my $inflated = $column.inflate.($value, |($target if $column.inflate.count > 1));
+            my $driver = get-RED-DB;
+            $inflated = $driver.inflate($inflated, :to($target))
+                if $driver.^lookup('inflate').cando(\($driver, $inflated, :to($target)));
+            %arguments{$column.attr-name} = $inflated;
+        }
+    }
+    my $obj = of.^orig.new: |%arguments;
     if %pre {
         for |$obj.^has-one-relationships -> $rel {
             with %pre{ $rel.rel-name } {
