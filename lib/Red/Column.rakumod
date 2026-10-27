@@ -22,6 +22,11 @@ sub inflator($attr) {
         }
     }
 }
+
+method inflator-for(Attribute:D $attribute --> Callable:D) {
+    $attribute.&inflator
+}
+
 sub deflator($_) {
     do with .type.?deflator {
         $_

@@ -16,14 +16,15 @@ sub invocation(&code, @arguments) {
 }
 sub runtime-target($receiver) { Red::Compiler::Runtime.new(:$receiver) }
 sub attach-getters($template, *@getters) { $template.clone(:@getters) }
-sub template(Bool $operators, @plan, Bool :$captures = False) {
+sub template(Bool $operators, @plan, Bool :$captures = False, Bool :$warn,
+    Str :$query-method = '', Str :$source = '') {
     sub has-effects(@part) {
         return True if @part[0] eq any(<assign delete topic-assign let>);
         return False if @part[0] eq any(<literal capture local>);
         return so @part.skip(1).grep({ has-effects($_[1]) }) if @part[0] eq 'hash';
         so @part.skip(1).grep({ $_ ~~ Array && has-effects($_) })
     }
-    Red::Compiler::Template.new(:$operators, :@plan,
+    Red::Compiler::Template.new(:$operators, :@plan, :$warn, :$query-method, :$source,
         :builder(Red::Compiler::Emitter.build(@plan)),
         :validator(Red::Compiler::Emitter.validator(@plan)),
         :prevalidate(so ($captures || has-effects(@plan))))
@@ -428,7 +429,7 @@ class Translation {
 }
 
 #| Translate supported callbacks in the caller's current compilation unit.
-sub red-compile($cu = $*CU, :&report) is export {
+sub red-compile($cu = $*CU, :&report, Bool :$warn) is export {
     X::Red::Projection.new(:reason(
         'red-compile requires the RakuAST frontend (RAKUDO_RAKUAST=1)'
     )).throw unless $cu.^name eq 'RakuAST::CompUnit';
@@ -479,11 +480,18 @@ sub red-compile($cu = $*CU, :&report) is export {
                 }
             }
         }
-        report(:method($call.name.canonicalize), :source(@args[0].DEPARSE),
+        my $method = $call.name.canonicalize;
+        my Bool $instrument = !$unsupported || $warn.DEFINITE || compiler-warnings-enabled();
+        my $source = $instrument || &report.DEFINITE
+            ?? ((try @args[0].DEPARSE) // '<unknown callback>') !! '';
+        report(:$method, :$source,
             :status($unsupported ?? 'unsupported' !! 'compiled'), :$reason)
             if &report.DEFINITE;
-        @candidates.push: [$current, @plan.Array, $translation.captures.Array, @nested.Array]
-            unless $unsupported;
+        if $instrument {
+            @candidates.push: [$current, @plan.Array,
+                ($unsupported ?? [] !! $translation.captures.Array), @nested.Array,
+                $unsupported, $reason, $source, $method];
+        }
     }
     discover($cu, []);
     for @candidates -> $candidate {
@@ -502,7 +510,12 @@ sub red-compile($cu = $*CU, :&report) is export {
         });
         $resolver.pop-scope for @scopes;
         # Capture-free templates contain no closure state and can be shared across calls.
-        my $prototype = template($operators, @plan.Array, :captures(so @getters));
+        my $prototype = $candidate[4]
+            ?? Red::Compiler::Template.new(:$operators, :$warn,
+                :unsupported-reason($candidate[5]), :source($candidate[6]),
+                :query-method($candidate[7]))
+            !! template($operators, @plan.Array, :captures(so @getters), :$warn,
+                :source($candidate[6]), :query-method($candidate[7]));
         my $factory = @getters
             ?? invocation(&attach-getters, [literal($prototype), |@getters])
             !! literal($prototype);

@@ -10,6 +10,10 @@ has List $.statements is required;
 # Fingerprint actual state, including mutable AST attributes. Unknown values bypass
 # caching rather than trusting object identity for mutable user data.
 method describe(Red::AST:D $ast --> Hash:D) {
+    # Resolve optional dependencies once per traversal, not for every AST node.
+    my $model-type = ::('Red::Model');
+    my $column-type = ::('Red::Column');
+    my $value-type = ::('Red::AST::Value');
     my Bool $safe = True;
     my %active;
     my @parameters;
@@ -26,7 +30,7 @@ method describe(Red::AST:D $ast --> Hash:D) {
         unless $value.DEFINITE {
             return '' unless $safe;
             return 'model:' ~ $value.WHICH.Str ~ ':' ~ $value.^table ~ ':' ~ $value.^as
-                if $value ~~ ::('Red::Model') && $value.HOW.^can('table');
+                if $value ~~ $model-type && $value.HOW.^can('table');
             return 'U:' ~ $value.WHICH.Str;
         }
         my $type = $value.WHAT;
@@ -42,64 +46,31 @@ method describe(Red::AST:D $ast --> Hash:D) {
             $shared-cache //= $value.cache;
             return 'bound:' ~ walk($value.filter);
         }
-        if $value ~~ Positional && $value !~~ Red::AST {
-            my $id = nqp::where(nqp::decont($value));
-            if %active{$id}:exists {
-                $safe = False;
-                @reasons.push: 'cyclic positional value';
-                return '';
-            }
-            %active{$id} = True;
-            LEAVE %active{$id}:delete;
-            return '[]' unless $value.elems;
-            unless $safe {
-                walk($_) for $value.list;
-                return '';
-            }
-            return '[' ~ $value.list.map({ walk($_) }).join('|') ~ ']';
-        }
-        if $value ~~ Associative && $value !~~ Red::AST {
-            $safe = False;
-            my $id = nqp::where(nqp::decont($value));
-            if %active{$id}:exists {
-                @reasons.push: 'cyclic associative value';
-                return '';
-            }
-            %active{$id} = True;
-            LEAVE %active{$id}:delete;
-            @reasons.push: $value.^name;
-            for $value.kv -> $key, $item {
-                walk($key);
-                walk($item);
-            }
-            return '';
-        }
-        if $value ~~ ::('Red::Column') {
-            unless $value.class.HOW.^can('table') {
-                $safe = False;
-                return '';
-            }
-            unless $safe {
-                walk($value.computation);
-                return '';
-            }
-            my @parts =
-                $value.class.WHICH.Str, $value.class.^table, $value.class.^as,
-                $value.name, $value.attr-name, $value.name-alias,
-                $value.attr.type.WHICH.Str, walk($value.type), walk($value.computation);
-            return $safe ?? 'column:' ~ @parts.map(&frame).join !! '';
-        }
-        if $value ~~ ::('Red::AST::Value') && $value.column.DEFINITE {
-            $safe = False; # A custom deflator can depend on mutable external state.
-        }
         if $value ~~ Red::AST {
+            if $value ~~ $column-type {
+                unless $value.class.HOW.^can('table') {
+                    $safe = False;
+                    return '';
+                }
+                unless $safe {
+                    walk($value.computation);
+                    return '';
+                }
+                my @parts =
+                    $value.class.WHICH.Str, $value.class.^table, $value.class.^as,
+                    $value.name, $value.attr-name, $value.name-alias,
+                    $value.attr.type.WHICH.Str, walk($value.type), walk($value.computation);
+                return $safe ?? 'column:' ~ @parts.map(&frame).join !! '';
+            }
+            if $value ~~ $value-type && $value.column.DEFINITE {
+                $safe = False; # A custom deflator can depend on mutable external state.
+            }
             my $id = nqp::where(nqp::decont($value));
             if %active{$id}:exists {
                 $safe = False;
                 return '';
             }
             %active{$id} = True;
-            LEAVE %active{$id}:delete;
             my @parts = $value.^attributes.map(-> $attr {
                 my $part = $attr.get_value($value);
                 if $attr.name eq '@!comments' {
@@ -110,7 +81,42 @@ method describe(Red::AST:D $ast --> Hash:D) {
                 next unless $safe;
                 $attr.name ~ '=' ~ $description
             });
+            %active{$id}:delete;
             return $safe ?? $value.^name ~ '(' ~ @parts.join('|') ~ ')' !! '';
+        }
+        if $value ~~ Positional {
+            return '[]' unless $value.elems;
+            my $id = nqp::where(nqp::decont($value));
+            if %active{$id}:exists {
+                $safe = False;
+                @reasons.push: 'cyclic positional value';
+                return '';
+            }
+            %active{$id} = True;
+            unless $safe {
+                walk($_) for $value.list;
+                %active{$id}:delete;
+                return '';
+            }
+            my $description = '[' ~ $value.list.map({ walk($_) }).join('|') ~ ']';
+            %active{$id}:delete;
+            return $description;
+        }
+        if $value ~~ Associative {
+            $safe = False;
+            my $id = nqp::where(nqp::decont($value));
+            if %active{$id}:exists {
+                @reasons.push: 'cyclic associative value';
+                return '';
+            }
+            %active{$id} = True;
+            @reasons.push: $value.^name;
+            for $value.kv -> $key, $item {
+                walk($key);
+                walk($item);
+            }
+            %active{$id}:delete;
+            return '';
         }
         $safe = False;
         @reasons.push: $value.^name;
@@ -118,7 +124,7 @@ method describe(Red::AST:D $ast --> Hash:D) {
     }
     my $key = walk($ast);
     # Models are type objects above; include their current SELECT column metadata.
-    if $ast.^can('of') && $ast.of ~~ ::('Red::Model') {
+    if $ast.^can('of') && $ast.of ~~ $model-type {
         my $columns = $ast.of.^columns.map({ walk(.column) }).join('|');
         if $safe {
             $key ~= '|columns:' ~ $columns;

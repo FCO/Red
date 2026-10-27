@@ -15,7 +15,7 @@ has Red::QueryPlan::Cache $.plan-cache .= new;
 submethod TWEAK(|) {
     my $ast = $!ast;
     note $ast if $*RED-DEBUG-AST;
-    my $enabled = try $*RED-QUERY-PLAN-CACHE;
+    my $enabled = DYNAMIC::<$*RED-QUERY-PLAN-CACHE>;
     my @st-handler;
     if !$!driver.supports-query-plans {
         @st-handler = $!driver.prepare($!driver.optimize($ast));
@@ -31,7 +31,7 @@ submethod TWEAK(|) {
             })
             !! ('fallback' => $!driver.compile-query($ast,
                 :parameters($description<parameters>)));
-        my $report = try $*RED-COMPILER-REPORT;
+        my $report = DYNAMIC::<$*RED-COMPILER-REPORT>;
         $report(:status('plan-' ~ $entry.key), :reason($description<reasons>.join(', ')))
             if $report ~~ Callable;
         @st-handler = $!driver.prepare($entry.value,

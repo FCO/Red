@@ -12,6 +12,12 @@ model AliasedHydrationRow {
     has Int $.number is column{ :name<external_number>, :inflate(*.self) };
 }
 
+model DefaultHydrationRow {
+    has Int $.number is column = 7;
+    has Bool $.flag is column = True;
+    has Str $.label is column = 'default';
+}
+
 my @config = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
 my $driver = @config.shift;
 my $*RED-DB = database $driver, |%(@config.map({
@@ -97,6 +103,36 @@ subtest 'Hydration uses the declared type with SQL column names' => {
     my $row = AliasedHydrationRow.^new-from-data({ external_number => '42' });
     is $row.number, 42, 'A SQL alias resolves the actual column type';
     is $inflations, 1, 'The driver receives the declared target type';
+};
+
+subtest 'Hydration distinguishes false values from absent database values' => {
+    my $row = DefaultHydrationRow.^new-from-data({ :number(0), :!flag, :label('') });
+    is $row.number, 0, 'Zero is passed to the constructor';
+    is $row.flag, False, 'False is passed to the constructor';
+    is $row.label, '', 'An empty string is passed to the constructor';
+    my $missing = DefaultHydrationRow.^new-from-data({
+        :number(Int), :flag(Bool), :label(Str)
+    });
+    is $missing.number, 7, 'An undefined number retains the constructor default';
+    is $missing.flag, True, 'An undefined boolean retains the constructor default';
+    is $missing.label, 'default', 'An undefined string retains the constructor default';
+};
+
+subtest 'Hydration observes current column names and custom inflators' => {
+    my $attribute = AliasedHydrationRow.^columns.head;
+    is AliasedHydrationRow.^new-from-data({ external_number => 2 }).number, 2,
+        'Initial metadata is used';
+    {
+        temp $attribute.args<name> = 'renamed_number';
+        temp $attribute.args<inflate> = -> $value, $type {
+            ok $type === Int, 'A two-argument inflator receives the declared type';
+            $value * 10
+        };
+        is AliasedHydrationRow.^new-from-data({ renamed_number => 3 }).number, 30,
+            'Later loads observe both metadata changes';
+    }
+    is AliasedHydrationRow.^new-from-data({ external_number => 4 }).number, 4,
+        'Restored metadata is observed on the next load';
 };
 
 done-testing;

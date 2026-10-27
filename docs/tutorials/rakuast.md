@@ -66,6 +66,43 @@ internal template alongside the original callback. Other receivers receive the
 original arguments, preserving native dispatch, adverbs, and writable results.
 The compiler does not add SQL semantics to ordinary Arrays or Seqs.
 
+To warn whenever an executed Red callback falls back to symbolic evaluation:
+
+```raku
+CHECK red-compile(:warn);
+```
+
+Warnings include the operation, callback location, source and fallback reason.
+Unsupported syntax is diagnosed when that Red query is constructed, so native
+Array/Seq calls and callbacks that never run do not warn. Runtime template
+validation failures are reported too, once per query stage even if a SELECT
+boundary requires rebinding. The fallback still uses the original callback.
+
+You can also enable warnings dynamically or through the environment:
+
+```raku
+my $*RED-COMPILER-WARN = True;
+CHECK red-compile;
+```
+
+```sh
+RED_COMPILER_WARN=1 RAKUDO_RAKUAST=1 raku -Ilib program.raku
+```
+
+Precedence is the explicit `:warn`/`:!warn` parameter, then a defined Boolean
+`$*RED-COMPILER-WARN`, then `RED_COMPILER_WARN`. An explicit `False` disables
+warnings even when the environment enables them. Environment values `1`, `true`,
+`yes` and `on` enable warnings, ignoring case and surrounding whitespace; other
+values disable them. The default is silent.
+
+The parameter applies to instrumented calls in the current compilation unit;
+dynamic and environment settings also cover uncompiled Red callbacks elsewhere.
+If warnings are enabled only at runtime, an uninstrumented callback reports
+`No RakuAST template was supplied` with its location, instead of the precise
+CHECK-time rejection reason. Set the environment before compilation or use
+`:warn` to retain those rejection details. SQL plan-cache misses/bypasses are not
+compilation failures, and database errors retain their normal exception behavior.
+
 For compilation diagnostics, pass a reporting callback:
 
 ```raku

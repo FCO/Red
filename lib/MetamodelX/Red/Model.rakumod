@@ -912,46 +912,38 @@ method new-from-data(\of, $data) is hidden-from-backtrace {
     my %cols-by-attr;
     my %cols-by-col;
     for of.^columns -> $attribute {
-        my $column = $attribute.column;
+        my $column = $attribute.hydration-column;
         %cols-by-attr{$column.attr-name} = $column;
         %cols-by-col{$column.name} = $column;
     }
     my %pre-fetches;
-    my $obj = of.^orig.new: |(%($data).kv
-        .map(-> $c, $v {
-            do with $v {
-                my $pre-fetch = of.^relationships.keys.first: *.rel-name eq $c;
-                if $pre-fetch {
-                    %pre-fetches{ $c } = do if $v ~~ Str {
-                        use JSON::Fast;
-                        from-json $v
-                    } else {
-                        $v
-                    }
-                    Empty
-                } elsif !$c.contains: "." {
-                    my $col = ( %cols-by-col{$c} // %cols-by-attr{$c} );
-                    die "Column '$c' not found" without $col;
-                    die "Inflator not defined for column '$c'" without $col.inflate;
-                    my $inflated = $col.inflate.($v, |($col.attr.type if $col.inflate.count > 1));
-                    my $driver = get-RED-DB;
-                    my $target = $col.attr.type;
-                    $inflated = $driver.inflate(
-                            $inflated,
-                            :to($target)
-                    ) if $driver.^lookup('inflate').cando(\($driver, $inflated, :to($target)));
-                    $col.attr-name => $inflated
-                }
-            } else { Empty }
-        }).Hash
-    );
-    my %pre = (%(), |$data.keys).reduce: -> %ag, $key? {
-        if $key && ($data{ $key }:exists) && $data{ $key }.defined {
-            my ($first, *@rest) := $key.split(".");
-            %ag{ $first }{ @rest.join(".") } = $data{ $key } if @rest;
+    my %pre;
+    my %arguments;
+    my @relationships = of.^relationships.keys;
+    for %($data).kv -> $name, $value {
+        next unless $value.defined;
+        my $nested = $name.contains('.');
+        if $nested {
+            my ($first, $rest) = $name.split('.', 2);
+            %pre{$first}{$rest} = $value;
         }
-        %ag
+        my $pre-fetch = @relationships.first(*.rel-name eq $name);
+        if $pre-fetch {
+            use JSON::Fast;
+            %pre-fetches{$name} = $value ~~ Str ?? from-json($value) !! $value;
+        } elsif !$nested {
+            my $column = %cols-by-col{$name} // %cols-by-attr{$name};
+            die "Column '$name' not found" without $column;
+            die "Inflator not defined for column '$name'" without $column.inflate;
+            my $target = $column.attr.type;
+            my $inflated = $column.inflate.($value, |($target if $column.inflate.count > 1));
+            my $driver = get-RED-DB;
+            $inflated = $driver.inflate($inflated, :to($target))
+                if $driver.^lookup('inflate').cando(\($driver, $inflated, :to($target)));
+            %arguments{$column.attr-name} = $inflated;
+        }
     }
+    my $obj = of.^orig.new: |%arguments;
     if %pre {
         for |$obj.^has-one-relationships -> $rel {
             with %pre{ $rel.rel-name } {

@@ -137,18 +137,19 @@ method compose-dirtable(Mu \type) {
         my $*RED-INTERNAL = True;
         my @columns = instance.^columns;
 
-        my %new = |@columns.map: {
-            my Mu $built := .build;
+        my %new;
+        for @columns -> $column {
+            my Mu $built := $column.build;
             $built := $built.(self, Mu) if $built ~~ Method;
-            $built := .type.red-type-default
-                if $built =:= Mu && .type.HOW ~~ Metamodel::ClassHOW
-                    && .type.^can("red-type-default");
+            $built := $column.type.red-type-default
+                if $built =:= Mu && $column.type.HOW ~~ Metamodel::ClassHOW
+                    && $column.type.^can("red-type-default");
             next if $built =:= Mu;
-            if instance.^is-id: $_ {
-                instance.^set-id: .name => $built
+            if instance.^is-id: $column {
+                instance.^set-id: $column.name => $built
             }
-            .column-attr-name => $built
-        };
+            %new{$column.column-attr-name} = $built;
+        }
 
         for %data.kv -> $k, $v { %new{$k} = $v }
 

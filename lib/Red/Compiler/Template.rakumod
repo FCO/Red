@@ -17,6 +17,29 @@ use X::Red::Exceptions;
 
 unit class Red::Compiler::Template;
 
+sub compiler-warnings-enabled(Bool $explicit = Bool --> Bool:D) is export {
+    return $explicit if $explicit.DEFINITE;
+    my $dynamic = DYNAMIC::<$*RED-COMPILER-WARN>;
+    return $dynamic if $dynamic ~~ Bool:D;
+    my $environment = %*ENV<RED_COMPILER_WARN>;
+    return False unless $environment.DEFINITE && $environment.chars;
+    so $environment.trim.lc eq any(<1 true yes on>)
+}
+
+sub emit-compiler-warning(&callback, $template, Str:D :$method!, Str:D :$reason!
+    --> Bool:D) is export {
+    my $explicit = $template.DEFINITE ?? $template.warn !! Bool;
+    return False unless compiler-warnings-enabled($explicit);
+    my $name = $template.DEFINITE && $template.query-method.chars
+        ?? $template.query-method !! $method;
+    my $source = $template.DEFINITE && $template.source.chars
+        ?? $template.source !! ((try &callback.raku) // '<callback>');
+    my $file = (try &callback.file) // '<unknown>';
+    my $line = (try &callback.line) // 0;
+    warn "red-compile: $name at $file:$line uses symbolic evaluation: $reason\n$source";
+    True
+}
+
 #| A query expression compiled independently of SQL aliases and closure instances.
 
 has @.plan;
@@ -25,6 +48,10 @@ has @.values;
 has Bool $.bound = False;
 has Bool $.operators = False;
 has Bool $.prevalidate = True;
+has Bool $.warn;
+has Str $.query-method = '';
+has Str $.source = '';
+has Str $.unsupported-reason;
 has &.builder;
 has &.validator;
 has Red::QueryPlan::Cache $.filter-cache .= new;
@@ -36,7 +63,7 @@ submethod TWEAK() {
     $!filter-shape-key = @!plan.raku;
     # This object is constructed at CHECK by the RakuAST compiler and embedded
     # in its template literal. Only symbolic slots enter the precompilation.
-    if @!plan[0] eq 'op' && @!plan[1] eq any(<Eq Ne Lt Le Gt Ge>) {
+    if @!plan.elems && @!plan[0] eq 'op' && @!plan[1] eq any(<Eq Ne Lt Le Gt Ge>) {
         my ($left, $right) = @!plan[2, 3];
         sub slot($part) {
             return Red::AST::BoundFilter::Field.new(:name($part[2]))
@@ -123,6 +150,7 @@ method validate(@plan, $subject) {
 
 #| Bind captures once; rebinding SQL aliases does not read the captures again.
 method bind($subject --> Red::Compiler::Template:D) {
+    self.unsupported($!unsupported-reason) if $!unsupported-reason.DEFINITE;
     my $*RED-INTERNAL = True;
     my %*RED-COMPILER-LOCALS;
     # Pure capture-free plans validate paths during evaluation. Captures and
@@ -260,7 +288,7 @@ method evaluate(@plan, $subject) {
 # All other expressions retain the existing factory and fallback behavior.
 method cached-filter($subject, :$driver = try get-RED-DB) {
     my $*RED-INTERNAL = True;
-    my $enabled = try $*RED-QUERY-PLAN-CACHE;
+    my $enabled = DYNAMIC::<$*RED-QUERY-PLAN-CACHE>;
     return Nil if $enabled.WHAT === Bool && !$enabled;
     return Nil unless $driver.DEFINITE && $driver.?supports-query-plans;
     return Nil unless @!plan[0] eq 'op'
@@ -303,7 +331,7 @@ method cached-filter($subject, :$driver = try get-RED-DB) {
             self.clone(:@values).branches($subject).values.head
         }
     });
-    my $report = try $*RED-COMPILER-REPORT;
+    my $report = DYNAMIC::<$*RED-COMPILER-REPORT>;
     $report(:status('filter-' ~ $entry.key),
         :prototype($!filter-prototype.DEFINITE)) if $report ~~ Callable;
     Red::AST::BoundFilter::Predicate.new(:filter($entry.value),
@@ -326,7 +354,7 @@ method branches($subject --> Hash:D) {
     $outer-updates.append: @updates if @updates;
     my Red::AST %branches{Red::AST};
     %branches{Red::AST} = ast-value($value);
-    my $report = try $*RED-COMPILER-REPORT;
+    my $report = DYNAMIC::<$*RED-COMPILER-REPORT>;
     $report(:status<used>, :plan(@!plan),
         :engine(&!builder.DEFINITE ?? 'direct' !! 'interpreted')) if $report ~~ Callable;
     %branches

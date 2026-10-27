@@ -1,0 +1,174 @@
+use Test;
+use Red;
+use Red::Compiler::RakuAST;
+use Red::Compiler::Template;
+
+CHECK red-compile if (%*ENV<RAKUDO_RAKUAST> // '0') eq '1';
+
+temp %*ENV<RED_COMPILER_WARN> = '';
+my $*RED-DB = database 'SQLite';
+my $*RED-FALLBACK = False;
+
+model CompilerWarningRow {
+    has Int $.number is column;
+    method doubled { self.number * 2 }
+}
+CompilerWarningRow.^create-table;
+CompilerWarningRow.^create(:number($_)) for 1..3;
+
+sub warnings(&task --> List:D) {
+    my @messages;
+    CONTROL {
+        when CX::Warn {
+            @messages.push: .message;
+            .resume;
+        }
+    }
+    task();
+    @messages.List
+}
+
+sub increment($value) { $value + 1 }
+sub unsupported-query() { CompilerWarningRow.^all.map({ increment(.number) }) }
+
+subtest 'Warnings are opt-in and runtime dynamic values are observed' => {
+    is warnings({ unsupported-query() }).elems, 0, 'Default behavior stays silent';
+    {
+        my $*RED-COMPILER-WARN = True;
+        my @messages = warnings({ unsupported-query() });
+        is @messages.elems, 1, 'A runtime dynamic variable enables warnings';
+        ok @messages[0].contains('red-compile: map'), 'The query operation is identified';
+        ok @messages[0].contains('106-compiler-warnings.rakutest'),
+            'The callback location is identified';
+        is warnings({ unsupported-query(); unsupported-query() }).elems, 2,
+            'Separate query constructions each warn';
+    }
+    is warnings({ unsupported-query() }).elems, 0, 'Dynamic configuration is scoped';
+};
+
+subtest 'Environment values and explicit false settings retain precedence' => {
+    for <1 true YES on> -> $value {
+        temp %*ENV<RED_COMPILER_WARN> = $value;
+        is warnings({ unsupported-query() }).elems, 1, "Enable with $value";
+    }
+    for '', '0', 'false', 'OFF', 'no', 'invalid' -> $value {
+        temp %*ENV<RED_COMPILER_WARN> = $value;
+        is warnings({ unsupported-query() }).elems, 0, "Disable with '$value'";
+    }
+    {
+        temp %*ENV<RED_COMPILER_WARN> = '1';
+        my $*RED-COMPILER-WARN = False;
+        is warnings({ unsupported-query() }).elems, 0,
+            'A dynamic False overrides the environment';
+    }
+    {
+        my $*RED-COMPILER-WARN = True;
+        is warnings({ unsupported-query() }).elems, 1,
+            'A dynamic True overrides a disabled environment';
+    }
+};
+
+subtest 'Only query compilation fallback is warned' => {
+    my $*RED-COMPILER-WARN = True;
+    is warnings({ [1, 2].map({ increment($_) }).Array }).elems, 0,
+        'Native receivers do not warn';
+    my $template = Red::Compiler::Template.new(
+        :plan(['field', ['subject'], 'missing']), :query-method<map>, :source('{ .missing }'));
+    my @messages = warnings({
+        my $query = CompilerWarningRow.^all.map({ .number }, :red-ast($template));
+        is-deeply $query.Array, [1, 2, 3], 'Symbolic fallback still returns the results';
+    });
+    is @messages.elems, 1, 'An inapplicable template warns once';
+    ok @messages[0].contains('Unknown model member: missing'), 'The failure reason is included';
+    ok @messages[0].contains('{ .missing }'), 'The template source is included';
+    {
+        my $*RED-QUERY-PLAN-CACHE = False;
+        my $supported = Red::Compiler::Template.new(:plan(['field', ['subject'], 'number']));
+        is warnings({
+            CompilerWarningRow.^all.map({ .number }, :red-ast($supported)).Array;
+        }).elems, 0, 'Disabling the SQL plan cache is not a compilation failure';
+    }
+    my &order = -> $row { $row.number };
+    my @order-warnings = warnings({ CompilerWarningRow.^all.sort(&order) });
+    is @order-warnings.elems, 1, 'An uncompiled sort also warns';
+    ok @order-warnings[0].contains('red-compile: sort'), 'Sort is identified';
+    my $projection;
+    {
+        my $*RED-COMPILER-WARN = False;
+        $projection = CompilerWarningRow.^all.map(*.number);
+    }
+    my $rebound;
+    is warnings({ $rebound = $projection.map({ 12 / increment($_) }) }).elems, 1,
+        'A SELECT boundary does not duplicate a warning';
+    cmp-ok $*RED-DB.translate($rebound.ast).key.comb(/:i SELECT/).elems, '>=', 2,
+        'The query actually crosses a SELECT boundary';
+    is-deeply $rebound.Array.map(*.Int).Array, [6, 4, 3],
+        'Rebinding keeps the results';
+    my $broken = Red::Compiler::Template.new(:plan(['capture', 0]),
+        :getters([-> { die 'capture failed' }]));
+    is warnings({
+        throws-like {
+            CompilerWarningRow.^all.map({ .number }, :red-ast($broken));
+        }, X::AdHoc, :message('capture failed');
+    }).elems, 0, 'Capture errors remain exceptions rather than warnings';
+};
+
+subtest 'The CHECK parameter overrides dynamic and environment configuration' => sub {
+    unless (%*ENV<RAKUDO_RAKUAST> // '0') eq '1' {
+        plan :skip-all('Requires the RakuAST frontend');
+        return;
+    }
+    my $library = $?FILE.IO.parent.parent.add('lib').absolute;
+    my $program = q:to/PROGRAM/;
+        use Red;
+        use Red::Compiler::RakuAST;
+        CHECK red-compile(WARNING_OPTION);
+        my $*RED-DB = database 'SQLite';
+        my $*RED-FALLBACK = False;
+        model WarningParameterRow {
+            has Int $.number is column;
+            method doubled { self.number * 2 }
+        }
+        {
+            my $*RED-COMPILER-WARN = False;
+            WarningParameterRow.^create-table;
+            WarningParameterRow.^create(:number($_)) for 1..3;
+        }
+        my $*RED-COMPILER-WARN = DYNAMIC_SETTING;
+        sub increment($value) { $value + 1 }
+        sub dormant($value) { $value }
+        sub query() { WarningParameterRow.^all.map({ increment(.number) }) }
+        if False { WarningParameterRow.^all.map({ dormant(.number) }) }
+        say query().Array.join(',');
+        say query().Array.join(',');
+        say WarningParameterRow.^all.map({ .doubled }).Array.join(',');
+        say [1, 2].map({ increment($_) }).Array.join(',');
+        say WarningParameterRow.^all.map({ .number }).Array.join(',');
+        PROGRAM
+    for True, False -> $enabled {
+        my $source = $program.subst('WARNING_OPTION', $enabled ?? ':warn' !! ':!warn')
+            .subst('DYNAMIC_SETTING', $enabled ?? 'False' !! 'True');
+        my %environment = %*ENV;
+        %environment<RED_COMPILER_WARN> = $enabled ?? '0' !! '1';
+        my $process = run $*EXECUTABLE, "-I$library", '-e', $source,
+            :env(%environment), :out, :err;
+        my $output = $process.out.slurp-rest;
+        my $errors = $process.err.slurp-rest;
+        is $process.exitcode + $process.signal, 0, "Parameter $enabled succeeds";
+        diag $errors if $process.exitcode || $process.signal;
+        is $output, "2,3,4\n2,3,4\n2,4,6\n2,3\n1,2,3\n", 'Results remain unchanged';
+        my @messages = $errors.lines.grep(*.starts-with('red-compile:'));
+        is @messages.elems, ($enabled ?? 3 !! 0), 'The explicit parameter wins';
+        if $enabled {
+            ok $errors.contains('A function call depends on the query element'),
+                'Unsupported CHECK syntax retains its reason';
+            ok $errors.contains('Unknown model member: doubled'),
+                'Runtime fallback also warns';
+            ok $errors.contains('increment(.number)'), 'Unsupported source is retained';
+            nok $errors.contains('increment($_)'), 'Native unsupported syntax does not warn';
+            nok $errors.contains('dormant'), 'Unexecuted queries do not warn';
+        }
+    }
+};
+
+done-testing;

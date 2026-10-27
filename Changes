@@ -1,6 +1,12 @@
 Revision history for Red
 
 {{$NEXT}}
+    - compiler: add fallback warnings via :warn, $*RED-COMPILER-WARN and RED_COMPILER_WARN
+    - performance: resolve query-plan types once and streamline fingerprint traversal
+    - performance: hydrate rows in one pass while retaining defaults and prefetched relationships
+    - performance: avoid failure creation when optional cache and report settings are absent
+    - performance: use lightweight hydration metadata while preserving custom column behavior
+    - performance: build model defaults directly without intermediate sequences and pairs
     - fixes: retain bound predicate parameters inside uncached CASE branches and cyclic hashes
     - compiler: preserve comparison operator coercions and casts in compiled queries
     - fixes: bypass query-plan caching for cyclic positional values without losing later bindings
