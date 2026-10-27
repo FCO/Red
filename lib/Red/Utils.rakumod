@@ -3,9 +3,9 @@ use Red::AST::Unary;
 =head2 Red::Utils
 
 #| Accepts a string and converts snake case (`foo_bar`) into kebab case (`foo-bar`).
-sub snake-to-kebab-case(Str() $_ --> Str) is export { S:g/'_'/-/ }
+sub snake-to-kebab-case(Str() $_ --> Str) is export { .subst('_', '-', :g) }
 #| Accepts a string and converts kebab case (`foo-bar`) into snake case (`foo_bar`).
-sub kebab-to-snake-case(Str() $_ --> Str) is export { S:g/'-'/_/ }
+sub kebab-to-snake-case(Str() $_ --> Str) is export { .subst('-', '_', :g) }
 #| Accepts a string and converts camel case (`fooBar`) into snake case (`foo_bar`).
 sub camel-to-snake-case(Str() $_ --> Str) is export { kebab-to-snake-case lc S:g/(\w)<?before <[A..Z]>>/$0_/ }
 #| Accepts a string and converts camel case (`fooBar`) into kebab case (`foo-bar`).

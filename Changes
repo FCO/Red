@@ -10,6 +10,8 @@ Revision history for Red
     - Track in-place mutations of Positional, Associative and Json columns when saving.
     - Snapshot mutable collection values deeply and retain independent old values for dirty tracking.
     - Refresh snapshots on clean-up and partial refresh without marking unchanged collections dirty.
+    - Return explicitly bound drivers directly and replace literal name separators without regex matching.
+    - Retain formatter coercions, repeated separators, Unicode and embedded control characters.
     - schema: add named CHECK and PostgreSQL EXCLUDE constraints with driver selection
     - indexes: support access methods, per-key operator classes and partial predicates
     - pg: add range constructors and native range/regex expression helpers
