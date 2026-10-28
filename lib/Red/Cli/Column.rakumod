@@ -73,7 +73,13 @@ method diff(::?CLASS $b) {
         @diffs.push: [ $!name, "+", "name", $b.name   ];
         @diffs.push: [ $!name, "-", "name", self.name ];
     }
-    if self.type ne $b.type {
+    sub normalized(Str $type) {
+        my $value = $type.lc.trim.subst('character varying', 'varchar');
+        $value = 'integer' if $value eq any(<int int4 serial>);
+        $value = 'integer' if $value ~~ /^ 'int(' \d+ ')' $/;
+        $value
+    }
+    if normalized(self.type) ne normalized($b.type) {
         @diffs.push: [ $!name, "+", "type", $b.type   ];
         @diffs.push: [ $!name, "-", "type", self.type ];
     }

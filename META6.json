@@ -4,13 +4,13 @@
   "authors": [
     "Fernando Correa de Oliveira"
   ],
-  "build-depends": [
-  ],
+  "build-depends": [],
   "depends": [
     "DBIish",
     "DB::Pg",
     "UUID",
-    "JSON::Fast"
+    "JSON::Fast",
+    "Configuration"
   ],
   "description": "A Raku ORM",
   "license": "Artistic-2.0",
@@ -126,6 +126,7 @@
     "Red::Driver::CacheWithStrKey": "lib/Red/Driver/CacheWithStrKey.rakumod",
     "Red::Driver::CommonSQL": "lib/Red/Driver/CommonSQL.rakumod",
     "Red::Driver::Mock": "lib/Red/Driver/Mock.rakumod",
+    "Red::Driver::Pg::SchemaReader": "lib/Red/Driver/Pg/SchemaReader.rakumod",
     "Red::Driver::Pg": "lib/Red/Driver/Pg.rakumod",
     "Red::Driver::SQLite": "lib/Red/Driver/SQLite.rakumod",
     "Red::Driver::SQLite::SQLiteMaster": "lib/Red/Driver/SQLite/SQLiteMaster.rakumod",
@@ -166,10 +167,10 @@
     "Red::Type::Json": "lib/Red/Type/Json.rakumod",
     "Red::Type::Map": "lib/Red/Type/Map.rakumod",
     "Red::Utils": "lib/Red/Utils.rakumod",
-    "X::Red::Exceptions": "lib/X/Red/Exceptions.rakumod"
+    "X::Red::Exceptions": "lib/X/Red/Exceptions.rakumod",
+    "Red::Configuration": "lib/Red/Configuration.rakumod"
   },
-  "resources": [
-  ],
+  "resources": [],
   "source-url": "https://github.com/FCO/Red.git",
   "tags": [
     "ORM",

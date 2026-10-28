@@ -1,0 +1,76 @@
+use Test;
+use Red;
+my @config = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @config.shift;
+my $*RED-DB = database $backend, |%(@config.map({ my ($k,$v)=.split('='); $k=>val($v) }));
+sub qn($name) { $*RED-DB.table-name-wrapper($name) }
+model AlterV1 is table<sync_alter> {
+    has Int $.id is serial;
+    has Str $.label is column{ :type<varchar(8)>, :nullable };
+}
+model AlterV2 is table<sync_alter> {
+    has Int $.id is serial;
+    has Str $.label is column{ :type<varchar(16)>, :nullable };
+}
+model AlterV3 is table<sync_alter> {
+    has Int $.id is serial;
+    has Str $.label is column{ :type<varchar(16)> };
+}
+schema(AlterV1).drop;
+schema(AlterV1).update;
+$*RED-DB.execute("INSERT INTO {qn('sync_alter')} (id,label) VALUES (7,'alpha')");
+if $backend eq 'SQLite' {
+    throws-like { schema(AlterV2).update }, X::Red::Schema::UnsupportedChange,
+        'SQLite rejects type changes requiring reconstruction';
+    is schema(AlterV1).plan.elems, 0, 'Unsupported change leaves original schema';
+} else {
+    lives-ok { schema(AlterV2).update }, 'Native VARCHAR widening';
+    is schema(AlterV2).plan.elems, 0, 'Widening round-trips';
+    $*RED-DB.execute("INSERT INTO {qn('sync_alter')} (id,label) VALUES (8,NULL)");
+    throws-like { schema(AlterV3).update }, X::Red::Schema::UnsupportedChange,
+        'NULL data fails preflight for NOT NULL';
+    is schema(AlterV2).plan.elems, 0, 'Rejected NOT NULL leaves schema';
+    $*RED-DB.execute("DELETE FROM {qn('sync_alter')} WHERE id=8");
+    lives-ok { schema(AlterV3).update }, 'Native SET NOT NULL';
+    is schema(AlterV3).plan.elems, 0, 'NOT NULL round-trips';
+    lives-ok { schema(AlterV2).update }, 'Native DROP NOT NULL';
+    is schema(AlterV2).plan.elems, 0, 'Nullable schema round-trips';
+}
+model RollbackBase is table<sync_rollback> { has Int $.id is serial }
+model RollbackNew is table<sync_rollback> {
+    has Int $.id is serial;
+    has Str $.a is column{ :nullable };
+    has Str $.b is column{ :nullable };
+}
+schema(RollbackBase).drop;
+schema(RollbackBase).update;
+my $count = 0;
+my $broken = $*RED-DB but role {
+    method execute($sql, *@bind) {
+        if $sql.starts-with('ALTER TABLE') && ++$count == 2 {
+            die 'injected schema execution failure';
+        }
+        callsame
+    }
+};
+throws-like { schema(RollbackNew).update(:where($broken)) },
+    X::Red::Schema::UpdateFailed,
+    :completed-statements(*.elems == 1), :sql(*.contains('ADD COLUMN')),
+    'Execution failure reports the failed and completed SQL';
+is schema(RollbackNew).plan.elems, ($backend eq 'MySQL' ?? 1 !! 2),
+    'The observed state matches the driver transactional guarantees';
+model ZParent is table<z_sync_parent> { has Int $.id is serial }
+model AChild is table<a_sync_child> {
+    has Int $.id is serial;
+    has Int $.parent-id is referencing(*.id, :model(ZParent));
+}
+schema(AChild,ZParent).drop;
+throws-like { schema(AChild).update }, X::Red::Schema::UnsupportedChange,
+    :reason(*.contains('missing referenced table')),
+    'Missing external parents fail preflight';
+lives-ok { schema(AChild,ZParent).update }, 'New parent precedes new child in DDL';
+is schema(AChild,ZParent).plan.elems, 0, 'FK metadata round-trips';
+dies-ok {
+    $*RED-DB.execute("INSERT INTO {qn('a_sync_child')} (id,parent_id) VALUES (1,999)");
+}, 'The new FK is enforced';
+done-testing;

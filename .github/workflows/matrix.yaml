@@ -33,7 +33,7 @@ jobs:
       - name: Install dependencies
         run: |
           zef install --/test --test-depends --deps-only .
-          zef install --/test App::Prove6
+          zef install --/test App::Prove6 Config Config::Parser::json
       - name: Run tests
         run: prove6 -lj8 t
 
@@ -116,6 +116,8 @@ jobs:
           sudo apt-get install -y libmariadb-dev-compat libpq-dev libsqlite3-dev uuid-dev
           zef install --/test --test-depends --deps-only .
           zef install --/test App::Prove6
+      - name: Apply schema-sync metadata changes
+        run: git -C .ci/mysql-driver apply "$GITHUB_WORKSPACE/tools/schema-sync-mysql.patch"
       - name: Run tests (MySQL)
         run: prove6 -j8 -e "raku $GITHUB_WORKSPACE/.ci/mysql-driver/tools/red-test-exec.raku" t
 

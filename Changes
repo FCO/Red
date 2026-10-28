@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Validate schema sync plans across SQLite, PostgreSQL and MySQL; require an explicit opt-in for column removal.
+    - Preserve table constraints and explicit connections, report partial DDL failures, and add native integration coverage.
     - Compile plain lexical helpers and named callbacks with runtime identity guards and precompilation coverage.
     - Translate scalar and whole capture .chars with native character counts and zero for absent captures.
     - Preserve explicit capture string coercion through SQL text method chains.

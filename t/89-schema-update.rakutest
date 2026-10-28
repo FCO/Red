@@ -12,13 +12,6 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
-my Version() $ver = $*RED-DB.execute("select sqlite_version() as version").row.values.head;
-
-if $ver < v3.53 {
-    skip-rest "This SQLite version does not accept alter table alter column";
-    exit
-}
-
 model A { has UInt $.id is serial }
 
 model E1 is table<expl> {
@@ -29,14 +22,14 @@ model E1 is table<expl> {
 model E2 is table<expl> {
     has UInt $.id is serial;
     has Str  $.a  is column;
-    has Str  $.b  is column;
+    has Str  $.b  is column{ :nullable };
 }
 
 model E3 is table<expl> {
     has UInt $.id is serial;
     has Str  $.a  is column;
-    has Str  $.b  is column;
-    has Str  $.c  is column;
+    has Str  $.b  is column{ :nullable };
+    has Str  $.c  is column{ :nullable };
 }
 
 model E1-renamed is table<expl2> {

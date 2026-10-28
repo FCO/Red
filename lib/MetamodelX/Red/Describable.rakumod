@@ -13,7 +13,8 @@ method !create-column($_ --> Red::Cli::Column) {
         :name(.column-name // self.column-formatter: .attr-name),
         :formated-name(.attr-name),
         :type(.type // get-RED-DB.default-type-for($_)),
-        :perl-type(.type),
+        :perl-type(.attr.type.^name),
+        :auto-increment(.auto-increment),
         :nullable(.nullable),
         :pk(.id),
         |(:references(%(table => .ref.attr.package.^table, column => .ref.name)) if .references)

@@ -1,4 +1,5 @@
 use Red::Operators;
+use Red::DB;
 use Red::SchemaReader;
 use Red::Driver::SQLite::SQLiteMaster;
 
@@ -63,10 +64,33 @@ class SQL::CreateTable::Action {
 method tables-names       { self.sqlite-master.tables.map: *.name }
 method indexes-of($table) { self.sqlite-master.find-table($table).indexes }
 method table-definition($table --> Red::Cli::Table) {
-    my $sql = self.sqlite-master.find-table($table).sql;
-    my $list = self.table-definition-from-create-table($sql);
-    return Red::Cli::Table unless $list;
-    $list.head
+    my $driver = get-RED-DB;
+    sub rows(Str $sql) {
+        my $statement = $driver.execute($sql);
+        gather loop {
+            my $row := $statement.row;
+            last if $row =:= IterationEnd || !$row;
+            take $row;
+        }
+    }
+    my $quoted = $driver.table-name-wrapper($table);
+    my @columns = rows("PRAGMA table_info($quoted)");
+    return Red::Cli::Table.new(:!exists) unless @columns;
+    my @constraints;
+    for rows("PRAGMA index_list($quoted)") -> $index {
+        next unless $index<unique> && $index<origin> ne 'pk';
+        my $name = $driver.table-name-wrapper($index<name>);
+        @constraints.push: rows("PRAGMA index_info($name)").sort(*.<seqno>).map(*.<name>).Array;
+    }
+    my %references;
+    for rows("PRAGMA foreign_key_list($quoted)") -> $reference {
+        %references{$reference<from>} = %(table => $reference<table>, column => $reference<to>);
+    }
+    Red::Cli::Table.new(:name($table), :@constraints, :columns(@columns.map(-> $column {
+        Red::Cli::Column.new(:name($column<name>), :type($column<type>.lc),
+            :nullable(!$column<notnull> && !$column<pk>), :pk(so $column<pk>),
+            :references(%references{$column<name>} // {}))
+    }).Array))
 }
 multi method table-definition-from-create-table(Str:D $sql) {
     SQL::CreateTable.parse($sql, :actions(SQL::CreateTable::Action)).made;
@@ -74,4 +98,27 @@ multi method table-definition-from-create-table(Str:D $sql) {
 
 multi method table-definition-from-create-table(Any:U) {
     Red::Cli::Table.new
+}
+
+method column-dependencies(Str $table, Str $column) {
+    my $driver = get-RED-DB;
+    sub rows($sql) {
+        my $statement = $driver.execute($sql);
+        gather loop {
+            my $row := $statement.row;
+            last if $row =:= IterationEnd || !$row;
+            take $row;
+        }
+    }
+    my @dependencies;
+    for rows("PRAGMA index_list({$driver.table-name-wrapper($table)})") -> $index {
+        my @members = rows("PRAGMA index_info({$driver.table-name-wrapper($index<name>)})");
+        @dependencies.push: $index<name> if @members.first(*.<name> eq $column).defined;
+    }
+    for self.tables-names -> $other {
+        for rows("PRAGMA foreign_key_list({$driver.table-name-wrapper($other)})") -> $ref {
+            @dependencies.push: "FK from $other" if $ref<table> eq $table && $ref<to> eq $column;
+        }
+    }
+    @dependencies
 }

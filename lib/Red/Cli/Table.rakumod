@@ -11,15 +11,15 @@ has      @.relationships;
 has Bool $.exists = True;
 
 submethod TWEAK(:@columns, :@constraints) {
-    my @single-constraints;
-    for @constraints -> @cols {
-        @single-constraints.push: @cols.head.column.name if +@cols == 1
-    }
-    my %single := set @single-constraints;
+    @!constraints = @constraints.map(-> $constraint {
+        my @members = $constraint.^can('columns') ?? $constraint.columns !! $constraint.list;
+        @members.map({ $_ ~~ Str ?? $_ !! .column.name }).Array
+    });
+    my %single := set @!constraints.grep(*.elems == 1).map(*.head);
     for @columns -> $col {
         $col.table = self;
         $col.unique = True if %single{$col.name};
-        with $col.references {
+        if $col.references<table>.defined {
             @!relationships.push: Red::Cli::Relationship.new: :id($col)
         }
     }
@@ -51,17 +51,17 @@ method to-code(Str :$schema-class, Bool :$no-relationships) {
 
 method diff($b) {
     my @diffs;
-    my Str $a-name = self.defined ?? $!name  // "<no-table>" !! "<no-table>";
-    my Str $b-name = $b.defined   ?? $b.name // Str !! Str;
+    my Str $a-name = self.defined && self.exists ?? $!name  // "<no-table>" !! "<no-table>";
+    my Str $b-name = $b.defined && $b.exists ?? $b.name // Str !! Str;
 
-    my @a = self ?? @!columns.sort:  *.name !! ();
-    my @b = $b   ?? $b.columns.sort: *.name !! ();
+    my @a = self.defined && self.exists ?? @!columns.sort:  *.name !! ();
+    my @b = $b.defined && $b.exists ?? $b.columns.sort: *.name !! ();
 
     if $a-name ne ($b-name // "") {
         if !self.defined && !$b-name.defined {
             die "No from and to table... it should never happen..."
         }
-        if !self.defined || !$!name.defined {
+        if !self.defined || !self.exists || !$!name.defined {
             @diffs.push: [ $a-name, "+", "table", $b ];
             return @diffs
         } elsif !$b-name.defined {
@@ -73,6 +73,11 @@ method diff($b) {
         }
     }
 
+    my @old = @!constraints.grep(*.elems > 1).map(*.raku).sort;
+    my @new = $b.constraints.grep(*.elems > 1).map(*.raku).sort;
+    if @old.raku ne @new.raku {
+        @diffs.push: [$a-name, '+', 'constraints', $b.constraints.Array];
+    }
     while @a > 0 and @b > 0 {
         if @a.head.name eq @b.head.name {
             my $a = @a.shift;

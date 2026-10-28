@@ -10,12 +10,13 @@ my %*SUB-MAIN-OPTS =
 ;
 
 my $*RED-DEBUG = False;
+my $*RED-DB;
 
 sub _config(:$config-file = "./red.rakuconfig", Bool :$debug, :$driver, *%pars) {
     my $config         = single-config-run file => $config-file;
-    $GLOBAL::RED-DB    = $config.driver;
-    $GLOBAL::RED-DB    = database ($driver // $config.driver-name), |%pars if $driver || %pars;
-    $GLOBAL::RED-DEBUG = $debug // $config.debug;
+    $*RED-DB           = $config.driver;
+    $*RED-DB           = database ($driver // $config.driver-name), |%pars if $driver || %pars;
+    $*RED-DEBUG        = $debug // $config.debug;
     $config
 }
 
@@ -145,7 +146,7 @@ multi MAIN(
     ;
     my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
     say "use Red;";
-    say "use Red::Config;";
+    say "use Red::Configuration;";
     say "use lib '{ $lib-path }';";
     for @requires {
         say "use $_;";
@@ -189,14 +190,15 @@ multi MAIN(
 multi MAIN(
     "sync",
     # +@models,
-    Bool :$dev where { .so },
+    Bool :$dev! where { .so },
+    Bool :$allow-destructive = False,
     :$config-file,
     :$driver,
     Bool :$debug,
     *%pars,
 ) {
     my $config = _config |(:$config-file with $config-file), |(:$debug with $debug), :$driver, |%pars;
-    $config.schema.update
+    $config.schema.update(:where($*RED-DB), :$allow-destructive)
 }
 
 #| Update DB with models
@@ -209,7 +211,7 @@ multi MAIN(
     *%pars,
 ) {
     my $config = _config |(:$config-file with $config-file),|(:$debug with $debug), :$driver, |%pars;
-    .say for $config.schema.plan
+    .say for $config.schema.plan(:where($*RED-DB))
 }
 
 sub dyn-lib(@libs) {

@@ -1,0 +1,69 @@
+name: schema-sync
+on: [push, pull_request]
+jobs:
+  native:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [Pg, MySQL]
+    services:
+      pg:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: red-sync-test
+          POSTGRES_DB: red_sync
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd="pg_isready -U postgres"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: red-sync-test
+          MYSQL_ROOT_HOST: '%'
+        ports: ['3306:3306']
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -pred-sync-test"
+          --health-interval=5s --health-timeout=5s --health-retries=30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: '2026.09'
+      - name: Native libraries and Raku dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpq-dev libmariadb-dev-compat libsqlite3-dev uuid-dev
+          zef install --/test --test-depends --deps-only .
+          zef install --/test App::Prove6 Config Config::Parser::json
+      - uses: actions/checkout@v4
+        if: matrix.backend == 'MySQL'
+        with:
+          repository: FCO/Red-Driver-MySQL
+          ref: abe3a0ee01f62dc7f4da371c74a4a3bdddf77ddb
+          path: .mysql-driver
+      - name: Apply corresponding MySQL compatibility changes
+        if: matrix.backend == 'MySQL'
+        run: git -C .mysql-driver apply "$GITHUB_WORKSPACE/tools/schema-sync-mysql.patch"
+      - name: PostgreSQL schema sync
+        if: matrix.backend == 'Pg'
+        env:
+          RED_DATABASE: 'Pg host=127.0.0.1 user=postgres password=red-sync-test dbname=red_sync'
+        run: |
+          raku -Ilib t/92-schema-sync-drivers.rakutest
+          raku -Ilib t/94-schema-sync-alter.rakutest
+          raku -Ilib t/95-schema-sync-limits.rakutest
+      - name: MySQL schema sync and driver metadata
+        if: matrix.backend == 'MySQL'
+        env:
+          MYSQL_HOST: 127.0.0.1
+          MYSQL_PASSWORD: red-sync-test
+          RED_SOURCE: ${{ github.workspace }}
+        run: |
+          raku .mysql-driver/tools/red-test-exec.raku t/92-schema-sync-drivers.rakutest
+          raku .mysql-driver/tools/red-test-exec.raku t/94-schema-sync-alter.rakutest
+          raku .mysql-driver/tools/red-test-exec.raku t/95-schema-sync-limits.rakutest
+          raku -Ilib -I.mysql-driver/lib .mysql-driver/t/03-schema-reader.t
+          raku .mysql-driver/tools/red-test-exec.raku .mysql-driver/t/12-schema-sync-mysql.t

@@ -1,0 +1,45 @@
+use Test;
+use Red;
+use Red::AST::ChangeColumn;
+my @config = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @config.shift;
+my $*RED-DB = database $backend, |%(@config.map({ my ($k,$v)=.split('='); $k=>val($v) }));
+sub qn($name) { $*RED-DB.table-name-wrapper($name) }
+model CompositePK is table<sync_composite_pk> {
+    has Int $.a is id;
+    has Int $.b is id;
+}
+schema(CompositePK).drop;
+lives-ok { schema(CompositePK).update }, 'Create a composite primary key';
+is schema(CompositePK).plan.elems, 0, 'Composite primary key round-trips';
+$*RED-DB.execute("INSERT INTO {qn('sync_composite_pk')} (a,b) VALUES (1,2)");
+lives-ok { $*RED-DB.execute("INSERT INTO {qn('sync_composite_pk')} (a,b) VALUES (1,3)") },
+    'Individual components are not unique';
+dies-ok { $*RED-DB.execute("INSERT INTO {qn('sync_composite_pk')} (a,b) VALUES (1,2)") },
+    'Composite primary key is enforced';
+model IndexedBefore is table<sync_indexed> {
+    has Int $.id is serial;
+    has Str $.extra is column{ :nullable };
+}
+model IndexedAfter is table<sync_indexed> { has Int $.id is serial }
+schema(IndexedBefore).drop;
+schema(IndexedBefore).update;
+$*RED-DB.execute("CREATE INDEX sync_extra_index ON {qn('sync_indexed')} (extra)");
+throws-like { schema(IndexedAfter).update(:allow-destructive) },
+    X::Red::Schema::UnsupportedChange, :reason(*.contains('dependencies')),
+    'A dependent index is not silently dropped with its column';
+is schema(IndexedBefore).plan.elems, 0, 'The indexed column remains intact';
+is-deeply schema(IndexedBefore,CompositePK).plan, schema(CompositePK,IndexedBefore).plan,
+    'Model argument order does not change the plan';
+model SelfNode is table<sync_self_node> {
+    has Int $.id is serial;
+    has Int $.parent-id is referencing(*.id, :model<SelfNode>);
+}
+schema(SelfNode).drop;
+lives-ok { schema(SelfNode).update }, 'A table may reference itself';
+is schema(SelfNode).plan.elems, 0, 'Self-referencing FK round-trips';
+throws-like {
+    $*RED-DB.translate(Red::AST::ChangeColumn.new(:table<sync_indexed>, :name<extra>, :type<TEXT>))
+}, X::Red::Schema::UnsupportedChange,
+    'A raw ChangeColumn AST cannot silently discard the requested change';
+done-testing;

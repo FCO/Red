@@ -474,22 +474,9 @@ multi method translate(Red::AST::DropColumn $_, $context?) {
                                 }
 
 multi method translate(Red::AST::ChangeColumn $_, $context?) {
-                                    "ALTER TABLE {
-                                        .table
-                                    } ALTER COLUMN {
-                                        .name
-                                    } {
-                                        .type // ""
-                                    }{
-                                        " NOT NULL" unless .nullable
-                                    }{
-                                        " UNIQUE" if .unique
-                                    }{
-                                        " REFERENCES { self.table-name-wrapper: .ref-table } ({ .ref-col })" if .ref-table and .ref-col
-                                    }{
-                                        " PRIMARY KEY" if .pk
-                                    }" => []
-                                }
+    X::Red::Schema::UnsupportedChange.new(
+        :reason('ChangeColumn requires catalog validation; use schema(...).plan/update')).throw;
+}
 
 multi method translate(Red::AST::CreateColumn $_, $context?) {
                                     "ALTER TABLE {
@@ -1022,20 +1009,26 @@ multi method translate(Red::Cli::Column $_, "column-comment") {
     (.comment ?? " COMMENT '$_'" !! "") => []
 }
 
-multi method translate(Red::Cli::Column $ (:$references where {!.keys}), "column-references") {
-    ("references { .<table> }({ .<column> })" => []) with .references
+multi method translate(Red::Cli::Column $_, "column-references") {
+    my $reference = .references;
+    return "" => [] unless $reference<table>.defined && $reference<column>.defined;
+    "REFERENCES {self.table-name-wrapper($reference<table>)}"
+        ~ "({self.table-name-wrapper($reference<column>)})" => []
 }
 
-multi method translate(Red::Cli::Column $_, "column-references") {
-    "" => []
+multi method translate(Red::Cli::Column $_, "column-unique") {
+    (.unique ?? "UNIQUE" !! "") => []
 }
 
 multi method translate(Red::Cli::Column $_, "column-auto-increment") {
-    (.auto-increment ?? "auto_increment" !! "") => []
+    (.auto-increment
+        ?? (self.driver-name.contains('MySQL') ?? 'AUTO_INCREMENT'
+            !! (self.driver-name.contains('SQLite') ?? 'AUTOINCREMENT' !! ''))
+        !! '') => []
 }
 
 multi method translate(Red::Cli::Column $_, "column-pk") {
-    (.pk ?? "primary key" !! "") => []
+    (.pk && .table.columns.grep(*.pk).elems == 1 ?? "primary key" !! "") => []
 }
 
 multi method translate(Red::Cli::Column $_, "nullable-column") {
@@ -1043,11 +1036,11 @@ multi method translate(Red::Cli::Column $_, "nullable-column") {
 }
 
 multi method translate(Red::Cli::Column $_, "column-type") {
-    .type => []
+    (.auto-increment && self.driver-name eq 'Red::Driver::Pg' ?? 'serial' !! .type) => []
 }
 
 multi method translate(Red::Cli::Column $_, "create-table-column-name") {
-    .name => []
+    self.table-name-wrapper(.name) => []
 }
 
 multi method translate(Red::Cli::Column $_, "unique") {
@@ -1173,11 +1166,12 @@ multi method translate(Red::Cli::Column $_, "create-table") {
         #     !! "nullable-column"
         # ),
         "nullable-column",
+        "column-unique",
         (|(
             "column-pk",
             "column-auto-increment",
         ) if .pk),
-        |("column-references" unless $*RED-IGNORE-REFERENCE),
+
         |("column-comment" if self.comment-on-same-statement),
     )
         .map(-> $context {
@@ -1249,7 +1243,7 @@ multi method translate(Red::AST::CreateView $_, $context?) {
 }
 
 multi method translate(Red::AST::DropTable $_, $context?) {
-    "DROP TABLE IF EXISTS { self.table-name-wrapper: .name }" => [],
+    "DROP TABLE IF EXISTS { self.table-name-wrapper: .table }" => [],
 }
 
 multi method translate(Red::AST::CreateTableCli $ (:table($_)), $context?) {
@@ -1258,6 +1252,16 @@ multi method translate(Red::AST::CreateTableCli $ (:table($_)), $context?) {
     } (\n{
         (
             |.columns.map({ self.translate($_, "create-table").key }),
+            |.columns.grep({ .references<table>.defined }).map(-> $column {
+                'FOREIGN KEY (' ~ self.table-name-wrapper($column.name) ~ ') REFERENCES '
+                    ~ self.table-name-wrapper($column.references<table>) ~ '('
+                    ~ self.table-name-wrapper($column.references<column>) ~ ')'
+            }),
+            |('PRIMARY KEY (' ~ .columns.grep(*.pk).map({ self.table-name-wrapper(.name) }).join(', ') ~ ')'
+                if .columns.grep(*.pk).elems > 1),
+            |.constraints.grep(*.elems > 1).map(-> @columns {
+                'UNIQUE (' ~ @columns.map({ self.table-name-wrapper($_) }).join(', ') ~ ')'
+            }),
         ).join(",\n").indent: 3
     }\n)" => [],
 }

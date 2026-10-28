@@ -1,0 +1,38 @@
+use Test;
+my $root = $?FILE.IO.parent.parent.absolute.IO;
+my $directory = $*TMPDIR.add("red-sync-cli-{$*PID}-{1000000000.rand.Int}");
+$directory.mkdir;
+my $database = $directory.add('test.sqlite');
+LEAVE { $database.unlink if $database.e; $directory.rmdir if $directory.e }
+sub command(Str $operation, *@args, Str :$variant = '1') {
+    my %env = %*ENV, RED_SYNC_TEST_DATABASE => $database.Str, RED_SYNC_VARIANT => $variant;
+    my $process = run $*EXECUTABLE, "-I{$root.add('lib')}", $root.add('bin/red').Str,
+        $operation, "--config-file={$root.add('t/lib/SchemaSyncConfig.rakuconfig')}",
+        |@args, :env(%env), :out, :err;
+    my $out = $process.out.slurp-rest;
+    my $err = $process.err.slurp-rest;
+    ($process.exitcode, $out, $err)
+}
+my ($code,$out,$err) = command('prepare');
+is $code, 0, 'prepare succeeds';
+like $out, /'CREATE TABLE'/, 'prepare shows the creation plan';
+($code,$out,$err) = command('prepare');
+like $out, /'CREATE TABLE'/, 'prepare did not create the table';
+($code,$out,$err) = command('sync');
+ok $code != 0, 'sync requires the development opt-in';
+($code,$out,$err) = command('sync','--dev');
+is $code, 0, 'sync --dev creates the table';
+diag $err if $code;
+($code,$out,$err) = command('prepare');
+is $code, 0, 'prepare after sync succeeds';
+is $out.trim, '', 'Second plan is empty';
+($code,$out,$err) = command('sync','--dev', :variant('2'));
+is $code, 0, 'sync adds a nullable column';
+($code,$out,$err) = command('sync','--dev');
+ok $code != 0, 'sync rejects removal without opt-in';
+like $err, /':allow-destructive'/, 'The diagnostic identifies the required option';
+($code,$out,$err) = command('sync','--dev','--allow-destructive');
+is $code, 0, 'CLI destructive opt-in is forwarded';
+($code,$out,$err) = command('prepare');
+is $out.trim, '', 'CLI update is idempotent';
+done-testing;

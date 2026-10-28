@@ -122,13 +122,8 @@ multi method join-type("right") { die "'RIGHT JOIN' is not supported by SQLite" 
 multi method should-drop-cascade { False }
 
 multi method translate(Red::AST::ChangeColumn $_, $context?) {
-    "ALTER TABLE {
-        .table
-    } ALTER COLUMN {
-        .name
-    } {
-        .nullable ?? "DROP NOT NULL" !! "SET NOT NULL"
-    }" => []
+    X::Red::Schema::UnsupportedChange.new(
+        :reason('SQLite ALTER COLUMN is not implemented; no table reconstruction is performed')).throw;
 }
 
 method check-regex-support {

@@ -1,0 +1,19 @@
+use Test;
+use Red;
+use Red::Cli::Table;
+use Red::Cli::Column;
+use Red::AST::CreateTableCli;
+my $*RED-DB = database 'SQLite';
+$*RED-DB.execute('PRAGMA foreign_keys = ON');
+$*RED-DB.execute('CREATE TABLE parent (id INTEGER PRIMARY KEY)');
+$*RED-DB.execute('INSERT INTO parent VALUES (1)');
+my $table = Red::Cli::Table.new(:name<child>, :columns[
+    Red::Cli::Column.new(:name<value>, :type<INTEGER>, :unique,
+        :references{ :table<parent>, :column<id> })
+]);
+my @sql = $*RED-DB.translate(Red::AST::CreateTableCli.new(:$table));
+$*RED-DB.execute(.key) for @sql;
+lives-ok { $*RED-DB.execute('INSERT INTO child VALUES (1)') }, 'Valid foreign key';
+dies-ok { $*RED-DB.execute('INSERT INTO child VALUES (1)') }, 'UNIQUE is enforced';
+dies-ok { $*RED-DB.execute('INSERT INTO child VALUES (2)') }, 'Foreign key is enforced';
+done-testing;

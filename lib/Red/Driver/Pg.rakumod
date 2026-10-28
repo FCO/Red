@@ -1,5 +1,6 @@
 use Red::AST::RegexMatch;
 use Red::AST::RegexCapture;
+use Red::Driver::Pg::SchemaReader;
 use DB::Pg;
 use Red::Driver;
 use Red::Driver::CommonSQL;
@@ -30,7 +31,7 @@ has Int $!port;
 has Str $!dbname;
 has $.dbh;
 
-method schema-reader {}
+method schema-reader { Red::Driver::Pg::SchemaReader.new(:driver(self)) }
 
 method supports-index-method(Str $method --> Bool) {
     so $method eq any('', |<btree hash gin gist spgist brin>)

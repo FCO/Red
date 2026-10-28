@@ -1,0 +1,142 @@
+diff --git a/Changes b/Changes
+index 6bfb98f..356d1fd 100644
+--- a/Changes
++++ b/Changes
+@@ -1,6 +1,9 @@
+ Revision history for Red-Driver-MySQL
+ 
+ {{$NEXT}}
++    - Rename driver modules to .rakumod and update distribution provides.
++    - Preserve composite UNIQUE and AUTO_INCREMENT metadata for Red schema sync.
++    - Expose column dependencies and isolate runner databases across containers.
+     - Execute savepoint operations through MySQL's text protocol, including dry runs
+     - Test quoted savepoints, repeated rollback, release and constraint-error recovery
+     - Support Red's declarative indexes through ordered MySQL STATISTICS catalog inspection
+diff --git a/META6.json b/META6.json
+index 58104f0..f3697b6 100644
+--- a/META6.json
++++ b/META6.json
+@@ -16,9 +16,9 @@
+   "name": "Red::Driver::MySQL",
+   "perl": "6.c",
+   "provides": {
+-    "Red::Driver::MySQL": "lib/Red/Driver/MySQL.pm6",
+-    "Red::Driver::MySQL::IndexKeys": "lib/Red/Driver/MySQL/IndexKeys.pm6",
+-    "Red::Driver::MySQL::SchemaReader": "lib/Red/Driver/MySQL/SchemaReader.pm6"
++    "Red::Driver::MySQL": "lib/Red/Driver/MySQL.rakumod",
++    "Red::Driver::MySQL::IndexKeys": "lib/Red/Driver/MySQL/IndexKeys.rakumod",
++    "Red::Driver::MySQL::SchemaReader": "lib/Red/Driver/MySQL/SchemaReader.rakumod"
+   },
+   "resources": [
+   ],
+diff --git a/lib/Red/Driver/MySQL.pm6 b/lib/Red/Driver/MySQL.rakumod
+similarity index 100%
+rename from lib/Red/Driver/MySQL.pm6
+rename to lib/Red/Driver/MySQL.rakumod
+diff --git a/lib/Red/Driver/MySQL/IndexKeys.pm6 b/lib/Red/Driver/MySQL/IndexKeys.rakumod
+similarity index 100%
+rename from lib/Red/Driver/MySQL/IndexKeys.pm6
+rename to lib/Red/Driver/MySQL/IndexKeys.rakumod
+diff --git a/lib/Red/Driver/MySQL/SchemaReader.pm6 b/lib/Red/Driver/MySQL/SchemaReader.rakumod
+similarity index 90%
+rename from lib/Red/Driver/MySQL/SchemaReader.pm6
+rename to lib/Red/Driver/MySQL/SchemaReader.rakumod
+index 1fba876..ff647b6 100644
+--- a/lib/Red/Driver/MySQL/SchemaReader.pm6
++++ b/lib/Red/Driver/MySQL/SchemaReader.rakumod
+@@ -91,7 +91,7 @@ method indexes-of(Str:D $table) {
+ 
+ method table-definition(Str:D $table) {
+     my @columns = self!rows(q:to/SQL/, $table);
+-        SELECT COLUMN_NAME AS name, COLUMN_TYPE AS column_type, IS_NULLABLE AS nullable
++        SELECT COLUMN_NAME AS name, COLUMN_TYPE AS column_type, IS_NULLABLE AS nullable, EXTRA AS extra
+         FROM information_schema.COLUMNS
+         WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?
+         ORDER BY ORDINAL_POSITION
+@@ -110,13 +110,16 @@ method table-definition(Str:D $table) {
+             table => %row<referenced_table>, column => %row<referenced_column>,
+         );
+     }
+-    Red::Cli::Table.new(:name($table), :columns(@columns.map(-> %row {
++    Red::Cli::Table.new(:name($table),
++        :constraints(@indexes.grep({ .<unique> && !.<primary> }).map(*.<columns>).Array),
++        :columns(@columns.map(-> %row {
+         my @keys = @indexes.grep({ .<columns>.first(* eq %row<name>).defined });
+         Red::Cli::Column.new:
+             :name(%row<name>), :type(%row<column_type>),
+             :perl-type($!driver.type-for-sql(%row<column_type>)),
+             :nullable(%row<nullable> eq 'YES'),
+             :pk(so @keys.first(*.<primary>)),
++            :auto-increment(so (%row<extra> // '').contains('auto_increment')),
+             :unique(so @keys.first({ .<unique> && .<columns>.elems == 1 && !.<primary> })),
+             :references(%references{%row<name>} // Any);
+     }).Array))
+@@ -184,3 +187,13 @@ multi method table-definition-from-create-table(Str:D $sql) {
+             }).Array),
+     }
+ }
++
++method column-dependencies(Str $table, Str $column) {
++    my @dependencies = self.indexes-of($table).grep({ .<columns>.first(* eq $column).defined }).map(*.<name>);
++    @dependencies.append: self!rows(q:to/SQL/, $table, $column).map(*.<name>);
++        SELECT CONSTRAINT_NAME AS name FROM information_schema.KEY_COLUMN_USAGE
++        WHERE REFERENCED_TABLE_SCHEMA=DATABASE()
++          AND REFERENCED_TABLE_NAME=? AND REFERENCED_COLUMN_NAME=?
++        SQL
++    @dependencies
++}
+diff --git a/t/12-schema-sync-mysql.t b/t/12-schema-sync-mysql.t
+new file mode 100644
+index 0000000..79fde10
+--- /dev/null
++++ b/t/12-schema-sync-mysql.t
+@@ -0,0 +1,36 @@
++use Test;
++use Red;
++use Red::Cli::Column;
++plan :skip-all('Set RED_DATABASE to a disposable MySQL database')
++    unless %*ENV<RED_DATABASE>;
++plan :skip-all('Schema sync metadata requires the corresponding Red API')
++    unless Red::Cli::Column.^can('auto-increment');
++my @conf = %*ENV<RED_DATABASE>.split(' ');
++my $name = @conf.shift;
++my $*RED-DB = database $name, |@conf.map({
++    my ($k,$v) = .split('=',2); $k => val($v)
++}).Hash;
++$*RED-DB.execute(q:to/SQL/);
++    CREATE TABLE sync_metadata_parent (
++        id INTEGER PRIMARY KEY AUTO_INCREMENT,
++        a VARCHAR(16), b VARCHAR(16), UNIQUE KEY sync_pair (a,b)
++    )
++    SQL
++$*RED-DB.execute(q:to/SQL/);
++    CREATE TABLE sync_metadata_child (
++        parent_id INTEGER,
++        CONSTRAINT sync_parent_fk FOREIGN KEY (parent_id) REFERENCES sync_metadata_parent(id)
++    )
++    SQL
++my $reader = $*RED-DB.schema-reader;
++my $table = $reader.table-definition('sync_metadata_parent');
++ok $table.columns.first(*.name eq 'id').auto-increment,
++    'Catalog metadata preserves AUTO_INCREMENT';
++is-deeply $table.constraints.Array, [<a b>.Array,],
++    'Catalog metadata preserves ordered composite UNIQUE columns';
++my @dependencies = $reader.column-dependencies('sync_metadata_parent','id');
++ok @dependencies.first(* eq 'PRIMARY').defined, 'Primary key dependency is visible';
++ok @dependencies.first(* eq 'sync_parent_fk').defined, 'Incoming FK dependency is visible';
++ok $reader.column-dependencies('sync_metadata_parent','a').first(* eq 'sync_pair').defined,
++    'Composite index dependency is visible';
++done-testing;
+diff --git a/tools/red-test-exec.raku b/tools/red-test-exec.raku
+index c7d9a65..fa0e42a 100644
+--- a/tools/red-test-exec.raku
++++ b/tools/red-test-exec.raku
+@@ -12,7 +12,7 @@ sub MAIN(Str $test) {
+         password => %*ENV<MYSQL_PASSWORD> // 'red-driver-test',
+     ;
+     my $admin = DBIish.connect('mysql', |%connection);
+-    my $database = "red_mysql_test_{$*PID}";
++    my $database = "red_mysql_test_{$*PID}_{now.Int}_{(1000000000.rand.Int)}";
+     $admin.execute("CREATE DATABASE `$database`");
+     my $status;
+     {

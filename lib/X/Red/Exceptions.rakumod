@@ -160,3 +160,23 @@ class X::Red::Driver::Mapped::TableExists is X::Red::Driver::Mapped {
     has Str $.table is required;
     method msg { "Table $!table already exists" }
 }
+
+class X::Red::Schema::DestructiveChange is X::Red {
+    has Str $.table is required;
+    method message {
+        "Schema update removes columns or tables from '$!table'; use :allow-destructive"
+    }
+}
+
+class X::Red::Schema::UnsupportedChange is X::Red {
+    has Str $.reason is required;
+    method message { "Unsupported schema change: $!reason" }
+}
+class X::Red::Schema::UpdateFailed is X::Red {
+    has Str $.sql is required;
+    has @.completed-statements;
+    has Exception $.cause is required;
+    method message {
+        "Schema update failed executing '$!sql' after {@!completed-statements.elems} statements: {$!cause.message}"
+    }
+}

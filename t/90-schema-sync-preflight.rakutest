@@ -1,0 +1,30 @@
+use Test;
+use Red;
+use Red::AST::DropTable;
+my $first = database 'SQLite';
+my $second = database 'SQLite';
+my $*RED-DB = $first;
+model SyncBefore is table<sync_probe> {
+    has Int $.id is serial;
+    has Str $.value is column;
+}
+model SyncAfter is table<sync_probe> {
+    has Int $.id is serial;
+}
+SyncBefore.^create-table;
+SyncBefore.^create(:value('preserve'));
+throws-like { schema(SyncAfter).update }, X::Red::Schema::DestructiveChange,
+    'Removing a column requires opt-in';
+is SyncBefore.^all.head.value, 'preserve', 'Rejected update preserves data';
+ok schema(SyncBefore).plan(:where($second)).elems,
+    'Explicit target reads the empty second database';
+is schema(SyncBefore).plan.elems, 0, 'Default database still matches the model';
+schema(SyncBefore).update(:where($second));
+{
+    my $*RED-DB = $second;
+    is schema(SyncBefore).plan.elems, 0, 'Explicit target was updated';
+}
+is SyncBefore.^all.head.value, 'preserve', 'Default database was not changed';
+my @sql = $first.translate(Red::AST::DropTable.new(:table<sync_probe>));
+ok @sql[0].key.contains('sync_probe'), 'DropTable uses its table attribute';
+done-testing;

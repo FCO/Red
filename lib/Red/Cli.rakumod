@@ -63,14 +63,10 @@ multi migration-plan(
         Str :$driver,
         *%pars
 ) is export {
-    my %steps;
     require ::($require);
-    for get-RED-DB.diff-to-ast: ::($model).^diff-from-db -> @data {
-        say "Step ", ++$, ":";
-        for @data {
-            my @trans = get-RED-DB.translate($_);
-            say "{.key};".indent(4) for @trans
-        }
+    for schema(::($model)).plan.kv -> $index, $sql {
+        say "Step {$index + 1}:";
+        say "$sql;".indent(4);
     }
 }
 

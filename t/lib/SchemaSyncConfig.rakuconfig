@@ -1,0 +1,14 @@
+use Red;
+use Red::Configuration;
+model CliSyncV1 is table<cli_sync> {
+    has Int $.id is serial;
+    has Str $.value is column;
+}
+model CliSyncV2 is table<cli_sync> {
+    has Int $.id is serial;
+    has Str $.value is column;
+    has Str $.extra is column{ :nullable };
+}
+my $model = (%*ENV<RED_SYNC_VARIANT> // '1') eq '2' ?? CliSyncV2 !! CliSyncV1;
+Red::Configuration.new(:schema(schema($model)), :!debug,
+    :driver(database('SQLite', :database(%*ENV<RED_SYNC_TEST_DATABASE>))));
