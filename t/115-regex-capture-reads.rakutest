@@ -1,0 +1,137 @@
+use Test;
+use Red;
+use Red::Compiler::Regex;
+use Red::Compiler::Template;
+use Red::Compiler::Emitter;
+use Red::AST::RegexCapture;
+use Red::AST::Value;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation needs the RakuAST frontend');
+    exit;
+}
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({
+        my ($key, $value) = .split('=');
+        $key => val($value)
+    }));
+my $*RED-FALLBACK = False;
+
+model CaptureReadRow {
+    has Int $.id is serial;
+    has Str $.ble is column;
+}
+my $schema = schema(CaptureReadRow);
+$schema.drop.create;
+LEAVE $schema.drop;
+CaptureReadRow.^create(:ble($_)) for 'bla ble', 'bla blu', 'blable', 'a', 'b', 'aa', 'AA', '';
+
+is-deeply CaptureReadRow.^all.grep({ .ble eq 'bla ble' if .id > 0 })
+    .map(*.ble).Array, ['bla ble'], 'Postfix if predicates compile without regex';
+is-deeply CaptureReadRow.^all.grep({ .ble eq 'bla ble' unless .id < 0 })
+    .map(*.ble).Array, ['bla ble'], 'Postfix unless predicates compile';
+is CaptureReadRow.^all.grep({ .ble eq 'bla ble' if .id < 0 }).elems, 0,
+    'A skipped modifier expression is false in a predicate';
+
+my regex whole-word { ^ ('bla ' \w+) };
+my @queries =
+    -> { CaptureReadRow.^all.grep({ $0 eq 'bla ble' if .ble ~~ /^ ('bla ' \w+)/ }) },
+    -> { CaptureReadRow.^all.grep({ $/ eq 'bla ble' if .ble ~~ /^ 'bla ' \w+/ }) },
+    -> { CaptureReadRow.^all.grep({ ~$/ eq 'bla ble' if .ble ~~ /^ 'bla ' \w+/ }) },
+    -> { CaptureReadRow.^all.grep({ $/.Str eq 'bla ble' if .ble ~~ /^ 'bla ' \w+/ }) },
+    -> { CaptureReadRow.^all.grep({ $<word> eq 'ble' if .ble ~~ /^ 'bla ' $<word>=\w+/ }) },
+    -> { CaptureReadRow.^all.grep({ $0 eq 'bla ble' if .ble ~~ &whole-word }) },
+    -> { CaptureReadRow.^all.grep({ if .ble ~~ /^ ('bla ' \w+)/ { $0 eq 'bla ble' } }) },
+    -> { CaptureReadRow.^all.grep({ .ble ~~ /^ ('bla ' \w+)/ ?? $0 eq 'bla ble' !! False }) };
+for @queries.kv -> $index, &query {
+    if $backend eq 'Pg' || ($backend eq 'MySQL' && $index == any(1, 2, 3)) {
+        is-deeply query().map(*.ble).Array, ['bla ble'], "Guarded capture query $index executes in SQL";
+    } else {
+        my $*RED-FALLBACK = True;
+        throws-like { query().elems }, X::Red::Compiler::Unsupported, :fatal(*.so),
+            "Backend rejects capture query $index without row fallback";
+    }
+}
+
+subtest 'Positional capture maps retain root scopes and alternatives' => {
+    my $parser = Red::Compiler::Regex.new;
+    my $pattern = $parser.compile(q[/^ [(a)|(b)] $/].AST.statements[0].expression);
+    is $pattern.capture-groups(0).elems, 2, 'Alternative roots map to both native slots';
+    is $pattern.capture-groups(1).elems, 0, 'A missing root capture remains missing';
+    my $declaration = q[my regex part { (a) };].AST.statements[0].expression;
+    is $parser.compile($declaration).capture-groups(0).elems, 1,
+        'Direct declaration matches expose their own root slots';
+};
+
+if $backend eq 'Pg' {
+    # A stale Raku match must never become the capture value of an SQL row.
+    'stale' ~~ /(stale)/;
+    is CaptureReadRow.^all.grep({ $0 eq 'bla ble' if .ble ~~ /^bla \w+/ }).elems, 0,
+        'The original example has no $0; its comparison does not match any rows';
+    is CaptureReadRow.^all.grep({ $/ eq 'bla ble' if .ble ~~ /^bla \w+/ }).elems, 0,
+        'Whole capture still honors insignificant regex whitespace';
+    is CaptureReadRow.^all.grep({ $0 eq 'bla ble' if .ble ~~ /^(bla \w+)/ }).elems, 0,
+        'Adding a group does not make unquoted whitespace significant';
+    is-deeply CaptureReadRow.^all.grep({ $/ eq 'bla ble' if .ble ~~ /:s ^bla \w+/ })
+        .map(*.ble).Array, ['bla ble'], 'Sigspace permits a whole-text comparison';
+    is-deeply CaptureReadRow.^all.grep({ $0 eq 'bla ble' if .ble ~~ /:s ^(bla \w+)/ })
+        .map(*.ble).Array, ['bla ble'], 'Sigspace permits a grouped-text comparison';
+    is-deeply CaptureReadRow.^all.grep({ $0 eq 'bla ble' if .ble ~~ /^(bla <.ws> \w+)/ })
+        .map(*.ble).Array, ['bla ble'], 'An explicit ws assertion preserves grouped text';
+    is CaptureReadRow.^all.grep({ $9 eq 'a' if .ble ~~ /^(a)$/ }).elems, 0,
+        'An absent capture produces SQL NULL';
+    is-deeply CaptureReadRow.^all.grep({ $0 eq 'b' if .ble ~~ /^ [(a)|(b)] $/ })
+        .map(*.ble).Array, ['b'], 'Alternative capture slots are coalesced';
+    is-deeply CaptureReadRow.^all.grep({ $/ eq 'aa' if .ble ~~ /^ (a) $0 $/ })
+        .map(*.ble).Array, ['aa'], 'Whole-match wrapping preserves internal backreference numbers';
+    is-deeply CaptureReadRow.^all.grep({ $/ eq 'AA' if .ble ~~ /:i ^ a+ $/ })
+        .map(*.ble).Array, ['AA'], 'Whole-match wrapping preserves leading case modes';
+    is-deeply CaptureReadRow.^all.map({ .ble }).grep({ $0 eq 'ble' if $_ ~~ /^ 'bla ' (\w+)/ })
+        .Array, ['bla ble'], 'Capture reads rebind to scalar projection aliases';
+    my $prefix = 'bla ';
+    is-deeply CaptureReadRow.^all.grep({ $0 eq 'ble' if .ble ~~ /^ $prefix (\w+)/ })
+        .map(*.ble).Array, ['bla ble'], 'Literal binding preserves capture metadata';
+    is-deeply CaptureReadRow.^all.grep({ $0 eq 'a' if .ble ~~ /^(a)?$/ })
+        .map(*.ble).Array, ['a'], 'Optional unmatched groups remain NULL';
+    is CaptureReadRow.^all.grep({ $0 eq '' if .ble ~~ /^('')$/ }).elems, 1,
+        'A captured empty string differs from an absent group';
+
+    my $pattern = Red::Compiler::Regex.new.compile(q[/(a)/].AST.statements[0].expression);
+    my @plan = 'regex-value', ['regex', ['subject'], $pattern], 0;
+    my $template = Red::Compiler::Template.new(:@plan);
+    my $subject = ast-value('aa');
+    my $interpreted = $template.evaluate(@plan, $subject);
+    my $direct = Red::Compiler::Emitter.build(@plan)($template, $subject);
+    my Int $*bind-counter = 0;
+    my $sql = $*RED-DB.translate($interpreted);
+    $*bind-counter = 0;
+    is-deeply $*RED-DB.translate($direct), $sql, 'Direct and interpreted factories agree';
+}
+
+subtest 'Capture arrays and Match APIs are explicit unsupported cases' => {
+    my $*RED-FALLBACK = True;
+    throws-like { CaptureReadRow.^all.grep({ $0 eq 'a' if .ble ~~ /^(a)+$/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Capture lists cannot become last-match text';
+    throws-like { CaptureReadRow.^all.grep({ $0 if .ble ~~ /(a)/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'A Match object is not silently replaced by text truth';
+    throws-like { CaptureReadRow.^all.grep({ $0.elems == 1 if .ble ~~ /(a)/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Match container APIs are not text methods';
+    throws-like { CaptureReadRow.^all.grep({ $0.elems eq '1' if .ble ~~ /(a)/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Text comparison does not change Match method semantics';
+    throws-like {
+        CaptureReadRow.^all.grep({ $0 eq 'a' if .ble ~~ /(a)/ || .ble ~~ /(b)/ }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so), 'Ambiguous short-circuit match state is rejected';
+    throws-like { CaptureReadRow.^all.grep({ $0:exists eq 'True' if .ble ~~ /(a)/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Positional lookup adverbs are not text reads';
+    throws-like {
+        CaptureReadRow.^all.grep({ $<x>:exists eq 'True' if .ble ~~ /$<x>=a/ }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so), 'Named lookup adverbs are not text reads';
+    throws-like { CaptureReadRow.^all.grep({ $0 eq 'stale' }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Unguarded stale capture reads are rejected';
+};
+done-testing;

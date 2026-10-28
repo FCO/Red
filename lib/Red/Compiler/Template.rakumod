@@ -1,3 +1,6 @@
+use Red::AST::RegexMatch;
+use Red::AST::RegexCapture;
+use Red::AST::RegexChars;
 use Red::AST;
 use Red::DB;
 use Red::AST::BoundFilter;
@@ -51,6 +54,10 @@ has Bool $.warn;
 has Str $.query-method = '';
 has Str $.source = '';
 has Str $.unsupported-reason;
+has Bool $.fatal-unsupported = False;
+has Bool $.regex-query = False;
+has Code $.expected-callback;
+has %!code-guards;
 has &.builder;
 has &.validator;
 has Red::QueryPlan::Cache $.filter-cache .= new;
@@ -59,6 +66,25 @@ has Str $!filter-shape-key;
 has Red::AST $.filter-prototype;
 
 submethod TWEAK() {
+    sub collect-guards(@part) {
+        return unless @part;
+        %!code-guards{@part[1]} = @part[2] if @part[0] eq 'inline-call';
+        return if @part[0] eq any(<literal capture local>);
+        if @part[0] eq 'hash' {
+            collect-guards($_[1]) for @part.skip(1);
+        } else {
+            collect-guards($_) for @part.skip(1).grep(* ~~ Array);
+        }
+    }
+    collect-guards(@!plan);
+    sub has-regex(@part --> Bool:D) {
+        return False unless @part;
+        return True if @part[0] eq 'regex';
+        return False if @part[0] eq any(<literal capture local>);
+        return so @part.skip(1).grep({ has-regex($_[1]) }) if @part[0] eq 'hash';
+        so @part.skip(1).grep({ $_ ~~ Array && has-regex($_) })
+    }
+    $!regex-query ||= has-regex(@!plan);
     $!filter-shape-key = @!plan.raku;
     # This object is constructed at CHECK by the RakuAST compiler and embedded
     # in its template literal. Only symbolic slots enter the precompilation.
@@ -78,8 +104,8 @@ submethod TWEAK() {
     }
 }
 
-method unsupported(Str $reason) {
-    X::Red::Compiler::Unsupported.new(:$reason).throw
+method unsupported(Str $reason, Bool :$fatal = False) {
+    X::Red::Compiler::Unsupported.new(:$reason, :fatal($fatal || $!regex-query)).throw
 }
 
 method path(@plan, $subject) {
@@ -148,8 +174,19 @@ method validate(@plan, $subject) {
 }
 
 #| Bind captures once; rebinding SQL aliases does not read the captures again.
+method validate-code($actual, Code:D $expected) {
+    self.unsupported('A compiled callable was reassigned or wrapped; using symbolic evaluation')
+        unless $actual ~~ Code && $actual.static_id eq $expected.static_id
+            && !($actual ~~ Routine && $actual.is-wrapped);
+}
+
+method validate-callback(&callback) {
+    self.validate-code(&callback, $!expected-callback) if $!expected-callback.DEFINITE;
+}
+
 method bind($subject --> Red::Compiler::Template:D) {
-    self.unsupported($!unsupported-reason) if $!unsupported-reason.DEFINITE;
+    self.unsupported($!unsupported-reason, :fatal($!fatal-unsupported))
+        if $!unsupported-reason.DEFINITE;
     my $*RED-INTERNAL = True;
     my %*RED-COMPILER-LOCALS;
     # Pure capture-free plans validate paths during evaluation. Captures and
@@ -158,21 +195,37 @@ method bind($subject --> Red::Compiler::Template:D) {
         &!validator.DEFINITE ?? &!validator(self, $subject) !! self.validate(@!plan, $subject);
     }
     return self unless @!getters;
-    my @values = @!getters.map(-> &getter {
-        my $value;
-        {
-            $value = getter();
-            CONTROL {
-                default { self.unsupported('Control flow in a captured expression') }
+    # Routine getters only read lexical bindings. Check every callable before
+    # evaluating captures that may have effects, so fallback cannot repeat them.
+    my %guard-values;
+    for %!code-guards.kv -> $index, $expected {
+        my $actual = @!getters[$index]();
+        self.validate-code($actual, $expected);
+        %guard-values{$index} = $actual;
+    }
+    my @values = @!getters.kv.map(-> $index, &getter {
+        if %guard-values{$index}:exists {
+            %guard-values{$index}.item
+        } else {
+            my $value;
+            {
+                $value = getter();
+                CONTROL {
+                    default { self.unsupported('Control flow in a captured expression') }
+                }
             }
+            $value.item
         }
-        $value.item
     });
     self.clone(:bound, :@values)
 }
 
 method evaluate(@plan, $subject) {
     given @plan[0] {
+        when 'inline-call' {
+            self.evaluate(@plan[3], $subject);
+            self.evaluate(@plan[4], $subject)
+        }
         when 'sequence' {
             my $result;
             $result = self.evaluate($_, $subject) for @plan.skip(1);
@@ -239,6 +292,28 @@ method evaluate(@plan, $subject) {
             my $result = @parts.shift // ast-value('');
             $result = Red::AST::Concat.new($result, $_) for @parts;
             $result
+        }
+        when 'regex-guard' {
+            self.unsupported('Regex variables require a literal SQL-compilable pattern', :fatal)
+                if self.evaluate(@plan[1], $subject) ~~ Regex;
+            self.unsupported('Non-regex smartmatches use symbolic evaluation')
+        }
+        when 'regex-chars' {
+            Red::AST::RegexChars.new(:value(self.evaluate(@plan[1], $subject)))
+        }
+        when 'regex-defined' {
+            Red::AST::IsDefined.new(self.evaluate(@plan[1], $subject))
+        }
+        when 'regex-value' {
+            Red::AST::RegexCapture.new(:match(self.evaluate(@plan[1], $subject)),
+                :selection(@plan[2]))
+        }
+        when 'regex' {
+            my $pattern = @plan[2];
+            my @parameters = @plan.skip(3).map({ self.evaluate($_, $subject) });
+            my $bound = @parameters ?? $pattern.instantiate(@parameters.List) !! $pattern;
+            Red::AST::RegexMatch.checked(
+                ast-value(self.evaluate(@plan[1], $subject)), $bound)
         }
         when 'op' {
             my $left = self.evaluate(@plan[2], $subject);

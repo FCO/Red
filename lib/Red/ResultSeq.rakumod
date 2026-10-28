@@ -446,6 +446,9 @@ method !query-block(&callback, $compiled is rw, $subject, Bool :$ordering = Fals
         my $unsupported = False;
         my Red::AST %branches{Red::AST};
         try {
+            $compiled.validate-callback(&callback);
+            my $driver = $!with.DEFINITE ?? $!with !! (try get-RED-DB);
+            $driver.?check-regex-support if $compiled.?regex-query;
             $compiled = $compiled.bind($subject) unless $compiled.bound;
             my $cached = $cache-filter ?? $compiled.cached-filter($subject,
                 :driver($!with.DEFINITE ?? $!with !! (try get-RED-DB))) !! Nil;
@@ -456,6 +459,7 @@ method !query-block(&callback, $compiled is rw, $subject, Bool :$ordering = Fals
             }
             CATCH {
                 when X::Red::Compiler::Unsupported {
+                    .rethrow if .fatal || $compiled.?regex-query;
                     $unsupported = True;
                     $reason = .reason;
                     my $report = DYNAMIC::<$*RED-COMPILER-REPORT>;
@@ -490,6 +494,8 @@ method grep(&filter, :$red-ast is copy) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     CATCH {
         default {
+            .rethrow if ($red-ast.DEFINITE && $red-ast.?regex-query)
+                || ($_ ~~ X::Red::Compiler::Unsupported && .fatal);
             if !$*RED-FALLBACK.defined || $*RED-FALLBACK {
                 if !$*RED-FALLBACK.defined {
                     note "falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .?message }";
@@ -583,6 +589,8 @@ method map(\SELF: &filter, :$red-ast is copy) is hidden-from-sql-commenting {
     SELF.create-comment-to-caller;
     CATCH {
         default {
+            .rethrow if ($red-ast.DEFINITE && $red-ast.?regex-query)
+                || ($_ ~~ X::Red::Compiler::Unsupported && .fatal);
             if !$*RED-FALLBACK.defined || $*RED-FALLBACK {
                 if !$*RED-FALLBACK.defined {
                     note "falling back (to mute this message, please define the \$*RED-FALLBACK variable): { .?message }";

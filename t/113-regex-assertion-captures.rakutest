@@ -1,0 +1,92 @@
+use Test;
+use Red;
+use Red::Compiler::Regex;
+use Red::AST::RegexMatch;
+use Red::AST::Value;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation needs the RakuAST frontend');
+    exit;
+}
+
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({
+        my ($key, $value) = .split('=');
+        $key => val($value)
+    }));
+my $*RED-FALLBACK = False;
+
+my @texts = '', 'a', 'b', 'aa', 'ab', 'ba', 'bb', 'aA', 'Aa', 'AA',
+    'aaa', 'aaaa', 'abba', 'baab', 'bbaa', 'aAa', 'AAA', 'bBb', 'BBB';
+my @patterns = q[/:i ^ (a) $0 $/], q[/:i ^ $<x>=(a) $<x> $/],
+    q[/:i ^ <alpha> $<alpha> $/], q[/:i ^ [a(a)|b(b)] $0 $/],
+    q[/^ <?before [(a) $0]> aa $/], q[/^ <!before [(a) $0]> .. $/],
+    q[/^ <?before [$<x>=a $<x>]> aa $/], q[/^ <!before [$<x>=a $<x>]> .. $/],
+    q[/^ (b) <?before [(a) $0]> aa $0 $/],
+    q[/^ <?before [(a) $0]> (a) $0 $/],
+    q[/^ <?before [(a) <?before [(b) $0]> bb $0]> abba $/],
+    q[/:i ^ <?before [(a) $0]> aa $/],
+    q[my regex pair { (a) $0 }; /^ <?pair> aa $/],
+    q[my regex pair { (a) $0 }; /^ <!pair> .. $/];
+for @patterns -> $source {
+    subtest $source => {
+        my $quoted = $source.AST.statements[*-1].expression;
+        my $regex = Red::Compiler::Regex.new.compile($quoted);
+        if $backend ne 'MySQL' {
+            throws-like {
+                my Int $*bind-counter = 0;
+                $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value('aa'), $regex))
+            }, X::Red::Compiler::Unsupported, :fatal(*.so),
+                'This engine rejects this reference mode explicitly';
+        } else {
+            my $native = $quoted.compile-time-value;
+            for @texts -> $text {
+                my Int $*bind-counter = 0;
+                my $sql = $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value($text), $regex));
+                is so($*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>),
+                    so($text ~~ $native), $text.raku;
+            }
+        }
+    };
+}
+
+subtest 'Lookaround scopes do not export their captures' => {
+    for q[/<?before [(a)]> $0/], q[/<?before [$<x>=a]> $<x>/],
+        q[/(b) <?before $0> a/], q[/<?before [(a)+ $0]> aa/] -> $source {
+        throws-like {
+            Red::Compiler::Regex.new.compile($source.AST.statements[0].expression)
+        }, X::Red::Compiler::Unsupported, :fatal(*.so), $source;
+    }
+};
+
+subtest 'Backreferences do not acquire a fictitious bounded lookbehind width' => {
+    my $regex = Red::Compiler::Regex.new.compile(
+        q[/aa <?after [(a) $0]>/].AST.statements[0].expression);
+    throws-like { $regex.render(:dialect<MySQL>) }, X::Red::Compiler::Unsupported,
+        :fatal(*.so), 'MySQL lookbehind remains subject to its native width restrictions';
+};
+
+model AssertionCaptureRow {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+my $schema = schema(AssertionCaptureRow);
+$schema.drop.create;
+LEAVE $schema.drop;
+AssertionCaptureRow.^create(:name($_)) for <aa ab bb>;
+if $backend eq 'MySQL' {
+    is-deeply AssertionCaptureRow.^all.grep({ .name ~~ /^ <?before [(a) $0]> .. $/ })
+        .map(*.name).Array, ['aa'], 'Assertion-local references execute in compiled SQL';
+} else {
+    my $*RED-FALLBACK = True;
+    throws-like {
+        AssertionCaptureRow.^all.grep({ .name ~~ /^ <?before [(a) $0]> .. $/ }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so),
+        'Unsupported assertion references cannot trigger row fallback';
+}
+done-testing;

@@ -1,0 +1,95 @@
+use Test;
+use Red;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Compiled regex diagnostics require the RakuAST frontend');
+    exit;
+}
+
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend, |%(@configuration.map({
+    my ($key, $value) = .split('=');
+    $key => val($value)
+}));
+my $*RED-FALLBACK = True;
+
+# Deliberately do not create this table. Any attempted row fallback would produce
+# a database error instead of the expected compiler diagnostic.
+model RegexDiagnosticOnlyRow {
+    has UInt $.id is serial;
+    has Str $.text is column;
+}
+
+subtest 'SQLite requires an explicit experimental opt-in' => {
+    my $*RED-DB = database 'SQLite';
+    nok $*RED-DB.use-experimental-regex, 'The flag defaults to False';
+    for False, True -> $fallback {
+        my $*RED-FALLBACK = $fallback;
+        throws-like {
+            RegexDiagnosticOnlyRow.^all.grep({ .text ~~ /a/ }).elems
+        }, X::Red::Compiler::Unsupported, :fatal(*.so),
+            :reason(*.contains(':use-experimental-regex')),
+            "Literal regex fails before fetching rows with fallback=$fallback";
+        throws-like {
+            RegexDiagnosticOnlyRow.^all.grep({ .text ~~ /^ a+ $/ }).elems
+        }, X::Red::Compiler::Unsupported, :fatal(*.so),
+            :reason(*.contains(':use-experimental-regex')),
+            "General regex fails before fetching rows with fallback=$fallback";
+    }
+    for -> { RegexDiagnosticOnlyRow.^all.grep({ False && .text ~~ /a/ }) },
+        -> { RegexDiagnosticOnlyRow.^all.grep({ True || .text ~~ /a/ }) },
+        -> { RegexDiagnosticOnlyRow.^all.grep({ .text ~~ /a/ && False }) },
+        -> { RegexDiagnosticOnlyRow.^all.grep({ .text ~~ /a/ || True }) } -> &query {
+        throws-like { query().elems }, X::Red::Compiler::Unsupported, :fatal(*.so),
+            :reason(*.contains(':use-experimental-regex')),
+            'Simplifying the predicate cannot bypass the experimental opt-in';
+    }
+    my $enabled = database 'SQLite', :use-experimental-regex;
+    ok $enabled.use-experimental-regex, 'The constructor accepts the opt-in';
+    ok $enabled.new-connection.use-experimental-regex,
+        'New connections retain the experimental opt-in';
+    nok $*RED-DB.new-connection.use-experimental-regex,
+        'New connections keep regex disabled by default';
+    my $disabled = $*RED-DB;
+    {
+        my $*RED-DB = $enabled;
+        throws-like {
+            RegexDiagnosticOnlyRow.^all.with($disabled)
+                .grep({ False && .text ~~ /a/ }).elems
+        }, X::Red::Compiler::Unsupported, :fatal(*.so),
+            :reason(*.contains(':use-experimental-regex')),
+            'The query-specific driver determines the experimental opt-in';
+    }
+
+};
+
+my $effects = 0;
+throws-like {
+    RegexDiagnosticOnlyRow.^all.grep({ .text ~~ /a { $effects++ }/ }).elems
+}, X::Red::Compiler::Unsupported, :fatal(*.so), 'Embedded code never triggers a row fetch';
+is $effects, 0, 'No code from the rejected regex ran';
+throws-like {
+    RegexDiagnosticOnlyRow.^all.grep({ .unknown-member ~~ /a/ }).elems
+}, X::Red::Compiler::Unsupported, :fatal(*.so), 'A model-path error cannot trigger a row fetch';
+my $opaque = rx/a { $effects++ }/;
+throws-like {
+    RegexDiagnosticOnlyRow.^all.grep({ .text ~~ $opaque }).elems
+}, X::Red::Compiler::Unsupported, :fatal(*.so), 'Opaque matcher values fail before a row fetch';
+my &opaque = $opaque;
+throws-like {
+    RegexDiagnosticOnlyRow.^all.grep({ .text ~~ &opaque }).elems
+}, X::Red::Compiler::Unsupported, :fatal(*.so), 'Opaque routine matchers are not executed';
+throws-like {
+    RegexDiagnosticOnlyRow.^all.grep(&opaque).elems
+}, X::Red::Compiler::Unsupported, :fatal(*.so), 'Opaque regex filter callables are not executed';
+throws-like {
+    RegexDiagnosticOnlyRow.^all.grep({ .text.match(/a/, :g) }).elems
+}, X::Red::Compiler::Unsupported, :fatal(*.so), 'Unsupported match result options cannot fetch rows';
+is $effects, 0, 'Opaque regex actions still have not run';
+is <a b>.grep({ $_ ~~ /a { $effects++ }/ }).elems, 1,
+    'Ordinary Raku collections still execute their own regexes';
+is $effects, 1, 'Only the ordinary Raku regex action ran';
+done-testing;

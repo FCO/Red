@@ -1,11 +1,11 @@
 # Optional RakuAST query compiler
 
 The optional compiler translates supported query callbacks during `CHECK`.
-Enable the RakuAST frontend and explicitly opt in for each compilation unit:
+`use Red` exports `red-compile`. Use the RakuAST frontend and explicitly opt in
+for each compilation unit:
 
 ```raku
 use Red:api<2>;
-use Red::Compiler::RakuAST;
 CHECK red-compile;
 
 my $minimum = 10;
@@ -15,7 +15,8 @@ my $query = Product.^all
     .map({ "price: $_" });
 ```
 
-Run the program with `RAKUDO_RAKUAST=1 raku -Ilib program.raku`.
+Run the program with `raku -Ilib program.raku`. Recent Rakudo versions use
+RakuAST by default; set `RAKUDO_RAKUAST=1` when needed.
 This integration is experimental and tested with Rakudo 2026.09. Loading Red
 without opting in keeps the existing frontend and callback behavior.
 
@@ -54,9 +55,33 @@ Expressions independent of the query element, including constructors and functio
 calls, can be bound as runtime captures. Their code runs during query construction,
 never during CHECK. Ordinary native receivers still execute their original callback.
 
+Plain lexical helpers can be compiled into their callers, including nested
+helper calls with unconstrained positional parameters:
+
+```raku
+sub above-one($value) { $value > 1 }
+my &predicate = -> $row { $row.price > 1 };
+
+Product.^all.grep({ above-one(.price) });
+Product.^all.grep(&predicate);
+```
+
+Named routine callbacks and lexical variables initialized with literal blocks or
+pointy blocks are supported too. Their bodies must use supported expressions and
+must not depend on captured variables from another closure frame. Helpers with
+recursion, constrained/default/named parameters, return annotations, traits,
+phasers or mutations retain symbolic evaluation. Named callable closure captures
+also retain that path, preserving their original lexical frame.
+
+Runtime guards verify that a named callback still has the compiled body and that
+inlined routines have not been reassigned or wrapped. A changed callable returns
+to symbolic evaluation before effectful captures run. Repeated helper parameters
+reuse captured argument values; helper code is never executed during CHECK.
+These guards also survive module precompilation.
+
 An unsupported callback is left on the existing symbolic evaluation path,
-including its existing fallback policy. Named callbacks, arbitrary functions of
-the query element, loops, phasers, constrained signatures, custom operators and
+including its existing fallback policy. Opaque/dynamic callbacks, untranslatable
+functions of the query element, loops, phasers, constrained signatures, custom operators and
 conditional updates are not compiled. Unsupported syntax is rejected as a complete
 callback before any updates are submitted.
 Translation never executes the original callback during CHECK.

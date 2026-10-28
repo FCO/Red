@@ -1,0 +1,77 @@
+use Test;
+use Red;
+use Red::Compiler::Regex;
+use Red::Compiler::Template;
+use Red::Compiler::Emitter;
+use Red::AST::Value;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation requires RakuAST');
+    exit;
+}
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({ my ($key, $value) = .split('='); $key => val($value) }));
+my $*RED-FALLBACK = False;
+model CaptureCharsRow {
+    has Int $.id is serial;
+    has Str $.text is column;
+}
+my $schema = schema(CaptureCharsRow);
+$schema.drop.create;
+LEAVE $schema.drop if $schema.DEFINITE;
+CaptureCharsRow.^create(:text($_)) for '', 'a', 'ab', 'é', '😀';
+my @whole =
+    [-> { CaptureCharsRow.^all.grep({ $/.chars == 1 if .text ~~ /^ .* $/ }) }, set('a', 'é', '😀')],
+    [-> { CaptureCharsRow.^all.grep({ $/.Str.chars == 0 if .text ~~ /^ .* $/ }) }, set('')],
+    [-> { CaptureCharsRow.^all.grep({ (~$/).chars == 2 if .text ~~ /^ .* $/ }) }, set('ab')],
+    [-> { CaptureCharsRow.^all.grep({ $/.chars == 0 unless .text ~~ /z/ }) }, set('', 'a', 'ab', 'é', '😀')];
+for @whole.kv -> $index, $case {
+    if $backend eq any(<Pg MySQL>) {
+        is-deeply $case[0]().map(*.text).Array.Set, $case[1],
+            "Whole capture character count $index uses native SQL";
+    } else {
+        throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported,
+            :fatal(*.so), :reason(*.contains('whole regex text')),
+            'SQLite reports its text extraction limit explicitly';
+    }
+}
+my @scalar =
+    [-> { CaptureCharsRow.^all.grep({ $0.chars == 2 if .text ~~ /^ (.*) $/ }) }, set('ab')],
+    [-> { CaptureCharsRow.^all.grep({ $<word>.chars == 1 if .text ~~ /^ $<word>=[.*] $/ }) }, set('a', 'é', '😀')],
+    [-> { CaptureCharsRow.^all.grep({ $0.Str.chars == 0 if .text ~~ /^ ('') $/ }) }, set('')],
+    [-> { CaptureCharsRow.^all.grep({ $0.chars == 0 if .text ~~ /^ (z)? a $/ }) }, set('a')],
+    [-> { CaptureCharsRow.^all.grep({ $9.chars == 0 if .text ~~ /^ (.*) $/ }) }, set('', 'a', 'ab', 'é', '😀')];
+for @scalar.kv -> $index, $case {
+    if $backend eq 'Pg' {
+        is-deeply $case[0]().map(*.text).Array.Set, $case[1],
+            "Scalar capture character count $index uses native SQL";
+    } else {
+        throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported,
+            :fatal(*.so), :reason(*.contains('only implemented for PostgreSQL')),
+            'Scalar character counts retain the backend extraction restriction';
+    }
+}
+if $backend eq any(<Pg MySQL>) {
+    my $pattern = Red::Compiler::Regex.new.compile(q[/^.*$/].AST.statements[0].expression);
+    my @plan = 'regex-chars', ['regex-value', ['regex', ['subject'], $pattern], '$/'];
+    my $template = Red::Compiler::Template.new(:@plan);
+    my $subject = ast-value('é');
+    my $interpreted = $template.evaluate(@plan, $subject);
+    my $direct = Red::Compiler::Emitter.build(@plan)($template, $subject);
+    my Int $*bind-counter = 0;
+    my $sql = $*RED-DB.translate($interpreted);
+    $*bind-counter = 0;
+    is-deeply $*RED-DB.translate($direct), $sql,
+        'Interpreted and emitted capture counts agree';
+}
+$*RED-FALLBACK = True;
+throws-like {
+    CaptureCharsRow.^all.grep({ $0.chars > 0 if .text ~~ /(a)+/ }).elems
+}, X::Red::Compiler::Unsupported, :fatal(*.so),
+    'Capture lists cannot silently become scalar character counts';
+done-testing;

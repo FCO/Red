@@ -1,3 +1,5 @@
+use Red::AST::RegexMatch;
+use Red::AST::RegexCapture;
 use DB::Pg;
 use Red::Driver;
 use Red::Driver::CommonSQL;
@@ -52,6 +54,34 @@ multi method translate(Red::AST::BoundFilter::Parameter $parameter, $context?) {
         !! $parameter.type ~~ Num ?? 'double precision'
         !! $parameter.type ~~ Rat ?? 'numeric' !! '';
     ($cast ?? "{$translated.key}::$cast" !! $translated.key) => $translated.value
+}
+
+multi method translate(Red::AST::RegexCapture $_, $context?) {
+    my $regex = .match.pattern;
+    X::Red::Compiler::Unsupported.new(:fatal,
+        :reason('Reading captures requires a structured regex')).throw unless $regex ~~ Red::Regex;
+    my $whole = .selection ~~ Str && .selection eq '$/';
+    my @ids = $whole ?? () !! $regex.capture-groups(.selection);
+    return 'CAST(NULL AS TEXT)' => [] unless $whole || @ids;
+    my $rendered = $regex.render-info(:dialect<Pg>, :capture-ids(@ids), :$whole);
+    my @groups = $whole ?? (1,) !! @ids.map({ $rendered<groups>{$_} });
+    X::Red::Compiler::Unsupported.new(:fatal,
+        :reason('The requested regex capture has no native scalar group')).throw
+        if @groups.grep({ !.defined });
+    my $subject = self.translate(.match.value,
+        .match.value ~~ Red::AST::Value ?? 'bind' !! $context);
+    my $pattern = self.translate(ast-value($rendered<pattern>), 'bind');
+    my @reads = @groups.map({ "_red_rx_capture[$_]" });
+    my $read = @reads.elems == 1 ?? @reads[0] !! 'COALESCE(' ~ @reads.join(', ') ~ ')';
+    "(SELECT $read FROM (SELECT regexp_match({$subject.key}, {$pattern.key})"
+        ~ ' AS _red_rx_capture) AS _red_rx_match)' => [|$subject.value, |$pattern.value]
+}
+
+multi method translate(Red::AST::RegexMatch $_, $context?) {
+    my $value = self.translate(.value, .value ~~ Red::AST::Value ?? 'bind' !! $context);
+    my $source = .pattern ~~ Red::Regex ?? .pattern.render(:dialect<Pg>) !! .pattern;
+    my $pattern = self.translate(ast-value($source), 'bind');
+    "({$value.key} ~ {$pattern.key})" => [|$value.value, |$pattern.value]
 }
 
 multi method translate(Red::AST::Native::Operator $_, $context?) {

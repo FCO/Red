@@ -1,0 +1,57 @@
+use Test;
+use Red;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation requires RakuAST');
+    exit;
+}
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({ my ($key, $value) = .split('='); $key => val($value) }));
+my $*RED-FALLBACK = False;
+model RegexTextMethodRow {
+    has Int $.id is serial;
+    has Str $.text is column;
+}
+my $schema = schema(RegexTextMethodRow);
+$schema.drop.create;
+LEAVE $schema.drop if $schema.DEFINITE;
+RegexTextMethodRow.^create(:text($_)) for 'a', 'A', 'ab', 'AB', 'b', '';
+my @whole =
+    [-> { RegexTextMethodRow.^all.grep({ $/.Str.lc eq 'a' if .text ~~ /^ <[a..z A..Z]>+ $/ }) }, set('a', 'A')],
+    [-> { RegexTextMethodRow.^all.grep({ $/.Str.uc eq 'AB' if .text ~~ /^ <[a..z A..Z]>+ $/ }) }, set('ab', 'AB')],
+    [-> { RegexTextMethodRow.^all.grep({ $/.Str.substr(1, 1) eq 'b' if .text ~~ /^ <[a..z A..Z]>+ $/ }) }, set('ab')],
+    [-> { RegexTextMethodRow.^all.grep({ (~$/).lc eq 'ab' if .text ~~ /^ <[a..z A..Z]>+ $/ }) }, set('ab', 'AB')];
+for @whole.kv -> $index, $case {
+    if $backend eq any(<Pg MySQL>) {
+        is-deeply $case[0]().map(*.text).Array.Set, $case[1],
+            "Whole text operation $index executes in SQL";
+    } else {
+        throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported,
+            :fatal(*.so), 'SQLite rejects whole-text extraction explicitly';
+    }
+}
+my @scalar =
+    [-> { RegexTextMethodRow.^all.grep({ $0.Str.lc eq 'a' if .text ~~ /^ (<[a..z A..Z]>+) $/ }) }, set('a', 'A')],
+    [-> { RegexTextMethodRow.^all.grep({ $<word>.Str.uc eq 'AB' if .text ~~ /^ $<word>=<[a..z A..Z]>+ $/ }) }, set('ab', 'AB')],
+    [-> { RegexTextMethodRow.^all.grep({ $0.Str.substr(1).lc eq 'b' if .text ~~ /^ (<[a..z A..Z]>+) $/ }) }, set('ab', 'AB')];
+for @scalar.kv -> $index, $case {
+    if $backend eq 'Pg' {
+        is-deeply $case[0]().map(*.text).Array.Set, $case[1],
+            "Scalar text operation $index executes in SQL";
+    } else {
+        throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported,
+            :fatal(*.so), :reason(*.contains('only implemented for PostgreSQL')),
+            'Scalar extraction retains its explicit backend restriction';
+    }
+}
+$*RED-FALLBACK = True;
+throws-like {
+    RegexTextMethodRow.^all.grep({ $0.lc eq 'a' if .text ~~ /(<[a..z A..Z]>+)/ }).elems
+}, X::Red::Compiler::Unsupported, :fatal(*.so),
+    'Implicit Match method calls remain explicit errors';
+done-testing;

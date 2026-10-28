@@ -1,0 +1,88 @@
+use Test;
+use Red;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation needs the RakuAST frontend');
+    exit;
+}
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({
+        my ($key, $value) = .split('=');
+        $key => val($value)
+    }));
+my $*RED-FALLBACK = False;
+
+model LogicalCaptureRow {
+    has Int $.id is serial;
+    has Str $.text is column;
+    has Str $.other is column;
+}
+my $schema = schema(LogicalCaptureRow);
+$schema.drop.create;
+LEAVE $schema.drop;
+for ['a', 'b'], ['b', 'a'], ['ab', 'ba'], ['', ''], ['aa', 'bb'], ['A', 'B'] -> $row {
+    LogicalCaptureRow.^create(:text($row[0]), :other($row[1]));
+}
+
+my @scalar-cases =
+    [-> { LogicalCaptureRow.^all.grep({ .text ~~ /^ (a) $/ && $0 eq 'a' }) }, set('a')],
+    [-> { LogicalCaptureRow.^all.grep({ .text ~~ /(a)/ && $0 eq 'a' && .id > 0 && $0.defined }) }, set('a', 'ab', 'aa')],
+    [-> { LogicalCaptureRow.^all.grep({ (.id > 0 && .text ~~ /(a)/) && $0 eq 'a' }) }, set('a', 'ab', 'aa')],
+    [-> { LogicalCaptureRow.^all.grep({ (.text ~~ /(a)/ && .other ~~ /(b)/) && $0 eq 'b' }) }, set('a', 'ab', 'aa')],
+    [-> { LogicalCaptureRow.^all.grep({ .text ~~ /(a)/ && (.other ~~ /(b)/ && $0 eq 'b') }) }, set('a', 'ab', 'aa')],
+    [-> { LogicalCaptureRow.^all.grep({ .text ~~ /(a)/ || $0 eq 'a' }) }, set('a', 'ab', 'aa')],
+    [-> { LogicalCaptureRow.^all.grep({ !(.text ~~ /(a)/) && !$0.defined }) }, set('b', '', 'A')],
+    [-> { LogicalCaptureRow.^all.grep({ !$0.defined unless .text ~~ /(a)/ || .other ~~ /(b)/ }) }, set('b', '', 'A')],
+    [-> { LogicalCaptureRow.^all.grep({ $0 eq 'b' if .text ~~ /(a)/ && .other ~~ /(b)/ }) }, set('a', 'ab', 'aa')],
+    [-> { LogicalCaptureRow.^all.grep({ $0 eq 'a' if .text ~~ /(a)/ || .text ~~ /(a)/ }) }, set('a', 'ab', 'aa')],
+    [-> { LogicalCaptureRow.^all.grep({ ($0 eq 'a' if .id > 0) if .text ~~ /(a)/ }) }, set('a', 'ab', 'aa')],
+    [-> { LogicalCaptureRow.^all.grep({ ($0 eq 'a' && $0.defined) if .text ~~ /(a)/ }) }, set('a', 'ab', 'aa')],
+    [-> { LogicalCaptureRow.^all.grep({ $0 eq 'a' if False || .text ~~ /(a)/ }) }, set('a', 'ab', 'aa')];
+for @scalar-cases.kv -> $index, $case {
+    if $backend eq 'Pg' {
+        is-deeply $case[0]().map(*.text).Array.Set, $case[1],
+            "Logical scalar capture $index follows the executed match source";
+    } else {
+        my $*RED-FALLBACK = True;
+        throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported, :fatal(*.so),
+            :reason(*.contains('only implemented for PostgreSQL')),
+            "Backend rejects scalar extraction $index without compiler/fallback ambiguity";
+    }
+}
+
+is-deeply LogicalCaptureRow.^all.grep({ .text ~~ /^ a $/ && $/.defined })
+    .map(*.text).Array.Set, set('a'), 'Whole presence after a direct logical match works everywhere';
+is-deeply LogicalCaptureRow.^all.grep({ .text ~~ /^ a $/ || !$/.defined })
+    .map(*.text).Array.Set, set('a', 'b', 'ab', '', 'aa', 'A'),
+    'A failed direct match supplies absent whole-match state on the OR branch';
+if $backend eq 'SQLite' {
+    throws-like { LogicalCaptureRow.^all.grep({ .text ~~ /^ a $/ && $/ eq 'a' }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'SQLite rejects logical whole text extraction';
+} else {
+    is-deeply LogicalCaptureRow.^all.grep({ .text ~~ /^ a $/ && $/ eq 'a' })
+        .map(*.text).Array.Set, set('a'), 'Logical whole text reads stay in SQL';
+}
+
+subtest 'Ambiguous or overwritten capture state never enables row fallback' => {
+    my $*RED-FALLBACK = True;
+    throws-like {
+        LogicalCaptureRow.^all.grep({ (.text ~~ /(a)/ || .other ~~ /(b)/) && $0 eq 'a' }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so), 'Success of OR can select distinct regex sources';
+    throws-like {
+        LogicalCaptureRow.^all.grep({ $0 eq 'a' if .text ~~ /(a)/ || .other ~~ /(b)/ }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so), 'An ambiguous conditional source is not guessed';
+    throws-like {
+        LogicalCaptureRow.^all.grep({
+            if .text ~~ /(a)/ {
+                .id > 0 && .other ~~ /(b)/;
+                $0 eq 'a'
+            } else { False }
+        }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so), 'A later conditional match cannot leave stale outer captures';
+};
+done-testing;

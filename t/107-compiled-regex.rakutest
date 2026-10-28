@@ -1,0 +1,126 @@
+use Test;
+use Red;
+use Red::Compiler::RakuAST;
+use Red::Compiler::Regex;
+use Red::Compiler::Template;
+use Red::Compiler::Emitter;
+use Red::Driver::Pg;
+use Red::Driver::SQLite;
+use Red::AST::Value;
+use Red::AST::RegexMatch;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+
+CHECK {
+    if HAS-RAKUAST {
+        my @events;
+        red-compile(:report(-> |event { @events.push: event.hash }));
+        die 'Regex callback was not compiled' unless @events.grep({
+            .<status> eq 'compiled' && .<source>.contains('Ana')
+        });
+    }
+}
+
+unless HAS-RAKUAST {
+    plan :skip-all('Compiled regex requires the RakuAST frontend');
+    exit;
+}
+
+sub pattern(Str $source) {
+    Red::Compiler::Regex.new.translate($source.AST.statements[0].expression)
+}
+
+is pattern(q[/^ 'Ana' $/]), '\AAna\Z', 'String anchors';
+is pattern(q[/:i a/]), '(?i)a', 'Leading ignorecase';
+is pattern(q[rx:i/a/]), '(?i)a', 'Quoted regex adverb';
+is pattern(q[/\d \w \s ./]), '[[:digit:]][[:alnum:]_][[:space:]].', 'Common classes';
+is pattern(q[/[a|b]+/]), '(?:(?:(?:a|b)))+', 'Group, alternatives and repetition';
+is pattern(q[/a ** 2..4/]), '(?:a){2,4}', 'Bounded repetition';
+is pattern(q[/a ** 3/]), '(?:a){3,3}', 'Exact repetition';
+is pattern(q[/<[a..c _]>/]), '(?:a|b|c|_)', 'Explicit ASCII class';
+is pattern(q[/'a.b$'/]), 'a\.b\$', 'Regex metacharacters in literals are escaped';
+for q[/a { die 'must not execute' }/], q[/<{ 'a' }>/], q[/a :i b/], q[/a+:/], q[rx:r/a+/] -> $source {
+    throws-like { pattern($source) }, X::Red::Compiler::Unsupported,
+        "Reject unsupported syntax: $source";
+}
+
+model CompiledRegexRow {
+    has UInt $.id is serial;
+    has Str $.name is column;
+    has Str $.optional is column{ :nullable };
+}
+
+{
+    my $*RED-INTERNAL = True;
+    my $*bind-counter = 0;
+    my $pg = Red::Driver::Pg.CREATE;
+    my $sqlite = Red::Driver::SQLite.CREATE;
+    my $ast = Red::AST::RegexMatch.checked(
+        ast-value('Ana'), pattern(q[/^ 'Ana'/]));
+    my $sql = $pg.translate($ast);
+    ok $sql.key.contains(' ~ '), 'PostgreSQL operator';
+    is-deeply $sql.value.Array, ['Ana', '\AAna'], 'Both values are bound';
+    throws-like { $sqlite.translate($ast) }, X::Red::Compiler::Unsupported,
+        'Other drivers reject regex explicitly';
+    throws-like { Red::AST::RegexMatch.checked(ast-value([]), 'a') },
+        X::Red::Compiler::Unsupported, 'Composite subjects rejected';
+    throws-like { Red::AST::RegexMatch.checked(CompiledRegexRow.optional, 'a') },
+        X::Red::Compiler::Unsupported, 'Nullable columns rejected';
+
+    my @plan = ['regex', ['field', ['subject'], 'name'], '\AAna'];
+    my $template = Red::Compiler::Template.new(:@plan);
+    my $interpreted = $template.evaluate(@plan, CompiledRegexRow);
+    my &builder = Red::Compiler::Emitter.build(@plan);
+    my $direct = builder($template, CompiledRegexRow);
+    $*bind-counter = 0;
+    my $direct-sql = $pg.translate($direct);
+    $*bind-counter = 0;
+    is-deeply $direct-sql, $pg.translate($interpreted),
+        'Direct and interpreted templates agree';
+}
+
+my @config = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @config.shift;
+my $*RED-DB = database $backend, |%(@config.map({
+    my ($key, $value) = .split('=');
+    $key => val($value)
+}));
+my $*RED-FALLBACK = False;
+if $backend eq 'Pg' {
+    my $schema = schema(CompiledRegexRow);
+    $schema.drop.create;
+    LEAVE $schema.drop;
+    my @names = 'Ana', 'Anabel', 'ana', 'Bob', "Ana\n", 'a.b$', 'a1', 'b22', '_', '', "O'Reilly\\book";
+    CompiledRegexRow.^create(:name($_)) for @names;
+    my @events;
+    my $*RED-COMPILER-REPORT = -> |event { @events.push: event.hash };
+    is-deeply CompiledRegexRow.^all.grep({ .name ~~ /^ 'Ana'/ }).map(*.name).sort.Array,
+        @names.grep({ so $_ ~~ /^ 'Ana'/ }).sort.Array, 'Compiled prefix executes in SQL';
+    is CompiledRegexRow.^all.grep({ .name ~~ /:i ^ 'ana' $/ }).elems, 2,
+        'Case-insensitive full match';
+    is CompiledRegexRow.^all.grep({ !(.name ~~ /^ 'Ana'/) && .name ne 'Bob' }).elems,
+        @names.grep({ !(so $_ ~~ /^ 'Ana'/) && $_ ne 'Bob' }).elems,
+        'Negation and conjunction';
+    is-deeply CompiledRegexRow.^all.grep({ .name ~~ /^ <[a..b]> \d+ $/ })
+        .map(*.name).sort.Array, ['a1', 'b22'], 'Classes and quantifiers execute';
+    is CompiledRegexRow.^all.grep({ .name ~~ /^ [a|b] \d ** 2 $/ }).elems, 1,
+        'Groups, alternatives and exact repetition execute';
+    is CompiledRegexRow.^all.grep({ .name ~~ /^ $/ }).elems, 1, 'Empty string match';
+    is CompiledRegexRow.^all.grep({ .name ~~ /^ 'a.b$' $/ }).elems, 1,
+        'Quoted SQL regex metacharacters remain literal';
+    is CompiledRegexRow.^all.first({ .name ~~ /^ 'Bob' $/ }).name, 'Bob',
+        'First accepts compiled regex';
+    is-deeply CompiledRegexRow.^all.map({ .name }).grep({ $_ ~~ /^ <[a..b]> \d+ $/ })
+        .sort.Array, ['a1', 'b22'], 'Regex works after projection and alias rebinding';
+    is CompiledRegexRow.^all.grep({ .name ~~ /^ "O'Reilly\\book" $/ }).elems, 1,
+        'Apostrophe and backslash are bound and matched literally';
+    my $unicode-row = CompiledRegexRow.^create(:name("Ana\x[338]"));
+    my $unicode-id = $unicode-row.id;
+    is CompiledRegexRow.^all.grep({ .id == $unicode-id && .name ~~ /^ 'Ana'/ }).elems, 1,
+        'Unicode prefix uses database characters rather than Raku graphemes';
+    ok @events.grep({ .<status> eq 'used' }), 'Compiled template used';
+    nok @events.grep({ .<status> eq 'fallback' }), 'No symbolic fallback';
+} else {
+    skip 'Set RED_DATABASE=Pg ... for SQL execution tests', 13;
+}
+done-testing;

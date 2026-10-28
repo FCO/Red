@@ -1,0 +1,337 @@
+use Test;
+use Red;
+use Red::Regex;
+use Red::Compiler::Regex;
+use Red::AST::RegexMatch;
+use Red::AST::Value;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation needs the RakuAST frontend');
+    exit;
+}
+
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({
+    my ($key, $value) = .split('=');
+    $key => val($value)
+}));
+my $*RED-FALLBACK = False;
+
+my @values = '', 'a', 'A', 'b', 'ab', 'AB', 'aB', 'aa', 'aaa', 'aaaa', 'aaaaa',
+    'a,b', 'a,a', 'a,a,', ',a', 'b22', 'a1', '123', 'ababa', 'foo', '_', 'a.b$',
+    "O'Reilly\\book", 'x a y', 'xay', 'a b', 'a  b', ' a b ', "a\tb", 'a b c', 'abc', '#', '[', ']', '`', '{', '~', "\x[1F]", "\t", ' ', "\n", "a\nb", "a\r\nb";
+my @patterns = q[/a/], q[/^ <alpha> <alpha> $/], q[/^ <name=alpha> $/], q[/^ <name=[ab]>+ $/], q[/^ $<name>=(a) $/], q[/^ $<name>=[a+] $/], q[/^ a $/], q[/^ $/], q[/''/], q[/./], q[/.* /],
+    q[/:i a/], q[rx:i/a/], q[/:!i a/], q[/^ [a|b]+ $/], q[/^ (a|b)+ $/],
+    q[/^ a? b? $/], q[/^ a* $/], q[/^ a+? $/], q[/^ a ** 2..4 $/],
+    q[/^ a ** 2^..^5 $/], q[/a & b/], q[/a+ & aa/], q[/a* && a?/],
+    q[/^ [a+ & aa] b? $/], q[/:i ^ [ab & a.] $/],
+    q[/^ [[a|b] & b] $/], q[/<?before a> a & a/], q[/^ a & a $/],
+    q[/^ [a+ & aa & a.] $/], q[/^ a ** 2..* $/], q[/^ a ** 0 $/],
+    q[/^ a+ % ',' $/], q[/^ a+ %% ',' $/], q[/^ a* % ',' $/], q[/^ a* %% ',' $/],
+    q[/^ a ** 2..3 % ',' $/], q[/^ <[a..c _]>+ $/], q[/^ < a b > $/], q[/^ <-[a..c]>+ $/],
+    q[/^ \d+ $/], q[/^ \D+ $/], q[/^ \w+ $/], q[/^ \W+ $/],
+    q[/^ \s+ $/], q[/^ \S+ $/], q[/^ \h+ $/], q[/^ \H+ $/],
+    q[/^ \v+ $/], q[/^ \V+ $/], q[/^ \n $/], q[/^ \N+ $/], q[/^ \t $/], q[/^ \T+ $/],
+    q[/^ <alpha>+ $/], q[/^ <digit>+ $/], q[/^ <lower>+ $/], q[/^ <upper>+ $/],
+    q[/^ <blank>+ $/], q[/^ <cntrl>+ $/], q[/^ <graph>+ $/],
+    q[/^ <print>+ $/], q[/^ <punct>+ $/], q[/^ <alnum>+ $/], q[/^ <xdigit>+ $/], q[/^^ b $$/], q[/<< a >>/],
+    q[/<ww> a/], q[/a <ws> b/], q[/<?wb> a <?wb>/], q[/<!wb> a/], q[/<?before a> a/], q[/<!before a> b/],
+    q[/<?before a+ b> a/], q[/<!before a+ b> a/],
+    q[/<?after <[a..c]>> b/], q[/<?before a <?before b> b> a/],
+    q[/^ a <?before b+> b/], q[/a <?after a>/], q[/a <!after b>/], q[/:s ^ a b $/], q[rx:s/^ a b $/], q[/:s a ' ' b/],
+    q[/:s a :!s b c/], q[/^ <[a..z] - [aeiou]>+ $/],
+    q[/^ <[a] - [a] + [a]> $/], q[/^ <:Lu>+ $/], q[/^ <:!Lu>+ $/],
+    q[/^ <:L>+ $/], q[/^ <:Script<Latin>>+ $/], q[/'a.b$' $/], q[/:i a $/], q[/:i ^ a/], q[/'' $/], q[/^ 'a.b$' $/], q[/^ "O'Reilly\\book" $/];
+
+subtest "Native SQL regex predicates on $backend" => {
+    for @patterns -> $source {
+        subtest $source => {
+            my $quoted = $source.AST.statements[*-1].expression;
+            my $native = $quoted.compile-time-value;
+            my $regex = Red::Compiler::Regex.new.compile($quoted);
+            my @expected = @values.map({ so $_ ~~ $native });
+            my @actual = @values.map(-> $value {
+                my Int $*bind-counter = 0;
+                my $ast = Red::AST::RegexMatch.checked(ast-value($value), $regex);
+                my $sql = $*RED-DB.translate($ast);
+                so $*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>
+            });
+            is-deeply @actual, @expected, 'SQL agrees with Raku for the ASCII fixtures';
+        }
+    }
+};
+
+subtest 'Unicode property ranges use Rakudo data in every SQL dialect' => {
+    my @characters = 'A', 'a', '_', 'É', 'é', 'Ω', '中', '١', '𐐀', '🦋', '#', ' ';
+    for q[/^ <:Lu> $/], q[/^ <:!Lu> $/], q[/^ <:L> $/], q[/^ <:N> $/],
+        q[/^ <:P> $/], q[/^ <[\x[1]..\x[10FFFF]]> $/], q[/^ <:Script<Latin>> $/], q[/^ <:Alphabetic> $/] -> $source {
+        my $quoted = $source.AST.statements[*-1].expression;
+        my $regex = Red::Compiler::Regex.new.compile($quoted);
+        my $native = $quoted.compile-time-value;
+        my @actual = @characters.map(-> $character {
+            my Int $*bind-counter = 0;
+            my $sql = $*RED-DB.translate(
+                Red::AST::RegexMatch.checked(ast-value($character), $regex));
+            so $*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>
+        });
+        is-deeply @actual, @characters.map({ so $_ ~~ $native }).Array,
+            "Unicode scalars agree for $source";
+    }
+};
+
+subtest 'Primitive subjects use SQL text with Raku Boolean spelling' => {
+    for 42, -17, 0, 2.5e0, 1.5, FatRat.new(3, 2) -> $number {
+        my $source = '/^ ' ~ $number.Str.raku ~ ' $/';
+        my $regex = Red::Compiler::Regex.new.compile($source.AST.statements[0].expression);
+        my Int $*bind-counter = 0;
+        my $sql = $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value($number), $regex));
+        ok $*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>,
+            "{$number.^name} $number is matched as text";
+    }
+    for True, False -> $boolean {
+        my $regex = Red::Regex.new(:tree(('literal', $boolean.Str).List));
+        my Int $*bind-counter = 0;
+        my $sql = $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value($boolean), $regex));
+        ok $*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>,
+            "Boolean $boolean retains its Raku spelling";
+    }
+    my Int $*bind-counter = 0;
+    my $null = $*RED-DB.translate(Red::AST::RegexMatch.checked(
+        ast-value(Bool), Red::Regex.new(:tree(('literal', 'True').List))));
+    nok $*RED-DB.execute("SELECT {$null.key} AS matched", |$null.value).row<matched>.defined,
+        'A NULL-producing Boolean expression remains SQL NULL';
+    throws-like {
+        Red::AST::RegexMatch.checked(ast-value([]), Red::Regex.new(:tree(('literal', 'x').List)))
+    }, X::Red::Compiler::Unsupported, :fatal(*.so),
+        'Composite/custom stringification is not approximated as SQL text';
+};
+
+subtest 'Long literal filters do not require character-state expansion' => {
+    my $text = 'a' x 5000;
+    my $parser = Red::Compiler::Regex.new;
+    my $regex = $parser.compile(q[/^ $text $/].AST.statements[0].expression)
+        .instantiate(($text,).List);
+    my Int $*bind-counter = 0;
+    my $sql = $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value($text), $regex));
+    ok $*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>,
+        'An exact literal remains supported above the general automaton state budget';
+};
+
+subtest 'Capture references follow Raku capture scopes' => {
+    my @cases = q[/^ (a) $0 $/], q[/^ ((a) $0) $0 $/],
+        q[/^ <alpha> $<alpha> $/], q[/^ <ident> $<ident> $/],
+        q[/^ <name=alpha> $<alpha> $/],
+        q[my regex piece { (a) }; /^ <piece> $<piece> $/],
+        q[/^ <name=alpha> $<name> $/], q[/^ <name=.alpha> $<name> $/],
+        q[/^ <name=[ab]> $<name> $/],
+        q[my regex piece { a }; /^ <name=piece> $<name> $/],
+        q[/^ [<name=[a]>|<name=[b]>] $<name> $/],
+        q[/^ $<name>=(a) $<name> $/], q[/^ $<name>=[a+] $<name> $/],
+        q[/^ [$<name>=a | $<name>=b] $<name> $/],
+        q[/^ ($<name>=a $<name>) $0 $/],
+        q[/^ $<name>=[(a)] $0 $/], q[/^ (a) $<name>=[a $0] $/],
+        q[/^ $<outer>=[$<inner>=a] $<inner> $/],
+        q[/^ [(a)|(b)] $0 $/], q[/^ (a) (b) $1 $0 $/], q[/^ (a)? $0 $/],
+        q[/^ <?before [(a)]> (a) $0 $/];
+    my @texts = '', 'a', 'aa', 'bb', 'aaa', 'aaaa', 'abba', 'abab', 'bbbb';
+    for @cases -> $source {
+        my $quoted = $source.AST.statements[*-1].expression;
+        my $regex = Red::Compiler::Regex.new.compile($quoted);
+        my $needs-atomic = False;
+        $regex.walk(-> $part { $needs-atomic = True if $part[0] eq 'atomic' });
+        if $backend eq 'SQLite' || ($needs-atomic && $backend ne 'MySQL') {
+            throws-like {
+                my Int $*bind-counter = 0;
+                $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value('aa'), $regex))
+            }, X::Red::Compiler::Unsupported, :fatal(*.so),
+                "Unavailable native capture/atomic operations are rejected: $source";
+        } else {
+            my $native = $quoted.compile-time-value;
+            my @actual = @texts.map(-> $text {
+                my Int $*bind-counter = 0;
+                my $sql = $*RED-DB.translate(
+                    Red::AST::RegexMatch.checked(ast-value($text), $regex));
+                so $*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>
+            });
+            is-deeply @actual, @texts.map({ so $_ ~~ $native }).Array, $source;
+        }
+    }
+};
+
+subtest 'Ratcheted atoms and token/rule declarations' => {
+    my @cases = q[/^ <ident> $/], q[/^ <ident> a $/], q[/^ <ident> $<ident> $/],
+        q[/^ a+: a $/], q[/:r ^ a+ a $/], q[rx:r/^ a+ a $/],
+        q[/:r ^ a+? a $/], q[/:r ^ a+ :!r a+ $/],
+        q[my token piece { a+ }; /^ <piece> a $/],
+        q[my rule piece { a b }; /^ <piece> $/];
+    my @texts = '', 'a', 'aa', 'aaa', 'aaaa', 'ab', 'a b', 'a  b', "a\tb", 'a b ';
+    for @cases -> $source {
+        my $ast = $source.AST;
+        my $quoted = $ast.statements[*-1].expression;
+        my $regex = Red::Compiler::Regex.new.compile($quoted);
+        my $needs-atomic = False;
+        $regex.walk(-> $part { $needs-atomic = True if $part[0] eq 'atomic' });
+        if $needs-atomic && $backend ne 'MySQL' {
+            throws-like {
+                my Int $*bind-counter = 0;
+                $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value('aaa'), $regex))
+            }, X::Red::Compiler::Unsupported, :fatal(*.so),
+                "Unsupported engine atomic matching is explicit: $source";
+        } else {
+            my $native = $quoted.compile-time-value;
+            my @actual = @texts.map(-> $text {
+                my Int $*bind-counter = 0;
+                my $sql = $*RED-DB.translate(
+                    Red::AST::RegexMatch.checked(ast-value($text), $regex));
+                so $*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>
+            });
+            is-deeply @actual, @texts.map({ so $_ ~~ $native }).Array, $source;
+        }
+    }
+};
+
+subtest 'Dialect capabilities fail before execution' => {
+    my $scoped = Red::Compiler::Regex.new.compile(q[/a :i b/].AST.statements[0].expression);
+    throws-like { $scoped.render(:dialect<Pg>) }, X::Red::Compiler::Unsupported,
+        'PostgreSQL rejects scoped modes';
+    is $scoped.render(:dialect<MySQL>), 'a(?i:b)', 'MySQL supports scoped modes';
+    my $large = Red::Compiler::Regex.new.compile(q[/a ** 256/].AST.statements[0].expression);
+    ok $large.render(:dialect<Pg>).chars,
+        'PostgreSQL lowers repetition bounds exceeding 255';
+    is $large.render(:dialect<MySQL>), '(?:a){256,256}', 'MySQL retains larger bounds';
+    for q[/a { die 'must not run' }/], q[/<custom-rule>/], q[/(a)+ $0/], q[/(a) & a $0/],
+        q[/<alpha>+ $<alpha>/], q[/<alpha> <alpha> $<alpha>/],
+        q[/<.alpha> $<alpha>/], q[/<name=alpha> <name=digit>/], q[/<name=alpha>+ $<name>/],
+        q[/$<name>=a $<name>=b/], q[/$<name>=(a)+ $<name>/],
+        q[/<:Script<NotAScript>>/], q[/<:General_Category<False>>/], q[/:r a { die 'no code' }/] -> $source {
+        throws-like {
+            Red::Compiler::Regex.new.compile($source.AST.statements[0].expression)
+        }, X::Red::Compiler::Unsupported, "Reject unsupported behavior: $source";
+    }
+    my $recursive-source = q[my regex repeat-rule { a <repeat-rule>? }; /<repeat-rule>/];
+    my $recursive = $recursive-source.AST.statements[1].expression;
+    throws-like { Red::Compiler::Regex.new.compile($recursive) },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Recursive named rules fail explicitly';
+    my $shadowed = q[my regex alpha { z }; /<alpha>/].AST.statements[1].expression;
+    my $expanded = Red::Compiler::Regex.new.compile($shadowed);
+    is $expanded.literal-text($expanded.tree), 'z',
+        'A user-defined rule is inlined from its body rather than replaced by a builtin class';
+};
+
+model PortableRegexRow {
+    has UInt $.id is serial;
+    has Str $.name is column;
+    has Bool $.active is column = True;
+}
+my $schema = schema(PortableRegexRow);
+$schema.drop.create;
+LEAVE $schema.drop if $schema.defined;
+PortableRegexRow.^create(:name($_)) for <a1 b22 foo BAR>;
+my regex letter-code { <[a..b]> \d+ };
+my @events;
+my $*RED-COMPILER-REPORT = -> |event { @events.push: event.hash };
+is-deeply PortableRegexRow.^all.grep({ .name ~~ /^ <[a..b]> \d+ $/ })
+    .map(*.name).sort.Array, ['a1', 'b22'], 'Compiled callback uses current driver';
+is-deeply PortableRegexRow.^all.grep({ .name ~~ /^ <letter-code> $/ })
+    .map(*.name).sort.Array, ['a1', 'b22'], 'A lexical regex rule is compiled into SQL';
+is-deeply PortableRegexRow.^all.grep({ .name ~~ /^ <code=letter-code> $/ })
+    .map(*.name).sort.Array, ['a1', 'b22'], 'A lexical rule capture alias executes in SQL';
+is PortableRegexRow.^all.first({ .name ~~ /:i ^ bar $/ }).name, 'BAR',
+    'Case-insensitive first';
+is-deeply PortableRegexRow.^all.map({ .name }).grep({ !($_ ~~ /^ <[a..b]> \d+ $/) })
+    .sort.Array, ['BAR', 'foo'], 'Projection rebinding and negation';
+is-deeply PortableRegexRow.^all.grep({ .name.match(/^ <[a..b]> \d+ $/) })
+    .map(*.name).sort.Array, ['a1', 'b22'], 'Match method is compiled in predicate context';
+is-deeply PortableRegexRow.^all.map({ .name }).grep(/^ <[a..b]> \d+ $/)
+    .sort.Array, ['a1', 'b22'], 'Regex callable filters scalar projections';
+is PortableRegexRow.^all.grep({ .id ~~ /^ \d+ $/ }).elems, 4,
+    'A numeric model column is coerced to text in SQL';
+is PortableRegexRow.^all.grep({ (.id + 1) ~~ /^ \d+ $/ }).elems, 4,
+    'A numeric SQL expression is coerced to text';
+is-deeply PortableRegexRow.^all.grep({ .name ~~ &letter-code }).map(*.name).sort.Array,
+    ['a1', 'b22'], 'A direct immutable regex declaration is expanded from its AST';
+is-deeply PortableRegexRow.^all.map({ .name }).grep(&letter-code).sort.Array,
+    ['a1', 'b22'], 'A regex declaration can be used as the filter callable';
+ok @events.grep({ .<status> eq 'used' }), 'Compiled templates used';
+nok @events.grep({ .<status> eq 'fallback' }), 'No symbolic evaluation or in-memory fallback';
+
+subtest 'Literal interpolation binds data without interpreting a regex program' => {
+    sub prefixed(Str $prefix) {
+        PortableRegexRow.^all.grep({ .name ~~ /^ $prefix/ }).map(*.name).sort.Array
+    }
+    is-deeply prefixed('a'), ['a1'], 'First captured prefix';
+    is-deeply prefixed('b'), ['b22'], 'Reusing the template binds a new prefix';
+    PortableRegexRow.^create(:name('a.b$'));
+    PortableRegexRow.^create(:name("O'Reilly\\book"));
+    PortableRegexRow.^create(:name('a b'));
+    my $prefix = 'a.';
+    is-deeply PortableRegexRow.^all.grep({ .name ~~ /^ $prefix/ }).map(*.name).Array,
+        ['a.b$'], 'Regex metacharacters in captured strings remain literal';
+    my $quoted = "O'Reilly\\book";
+    is PortableRegexRow.^all.grep({ .name ~~ /^ "$quoted" $/ }).elems, 1,
+        'Quotes and backslashes are data in quoted interpolation';
+    my @names = <a1 b22>;
+    my $selected = PortableRegexRow.^all.grep({ .name ~~ /^ @names $/ });
+    @names = <foo>;
+    is-deeply $selected.map(*.name).sort.Array, ['a1', 'b22'],
+        'Array alternatives are bound once for the query';
+    is-deeply PortableRegexRow.^all.grep({ .name ~~ /^ @names $/ }).map(*.name).Array,
+        ['foo'], 'A subsequent query sees changed alternatives';
+    @names = ();
+    is PortableRegexRow.^all.grep({ .name ~~ /^ @names $/ }).elems, 0,
+        'An empty alternative array matches nothing';
+    @names = <a b>;
+    is PortableRegexRow.^all.grep({ .name ~~ /^ "@names[]" $/ }).elems, 1,
+        'Explicit array interpolation inside quotes is literal text';
+    is PortableRegexRow.^all.grep({ .name ~~ /^ "@names" $/ }).elems, 0,
+        'Bare array names in a quoted string retain Raku literal quoting';
+    my $number = 22;
+    is PortableRegexRow.^all.grep({ .name ~~ /^ 'b' $number $/ }).elems, 1,
+        'Primitive numeric interpolation is literal text';
+    my $effects = 0;
+    my $executable = rx/a { $effects++ }/;
+    temp $*RED-FALLBACK = True;
+    throws-like {
+        PortableRegexRow.^all.grep({ .name ~~ /$executable/ }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so),
+        'A Regex object is not silently executed or stringified as literal data';
+    is $effects, 0, 'No code in the captured Regex was run';
+    throws-like {
+        PortableRegexRow.^all.grep({ .name ~~ $executable }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so),
+        'A Regex variable used as the matcher also fails without running its code';
+    is $effects, 0, 'No code in the matcher Regex was run';
+    PortableRegexRow.^create(:name('inactive'), :active(False));
+    is PortableRegexRow.^all.grep({ .active ~~ /^ False $/ }).elems, 1,
+        'A Boolean model column is matched using Raku text spelling';
+    is PortableRegexRow.^all.grep({ .name ~~ 'foo' }).elems, 1,
+        'Non-regex literal smartmatches keep their existing fallback behavior';
+    my $string-matcher = 'foo';
+    is PortableRegexRow.^all.grep({ .name ~~ $string-matcher }).elems, 1,
+        'A non-regex variable matcher keeps its existing fallback behavior';
+};
+
+subtest 'Unsupported compiled regex never executes a fallback callback' => {
+    temp $*RED-FALLBACK = True;
+    my $effects = 0;
+    throws-like {
+        PortableRegexRow.^all.grep({ .name ~~ /a { $effects++ }/ }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so),
+        'Code in a regex is an explicit fatal diagnostic even when fallback is enabled';
+    is $effects, 0, 'Embedded code was never run';
+    throws-like {
+        PortableRegexRow.^all.grep({ .unknown-member ~~ /a/ }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so),
+        'A runtime model-path failure in a regex callback cannot trigger row filtering';
+    throws-like {
+        PortableRegexRow.^all.grep({ .name ~~ /(a)+ $0/ }).elems
+    }, X::Red::Compiler::Unsupported, :fatal(*.so), 'Backreferences are not silently evaluated in Raku';
+    is-deeply <aa ab>.grep({ $_ ~~ /(a) $0/ }).Array, ['aa'],
+        'Ordinary Raku collections retain their own regex behavior';
+};
+done-testing;

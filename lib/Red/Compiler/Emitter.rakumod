@@ -1,3 +1,7 @@
+use Red::AST::RegexMatch;
+use Red::AST::RegexCapture;
+use Red::AST::RegexChars;
+use Red::AST::IsDefined;
 use Red::AST;
 use Red::AST::Value;
 use Red::AST::Infixes;
@@ -15,6 +19,14 @@ unit class Red::Compiler::Emitter;
 
 method build(@plan --> Callable:D) {
     given @plan[0] {
+        when 'inline-call' {
+            my &arguments = self.build(@plan[3]);
+            my &body = self.build(@plan[4]);
+            return -> $template, $subject {
+                arguments($template, $subject);
+                body($template, $subject)
+            };
+        }
         when 'literal' {
             my $value = @plan[1];
             return -> $template, $subject { $value };
@@ -167,6 +179,44 @@ method build(@plan --> Callable:D) {
                 my $result = @parts.shift // ast-value('');
                 $result = Red::AST::Concat.new($result, $_) for @parts;
                 $result
+            };
+        }
+        when 'regex-guard' {
+            my &value = self.build(@plan[1]);
+            return -> $template, $subject {
+                $template.unsupported('Regex variables require a literal SQL-compilable pattern', :fatal)
+                    if value($template, $subject) ~~ Regex;
+                $template.unsupported('Non-regex smartmatches use symbolic evaluation')
+            };
+        }
+        when 'regex-chars' {
+            my &value = self.build(@plan[1]);
+            return -> $template, $subject {
+                Red::AST::RegexChars.new(:value(value($template, $subject)))
+            };
+        }
+        when 'regex-defined' {
+            my &value = self.build(@plan[1]);
+            return -> $template, $subject {
+                Red::AST::IsDefined.new(value($template, $subject))
+            };
+        }
+        when 'regex-value' {
+            my &match = self.build(@plan[1]);
+            my $selection = @plan[2];
+            return -> $template, $subject {
+                Red::AST::RegexCapture.new(:match(match($template, $subject)), :$selection)
+            };
+        }
+        when 'regex' {
+            my &value = self.build(@plan[1]);
+            my $pattern = @plan[2];
+            my @parameters = @plan.skip(3).map({ self.build($_) });
+            return -> $template, $subject {
+                my $bound = @parameters
+                    ?? $pattern.instantiate(@parameters.map({ $_($template, $subject) }).List)
+                    !! $pattern;
+                Red::AST::RegexMatch.checked(ast-value(value($template, $subject)), $bound)
             };
         }
         when 'op' {

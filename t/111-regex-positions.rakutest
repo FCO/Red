@@ -1,0 +1,91 @@
+use Test;
+use Red;
+use Red::Compiler::Regex;
+use Red::AST::RegexMatch;
+use Red::AST::Value;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation needs the RakuAST frontend');
+    exit;
+}
+
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({
+        my ($key, $value) = .split('=');
+        $key => val($value)
+    }));
+my $*RED-FALLBACK = False;
+
+sub agrees(Str:D $source, @texts) {
+    subtest $source => {
+        my $quoted = $source.AST.statements[0].expression;
+        my $regex = Red::Compiler::Regex.new.compile($quoted);
+        my $native = $quoted.compile-time-value;
+        for @texts -> $text {
+            my Int $*bind-counter = 0;
+            my $sql = $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value($text), $regex));
+            is so($*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>),
+                so($text ~~ $native), $text.raku;
+        }
+    };
+}
+
+my @texts = '', 'a', 'b', 'ab', 'aa', 'aba', 'abc', 'abcd', 'xabc',
+    'abcb', 'abcabc', "\na", "a\na", "a\nbc";
+for q[/<at(0)> a/], q[/<at(1)> a/], q[/<at(2)> a/], q[/<.at(1)> a/],
+    q[/<?at(1)> a/], q[/<!at(1)> a/], q[/a <at(1)> b/], q[/a <!at(1)> b/],
+    q[/<at(1)>/], q[/a <( b )> c/], q[/^ a <( b )> c $/],
+    q[/a <( b/], q[/a )> b/], q[/^ [a <( b )> c & abc] $/],
+    q[/<?after a <( b )> c> d/] -> $source {
+    agrees($source, @texts);
+}
+agrees(q[/<at(256)> a/], ['a' x 255, 'a' x 256, 'a' x 257, 'b' x 256 ~ 'a']);
+agrees(q[/<!at(256)> a/], ['a' x 255, 'a' x 256, 'a' x 257, 'b' x 256 ~ 'a']);
+
+subtest 'Position assertion captures use the native reference policy' => {
+    my $source = q[/<at(1)> $<at>/];
+    if $backend eq 'SQLite' {
+        my $regex = Red::Compiler::Regex.new.compile($source.AST.statements[0].expression);
+        throws-like {
+            my Int $*bind-counter = 0;
+            $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value('a'), $regex))
+        }, X::Red::Compiler::Unsupported, :fatal(*.so), 'SQLite rejects references explicitly';
+    } else {
+        agrees($source, @texts);
+    }
+};
+
+subtest 'Executable positions and references across Match markers stay explicit errors' => {
+    for q[my $position = 1; /<at($position)> a/], q[/<at({ die 'no code' })> a/],
+        q[my regex at($position) { a }; /<at(1)> a/] -> $source {
+        throws-like {
+            Red::Compiler::Regex.new.compile($source.AST.statements[*-1].expression)
+        }, X::Red::Compiler::Unsupported, :fatal(*.so), $source;
+    }
+    my $regex = Red::Compiler::Regex.new.compile(
+        q[/^ (a <( b )> c) $0 $/].AST.statements[0].expression);
+    throws-like {
+        my Int $*bind-counter = 0;
+        $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value('abcabc'), $regex))
+    }, X::Red::Compiler::Unsupported, :fatal(*.so),
+        'Capture references crossing Match boundaries are not silently approximated';
+};
+
+model RegexPositionRow {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+my $schema = schema(RegexPositionRow);
+$schema.drop.create;
+LEAVE $schema.drop;
+RegexPositionRow.^create(:name($_)) for <abc xabc abcd>;
+is-deeply RegexPositionRow.^all.grep({ .name ~~ /^ a <( b )> c $/ })
+    .map(*.name).Array, ['abc'], 'Match markers work through the exported compiler';
+is-deeply RegexPositionRow.^all.grep({ .name ~~ /<at(1)> b/ })
+    .map(*.name).sort.Array, ['abc', 'abcd'], 'Static positions execute in compiled SQL';
+done-testing;

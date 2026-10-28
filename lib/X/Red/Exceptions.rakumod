@@ -5,6 +5,7 @@ class X::Red is Exception {}
 
 #| Internal signal for a template that cannot bind to the current projection.
 class X::Red::Compiler::Unsupported is Exception {
+    has Bool $.fatal = False;
     has Str $.reason = "Unsupported compiled query";
     method message { $!reason }
 }

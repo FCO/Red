@@ -20,7 +20,7 @@ method not {
 }
 
 method find-column-name {
-    $!col.name
+    $!col.?find-column-name // Empty
 }
 
 method find-value {

@@ -1,0 +1,49 @@
+use Test;
+use Red;
+use Red::Compiler::Regex;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation requires RakuAST');
+    exit;
+}
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({ my ($key, $value) = .split('='); $key => val($value) }));
+my $*RED-FALLBACK = False;
+model PropertyLiteralRow {
+    has Int $.id is serial;
+    has Str $.text is column;
+}
+my $schema = schema(PropertyLiteralRow);
+$schema.drop.create;
+LEAVE $schema.drop if $schema.DEFINITE;
+my @texts = 'A', 'z', '1', ' ', 'α', 'Ω', 'Я', 'é', '€', '中', '', 'AA';
+PropertyLiteralRow.^create(:text($_)) for @texts;
+my @cases =
+    [-> { PropertyLiteralRow.^all.grep({ .text ~~ /^ <:Block('Basic Latin')> $/ }) },
+        rx/^ <:Block('Basic Latin')> $/],
+    [-> { PropertyLiteralRow.^all.grep({ .text ~~ /^ <:!Block("Basic Latin")> $/ }) },
+        rx/^ <:!Block("Basic Latin")> $/],
+    [-> { PropertyLiteralRow.^all.grep({ .text ~~ /^ <:Script('Greek')> $/ }) },
+        rx/^ <:Script('Greek')> $/],
+    [-> { PropertyLiteralRow.^all.grep({ .text ~~ /^ <:General_Category('Uppercase_Letter')> $/ }) },
+        rx/^ <:General_Category('Uppercase_Letter')> $/],
+    [-> { PropertyLiteralRow.^all.grep({ .text ~~ /^ <:Block('Latin-1 Supplement')> $/ }) },
+        rx/^ <:Block('Latin-1 Supplement')> $/];
+for @cases.kv -> $index, $case {
+    is-deeply $case[0]().map(*.text).Set,
+        @texts.grep({ $_ ~~ $case[1] }).Set,
+        "Static property literal $index matches Raku on $backend";
+}
+my $parser = Red::Compiler::Regex.new;
+for q[/<:Block({ die 'must not execute' })>/],
+    q[/<:Block($*PROGRAM-NAME)>/], q[/<:Block('Basic Latin', 'Greek')>/] -> $source {
+    throws-like { $parser.compile($source.AST.statements[0].expression) },
+        X::Red::Compiler::Unsupported, :fatal(*.so),
+        'Nonliteral or multiple property arguments remain explicit errors';
+}
+done-testing;

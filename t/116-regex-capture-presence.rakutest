@@ -1,0 +1,77 @@
+use Test;
+use Red;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation needs the RakuAST frontend');
+    exit;
+}
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({
+        my ($key, $value) = .split('=');
+        $key => val($value)
+    }));
+my $*RED-FALLBACK = False;
+
+model CapturePresenceRow {
+    has Int $.id is serial;
+    has Str $.text is column;
+}
+my $schema = schema(CapturePresenceRow);
+$schema.drop.create;
+LEAVE $schema.drop;
+CapturePresenceRow.^create(:text($_)) for '', 'a', 'b', 'ab', 'aa', 'bbb';
+
+is-deeply CapturePresenceRow.^all.grep({ $/.defined if .text ~~ /^ a b? $/ })
+    .map(*.text).Array.Set, set('a', 'ab'), 'Whole-match presence uses native Boolean regex';
+is-deeply CapturePresenceRow.^all.grep({ $/.Bool if .text ~~ /^ a b? $/ })
+    .map(*.text).Array.Set, set('a', 'ab'), 'Whole-match Bool is supported without text extraction';
+is-deeply CapturePresenceRow.^all.grep({ !$/.defined unless .text ~~ /^ a b? $/ })
+    .map(*.text).Array.Set, set('', 'b', 'aa', 'bbb'),
+    'Failed whole-match presence works with unless';
+
+my @queries =
+    [-> { CapturePresenceRow.^all.grep({ $0.defined if .text ~~ /^ (a)? b? $/ }) }, set('a', 'ab')],
+    [-> { CapturePresenceRow.^all.grep({ $0:exists if .text ~~ /^ (a)? b? $/ }) }, set('a', 'ab')],
+    [-> { CapturePresenceRow.^all.grep({ !$0.defined if .text ~~ /^ (a)? b? $/ }) }, set('', 'b')],
+    [-> { CapturePresenceRow.^all.grep({ so $0 if .text ~~ /^ ('') b? $/ }) }, set('', 'b')],
+    [-> { CapturePresenceRow.^all.grep({ !$0 if .text ~~ /^ (a)? b? $/ }) }, set('', 'b')],
+    [-> { CapturePresenceRow.^all.grep({ $0.Bool if .text ~~ /^ ('') b? $/ }) }, set('', 'b')],
+    [-> { CapturePresenceRow.^all.grep({ $0.defined if .text ~~ /^ ('') b? $/ }) }, set('', 'b')],
+    [-> { CapturePresenceRow.^all.grep({ $<x>:exists if .text ~~ /^ [$<x>=a]? b? $/ }) }, set('a', 'ab')],
+    [-> { CapturePresenceRow.^all.grep({ !$<x>:exists if .text ~~ /^ [$<x>=a]? b? $/ }) }, set('', 'b')],
+    [-> { CapturePresenceRow.^all.grep({ $<x>.defined if .text ~~ /^ [$<x>=a]? b? $/ }) }, set('a', 'ab')],
+    [-> { CapturePresenceRow.^all.grep({ $<x>.defined if .text ~~ /^ $<x>=[''] b? $/ }) }, set('', 'b')],
+    [-> { CapturePresenceRow.^all.grep({ !$0.defined unless .text ~~ /^ (a) $/ }) }, set('', 'b', 'ab', 'aa', 'bbb')],
+    [-> { CapturePresenceRow.^all.grep({ $9.defined if .text ~~ /^ (a) $/ }) }, set()];
+for @queries.kv -> $index, $case {
+    if $backend eq 'Pg' {
+        is-deeply $case[0]().map(*.text).Array.Set, $case[1], "Capture presence query $index executes in SQL";
+    } else {
+        my $*RED-FALLBACK = True;
+        throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported, :fatal(*.so),
+            :reason(*.contains('only implemented for PostgreSQL')),
+            "Backend rejects scalar capture presence $index without row fallback";
+    }
+}
+
+subtest 'Unsupported presence forms do not change lookup semantics' => {
+    my $*RED-FALLBACK = True;
+    throws-like { CapturePresenceRow.^all.grep({ $0.defined if .text ~~ /^(a)+$/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Capture lists are not scalar nullable groups';
+    throws-like { CapturePresenceRow.^all.grep({ $<x>:delete if .text ~~ /$<x>=a/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Destructive capture lookup is not executed';
+    throws-like { CapturePresenceRow.^all.grep({ @0.defined if .text ~~ /(a)/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Positional capture arrays are not scalar groups';
+    throws-like { CapturePresenceRow.^all.grep(-> $row { %0:exists if $row.text ~~ /(a)/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Positional capture maps are not scalar groups';
+    throws-like { CapturePresenceRow.^all.grep({ $0.defined }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Presence checks require a guarded regex source';
+    throws-like { CapturePresenceRow.^all.grep({ $0:exists eq 'True' if .text ~~ /(a)/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Presence adverbs require a Boolean context';
+};
+done-testing;
