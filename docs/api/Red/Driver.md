@@ -119,6 +119,17 @@ method prepare(
 
 Prepares a DB statement
 
+### method compile-query
+
+```raku
+method compile-query(
+    Red::AST:D $query,
+    :@parameters = Code.new
+) returns Red::QueryPlan:D
+```
+
+Compile independently of the lifetime of a connection or statement.
+
 ### method is-valid-table-name
 
 ```raku
