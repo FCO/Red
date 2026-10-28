@@ -79,7 +79,7 @@ method diff(::?CLASS $b) {
         $value = 'integer' if $value ~~ /^ 'int(' \d+ ')' $/;
         $value
     }
-    if normalized(self.type) ne normalized($b.type) {
+    if self.auto-increment == $b.auto-increment and normalized(self.type) ne normalized($b.type) {
         @diffs.push: [ $!name, "+", "type", $b.type   ];
         @diffs.push: [ $!name, "-", "type", self.type ];
     }
