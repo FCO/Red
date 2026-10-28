@@ -1,0 +1,64 @@
+use Test;
+use Red;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation needs the RakuAST frontend');
+    exit;
+}
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({
+        my ($key, $value) = .split('=');
+        $key => val($value)
+    }));
+my $*RED-FALLBACK = False;
+
+model WholeTextRow {
+    has Int $.id is serial;
+    has Str $.text is column;
+}
+my $schema = schema(WholeTextRow);
+$schema.drop.create;
+LEAVE $schema.drop;
+my @texts = '', 'a', 'A', 'aa', 'AA', 'aA', 'a ', ' a', 'a b',
+    'foo', 'bar', 'foobar', 'xbarx', q[O'Reilly\book], "a\nb", '🦋', 'éé';
+WholeTextRow.^create(:text($_)) for @texts;
+my $prefix = 'foo';
+my @cases =
+    [-> { WholeTextRow.^all.grep({ $/ eq 'a' if .text ~~ /:i ^ a $/ }) }, set('a')],
+    [-> { WholeTextRow.^all.grep({ $/ eq 'a ' if .text ~~ /^ a ' '? $/ }) }, set('a ')],
+    [-> { WholeTextRow.^all.grep({ $/ eq 'a' if .text ~~ /^ a ' '? $/ }) }, set('a')],
+    [-> { WholeTextRow.^all.grep({ $/ eq '' if .text ~~ /^ '' $/ }) }, set('')],
+    [-> { WholeTextRow.^all.grep({ $/ eq 'aa' if .text ~~ /^ (a) $0 $/ }) }, set('aa')],
+    [-> { WholeTextRow.^all.grep({ $/ eq 'bar' if .text ~~ /foo (bar)?/ }) }, set()],
+    [-> { WholeTextRow.^all.grep({ $/ eq 'bar' if .text ~~ /<?after foo> bar/ }) }, set('foobar')],
+    [-> { WholeTextRow.^all.grep({ $/ eq 'foo' if .text ~~ /foo <?before bar>/ }) }, set('foobar')],
+    [-> { WholeTextRow.^all.grep({ $/ eq '🦋' if .text ~~ /^ . $/ }) }, set('🦋')],
+    [-> { WholeTextRow.^all.grep({ $/ eq q[O'Reilly\book] if .text ~~ /^ "O'Reilly\\book" $/ }) },
+        set(q[O'Reilly\book])],
+    [-> { WholeTextRow.^all.map({ .text }).grep({ $/ eq 'bar' if $_ ~~ /<?after foo> bar/ }) },
+        set('foobar')],
+    [-> { WholeTextRow.^all.grep({ $/ eq 'foobar' if .text ~~ /^ $prefix bar $/ }) }, set('foobar')],
+    [-> { WholeTextRow.^all.grep({ $/ eq 'aa' if .text ~~ /^ (a)+ $/ }) }, set('aa')],
+    [-> { WholeTextRow.^all.grep({ $/ eq '' if .text ~~ /''/ }) }, @texts.Set];
+for @cases.kv -> $index, $case {
+    if $backend eq 'SQLite' {
+        my $*RED-FALLBACK = True;
+        throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported, :fatal(*.so),
+            "SQLite rejects whole text read $index without row fallback";
+    } else {
+        is-deeply $case[0]().Array.map(-> $value { $value ~~ Str ?? $value !! $value.text }).Array.Set,
+            $case[1], "Whole text case $index preserves matching and exact comparison";
+    }
+}
+
+subtest 'Whole text does not silently ignore Match boundary markers' => {
+    my $*RED-FALLBACK = True;
+    throws-like { WholeTextRow.^all.grep({ $/ eq 'b' if .text ~~ /a <( b )>/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so), 'Unsupported Match span reads are explicit';
+};
+done-testing;

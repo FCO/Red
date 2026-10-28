@@ -22,6 +22,7 @@ use Red::Schema;
 use Red::Formatter;
 use Red::AST::Infixes;
 use Red::AST::Native;
+use Red::Compiler::RakuAST;
 
 class Red:ver<0.2.7>:api<2> {
     our %experimentals;
@@ -42,6 +43,7 @@ class Red:ver<0.2.7>:api<2> {
         Red::Schema::EXPORT::ALL::,
         Red::AST::Native::EXPORT::ALL::,
         ‘&database’ => &database,
+        '&red-compile' => &red-compile,
         |@experimentals.map(-> $feature { |experimental( $feature ) })
     }
 }
@@ -695,6 +697,80 @@ key order, uniqueness, access method, operator classes and partial predicates.
 It rejects incompatible definitions instead of silently accepting them. It does
 not add or alter CHECK or EXCLUDE constraints on an existing table; those require
 an explicit schema migration.
+
+=head4 Compiled regex filters
+
+Red exports the optional compiler. On the RakuAST frontend, invoke it at CHECK:
+
+=begin code :lang<raku>
+use Red:api<2>;
+CHECK red-compile;
+
+my @users = User.^all.grep({ .name ~~ /^ 'Ana'/ });
+my @codes = User.^all.grep({ .code ~~ /:i ^ <[a..z]>+ \d ** 2 $/ });
+=end code
+
+Recent Rakudo versions may use RakuAST by default. Set C<RAKUDO_RAKUAST=1> only
+when selecting it is necessary; the frontend alone does not enable C<red-compile>.
+
+Regex literals in C<grep> and C<first> are compiled to SQL, including single
+C<.match(/.../)> predicates and regex callables on scalar projections. PostgreSQL uses its
+ARE engine and MySQL 8 uses C<REGEXP_LIKE>. SQLite rejects regex by default;
+opt in with C<database "SQLite", :use-experimental-regex>. Its experimental
+implementation uses string operations for
+literal-only patterns or a recursive SQL state machine for general patterns,
+without an extension or Raku callback. Pattern data are bound as
+parameters. Primitive numeric inputs use SQL text formatting; Boolean inputs
+retain Raku's C<True>/C<False> spelling. Direct nullable columns and unsupported
+composite/custom stringifiers are rejected.
+
+The supported core includes literals, string/line/word anchors, groups,
+alternatives, positive and negative character classes, static Unicode
+properties, static C<E<lt>at(n)E<gt>> positions, Boolean Match markers,
+greedy/frugal quantifiers, open/finite repetition bounds, separators,
+C<:s> significant whitespace and lookarounds. Nonrecursive lexical regex rules
+without parameters, traits or phasers can be expanded from their syntax tree.
+C<token> and C<rule> declarations are also expanded when their operations are
+supported by the chosen engine. MySQL supports ratcheted quantifiers through
+atomic matching; PostgreSQL and SQLite reject operations requiring that lowering.
+Regular conjunctions C<&> and C<&&> use a product automaton, preserving the common
+matched span. Native conjunction lowering has a 128-state/64KiB pattern limit.
+Case modifiers work at the root on all three engines; scoped case modifiers
+also work on MySQL and SQLite. PostgreSQL bounds above 255 are lowered into
+smaller native blocks, subject to pattern expansion and capture limits.
+SQLite limits each compiled state machine to 4096 states.
+
+Positional capture references are supported by PostgreSQL and MySQL within
+engine limits. MySQL keeps capture references exact under C<:i>; PostgreSQL
+rejects references in that case mode. MySQL supports references within a lookahead's own capture scope;
+PostgreSQL and SQLite reject those references. Local scalar references survive
+repeated group/rule scopes; repeated capture-list references are rejected;
+Raku capture lists cannot be replaced by a single native backreference. SQLite
+rejects regex backreferences. PostgreSQL supports guarded scalar capture text
+comparisons with C<$0>, literal named captures and C<$/> after a direct regex
+condition, including predicate C<if>/C<unless> modifiers. Quote spaces that must
+match input. Missing captures produce SQL NULL; capture arrays and Match object
+methods remain unsupported. MySQL 8.0.17+ also supports whole-match C<$/> text
+using C<REGEXP_SUBSTR>, with exact case and trailing-space comparison. Whole-match C<$/.defined> and C<$/.Bool> work on all
+matching backends. PostgreSQL also supports scalar capture presence via
+C<.defined>, C<.Bool> and Boolean C<:exists>, preserving empty versus absent groups.
+No Raku Match object is returned or populated.
+
+Matching uses database character/collation semantics, so normalization,
+grapheme boundaries and case folding can differ from Raku. Static Unicode
+properties use the compiling Rakudo's Unicode data. Literal scalar/array
+interpolation is bound once as escaped data; it does not evaluate regex source.
+Interpolation inside inlined named rules is rejected until their closure frames
+can be retained safely. SQLite's built-in case
+folding and shorthand classes are ASCII-oriented. SQL NULL semantics apply to
+expressions producing NULL; text containing NUL is outside the supported domain.
+
+Unsupported regex syntax and unavailable driver features throw a fatal
+C<X::Red::Compiler::Unsupported> diagnostic, even if C<$*RED-FALLBACK> is enabled.
+Code blocks, executable regex interpolation, recursive grammars and unsupported
+capture behavior are never silently replaced with in-memory filtering. Ordinary Raku
+collections retain their normal regex behavior. See C<docs/regex-support.md>
+for the driver matrix and remaining work.
 
 =head4 PostgreSQL ranges, regex and exclusion constraints
 

@@ -1,0 +1,85 @@
+use Test;
+use Red;
+use Red::Compiler::Regex;
+use Red::Regex;
+use Red::AST::RegexMatch;
+use Red::AST::Value;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation needs the RakuAST frontend');
+    exit;
+}
+
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({
+        my ($key, $value) = .split('=');
+        $key => val($value)
+    }));
+my $*RED-FALLBACK = False;
+
+my @patterns = q[/^ a ** 256 $/], q[/^ a ** 256..260 $/],
+    q[/^ a ** 256..* $/], q[/^ a ** 256^..^260 $/], q[/^ a ** 0..260 $/],
+    q[/^ a **? 256..260 $/], q[/^ a **? 256..* $/],
+    q[/^ [a b?] ** 256 $/], q[/^ a ** 510 $/], q[/^ a ** 1024 $/];
+my @texts = (255, 256, 257, 259, 260, 261, 510, 1024).map({ 'a' x $_ });
+@texts.push: 'ab' x 256;
+for @patterns -> $source {
+    subtest $source => {
+        my $quoted = $source.AST.statements[0].expression;
+        my $regex = Red::Compiler::Regex.new.compile($quoted);
+        my $native = $quoted.compile-time-value;
+        for @texts -> $text {
+            my Int $*bind-counter = 0;
+            my $sql = $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value($text), $regex));
+            is so($*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>),
+                so($text ~~ $native), "{$text.chars} characters";
+        }
+    };
+}
+
+subtest 'Large repeats preserve external capture references' => {
+    for q[/^ (a) $0 ** 256 $/], q[/^ $<part>=[a ** 256] $<part> $/] -> $source {
+        my $quoted = $source.AST.statements[0].expression;
+        my $regex = Red::Compiler::Regex.new.compile($quoted);
+        if $backend eq 'SQLite' {
+            throws-like {
+                my Int $*bind-counter = 0;
+                $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value('a'), $regex))
+            }, X::Red::Compiler::Unsupported, :fatal(*.so),
+                'SQLite does not approximate capture references';
+        } else {
+            my $native = $quoted.compile-time-value;
+            for 256, 257, 511, 512, 513 -> $length {
+                my $text = 'a' x $length;
+                my Int $*bind-counter = 0;
+                my $sql = $*RED-DB.translate(
+                    Red::AST::RegexMatch.checked(ast-value($text), $regex));
+                is so($*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>),
+                    so($text ~~ $native), "$source on $length characters";
+            }
+        }
+    }
+};
+
+subtest 'Explicit lowering resource and capture diagnostics' => {
+    my $capture = ['capture', 0, ['literal', 'a']];
+    my $unsafe = Red::Regex.new(:tree(('sequence',
+        ['repeat', $capture, 256, 256, False], ['backreference', (0,).List]).List));
+    throws-like { $unsafe.render(:dialect<Pg>) }, X::Red::Compiler::Unsupported,
+        :fatal(*.so), 'Direct AST users cannot duplicate referenced physical captures';
+    my $deep = Red::Regex.new(:tree(('repeat', ['literal', 'a'],
+        255 ** 18, 255 ** 18, False).List));
+    throws-like { $deep.render(:dialect<Pg>) }, X::Red::Compiler::Unsupported,
+        :fatal(*.so), 'Excessive nesting is a compiler diagnostic';
+    my $wide = Red::Regex.new(:tree(('repeat', ['literal', 'a' x 40000],
+        256, 256, False).List));
+    throws-like { $wide.render(:dialect<Pg>) }, X::Red::Compiler::Unsupported,
+        :fatal(*.so), 'Excessive expanded pattern text is a compiler diagnostic';
+};
+
+done-testing;

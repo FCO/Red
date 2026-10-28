@@ -537,6 +537,47 @@ model Measurement {
 
 `.^create-indexes` adds indexes to existing tables and checks existing names, key order, uniqueness, access method, operator classes and partial predicates. It rejects incompatible definitions instead of silently accepting them. It does not add or alter CHECK or EXCLUDE constraints on an existing table; those require an explicit schema migration.
 
+#### Compiled regex filters
+
+Enable the optional compiler explicitly; selecting RakuAST alone does not enable it:
+
+```raku
+use Red:api<2>;
+CHECK red-compile;
+
+my $prefix = 'a.';
+my @users = User.^all.grep({ .name ~~ /^ $prefix/ });
+```
+
+Recent Rakudo versions use RakuAST by default; set `RAKUDO_RAKUAST=1` when needed.
+PostgreSQL and MySQL use native regex engines. SQLite rejects regex by default;
+opt in with `database "SQLite", :use-experimental-regex`. Its experimental implementation uses string operations for
+literal-only patterns and recursive SQL automata for more general patterns,
+without a regex extension or in-memory row filtering. Literal scalar/array
+interpolation is escaped and bound as data. Primitive numeric and Boolean
+subjects are supported without invoking custom Raku stringifiers. The compiler also supports classes,
+static Unicode properties, quantifiers, separators, lookarounds, conjunction and
+safe lexical rule expansion, subject to each engine's limits.
+
+Unsupported compiled regexes throw an explicit diagnostic even when fallback is
+enabled. Matching is Boolean and uses database character/collation semantics;
+Raku Match objects, capture side effects and arbitrary regex code are not run in
+SQL. PostgreSQL also supports guarded capture text in predicate comparisons:
+
+```raku
+Bla.^all.grep({ $0 eq "bla ble" if .ble ~~ /^ ('bla ' \w+)/ });
+Bla.^all.grep({ $/ eq "bla ble" if .ble ~~ /^ 'bla ' \w+/ });
+```
+
+`$0` requires a parenthesized capture; `$/` reads the whole match. Quote spaces
+that must match input, since unquoted regex whitespace is normally ignored.
+Missing capture groups produce SQL NULL. MySQL 8.0.17+ also supports whole-match
+`$/` text via `REGEXP_SUBSTR`; it still rejects scalar group reads. SQLite rejects
+capture text reads explicitly. Guarded `$/.defined` / `$/.Bool` use native Boolean matching on
+all matching backends; PostgreSQL additionally supports scalar capture presence
+with `.defined`, `.Bool` and Boolean `:exists`. Empty captures count as present.
+See the [driver matrix and current limitations](docs/regex-support.md).
+
 #### PostgreSQL ranges, regex and exclusion constraints
 
 `sql-operator` builds an AST for PostgreSQL range and regex operators such as `@> `, `<@ `, `&&` and `~*`. Values are bound in queries and quoted as literals in schema DDL. `sql-range` builds a native range constructor, defaulting to `numrange` with `[)` bounds. Its `:type` can also select `int4range`, `int8range`, `tsrange`, `tstzrange` or `daterange`.

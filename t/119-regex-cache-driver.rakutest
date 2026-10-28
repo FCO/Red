@@ -1,0 +1,60 @@
+use Test;
+use Red;
+use Red::Driver::Cache;
+use Red::Driver::SQLite;
+use Red::Driver::Cache::Memory;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Compiled regex diagnostics require the RakuAST frontend');
+    exit;
+}
+
+model CachedRegexRow {
+    has Int $.id is serial;
+    has Str $.text is column;
+}
+
+# No table exists on this driver: a missing-table error would reveal a bypass.
+for False, True -> $fallback {
+    my $*RED-FALLBACK = $fallback;
+    my $*RED-DB = cache('Memory', 'SQLite');
+    for -> { CachedRegexRow.^all.grep({ False && .text ~~ /a/ }) },
+        -> { CachedRegexRow.^all.grep({ True || .text ~~ /a/ }) },
+        -> { CachedRegexRow.^all.grep({ .text ~~ /a/ }) } -> &query {
+        throws-like { query().elems }, X::Red::Compiler::Unsupported, :fatal(*.so),
+            :reason(*.contains(':use-experimental-regex')),
+            "A cache wrapper retains the SQLite gate with fallback=$fallback";
+    }
+}
+
+my $enabled = database 'SQLite', :use-experimental-regex;
+my $*RED-DB = $enabled;
+my $*RED-FALLBACK = False;
+my $schema = schema(CachedRegexRow);
+$schema.drop.create;
+LEAVE $schema.drop if $schema.DEFINITE;
+CachedRegexRow.^create(:text($_)) for 'a', 'aa', 'b';
+my $wrapped = cache('Memory', $enabled);
+
+sub matching-text($driver) {
+    CachedRegexRow.^all.with($driver).grep({ .text ~~ /^ a+ $/ })
+        .map(*.text).Set
+}
+is-deeply matching-text($wrapped), set('a', 'aa'),
+    'The cache wrapper permits native SQL regex with the underlying opt-in';
+is-deeply matching-text($wrapped), set('a', 'aa'),
+    'Reusing the compiled callback retains correct matching results';
+my $disabled = cache('Memory', 'SQLite');
+throws-like { matching-text($disabled) }, X::Red::Compiler::Unsupported,
+    :fatal(*.so), :reason(*.contains(':use-experimental-regex')),
+    'A reused callback checks the newly selected underlying driver';
+my $nested = cache('Memory', $disabled);
+throws-like {
+    CachedRegexRow.^all.with($nested).grep({ True || .text ~~ /a/ }).elems
+}, X::Red::Compiler::Unsupported, :fatal(*.so),
+    :reason(*.contains(':use-experimental-regex')),
+    'Nested wrappers retain the underlying SQLite gate';
+
+done-testing;

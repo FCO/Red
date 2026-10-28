@@ -125,7 +125,7 @@ subtest 'Compiled templates do not execute the original callback' => {
     is-deeply $query.Array, [1, 2, 3, 4], 'The original callback remains dormant';
     sub increment($value) { $value + 1 }
     is-deeply CompiledRow.^all.map({ increment(.number) }).Array, [2, 3, 4, 5],
-        'Unsupported calls retain existing symbolic evaluation';
+        'Plain helper calls retain their existing SQL results';
     {
         multi infix:<+>(Red::AST $left, Int $right) {
             Red::AST::Sum.new($left, ast-value(100 + $right))

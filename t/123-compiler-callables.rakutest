@@ -1,0 +1,153 @@
+use Test;
+use Red;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile(:warn) if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Callable compilation requires RakuAST');
+    exit;
+}
+my $*RED-DB = database 'SQLite';
+my $*RED-FALLBACK = False;
+model CompiledCallableRow {
+    has Int $.id is serial;
+    has Int $.value is column;
+}
+CompiledCallableRow.^create-table;
+CompiledCallableRow.^create(:value($_)) for 1..3;
+
+sub values($query) { $query.Array.map({ $_ ~~ CompiledCallableRow ?? .value !! $_ }).Array }
+sub verify(&query, @expected, Str $description, Bool :$fallback = False) {
+    my @events;
+    my @warnings;
+    my $*RED-COMPILER-REPORT = -> *%event { @events.push: %event };
+    CONTROL { when CX::Warn { @warnings.push: .message; .resume } }
+    is-deeply values(query()), @expected, $description;
+    if $fallback {
+        ok @events.grep({ .<status> eq 'fallback' }).elems,
+            "$description uses the traditional path";
+    } else {
+        ok @events.grep({ .<status> eq 'used' && .<engine> eq 'direct' }).elems,
+            "$description uses the direct compiler";
+        is @events.grep({ .<status> eq 'fallback' }).elems, 0,
+            "$description has no symbolic fallback";
+        is @warnings.elems, 0, "$description has no compiler warning";
+    }
+}
+
+sub above-one($value) { $value > 1 }
+sub helper-query { CompiledCallableRow.^all.grep({ above-one(.value) }) }
+verify({ helper-query() }, [2, 3], 'A scalar helper compiles');
+sub identity($value) { $value }
+verify({ CompiledCallableRow.^all.map({ identity(.value) }) }, [1, 2, 3],
+    'An identity helper preserves a scalar expression');
+verify({ CompiledCallableRow.^all.map(&identity) }, [1, 2, 3],
+    'An identity callback preserves the model projection');
+sub nested($value) { above-one($value + 1) }
+verify({ CompiledCallableRow.^all.grep({ nested(.value) }) }, [1, 2, 3],
+    'Nested helpers compile');
+sub row-predicate($row) { $row.value > 1 }
+verify({ CompiledCallableRow.^all.grep(&row-predicate) }, [2, 3],
+    'A named routine callback compiles');
+my &predicate = -> $row { $row.value > 1 };
+sub named-query { CompiledCallableRow.^all.grep(&predicate) }
+verify({ named-query() }, [2, 3], 'A lexical pointy callback compiles');
+my &block = { .value > 1 };
+verify({ CompiledCallableRow.^all.grep(&block) }, [2, 3],
+    'A lexical implicit-topic callback compiles');
+my &placeholder = { $^row.value > 1 };
+verify({ CompiledCallableRow.^all.grep(&placeholder) }, [2, 3],
+    'A named placeholder callback compiles');
+my &projection = -> $row { $row.value * 2 };
+verify({ CompiledCallableRow.^all.map(&projection) }, [2, 4, 6],
+    'A named scalar projection compiles');
+my &descending = -> $row { -$row.value };
+verify({ CompiledCallableRow.^all.sort(&descending) }, [3, 2, 1],
+    'A named ordering callback compiles');
+verify({ CompiledCallableRow.^all.first(&row-predicate) }, [2],
+    'A named first predicate compiles');
+sub between($value, $minimum, $maximum) {
+    $value > $minimum && $value < $maximum
+}
+verify({ CompiledCallableRow.^all.grep({ between(.value, 1, 3) }) }, [2],
+    'Multiple positional helper arguments compile');
+
+&predicate = -> $row { $row.value > 2 };
+verify({ named-query() }, [3], 'A reassigned callback retains its current body', :fallback);
+my $wrapper = &above-one.wrap(-> $value { $value > 2 });
+verify({ helper-query() }, [3], 'A wrapped helper retains its wrapper', :fallback);
+&above-one.unwrap($wrapper);
+verify({ helper-query() }, [2, 3], 'An unwrapped helper compiles again');
+
+my $minimum = 1;
+my &captured = -> $row { $row.value > $minimum };
+{
+    my $minimum = 2;
+    verify({ CompiledCallableRow.^all.grep(&captured) }, [2, 3],
+        'A captured closure retains its original lexical frame', :fallback);
+}
+sub captured-helper($value) { $value > $minimum }
+{
+    my $minimum = 2;
+    verify({ CompiledCallableRow.^all.grep({ captured-helper(.value) }) }, [2, 3],
+        'A helper closure retains its original lexical frame', :fallback);
+}
+sub recursive($value, $depth) {
+    $depth ?? recursive($value, $depth - 1) !! $value > 1
+}
+verify({ CompiledCallableRow.^all.grep({ recursive(.value, 1) }) }, [2, 3],
+    'A recursive helper retains traditional evaluation', :fallback);
+
+sub constrained-return($value --> Mu) { $value > 1 }
+verify({ CompiledCallableRow.^all.grep({ constrained-return(.value) }) }, [2, 3],
+    'An explicit return annotation retains traditional evaluation', :fallback);
+sub optional-argument($value, $minimum = 1) { $value > $minimum }
+verify({ CompiledCallableRow.^all.grep({ optional-argument(.value) }) }, [2, 3],
+    'A default argument retains traditional evaluation', :fallback);
+
+my $effects = 0;
+sub tick { $effects++; 1 }
+sub add-twice($value, $bias) { $value + $bias + $bias }
+sub effect-query { CompiledCallableRow.^all.map({ add-twice(.value, tick()) }) }
+is $effects, 0, 'CHECK does not execute captured argument code';
+verify({ effect-query() }, [3, 4, 5], 'A repeated parameter reads its argument once');
+is $effects, 1, 'The captured argument ran once during query construction';
+my $effect-wrapper = &add-twice.wrap(-> $value, $bias { $value + $bias * 3 });
+$effects = 0;
+verify({ effect-query() }, [4, 5, 6],
+    'Guard failure occurs before effectful capture evaluation', :fallback);
+is $effects, 1, 'Fallback does not execute the argument twice';
+&add-twice.unwrap($effect-wrapper);
+
+subtest 'Precompiled callable templates retain routine identity' => {
+    my $library = $?FILE.IO.parent.parent.add('lib').absolute;
+    my $fixtures = $?FILE.IO.parent.add('lib').absolute;
+    my $program = q:to/PROGRAM/;
+        use Red;
+        use CompilerCallableFixture;
+        model CallableFixtureRow {
+            has Int $.value is column;
+        }
+        my $*RED-DB = database 'SQLite';
+        my $*RED-FALLBACK = False;
+        CallableFixtureRow.^create-table;
+        CallableFixtureRow.^create(:value($_)) for 1..3;
+        my @events;
+        my $*RED-COMPILER-REPORT = -> *%event { @events.push: %event };
+        say fixture-helper-query(CallableFixtureRow).Array.map(*.value).join(',');
+        say fixture-named-query(CallableFixtureRow).Array.map(*.value).join(',');
+        say @events.grep({ .<status> eq 'used' && .<engine> eq 'direct' }).elems;
+        say @events.grep({ .<status> eq 'fallback' }).elems;
+        PROGRAM
+    for ^2 -> $invocation {
+        my $process = run $*EXECUTABLE, "-I$library", "-I$fixtures", '-e', $program,
+            :out, :err;
+        my $output = $process.out.slurp-rest;
+        my $errors = $process.err.slurp-rest;
+        is $process.exitcode + $process.signal, 0, "Module invocation $invocation succeeds";
+        diag $errors if $process.exitcode || $process.signal;
+        is $output, "2,3\n2,3\n2\n0\n",
+            'Loaded module queries use direct factories without symbolic fallback';
+    }
+};
+done-testing;

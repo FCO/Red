@@ -1,4 +1,6 @@
 use DBIish;
+use Red::AST::RegexMatch;
+use Red::Driver::SQLite::Regex;
 need DBDish::SQLite::Connection;
 use Red::AST;
 use Red::Driver;
@@ -26,6 +28,7 @@ use Red::Index;
 unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 
 has $.database = q<:memory:>;
+has Bool $.use-experimental-regex = False;
 has DBDish::SQLite::Connection $!dbh;
 
 method schema-reader { Red::Driver::SQLite::SchemaReader }
@@ -64,7 +67,9 @@ method indexes-for-table(Str $table --> Array) {
 #| Data accepted by the SQLite driver constructor:
 #| dbh     : DBDish::SQLite object
 #| database: File name or C<:memory:> to a in memory DB (default)
-submethod BUILD(DBDish::SQLite::Connection :$!dbh, Str :$!database = q<:memory:> ) {
+#| use-experimental-regex: Enable experimental SQL regex translation (default False)
+submethod BUILD(DBDish::SQLite::Connection :$!dbh, Str :$!database = q<:memory:>,
+    Bool :$!use-experimental-regex = False) {
 }
 
 submethod TWEAK() {
@@ -124,6 +129,42 @@ multi method translate(Red::AST::ChangeColumn $_, $context?) {
     } {
         .nullable ?? "DROP NOT NULL" !! "SET NOT NULL"
     }" => []
+}
+
+method check-regex-support {
+    X::Red::Compiler::Unsupported.new(:fatal,
+        :reason('SQLite regex is experimental; enable :use-experimental-regex on the driver')).throw
+        unless $!use-experimental-regex;
+}
+
+multi method translate(Red::AST::RegexMatch $_, $context?) {
+    self.check-regex-support;
+    X::Red::Compiler::Unsupported.new(:fatal,
+        :reason('SQLite requires a structured regex, not a PostgreSQL pattern')).throw
+        unless .pattern ~~ Red::Regex;
+    my $translated = self.translate(.value, .value ~~ Red::AST::Value ?? 'bind' !! $context);
+    my $subject = "CAST({$translated.key} AS TEXT)" => $translated.value;
+    my $literal = .pattern.literal-filter;
+    if $literal.defined {
+        my $text = $literal<text>;
+        X::Red::Compiler::Unsupported.new(:fatal,
+            :reason('SQL regex does not support NUL literals')).throw if $text.contains("\0");
+        my $value = $literal<ignore> ?? "lower({$subject.key})" !! $subject.key;
+        my $parameter = $literal<ignore> ?? 'lower(?)' !! '?';
+        my $mode = !$text.chars && $literal<mode> ne 'exact' ?? 'contains' !! $literal<mode>;
+        my @bind = |$subject.value, $text;
+        my $sql = do given $mode {
+            when 'exact' { "$value = $parameter COLLATE BINARY" }
+            when 'prefix' { "instr($value, $parameter) = 1" }
+            when 'suffix' {
+                @bind.push: $text;
+                "substr($value, -length($parameter)) = $parameter COLLATE BINARY"
+            }
+            default { "instr($value, $parameter) > 0" }
+        };
+        return "($sql)" => @bind;
+    }
+    Red::Driver::SQLite::Regex.new(:regex(.pattern)).translate($subject)
 }
 
 multi method translate(Red::AST::Value $_ where .type ~~ Bool, $context? where $_ ne "bind") {

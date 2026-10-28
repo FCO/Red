@@ -1,0 +1,109 @@
+use Test;
+use Red;
+use Red::Compiler::Regex;
+use Red::AST::RegexMatch;
+use Red::AST::Value;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+unless HAS-RAKUAST {
+    plan :skip-all('Regex compilation needs the RakuAST frontend');
+    exit;
+}
+my @configuration = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend,
+    |($backend eq 'SQLite' ?? { :use-experimental-regex } !! {}),
+    |%(@configuration.map({
+        my ($key, $value) = .split('=');
+        $key => val($value)
+    }));
+my $*RED-FALLBACK = False;
+
+my regex pair { (a) $0 };
+# Static Regex objects avoid a repeated-scope compile-time-value verifier issue.
+my @cases =
+    q[/^ ((a) $0)+ $/] => rx/^ ((a) $0)+ $/,
+    q[/^ ((a) $0) ** 2 $/] => rx/^ ((a) $0) ** 2 $/,
+    q[/^ ($<x>=a $<x>)+ $/] => rx/^ ($<x>=a $<x>)+ $/,
+    q[/^ [$<piece>=((a) $0)]+ $/] => rx/^ [$<piece>=((a) $0)]+ $/,
+    q[my regex pair { (a) $0 }; /^ <pair>+ $/] => rx/^ <pair>+ $/,
+    q[/^ [<?before [(a) $0]> aa] ** 2 $/] => rx/^ [<?before [(a) $0]> aa] ** 2 $/,
+    q[/^ <?before [(a) $0]> ** 2 aa $/] => rx/^ <?before [(a) $0]> ** 2 aa $/,
+    q[/^ (<?before [(a) $0]> (a) $0)+ $/] => rx/^ (<?before [(a) $0]> (a) $0)+ $/;
+my @texts = '', 'a', 'aa', 'aaa', 'aaaa', 'aaaaaa', 'aabb', 'bbaa', 'bb';
+for @cases -> $case {
+    subtest $case.key => {
+        my $quoted = $case.key.AST.statements[*-1].expression;
+        my $regex = Red::Compiler::Regex.new.compile($quoted);
+        my Bool $look = False;
+        $regex.walk(-> $part { $look = True if $part[0] eq 'look' });
+        if $backend eq 'SQLite' || ($backend eq 'Pg' && $look) {
+            throws-like {
+                my Int $*bind-counter = 0;
+                $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value('aa'), $regex))
+            }, X::Red::Compiler::Unsupported, :fatal(*.so),
+                'This engine does not approximate the reference behavior';
+        } else {
+            for @texts -> $text {
+                my Int $*bind-counter = 0;
+                my $sql = $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value($text), $regex));
+                is so($*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>),
+                    so($text ~~ $case.value), $text.raku;
+            }
+        }
+    };
+}
+
+subtest 'Repeated capture lists do not become local scalar references' => {
+    for q[/^ ((a) $0)+ $0 $/], q[/^ ((a)+ $0)+ $/],
+        q[my regex pair { (a) $0 }; /^ <pair>+ $<pair> $/],
+        q[/^ [$<x>=[(a) $0]]+ $/], q[/^ <?before [(a) $0]>+ aa $/] -> $source {
+        throws-like {
+            Red::Compiler::Regex.new.compile($source.AST.statements[*-1].expression)
+        }, X::Red::Compiler::Unsupported, :fatal(*.so), $source;
+    }
+};
+
+subtest 'Literal binding descends through capture scopes' => {
+    my $source = q[my $prefix = 'unused'; /^ (($prefix) $0)+ $/];
+    my $pattern = Red::Compiler::Regex.new.compile($source.AST.statements[*-1].expression);
+    for 'a', 'a.' -> $prefix {
+        my $regex = $pattern.instantiate(($prefix,).List);
+        my $native = rx/^ (($prefix) $0)+ $/;
+        if $backend eq 'SQLite' {
+            throws-like {
+                my Int $*bind-counter = 0;
+                $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value('aa'), $regex))
+            }, X::Red::Compiler::Unsupported, :fatal(*.so),
+                'SQLite retains its explicit reference restriction after binding';
+        } else {
+            for '', 'aa', 'aaaa', 'a.a.', 'a.a.a.a.', 'aXaX' -> $text {
+                my Int $*bind-counter = 0;
+                my $sql = $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value($text), $regex));
+                is so($*RED-DB.execute("SELECT {$sql.key} AS matched", |$sql.value).row<matched>),
+                    so($text ~~ $native), "$prefix on {$text.raku}";
+            }
+        }
+    }
+};
+
+model RepeatedScopeRow {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+my $schema = schema(RepeatedScopeRow);
+$schema.drop.create;
+LEAVE $schema.drop;
+RepeatedScopeRow.^create(:name($_)) for <aa aaa aaaa>;
+if $backend eq 'SQLite' {
+    my $*RED-FALLBACK = True;
+    throws-like { RepeatedScopeRow.^all.grep({ .name ~~ /^ ((a) $0)+ $/ }).elems },
+        X::Red::Compiler::Unsupported, :fatal(*.so),
+        'Unsupported repeated-scope references cannot cause row fallback';
+} else {
+    is-deeply RepeatedScopeRow.^all.grep({ .name ~~ /^ ((a) $0)+ $/ })
+        .map(*.name).Array.Set, set('aa', 'aaaa'),
+        'Repeated inner scalar references execute through the exported compiler';
+}
+done-testing;

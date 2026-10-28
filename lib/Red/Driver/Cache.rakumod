@@ -51,6 +51,8 @@ multi method set-on-cache(Red::AST, @) { ... }
 
 has Red::Driver  $.driver is required;
 
+method check-regex-support { $!driver.?check-regex-support }
+
 multi method default-type-for(Red::Column $a --> Str:D) { $!driver.default-type-for($a)      }
 multi method is-valid-table-name(|c)                    { $!driver.is-valid-table-name(|c)   }
 multi method type-by-name(|c)                           { $!driver.type-by-name(|c)          }

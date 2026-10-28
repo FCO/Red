@@ -1,6 +1,30 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Compile plain lexical helpers and named callbacks with runtime identity guards and precompilation coverage.
+    - Translate scalar and whole capture .chars with native character counts and zero for absent captures.
+    - Preserve explicit capture string coercion through SQL text method chains.
+    - Compile static parenthesized Unicode property values, including block names with spaces.
+    - Preserve SQLite regex capability checks through cache driver wrappers.
+    - Enforce the SQLite regex opt-in before predicate simplification and cache reuse.
+    - Track unambiguous regex capture sources through logical predicates and nested guards.
+    - Translate MySQL whole-match text reads with REGEXP_SUBSTR and exact UTF-8 comparison.
+    - Add guarded whole-match presence on all regex backends and scalar capture presence on PostgreSQL.
+    - Compile predicate if/unless modifiers and PostgreSQL guarded capture-text comparisons.
+    - Add positional, named and whole-match SQL reads with isolated capture metadata and explicit unsupported diagnostics.
+    - Preserve local scalar capture references through repeated group, rule and lookahead scopes.
+    - Preserve exact MySQL capture references under :i and diagnose the unsupported PostgreSQL mode.
+    - Enable native MySQL references within isolated lookahead capture scopes.
+    - Add named lookaheads and same-character assertions with explicit backend capability errors.
+    - Compile literal at(n) position assertions and Boolean Match boundary markers.
+    - Lower PostgreSQL regex repetition bounds above 255 into native bounded blocks.
+    - Compile implicit subrule-name references and reject duplicate capture-list references.
+    - Compile assertion capture aliases, including lexical rules and named references.
+    - Export red-compile from Red so query compilation needs only use Red.
+    - Require :use-experimental-regex to enable compiled regex predicates on SQLite.
+    - Compile literal regex predicates to native PostgreSQL/MySQL SQL and SQLite recursive SQL.
+    - Add a data-only regex representation, static Unicode properties, named captures/references, lexical rule expansion and driver capability checks.
+    - Diagnose unsupported compiled regexes without executing a symbolic or in-memory fallback.
     - Promote has-one, refreshable and is-handling to stable features.
     - Continue accepting their historical experimental flags as no-ops for compatibility.
     - Avoid temporary column allocations during field access, key checks and row hydration.

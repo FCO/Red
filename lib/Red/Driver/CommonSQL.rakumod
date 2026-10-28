@@ -1,3 +1,6 @@
+use Red::AST::RegexMatch;
+use Red::AST::RegexCapture;
+use Red::AST::RegexChars;
 use Red::AST::ProductSource;
 use Red::AST;
 use Red::Model;
@@ -383,6 +386,49 @@ method translate-query-parameter(Red::AST::BoundFilter::Parameter $parameter, $c
 
 multi method translate(Red::AST::BoundFilter::Parameter $parameter, $context?) {
     self.translate-query-parameter($parameter, $context)
+}
+
+multi method translate(Red::AST::RegexChars $_, $context?) {
+    my $text = self.translate(.value, $context);
+    "COALESCE(CHAR_LENGTH({$text.key}), 0)" => $text.value
+}
+
+multi method translate(Red::AST::RegexCapture $_, $context?) {
+    my $whole = .selection ~~ Str && .selection eq '$/';
+    unless $whole && self.driver-name.starts-with('Red::Driver::MySQL') {
+        my $kind = $whole ?? 'whole regex text' !! 'scalar regex capture text';
+        my $drivers = $whole ?? 'PostgreSQL and MySQL' !! 'PostgreSQL';
+        X::Red::Compiler::Unsupported.new(:fatal,
+            :reason("Reading $kind is only implemented for $drivers")).throw;
+    }
+    my $regex = .match.pattern;
+    X::Red::Compiler::Unsupported.new(:fatal,
+        :reason('Reading whole matches requires a structured regex')).throw
+        unless $regex ~~ Red::Regex;
+    my Bool $boundary = False;
+    $regex.walk(-> $part { $boundary = True if $part[0] eq 'match-boundary' });
+    X::Red::Compiler::Unsupported.new(:fatal,
+        :reason('Whole match reads with Match boundary markers are not implemented')).throw
+        if $boundary;
+    my $subject = self.translate(.match.value,
+        .match.value ~~ Red::AST::Value ?? 'bind' !! $context);
+    my $pattern = self.translate(ast-value($regex.render(:dialect<MySQL>)), 'bind');
+    # Keep a Unicode text result while comparing case and trailing spaces exactly.
+    "(CONVERT(REGEXP_SUBSTR({$subject.key}, {$pattern.key}, 1, 1, 'cn') USING utf8mb4)"
+        ~ ' COLLATE utf8mb4_0900_bin)' => [|$subject.value, |$pattern.value]
+}
+
+multi method translate(Red::AST::RegexMatch $_, $context?) {
+    # The MySQL driver is an external distribution using this shared role.
+    X::Red::Compiler::Unsupported.new(:fatal,
+        :reason("Compiled SQL regex is not supported by {self.driver-name}")).throw
+        unless self.driver-name.starts-with('Red::Driver::MySQL');
+    X::Red::Compiler::Unsupported.new(:fatal,
+        :reason('MySQL requires a structured regex, not a PostgreSQL pattern')).throw
+        unless .pattern ~~ Red::Regex;
+    my $subject = self.translate(.value, .value ~~ Red::AST::Value ?? 'bind' !! $context);
+    my $pattern = self.translate(ast-value(.pattern.render(:dialect<MySQL>)), 'bind');
+    "REGEXP_LIKE({$subject.key}, {$pattern.key}, 'cn')" => [|$subject.value, |$pattern.value]
 }
 
 multi method translate(Red::AST::Native::Operator $_, $context?) {

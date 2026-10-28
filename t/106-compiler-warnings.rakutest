@@ -28,7 +28,7 @@ sub warnings(&task --> List:D) {
     @messages.List
 }
 
-sub increment($value) { $value + 1 }
+sub increment($value is copy) { $value + 1 }
 sub unsupported-query() { CompilerWarningRow.^all.map({ increment(.number) }) }
 
 subtest 'Warnings are opt-in and runtime dynamic values are observed' => {
@@ -88,7 +88,7 @@ subtest 'Only query compilation fallback is warned' => {
             CompilerWarningRow.^all.map({ .number }, :red-ast($supported)).Array;
         }).elems, 0, 'Disabling the SQL plan cache is not a compilation failure';
     }
-    my &order = -> $row { $row.number };
+    my &order = -> $row { increment($row.number) };
     my @order-warnings = warnings({ CompilerWarningRow.^all.sort(&order) });
     is @order-warnings.elems, 1, 'An uncompiled sort also warns';
     ok @order-warnings[0].contains('red-compile: sort'), 'Sort is identified';
@@ -135,7 +135,7 @@ subtest 'The CHECK parameter overrides dynamic and environment configuration' =>
             WarningParameterRow.^create(:number($_)) for 1..3;
         }
         my $*RED-COMPILER-WARN = DYNAMIC_SETTING;
-        sub increment($value) { $value + 1 }
+        sub increment($value is copy) { $value + 1 }
         sub dormant($value) { $value }
         sub query() { WarningParameterRow.^all.map({ increment(.number) }) }
         if False { WarningParameterRow.^all.map({ dormant(.number) }) }
@@ -160,7 +160,7 @@ subtest 'The CHECK parameter overrides dynamic and environment configuration' =>
         my @messages = $errors.lines.grep(*.starts-with('red-compile:'));
         is @messages.elems, ($enabled ?? 3 !! 0), 'The explicit parameter wins';
         if $enabled {
-            ok $errors.contains('A function call depends on the query element'),
+            ok $errors.contains('Only unconstrained positional helper parameters are compiled'),
                 'Unsupported CHECK syntax retains its reason';
             ok $errors.contains('Unknown model member: doubled'),
                 'Runtime fallback also warns';
