@@ -46,6 +46,12 @@ like @expected[1], /'max(' .* 'refresh_time'/, 'count query contains the refresh
 
 my @workers = (^8).map(-> $worker {
     start {
+        CATCH {
+            default {
+                note .backtrace.full;
+                .rethrow;
+            }
+        }
         for ^40 -> $iteration {
             my $kind = ($worker + $iteration) % 2;
             my $sql = $*RED-DB.translate(query($kind)).key;
@@ -65,6 +71,12 @@ sub populate() {
 populate() unless $driver eq 'SQLite';
 my @readers = (^8).map({
     start {
+        CATCH {
+            default {
+                note .backtrace.full;
+                .rethrow;
+            }
+        }
         my $*RED-DB = database $driver, |%connection;
         populate() if $driver eq 'SQLite';
         for ^10 {
