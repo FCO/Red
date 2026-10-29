@@ -4,7 +4,7 @@ use Red::Type::Json;
 
 # NOTE: every collection column below declares a custom deflate that produces a
 # Str (and the matching inflate). That is the documented way of storing
-# Positional/Associative values on SQLite (see t/63-inflate-deflate.rakutest);
+# Positional/Associative values on SQLite (see t/063-inflate-deflate.rakutest);
 # the SQLite driver does have a generic `deflate(@value)` for Positional, but
 # Red::AST::Update currently goes through `Red::Column.deflate` only, which
 # defaults to `*.self` — updating an Array-typed column without a custom

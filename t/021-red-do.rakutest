@@ -14,7 +14,7 @@ throws-like {
 }, X::Red::Do::DriverNotDefined, message => /<< name >>/;
 
 throws-like {
-    red-defaults :bla["SQLite", :default], :ble["Pg", :default];
+    red-defaults :bla["SQLite", :default], :ble["SQLite", :default];
 }, X::Red::Do::DriverDefinedMoreThanOnce;
 
 throws-like {

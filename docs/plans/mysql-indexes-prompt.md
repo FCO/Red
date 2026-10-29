@@ -50,7 +50,7 @@ Leia primeiro:
 - `create-indexes` em `lib/MetamodelX/Red/Model.rakumod`;
 - os hooks e tradutores de índices em `lib/Red/Driver/CommonSQL.rakumod`;
 - as implementações de `indexes-for-table` em SQLite e Pg;
-- `t/97-indexes.rakutest` e seu fixture `t/lib/IndexedFixture.rakumod`.
+- `t/097-indexes.rakutest` e seu fixture `t/lib/IndexedFixture.rakumod`.
 
 `Red::AST::CreateIndex` tem `table`, `name` (nome SQL já gerado pelo core),
 `logical-name`, `unique`, `inline` e `keys`, uma lista ordenada de ASTs de DDL.
@@ -156,7 +156,7 @@ Cubra pelo menos:
 9. Regressões de inserts, updates, deletes, identificação por uniques tradicionais,
    JSON, quoting e tipos, sem mudar a semântica existente de collation/NULL.
 
-Execute `t/97-indexes.rakutest` do core contra MySQL e depois a suíte completa com
+Execute `t/097-indexes.rakutest` do core contra MySQL e depois a suíte completa com
 isolamento por arquivo. Faça compile checks dos módulos alterados e registre os
 comandos/resultados. Atualize documentação e Changes do driver conforme os
 padrões do repositório. Entregue um resumo do diff e de qualquer limite real de

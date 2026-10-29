@@ -37,40 +37,6 @@ jobs:
       - name: Run tests
         run: prove6 -lj8 t
 
-  rakuast:
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_PASSWORD: red-ci-test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=5s
-          --health-timeout=5s
-          --health-retries=20
-    steps:
-      - uses: actions/checkout@v4
-      - uses: Raku/setup-raku@v1
-        with:
-          raku-version: "2026.09"
-      - name: Install dependencies with the legacy frontend
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libpq-dev
-          zef install --/test --test-depends --deps-only .
-      - name: Test the optional RakuAST compiler
-        env:
-          RAKUDO_RAKUAST: "1"
-          RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=postgres user=postgres password=red-ci-test"
-        run: |
-          raku -Ilib t/37-json.rakutest
-          raku -Ilib t/92-rakuast-compiler.rakutest
-          raku -Ilib t/93-rakuast-scope.rakutest
-
   mysql:
     name: MySQL (RakuAST=${{ matrix.rakuast }})
     strategy:
@@ -113,7 +79,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libmariadb-dev-compat libpq-dev libsqlite3-dev uuid-dev
+          sudo apt-get install -y libmariadb-dev-compat libsqlite3-dev uuid-dev
           zef install --/test --test-depends --deps-only .
           zef install --/test App::Prove6
       - name: Run tests (MySQL)
@@ -129,6 +95,7 @@ jobs:
     timeout-minutes: 20
     env:
       RAKUDO_RAKUAST: ${{ matrix.rakuast }}
+      RED_SOURCE: ${{ github.workspace }}
       PGHOST: 127.0.0.1
       PGPORT: "5432"
       PGUSER: postgres
@@ -150,6 +117,12 @@ jobs:
           --health-retries=40
     steps:
       - uses: actions/checkout@v4
+      - name: Check out the Pg driver
+        uses: actions/checkout@v4
+        with:
+          repository: FCO/Red-Driver-Pg
+          ref: 6615b55d109db7ea7ca3469364080e873f1bf9a5
+          path: .ci/pg-driver
       - uses: Raku/setup-raku@v1
         with:
           raku-version: "2026.09"
@@ -158,53 +131,7 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpq-dev postgresql-client libsqlite3-dev uuid-dev
           zef install --/test --test-depends --deps-only .
-          zef install --/test App::Prove6 DB::Pg
+          zef install --/test --test-depends --deps-only .ci/pg-driver
+          zef install --/test App::Prove6
       - name: Run tests (Pg)
-        run: |
-          set -o pipefail
-          prove6 -j8 -e "bash tools/pg-test-exec.sh" t 2>&1 | tee pg-test-results.log
-      - name: Save PostgreSQL test log
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: postgresql-test-results-rakuast-${{ matrix.rakuast }}
-          path: pg-test-results.log
-
-  json-pg:
-    name: PostgreSQL JSON (RakuAST=${{ matrix.rakuast }})
-    strategy:
-      fail-fast: false
-      matrix:
-        rakuast: ["0", "1"]
-    runs-on: ubuntu-latest
-    env:
-      RAKUDO_RAKUAST: ${{ matrix.rakuast }}
-    services:
-      postgres:
-        image: postgres:15
-        env:
-          POSTGRES_USER: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_DB: red_json_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd="pg_isready -U postgres"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
-    steps:
-      - uses: actions/checkout@v3
-      - uses: Raku/setup-raku@v1
-        with:
-          raku-version: "2026.09"
-      - name: Install dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libpq-dev
-          zef install --/test --test-depends --deps-only .
-          zef install --/test App::Prove6 DB::Pg
-      - name: Test JSON operations, projections, and custom types
-        env:
-          RED_DATABASE: "Pg host=127.0.0.1 port=5432 dbname=red_json_test user=postgres password=postgres"
-        run: prove6 -lv t/37-json.rakutest t/77-red-type.rakutest t/87-json-operations.rakutest t/88-projection-chains.rakutest
+        run: prove6 -j8 -e "bash $GITHUB_WORKSPACE/.ci/pg-driver/tools/pg-test-exec.sh" t

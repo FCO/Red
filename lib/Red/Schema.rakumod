@@ -1,6 +1,5 @@
 use Red::Do;
 use Red::DB;
-use Red::Driver::Pg;
 unit class Red::Schema;
 
 proto sub schema(|) { * }

@@ -1,7 +1,7 @@
 Red Agent Guide
 - Dependencies: Raku >= 2022.07. Install deps: `zef install --/test --test-depends --deps-only .`.
 - Run all tests: `prove6 -lj8 t` (CI uses this). Alt: `zef test . --verbose`.
-- Run a single test file: `prove6 -lv t/35-create.rakutest` (replace with target file).
+- Run a single test file: `prove6 -lv t/035-create.rakutest` (replace with target file).
 - Quick compile check (lint): `raku -c lib/Red.rakumod` and for any changed files.
 - Install locally: `zef install --/test .`. Generate docs: `make docs` or `raku tools/make-docs.raku`.
 - DB config for tests/examples: set `RED_DATABASE` (e.g. `Pg host=localhost ...`); many tests work with SQLite by default.

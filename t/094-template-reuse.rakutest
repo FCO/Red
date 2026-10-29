@@ -7,7 +7,7 @@ use Red::AST::Value;
 CHECK { red-compile if (%*ENV<RAKUDO_RAKUAST> // '0') eq '1' }
 
 my $*RED-FALLBACK = False;
-my $*RED-DB = database 'Pg';
+my $*RED-DB = database 'SQLite';
 
 model TemplateReuseRow {
     has Int $.value is column;

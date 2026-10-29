@@ -6,18 +6,8 @@ tasks:
     code: |
       set -e
       sudo apk add --no-cache sqlite-libs sqlite-dev
-      export RED_DATABASE="Pg host=localhost port=5432 user=testuser password=testpass dbname=redtest"
+      export RED_DATABASE="SQLite"
       cd source/
       raku --version
       zef install . --deps-only --test-depends --build-depends --/test .
       zef test . --verbose
-    depends:
-      -
-        name: install_pg_server 
-  -
-    name: install_pg_server
-    plugin: sparkyci-service-postgresql
-    config:
-      db_name: redtest
-      db_user: testuser
-      db_pass: testpass

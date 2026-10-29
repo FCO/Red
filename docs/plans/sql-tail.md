@@ -1,6 +1,6 @@
 # SQL-backed tail
 
-Status: implemented; regression coverage is in `t/89-sql-tail.rakutest`.
+Status: implemented; regression coverage is in `t/089-sql-tail.rakutest`.
 
 ## Behavior
 

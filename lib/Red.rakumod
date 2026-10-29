@@ -155,6 +155,10 @@ Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):
 
     zef install Red
 
+PostgreSQL support is provided by a separate distribution. Install it only if you use PostgreSQL:
+
+    zef install Red::Driver::Pg
+
 =head2 SYNOPSIS
 
 =begin code :lang<raku>

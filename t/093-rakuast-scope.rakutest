@@ -14,7 +14,7 @@ my $*RED-DB;
 my $rows;
 {
     use Red;
-    $*RED-DB = database 'Pg';
+    $*RED-DB = database 'SQLite';
     model ScopedCompilerRow {
         has Int $.value is column;
     }

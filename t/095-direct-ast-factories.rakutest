@@ -6,7 +6,7 @@ use Red::AST::Value;
 use Red::Type::Json;
 
 my $*RED-FALLBACK = False;
-my $*RED-DB = database 'Pg';
+my $*RED-DB = database 'SQLite';
 
 model DirectFactoryRow {
     has Int $.number is rw is column;
