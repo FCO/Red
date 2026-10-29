@@ -18,8 +18,15 @@ multi method new($name, $type, $nullable, $pk, $unique, $references) {
     self.bless: :$name, :$type, :nullble(?$nullable), :pk(?$pk), :unique(?$unique), :$references
 }
 
+method normalized-type {
+    my $value = $!type.lc.trim.subst('character varying', 'varchar');
+    $value = 'integer' if $value eq any(<int int4 serial>);
+    $value = 'integer' if $value ~~ /^ 'int(' \d+ ')' $/;
+    $value
+}
+
 multi method gist(::?CLASS:D:) {
-    "Red::Cli::Column.new(:name<$!name>, :type<$!type>{
+    "Red::Cli::Column.new(:name<$!name>, :type<{self.normalized-type}>{
         ", :nullable" if $!nullable
     }{
         ", :pk" if $!pk
@@ -73,15 +80,11 @@ method diff(::?CLASS $b) {
         @diffs.push: [ $!name, "+", "name", $b.name   ];
         @diffs.push: [ $!name, "-", "name", self.name ];
     }
-    sub normalized(Str $type) {
-        my $value = $type.lc.trim.subst('character varying', 'varchar');
-        $value = 'integer' if $value eq any(<int int4 serial>);
-        $value = 'integer' if $value ~~ /^ 'int(' \d+ ')' $/;
-        $value
-    }
-    if self.auto-increment == $b.auto-increment and normalized(self.type) ne normalized($b.type) {
-        @diffs.push: [ $!name, "+", "type", $b.type   ];
-        @diffs.push: [ $!name, "-", "type", self.type ];
+    my $self-type = self.normalized-type;
+    my $other-type = $b.normalized-type;
+    if self.auto-increment == $b.auto-increment and $self-type ne $other-type {
+        @diffs.push: [ $!name, "+", "type", $other-type ];
+        @diffs.push: [ $!name, "-", "type", $self-type  ];
     }
     if self.nullable != $b.nullable {
         @diffs.push: [ $!name, "+", "nullable", $b.nullable   ];

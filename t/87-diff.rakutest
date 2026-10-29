@@ -111,7 +111,7 @@ model E1-a-retyped is table<expl> {
 
 model E1-a-retyped2 is table<expl> {
     has UInt $.id is serial;
-    has Str  $.a  is column{ :type<varchar(255)> };
+    has Str  $.a  is column{ :type<varchar(254)> };
 }
 
 retyped-column-diff E1, E1-a-retyped;
