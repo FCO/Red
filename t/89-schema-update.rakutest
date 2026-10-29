@@ -59,7 +59,7 @@ model E1-a-nullable is table<expl> {
 
 model E1-a-pk is table<expl> {
     has UInt $.id is serial;
-    has Str  $.a  is serial;
+    has Str  $.a  is id;
 }
 
 model E1-a-unique is table<expl> {

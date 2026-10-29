@@ -162,8 +162,12 @@ multi trait_mod:<is>(Attribute $attr, Bool :$id! where $_ == True --> Empty) is 
 =head3 is serial
 
 #| This trait marks an attribute (column) as SQL PRIMARY KEY with SERIAL data type, which
-#| means it auto-increments on each insertion.
+#| means it auto-increments on each insertion. Declared attribute types must be integer;
+#| untyped attributes use integer columns.
 multi trait_mod:<is>(Attribute $attr, Bool :$serial! where $_ == True --> Empty) is export {
+    unless $attr.type =:= Mu || $attr.type ~~ Int | UInt | int | uint {
+        X::Red::InvalidSerialType.new(:attr-name($attr.name), :attr-type($attr.type.^name)).throw
+    }
     trait_mod:<is>($attr, :column{:id, :!nullable, :auto-increment})
 }
 

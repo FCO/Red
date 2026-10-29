@@ -119,6 +119,13 @@ class X::Red::InvalidTableName is X::Red::Driver {
     method message { "'$!table' is an invalid table name for driver { $.driver }" }
 }
 
+class X::Red::InvalidSerialType is X::Red {
+    has Str $.attr-name;
+    has Str $.attr-type;
+
+    method message { "Attribute '$!attr-name' has type '$!attr-type' but 'is serial' requires an integer type" }
+}
+
 class X::Red::UpdateNoId is X::Red::Driver {
     method message { "Update on a model without id isn't allowed" }
 }
