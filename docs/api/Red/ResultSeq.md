@@ -60,11 +60,29 @@ method can-fuse-projection() returns Bool
 
 Exports a projection or a pagination barrier as a derived table.
 
+### method query-block
+
+```raku
+method query-block(
+    &callback,
+    $compiled is rw,
+    $subject,
+    Bool :$ordering = Bool::False,
+    Bool :$cache-filter = Bool::False,
+    :$diagnostic,
+    Str:D :$method!,
+    Bool :$warned! is rw
+) returns Mu
+```
+
+Resolve a compiled callback against the current SQL stage, retaining legacy fallback.
+
 ### method grep
 
 ```raku
 method grep(
-    &filter
+    &filter,
+    :$red-ast is copy
 ) returns Mu
 ```
 
@@ -74,7 +92,8 @@ Adds a new filter on the query (does not run the query)
 
 ```raku
 method first(
-    &filter
+    &filter,
+    :$red-ast
 ) returns Mu
 ```
 
@@ -84,7 +103,8 @@ Changes the query to return only the first row that matches the condition and ru
 
 ```raku
 method map(
-    &filter
+    &filter,
+    :$red-ast is copy
 ) returns Mu
 ```
 
@@ -102,7 +122,8 @@ Orders scalar projected values without executing the query.
 
 ```raku
 method sort(
-    &order
+    &order,
+    :$red-ast is copy
 ) returns Red::ResultSeq
 ```
 
@@ -123,7 +144,7 @@ Sets the query to return the rows in a randomic order (does not run the query)
 ```raku
 method classify(
     &func,
-    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|5767832357048) ... },
+    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|5013184360112) ... },
     :&reduce
 ) returns Red::ResultAssociative
 ```
