@@ -149,6 +149,28 @@ Take a look at our Documentation: L<https://fco.github.io/Red/>
 
 =head2 Red - A **WiP** ORM for Raku
 
+=head2 RECENT HIGHLIGHTS
+
+**PostgreSQL users: the Pg driver is no longer bundled with Red.** Install the separate `Red::Driver::Pg` distribution when installing or upgrading:
+
+    zef install Red::Driver::Pg
+
+Other recent highlights include:
+
+  * **Queries:** opt-in RakuAST compilation, compiled regex filters translated to SQL, and isolated SQL plan caching. See [compiled regex filters](#compiled-regex-filters).
+
+  * **Schema:** named, composite and partial indexes, `CHECK` and PostgreSQL `EXCLUDE` constraints, and native range/regex helpers. See [indexes and constraints](#named-indexes-and-schema-constraints) and [PostgreSQL ranges](#postgresql-ranges-regex-and-exclusion-constraints).
+
+  * **Transactions:** nested savepoints and explicit guards with asynchronous work. See [transactions and savepoints](#transactions-and-savepoints).
+
+  * **Models and relationships:** creation through empty scalar relationships, stable `has-one`, `.^refresh` and `is handling`, plus dirty tracking for in-place collection mutations. See [relationship creation](#creating-through-a-scalar-relationship), [refresh](#refresh) and [is handling](#is-handling).
+
+  * **Results and JSON:** chainable scalar/container projections, SQL `tail`/`reverse`, `ResultSeq` products and expanded JSON operations.
+
+  * **Performance and reliability:** faster hydration and projections, safer concurrent query/class initialization, and fixes for generated getters and formatter handling.
+
+See [Changes](Changes) for the complete list.
+
 =head2 INSTALL
 
 Install with (you need **rakudo 2018.12-94-g495ac7c00** or **newer**):

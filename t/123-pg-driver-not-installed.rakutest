@@ -1,0 +1,39 @@
+use Test;
+use File::Temp;
+
+plan 6;
+
+my $temp = tempdir;
+my $red-dir = $temp.IO.add('Red');
+$red-dir.mkdir;
+my $driver-dir = $red-dir.add('Driver');
+$driver-dir.mkdir;
+$driver-dir.add('Pg.rakumod').spurt: 'die "simulated Pg loading failure";';
+
+my $lib = $*PROGRAM.IO.parent.parent.add('lib');
+my $script = q:to/END/;
+use Red;
+try database "Pg";
+with $! {
+    say .^name;
+    say .message;
+    exit 0;
+}
+exit 1;
+END
+
+my $proc = run $*EXECUTABLE, "-I$temp", "-I$lib", '-e', $script, :out, :err;
+my $output = $proc.out.slurp(:close);
+$proc.err.slurp(:close);
+
+is $proc.exitcode, 0, 'The Pg loading failure was caught for inspection';
+is $output.lines.head, 'X::Red::Driver::Pg::NotInstalled',
+    'database "Pg" throws the dedicated exception';
+like $output, /'PostgreSQL support is provided by the separate Red::Driver::Pg distribution.'/,
+    'The message explains the driver separation';
+like $output, /'zef install Red::Driver::Pg'/,
+    'The message includes the installation command';
+like $output, /'database "Pg" calls do not need to change'/,
+    'The message explains how existing code is affected';
+like $output, /'simulated Pg loading failure'/,
+    'The original loading error is preserved';

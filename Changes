@@ -2,6 +2,7 @@ Revision history for Red
 
 {{$NEXT}}
     - Extract PostgreSQL support into the separately installed Red::Driver::Pg distribution.
+    - Raise a dedicated installation error when database "Pg" cannot load the separate Pg driver.
     - Compile plain lexical helpers and named callbacks with runtime identity guards and precompilation coverage.
     - Translate scalar and whole capture .chars with native character counts and zero for absent captures.
     - Preserve explicit capture string coercion through SQL text method chains.
