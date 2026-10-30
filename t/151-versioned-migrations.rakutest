@@ -1,0 +1,34 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::SQL;
+
+my $directory = $*TMPDIR.add("red-migration-{$*PID}-{100000.rand.Int}");
+$directory.mkdir;
+my $db = database 'SQLite';
+my $*RED-DB = $db;
+model MigrationUser is table<migration_user> {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+my $config = Red::Migration::Configuration.new(:models[MigrationUser],
+    :directory($directory), :connections{ default => $db });
+my $manager = Red::Migration::Manager.new(:$config);
+my $path = $manager.prepare('initial');
+ok $path.d, 'prepares initial migration';
+ok $path.add('SQLite/schema.rakuconf').f, 'snapshot is Raku configuration';
+is $manager.apply, 1, 'applies initial migration';
+MigrationUser.^create(:name<Alice>);
+is MigrationUser.^all.elems, 1, 'generated serial ID and table work';
+is $manager.apply, 0, 'apply is idempotent';
+is $manager.status[0]<state>, 'applied', 'database records application';
+ok !$manager.prepare('unchanged').defined, 'no empty migration';
+is $manager.rollback, 1, 'rolls back initial migration';
+is $manager.status[0]<state>, 'reverted', 'database records rollback';
+is $manager.apply, 1, 'can reapply reverted migration';
+is statements("-- comment\nINSERT INTO x VALUES ('a;b');\n/* nested /* comment */ ok */ SELECT 2;").elems,
+    2, 'splits SQL statements preserving quoted semicolons';
+dies-ok { statements("SELECT 'unclosed") }, 'rejects incomplete scripts';
+dies-ok { statements('BEGIN; SELECT 1; COMMIT;') }, 'rejects transaction control';
+done-testing;

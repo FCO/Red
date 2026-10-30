@@ -1,0 +1,45 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+
+model Prepared is table<migration_prepared> { has Int $.id is serial }
+my $root = $*TMPDIR.add("red-prepare-{$*PID}-{100000.rand.Int}"); $root.mkdir;
+my $calls = 0;
+my $config = Red::Migration::Configuration.new(:models[Prepared],
+    :directory($root.add('history')), :connections{ default => { $calls++; die 'opened target' } });
+my $manager = Red::Migration::Manager.new(:$config);
+my $path = $manager.prepare('initial');
+is $calls, 0, 'preparation does not open configured connections';
+ok $path.d, 'prepares without any target connection';
+my $holder = run $*EXECUTABLE, '-e',
+    'my $lock = @*ARGS[0].IO.open(:a); $lock.lock; say "locked"; $*OUT.flush; $*IN.get;',
+    $config.directory.add('.prepare.lock').Str, :in, :out, :err;
+is $holder.out.get, 'locked', 'another process holds preparation lock';
+throws-like { $manager.prepare('concurrent') }, X::Red::Migration,
+    reason => /'Another process'/, 'concurrent preparation fails explicitly';
+$holder.in.say('release');
+$holder.in.close;
+$holder.out.slurp-rest;
+$holder.err.slurp-rest;
+is $holder.exitcode, 0, 'lock holder exits cleanly';
+my $bad-config = $config.clone(:drivers<SQLite Unknown>, :directory($root.add('bad')));
+throws-like { Red::Migration::Manager.new(:config($bad-config)).prepare('invalid-driver') },
+    X::Red::Migration, 'validates every driver before publication';
+is $bad-config.directory.dir.grep(*.d).elems, 0, 'unsupported driver leaves no migration directory';
+my $snapshot = $path.add('SQLite/schema.rakuconf');
+$snapshot.spurt($snapshot.slurp ~ "# modified snapshot\n");
+throws-like { $manager.prepare('invalid-snapshot') }, X::Red::Migration,
+    reason => /'Modified snapshot'/, 'detects edited historical schema snapshots';
+my $db = database 'SQLite';
+my $*RED-DB = $db;
+ok schema(Prepared).plan.elems, 'public schema plan delegates to migration planner';
+schema(Prepared).update;
+is schema(Prepared).plan.elems, 0, 'public schema update is idempotent';
+$db.execute('ALTER TABLE migration_prepared ADD COLUMN spare text NULL');
+is schema(Prepared).plan.elems, 1, 'plan displays removals without execution opt-in';
+throws-like { schema(Prepared).update }, X::Red::Migration,
+    reason => /'allow-destructive'/, 'sync still requires explicit removal opt-in';
+schema(Prepared).update(:allow-destructive);
+is schema(Prepared).plan.elems, 0, 'explicit destructive sync executes the reviewed removal';
+done-testing;

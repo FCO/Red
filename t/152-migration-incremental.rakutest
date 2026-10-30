@@ -1,0 +1,65 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Applied;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $dialect = @connection.shift;
+my $db = database $dialect, |@connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
+my $*RED-DB = $db;
+my $directory = $*TMPDIR.add("red-incremental-{$*PID}-{100000.rand.Int}");
+$directory.mkdir;
+model Before is table<migration_incremental> {
+    has Int $.id is serial;
+    has Str $.name is column;
+    has Bool $.active is column{ :nullable };
+    has DateTime $.created is column{ :nullable };
+}
+model After is table<migration_incremental> {
+    has Int $.id is serial;
+    has Str $.name is column;
+    has Bool $.active is column{ :nullable };
+    has DateTime $.created is column{ :nullable };
+    has Str $.note is column{ :nullable };
+}
+sub manager($model) {
+    Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+        :models[$model], :drivers[$dialect], :$directory, :connections{ default => $db })))
+}
+# Native runs use an isolated database; repeat runs remain deterministic.
+$db.execute('DROP TABLE IF EXISTS migration_incremental');
+$db.execute('DROP TABLE IF EXISTS red_migrations');
+my $first = manager(Before).prepare('initial');
+is manager(Before).apply, 1, 'initial migration applied';
+Before.^create(:name<Alice>);
+my $second = manager(After).prepare('add-note');
+is manager(After).apply, 1, 'incremental migration applied';
+is After.^all.head.name, 'Alice', 'existing data preserved';
+is manager(After).plan.elems, 0, 'live plan is empty after incremental application';
+is manager(After).status.tail<state>, 'applied', 'history records both migrations';
+is manager(After).rollback, 1, 'reverts nullable column addition';
+is Before.^all.head.name, 'Alice', 'rollback preserves existing columns and data';
+is manager(After).apply, 1, 'reapplies incremental migration';
+my $up = $second.add($dialect).add('up.sql');
+my $original = $up.slurp;
+$up.spurt($original ~ "-- edited after application\n");
+dies-ok { manager(After).apply }, 'refuses modified applied SQL';
+$up.spurt($original);
+my $down = $second.add($dialect).add('down.sql');
+my $original-down = $down.slurp;
+$down.spurt($original-down ~ "-- changed down\n");
+dies-ok { manager(After).rollback }, 'refuses modified applied rollback SQL';
+$down.spurt($original-down);
+my $manifest = $second.add('migration.rakuconf');
+my $original-manifest = $manifest.slurp;
+$manifest.spurt($original-manifest.subst(/'predecessor' \s* '=>' \s* '"' <-["]>* '"'/, 'predecessor => "missing"'));
+# A separate fork sharing the first migration must be rejected.
+my $fork = $directory.add('fork'); $fork.mkdir;
+$fork.add('migration.rakuconf').spurt($original-manifest.subst(/'id' \s* '=>' \s* '"' <-["]>* '"'/,
+    'id => "00000000000000000000000000"'));
+dies-ok { manager(After).history }, 'refuses divergent history';
+$fork.add('migration.rakuconf').unlink; $fork.rmdir;
+$manifest.spurt($original-manifest);
+is manager(After).apply, 0, 'valid history remains usable after failed checks';
+done-testing;

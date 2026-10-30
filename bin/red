@@ -1,7 +1,9 @@
-#!env perl6
+#!/usr/bin/env raku
 use Red::Cli;
 use Red::Do;
 use Red::Database;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
 
 my %*SUB-MAIN-OPTS =
   :named-anywhere,
@@ -52,8 +54,8 @@ multi MAIN(
 #| Generates models' code from database schema
 multi MAIN(
     "generate-code",
-    Str  :$path!    where { not .defined or .IO.d or $_ eq "-" or fail "Path $_ does not exist." },
-    Str  :$from-sql where { not .defined or .IO.f or $_ eq "-" or fail "SQL $_ do not exist." },
+    Str  :$path!    where { !.defined || .IO.d || $_ eq "-" },
+    Str  :$from-sql where { !.defined || .IO.f || $_ eq "-" },
     Str  :$schema-class,
     Bool :$print-stub       = False,
     Bool :$no-relationships = False,
@@ -86,4 +88,44 @@ multi MAIN(
 
 sub dyn-lib(@libs) {
 	qq[use lib "{ $_ }"].EVAL for @libs
+}
+
+#| Show the development database plan, without applying it.
+multi MAIN('plan', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
+    .say for migration-manager($config).plan(:$connection)
+}
+
+#| Synchronize only the development database.
+multi MAIN('sync', Bool :$dev! where so *, Str :$config = 'red.rakuconf',
+           Str :$connection = 'default', Bool :$allow-destructive = False) {
+    say migration-manager($config).sync(:$connection, :$allow-destructive)
+}
+
+#| Prepare versioned SQL and schema snapshots for all configured drivers.
+multi MAIN('prepare', Str $name, Str :$config = 'red.rakuconf',
+           Bool :$allow-destructive = False) {
+    my $path = migration-manager($config).prepare($name, :$allow-destructive);
+    say $path // 'No schema changes'
+}
+
+#| Apply all pending migrations to the selected configured connection.
+multi MAIN('apply', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
+    say migration-manager($config).apply(:$connection)
+}
+
+#| Revert the last applied migration using its down.sql.
+multi MAIN('rollback', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
+    say migration-manager($config).rollback(:$connection)
+}
+
+#| Show migration state recorded in the selected database.
+multi MAIN('status', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
+    for migration-manager($config).status(:$connection) -> %migration {
+        say "%migration<id> %migration<state> %migration<name>"
+    }
+}
+
+sub migration-manager(Str $file --> Red::Migration::Manager) {
+    Red::Migration::Manager.new(
+        :config(Red::Migration::Configuration.load($file.IO)))
 }

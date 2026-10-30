@@ -1,0 +1,49 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $dialect = @connection.shift;
+if $dialect eq 'SQLite' {
+    plan 1;
+    skip 'SQLite table reconstruction is intentionally unsupported';
+    exit;
+}
+my %parameters = @connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
+my $db = database $dialect, |%parameters;
+my $*RED-DB = $db;
+my $directory = $*TMPDIR.add("red-alter-{$*PID}-{100000.rand.Int}");
+model Narrow is table<migration_alter> {
+    has Int $.id is serial;
+    has Str $.note is column{ :type('varchar(8)'), :nullable };
+}
+model Wide is table<migration_alter> {
+    has Int $.id is serial;
+    has Str $.note is column{ :type('varchar(16)'), :nullable };
+}
+model Required is table<migration_alter> {
+    has Int $.id is serial;
+    has Str $.note is column{ :type('varchar(16)') };
+    has Str $.extra is column{ :nullable };
+}
+sub manager($model) {
+    Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+        :models[$model], :drivers[$dialect], :$directory, :connections{ default => $db })))
+}
+$db.execute('DROP TABLE IF EXISTS migration_alter');
+$db.execute('DROP TABLE IF EXISTS red_migrations');
+manager(Narrow).prepare('initial');
+is manager(Narrow).apply, 1, 'creates bounded nullable column';
+Narrow.^create;
+manager(Wide).prepare('widen');
+is manager(Wide).apply, 1, 'widens VARCHAR';
+dies-ok { manager(Wide).rollback }, 'refuses automatic narrowing on rollback';
+manager(Required).prepare('require-note');
+throws-like { manager(Required).apply }, X::Red::Migration,
+    reason => /'existing NULL values'/, 'preflights nullability before DDL';
+is manager(Required).status.tail<state>, 'pending', 'preflight failure does not record application';
+$db.execute("UPDATE migration_alter SET note = 'filled'");
+is manager(Required).apply, 1, 'applies after data is populated';
+is manager(Required).rollback, 1, 'reverts nullable addition and relaxes nullability';
+done-testing;
