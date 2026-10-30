@@ -1,0 +1,54 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Applied;
+use Red::Migration::SQL;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $dialect = @connection.shift;
+my $db = database $dialect, |@connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
+my $*RED-DB = $db;
+my $directory = $*TMPDIR.add("red-failure-{$*PID}-{100000.rand.Int}");
+$directory.mkdir;
+model FailureTable is table<migration_failure> {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+my $config = Red::Migration::Configuration.new(:models[FailureTable], :drivers[$dialect],
+    :$directory, :connections{ default => $db });
+my $manager = Red::Migration::Manager.new(:$config);
+$db.execute('DROP TABLE IF EXISTS migration_failure');
+$db.execute('DROP TABLE IF EXISTS red_migrations');
+my $path = $manager.prepare('initial');
+my $file = $path.add($dialect).add('up.sql');
+my $original = $file.slurp;
+$file.spurt($original ~ "\nINSERT INTO red_missing_table VALUES (1);\n");
+throws-like { $manager.apply }, X::Red::Migration,
+    reason => /'failed after 1 statements'/, 'reports failing SQL and completed statement count';
+if $dialect eq 'MySQL' {
+    is $manager.status[0]<state>, 'failed', 'partial execution is visible in status';
+    is Red::Migration::Applied.^all.head.completed-statements, 1, 'partial progress is durable';
+    dies-ok { $manager.apply }, 'partial execution blocks automatic retry';
+} else {
+    is $manager.status[0]<state>, 'pending', 'transactional failure rolls back tracking record';
+    my @tables = $db.schema-reader.tables-names.grep(*.defined).List;
+    nok 'migration_failure' eq any(@tables), 'transactional failure rolls back DDL';
+    $file.spurt($original);
+    is $manager.apply, 1, 'can retry after repairing an unapplied script';
+}
+is statements(q:to/SQL/).elems, 2, 'PostgreSQL dollar quotes retain embedded semicolons';
+SELECT $tag$a;b$tag$;
+SELECT 'c'';d';
+SQL
+throws-like { statements('CREATE TRIGGER x BEGIN SELECT 1; END;') },
+    X::Red::Migration, 'rejects unsupported stored programs before execution';
+throws-like { statements('/*! SET autocommit=1 */ SELECT 1;') },
+    X::Red::Migration, 'rejects executable MySQL comments';
+is statements('SELECT 5 # 3;', :dialect<Pg>)[0], 'SELECT 5 # 3',
+    'preserves PostgreSQL hash operators';
+is statements('SELECT 1--1;', :dialect<MySQL>)[0], 'SELECT 1--1',
+    'preserves MySQL adjacent minus operators';
+is statements("# comment;\nSELECT 1;", :dialect<MySQL>).elems, 1,
+    'recognizes MySQL hash comments';
+done-testing;

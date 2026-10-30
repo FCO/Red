@@ -3,6 +3,8 @@
 Red
 ===
 
+Versioned schema changes: [Migration workflow](docs/migrations.md).
+
 Take a look at our Documentation: [https://fco.github.io/Red/](https://fco.github.io/Red/)
 
 Red - A **WiP** ORM for Raku

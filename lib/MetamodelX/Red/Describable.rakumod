@@ -9,10 +9,11 @@ unit role MetamodelX::Red::Describable;
 
 method !create-column($_ --> Red::Cli::Column) {
     Red::Cli::Column.new:
-        :name(.column-name // self.column-formatter: .attr-name),
+        :name(.name),
         :formated-name(.attr-name),
-        :type(get-RED-DB.default-type-for($_)),
-        :perl-type(.type),
+        :type(get-RED-DB.translate($_, 'column-type').key),
+        :raku-type(.attr.type.^name),
+        :auto-increment(.auto-increment),
         :nullable(.nullable),
         :pk(.id),
         |(:references(%(table => .ref.attr.package.^table, column => .ref.name)) if .references)
@@ -22,6 +23,7 @@ method !create-column($_ --> Red::Cli::Column) {
 #| a database table of the caller.
 method describe(\model --> Red::Cli::Table) {
     Red::Cli::Table.new: :name(self.table(model)), :model-name(self.name(model)),
+        :constraints(model.^unique-constraints.Array),
         :columns(self.columns>>.column.map({self!create-column($_)}).cache)
 }
 

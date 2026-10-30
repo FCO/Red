@@ -1,6 +1,10 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Rename Cli column type metadata to raku-type; retain deprecated legacy API compatibility.
+    - Add configured versioned migrations with Raku Cli-object snapshots and per-driver up/down SQL.
+    - Add plan, development sync, prepare, apply, rollback and status commands with database history,
+      checksum validation, migration locking and explicit partial-failure handling on MySQL.
     - Extract PostgreSQL support into the separately installed Red::Driver::Pg distribution.
     - Raise a dedicated installation error when database "Pg" cannot load the separate Pg driver.
     - Compile plain lexical helpers and named callbacks with runtime identity guards and precompilation coverage.

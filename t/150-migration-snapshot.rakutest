@@ -1,0 +1,33 @@
+use Test;
+use Red;
+use Red::Migration::Snapshot;
+
+my $*RED-DB = database 'SQLite';
+my $path = $*TMPDIR.add("red-snapshot-{$*PID}.rakuconf");
+LEAVE $path.unlink if $path.e;
+my $table = Red::Cli::Table.new(:name<example>, :columns[
+    Red::Cli::Column.new(:name<title>, :type<text>, :raku-type<Str>, :!nullable),
+]);
+my $snapshot = Red::Migration::Snapshot.new(:tables[$table]);
+$path.spurt: $snapshot.source;
+my $loaded = Red::Migration::Snapshot.load($path);
+is $loaded.tables.elems, 1, 'loads table objects from rakuconf';
+is $loaded.tables[0].columns[0].name, 'title', 'preserves column name';
+nok $loaded.tables[0].columns[0].nullable, 'preserves nullability';
+is $loaded.source, $snapshot.source, 'serialization is stable after round trip';
+my $ordered = Red::Cli::Table.new(:name<ordered>, :columns[
+    Red::Cli::Column.new(:name<z>, :type<integer>, :raku-type<Int>, :pk),
+    Red::Cli::Column.new(:name<a>, :type<integer>, :raku-type<Int>, :pk),
+], :indexes[ $(%(name => 'ordered_idx', sql => 'CREATE INDEX ordered_idx ON ordered(z)')) ]);
+$path.spurt: Red::Migration::Snapshot.new(:tables[$ordered]).source;
+my $copy = Red::Migration::Snapshot.load($path);
+is-deeply $copy.tables[0].columns.map(*.name).Array, ['z', 'a'],
+    'preserves composite primary key column order';
+is $copy.tables[0].indexes.elems, 1, 'index hash remains one object';
+is $copy.tables[0].indexes[0]<name>, 'ordered_idx', 'preserves index metadata';
+is $loaded.tables[0].columns[0].raku-type, 'Str', 'exposes the Raku type name';
+unlike $snapshot.source, /'perl-type'/, 'snapshots emit only raku-type';
+my $legacy = Red::Cli::Column.new(:name<legacy>, :type<custom_sql_type>,
+    |{ 'perl-type' => 'Str' });
+is $legacy.raku-type, 'Str', 'published driver constructor arguments remain compatible';
+done-testing;

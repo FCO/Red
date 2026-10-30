@@ -67,3 +67,21 @@ method create(:$where) {
     }
     self
 }
+
+#| Return development DDL without executing it.
+method plan(:$where, Bool :$allow-destructive = True --> Array) {
+    self!migration-manager($where // get-RED-DB).plan(:$allow-destructive)
+}
+
+#| Synchronize selected models without creating versioned migrations.
+method update(:$where, Bool :$allow-destructive = False) {
+    self!migration-manager($where // get-RED-DB).sync(:$allow-destructive);
+    self
+}
+
+method !migration-manager($driver) {
+    require ::('Red::Migration::Configuration');
+    require ::('Red::Migration::Manager');
+    ::('Red::Migration::Manager').new(:config(::('Red::Migration::Configuration').new(
+        :models(%!models.values.Array), :connections{ default => $driver })))
+}

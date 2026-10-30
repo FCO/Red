@@ -15,3 +15,6 @@ tags
 .raku-version
 .raku/
 .zef/
+
+# Local migration preparation locks
+.prepare.lock

@@ -1,3 +1,5 @@
+use Red::Operators;
+use Red::DB;
 use Red::SchemaReader;
 use Red::Driver::SQLite::SQLiteMaster;
 
@@ -11,9 +13,11 @@ method sqlite-master { Red::Driver::SQLite::SQLiteMaster }
 grammar SQL::CreateTable {
     rule  TOP                      { :i <create-table>+ %% ";" }
     rule  create-table             { :i CREATE TABLE <table-name=.name> '(' ~ ')' <column>+ %% [ "," ] }
-    token name                     { :i \w+ }
+    proto token name               {*}
+    multi token name:sym<plain>    { :i \w+ }
+    multi token name:sym<quoted>   { '"' ~ '"' $<name>=[<-["]>+] }
     rule  type                     { :i <name>["(" ~ ")" \d+]? }
-    rule  column                   { :i <column-name=.name> <type> <modifier>? <index-mod>? <auto-increment>? }
+    rule  column                   { :i <column-name=.name> <type> [ <modifier> | <index-mod> | <auto-increment> ]* }
     rule  auto-increment           { :i "AUTOINCREMENT" }
     proto rule modifier            {*}
     multi rule modifier:<null>     { :i NULL }
@@ -33,34 +37,63 @@ class SQL::CreateTable::Action {
     use Red::Cli::Column;
     method TOP($/)                 { make $<create-table>».made }
     method create-table($/)        { make Red::Cli::Table.new: name => $<table-name>.made, columns => $<column>».made }
-    method name($/)                { make ~$/ }
+    method name:sym<plain>($/)     { make ~$/ }
+    method name:sym<quoted>($/)    { make ~$<name> }
     method type($/)                { make $/.Str.trim}
     method column($/)              {
+        my %modifier  is Map = $<modifier>.map: *.made;
+        my %index-mod is Map = $<index-mod>.map: *.made;
         make Red::Cli::Column.new(
-            $<column-name>.made,
-            $<type>.made,
-            ($<modifier>.made // True),
-            |$<index-mod>.made<pk unique references>
+            name => $<column-name>.made,
+            type => $<type>.made,
+            |%modifier,
+            |%index-mod,
         )
     }
-    method auto-increment          { make ( :auto-increment ) }
+    method auto-increment($/)      { make ( :auto-increment ) }
     method modifier:<null>($/)     { make ( :nullable ) }
     method modifier:<not-null>($/) { make ( :!nullable ) }
     method index-mod:<pk>($/)      { make ( :pk ) }
     method index-mod:<fk>($/)      { make ( :references( %( table => $<table-name>.made, column => $<column-name>.made ) ) ) }
     method index-mod:<unique>($/)  { make ( :unique ) }
-    method index:<pk>($/)          { ... }
+    method index:<pk>($/)          { make ( :id ) }
     method index:<fk>($/)          { ... }
     method index:<unique>($/)      { ... }
 }
 
 method tables-names       { self.sqlite-master.tables.map: *.name }
 method indexes-of($table) { self.sqlite-master.find-table($table).indexes }
-method table-definition($table) {
-    my $sql = self.sqlite-master.find-table($table).sql;
-    my $list = self.table-definition-from-create-table($sql);
-    return unless $list;
-    $list.head
+method table-definition($table --> Red::Cli::Table) {
+    my $driver = get-RED-DB;
+    sub rows(Str $sql) {
+        my $statement = $driver.execute($sql);
+        gather loop {
+            my $row := $statement.row;
+            last if $row =:= IterationEnd || !$row;
+            take $row;
+        }
+    }
+    my $quoted = $driver.table-name-wrapper($table);
+    my @columns = rows("PRAGMA table_info($quoted)");
+    return Red::Cli::Table.new(:!exists) unless @columns;
+    my $definition = $driver.execute('SELECT sql FROM sqlite_master WHERE name = ?', $table).row;
+    my $automatic = ($definition<sql> // '').uc.contains('AUTOINCREMENT');
+    my @constraints;
+    for rows("PRAGMA index_list($quoted)") -> $index {
+        next unless $index<unique> && $index<origin> ne 'pk';
+        my $name = $driver.table-name-wrapper($index<name>);
+        @constraints.push: rows("PRAGMA index_info($name)").sort(*.<seqno>).map(*.<name>).Array;
+    }
+    my %references;
+    for rows("PRAGMA foreign_key_list($quoted)") -> $reference {
+        %references{$reference<from>} = %(table => $reference<table>, column => $reference<to>);
+    }
+    Red::Cli::Table.new(:name($table), :@constraints, :columns(@columns.map(-> $column {
+        Red::Cli::Column.new(:name($column<name>), :type($column<type>.lc),
+            :nullable(!$column<notnull> && !$column<pk>), :pk(so $column<pk>),
+            :auto-increment(so $column<pk> && $automatic),
+            :references(%references{$column<name>} // {}))
+    }).Array))
 }
 multi method table-definition-from-create-table(Str:D $sql) {
     SQL::CreateTable.parse($sql, :actions(SQL::CreateTable::Action)).made;
@@ -68,4 +101,27 @@ multi method table-definition-from-create-table(Str:D $sql) {
 
 multi method table-definition-from-create-table(Any:U) {
     Red::Cli::Table.new
+}
+
+method column-dependencies(Str $table, Str $column) {
+    my $driver = get-RED-DB;
+    sub rows($sql) {
+        my $statement = $driver.execute($sql);
+        gather loop {
+            my $row := $statement.row;
+            last if $row =:= IterationEnd || !$row;
+            take $row;
+        }
+    }
+    my @dependencies;
+    for rows("PRAGMA index_list({$driver.table-name-wrapper($table)})") -> $index {
+        my @members = rows("PRAGMA index_info({$driver.table-name-wrapper($index<name>)})");
+        @dependencies.push: $index<name> if @members.first(*.<name> eq $column).defined;
+    }
+    for self.tables-names -> $other {
+        for rows("PRAGMA foreign_key_list({$driver.table-name-wrapper($other)})") -> $ref {
+            @dependencies.push: "FK from $other" if $ref<table> eq $table && $ref<to> eq $column;
+        }
+    }
+    @dependencies
 }

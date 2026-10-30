@@ -2,24 +2,59 @@ use Red::Utils;
 use Red::DB;
 unit class Red::Cli::Column;
 
-has      $.table      is rw;
-has Str  $.name       is required;
+has      $.table    is rw;
+has Str  $.name     is required;
 has Str  $.formated-name = snake-to-kebab-case $!name;
-has Str  $.type       is required;
-has Str  $.perl-type  = get-RED-DB.type-for-sql: $!type.lc;
-has Bool $.nullable   = True;
-has Bool $.pk         = False;
-has Bool $.unique     = False;
-has      $.references = {};
+has Str  $.type     is required;
+has Str  $.raku-type      = get-RED-DB.type-for-sql: $!type.lc;
+has Bool $.nullable       = True;
+has Bool $.pk             = False;
+has Bool $.unique   is rw = False;
+has Bool $.auto-increment = False;
+has      $.references     = {};
+has Str  $.comment;
+
+# Published drivers still pass the old constructor key. Normalize it here;
+# snapshots and all current callers use raku-type exclusively.
+multi method new(::?CLASS:U: *%args) {
+    if %args<perl-type>:exists {
+        %args<raku-type> //= %args<perl-type>;
+        %args<perl-type>:delete;
+    }
+    self.bless(|%args)
+}
+
+method perl-type is DEPRECATED('raku-type') { $!raku-type }
 
 multi method new($name, $type, $nullable, $pk, $unique, $references) {
     self.bless: :$name, :$type, :nullble(?$nullable), :pk(?$pk), :unique(?$unique), :$references
 }
 
+method normalized-type {
+    my $value = $!type.lc.trim.subst('character varying', 'varchar');
+    $value = 'timestamp' if $value eq 'timestamp without time zone';
+    $value = 'timestamptz' if $value eq 'timestamp with time zone';
+    $value = 'integer' if $value eq any(<int int4 serial>);
+    $value = 'integer' if $value ~~ /^ 'int(' \d+ ')' $/;
+    $value
+}
+
 multi method gist(::?CLASS:D:) {
-    "Red::Cli::Column.new(:name($!name), :type($!type), :nullable($!nullable), :pk($!pk), :unique($!unique), {
-        ":references($_)" with $!references
+    "Red::Cli::Column.new(:name<$!name>, :type<{self.normalized-type}>{
+        ", :nullable" if $!nullable
+    }{
+        ", :pk" if $!pk
+    }{
+        ", :unique" if $!unique
+    }{
+        ", :references({$!references<table>}.{$!references<column>})" if $!references
     } #`( table => $!table.name() ))"
+}
+
+method Str { $.gist }
+
+multi method WHICH(::?CLASS:D:) {
+    ValueObjAt.new: $.gist
 }
 
 method !modifier(Str :$schema-class) {
@@ -46,7 +81,7 @@ method !modifier(Str :$schema-class) {
 }
 
 method to-code(Str :$schema-class) {
-    "has {$!perl-type} \$.{ $!formated-name } is {
+    "has {$!raku-type} \$.{ $!formated-name } is {
         self!modifier(
             |(:$schema-class with $schema-class)
         ).chomp
@@ -59,9 +94,11 @@ method diff(::?CLASS $b) {
         @diffs.push: [ $!name, "+", "name", $b.name   ];
         @diffs.push: [ $!name, "-", "name", self.name ];
     }
-    if self.type ne $b.type {
-        @diffs.push: [ $!name, "+", "type", $b.type   ];
-        @diffs.push: [ $!name, "-", "type", self.type ];
+    my $self-type = self.normalized-type;
+    my $other-type = $b.normalized-type;
+    if self.auto-increment == $b.auto-increment and $self-type ne $other-type {
+        @diffs.push: [ $!name, "+", "type", $other-type ];
+        @diffs.push: [ $!name, "-", "type", $self-type  ];
     }
     if self.nullable != $b.nullable {
         @diffs.push: [ $!name, "+", "nullable", $b.nullable   ];

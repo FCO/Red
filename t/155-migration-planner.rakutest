@@ -1,0 +1,62 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Snapshot;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $dialect = @connection.shift;
+my %parameters = @connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
+my $db = database $dialect, |%parameters;
+my $*RED-DB = $db;
+model Parent is table<migration_parent> {
+    has Int $.id is serial;
+    has Str $.code is column{ :unique };
+}
+model Child is table<migration_child> {
+    has Int $.id is serial;
+    has Int $.parent-id is referencing{ :model<Parent>, :column<id> };
+    has Str $.label is indexed<label>;
+}
+my $directory = $*TMPDIR.add("red-planner-{$*PID}-{100000.rand.Int}");
+my $manager = Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+    :models[Child, Parent], :drivers[$dialect], :$directory, :connections{ default => $db })));
+$db.execute('DROP TABLE IF EXISTS migration_child');
+$db.execute('DROP TABLE IF EXISTS migration_parent');
+$db.execute('DROP TABLE IF EXISTS red_migrations');
+my $path = $manager.prepare('related');
+my $snapshot = Red::Migration::Snapshot.load($path.add($dialect).add('schema.rakuconf'));
+is $snapshot.tables.elems, 2, 'snapshot includes every configured model';
+is $snapshot.tables.first(*.name eq 'migration_child').indexes.elems, 1, 'snapshot preserves indexes';
+is $manager.apply, 1, 'orders parent creation before child';
+my $parent = Parent.^create(:code<unique>);
+Child.^create(:parent-id($parent.id), :label<test>);
+dies-ok { Parent.^create(:code<unique>) }, 'generated unique constraint is enforced';
+dies-ok { Child.^create(:parent-id(999), :label<bad>) }, 'generated foreign key is enforced';
+is $manager.plan.elems, 0, 'live plan recognizes matching index and constraints';
+is $manager.rollback, 1, 'orders child removal before parent';
+my $first = $directory.dir.grep(*.d).elems;
+model Invalid is table<migration_invalid> {
+    has Int $.id is serial;
+    has Int $.missing-id is referencing{ :model<Parent>, :column<id> };
+}
+my $invalid = Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+    :models[Invalid], :drivers[$dialect], :directory($directory.add('invalid')), :connections{ default => $db })));
+dies-ok { $invalid.prepare('missing-parent') }, 'rejects missing parent before publishing artifacts';
+ok !$directory.add('invalid').d || !$directory.add('invalid').dir.grep(*.d), 'no partial migration published';
+model Checked is table<migration_checked> {
+    has Int $.id is serial;
+    has Int $.score is column;
+    has $!score-valid is check{ .score >= 0 };
+}
+$db.execute('DROP TABLE IF EXISTS migration_checked');
+$db.execute('DROP TABLE IF EXISTS red_migrations');
+my $checked = Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+    :models[Checked], :drivers[$dialect], :directory($directory.add('checks')),
+    :connections{ default => $db })));
+my $check-path = $checked.prepare('check-score');
+my $check-snapshot = Red::Migration::Snapshot.load($check-path.add($dialect).add('schema.rakuconf'));
+is $check-snapshot.tables[0].checks.elems, 1, 'snapshot preserves CHECK SQL';
+is $checked.apply, 1, 'applies initial CHECK constraint';
+dies-ok { Checked.^create(:score(-1)) }, 'generated CHECK is enforced';
+done-testing;
