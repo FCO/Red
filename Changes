@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Recognize Red operators from installed repositories when compiling RakuAST queries.
 
 0.2.8  2026-11-02T02:08:21Z
     - Preserve inherited environment variables when provisioning migration databases and running child commands.

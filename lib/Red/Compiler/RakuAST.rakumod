@@ -71,7 +71,8 @@ class Translation {
         my @candidates = $code.^can("candidates") ?? $code.candidates !! ($code,);
         self.unsupported unless @candidates.map({
             .file.starts-with("SETTING::")
-                || .file.ends-with("/Red/Operators.rakumod (Red::Operators)")
+                # Installed repositories replace the source path with a content hash.
+                || .file.ends-with(" (Red::Operators)")
         }).all;
         $code
     }
