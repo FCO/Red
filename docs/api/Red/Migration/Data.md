@@ -11,6 +11,16 @@ sub fail(
 
 Raise a typed migration compilation error instead of falling back to runtime Raku execution.
 
+### sub has-phasers
+
+```raku
+sub has-phasers(
+    $block
+) returns Bool
+```
+
+Detect block phasers on both older and newer RakuAST implementations.
+
 ### sub check-source
 
 ```raku

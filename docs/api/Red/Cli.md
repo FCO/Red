@@ -1,3 +1,13 @@
+### sub database-client
+
+```raku
+sub database-client(
+    $db
+) returns Hash
+```
+
+Build native client arguments without exposing passwords in the process arguments.
+
 ### multi sub list-tables
 
 ```raku

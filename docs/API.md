@@ -110,6 +110,8 @@ API Pages
 - [Red::ResultAssociative](api/Red/ResultAssociative)
 - [Red::ResultSeq](api/Red/ResultSeq)
 - [Red::ResultSeqSeq](api/Red/ResultSeqSeq)
+- [Red::Runtime::Configuration](api/Red/Runtime/Configuration)
+- [Red::Schema](api/Red/Schema)
 - [Red::SchemaReader](api/Red/SchemaReader)
 - [Red::Statement](api/Red/Statement)
 - [Red::Traits](api/Red/Traits)
