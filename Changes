@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.9  2026-11-02T19:32:59Z
     - Recognize Red operators from installed repositories when compiling RakuAST queries.
 
 0.2.8  2026-11-02T02:08:21Z
