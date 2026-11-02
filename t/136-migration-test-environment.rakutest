@@ -5,6 +5,8 @@ use Red::Migration::Manager;
 use Red::Migration::Environment;
 use Red::Migration::Storage;
 
+temp %*ENV<RED_MIGRATION_ENV_TEST> = 'inherited';
+
 my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
 my $driver = @connection.shift;
 my %server = @connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
@@ -14,15 +16,28 @@ my $manager = Red::Migration::Manager.new(:config(Red::Migration::Configuration.
     :models[EnvUser], :drivers[$driver], :directory($root), :test-servers{ $driver => %server })));
 $manager.prepare('initial');
 lives-ok { $manager.test }, 'applies, verifies, rolls back and reapplies in a fresh database';
-my $program = 'use Red; use Red::Migration::Environment; my $*RED-DB = test-database(); '
+my $program = 'use Red; use Red::Migration::Environment; '
+    ~ 'die "missing inherited environment" unless %*ENV<RED_MIGRATION_ENV_TEST> eq "inherited"; '
+    ~ 'my $*RED-DB = test-database(); '
     ~ 'die "missing database" unless $*RED-DB.defined; '
     ~ 'die "wrong schema" unless "env_user" eq any($*RED-DB.schema-reader.tables-names.List);';
 lives-ok { $manager.test(:$driver, :command[$*EXECUTABLE.Str, '-Ilib', '-e', $program]) },
-    'child command receives the temporary connection';
+    'child command receives the temporary connection and inherited environment';
 dies-ok { $manager.test(:$driver, :command[$*EXECUTABLE.Str, '-e', 'exit 7']) },
     'child failures fail migration validation';
 my $context;
-temporary-database('SQLite', {}, -> $db, $file, %parameters { $context = $file; True });
+{
+    temp %*ENV<RED_MIGRATION_TEST> = 'caller-context';
+    temporary-database('SQLite', {}, -> $db, $file, %parameters {
+        $context = $file;
+        is %*ENV<RED_MIGRATION_ENV_TEST>, 'inherited', 'temporary databases retain caller settings';
+        ok !(%*ENV<RED_MIGRATION_TEST>:exists), 'nested provisioning clears the inherited test context';
+        %*ENV<RED_MIGRATION_ENV_TEST> = 'local';
+        True
+    });
+    is %*ENV<RED_MIGRATION_ENV_TEST>, 'inherited', 'provisioning does not change the caller environment';
+    is %*ENV<RED_MIGRATION_TEST>, 'caller-context', 'provisioning preserves the caller test context';
+}
 ok !$context.e, 'removes the context and temporary SQLite database';
 temporary-database('SQLite', {}, -> $db, $file, %parameters { $context = $file; True }, :keep);
 ok $context.f && $context.parent.add('test.sqlite').f, 'keep retains the connection and database';

@@ -819,8 +819,9 @@ method test(Str :$driver, :@command = [], Bool :$keep = False, Callable :$fixtur
                     }
                     self!error('Migrated database does not match configured models') if @remaining;
                 }
+                my %child-environment = %*ENV;
                 if @command {
-                    my %*ENV = %*ENV;
+                    my %*ENV = %child-environment;
                     my @libraries = $*REPO.repo-chain.grep(*.^name eq 'CompUnit::Repository::FileSystem')
                         .map(*.prefix.Str);
                     %*ENV<RAKULIB> = (|@libraries, |(%*ENV<RAKULIB> // '').split(','))
