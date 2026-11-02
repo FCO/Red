@@ -1,0 +1,77 @@
+use Test;
+use Red;
+use JSON::Fast;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+
+my $root = $*TMPDIR.add("red-workflow-{$*PID}-{100000.rand.Int}");
+$root.mkdir;
+LEAVE remove-tree($root) if $root.defined && $root.e;
+model First is table<workflow_user> { has Int $.id is serial; has Str $.name is column }
+model Second is table<workflow_user> {
+    has Int $.id is serial; has Str $.name is column;
+    has Str $.email is column{ :nullable };
+}
+sub manager($model) {
+    Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+        :models[$model], :directory($root.add('migrations')))))
+}
+manager(First).prepare('initial');
+my $first = manager(First).history.head<id>;
+manager(Second).prepare('email');
+lives-ok {
+    manager(Second).test(:fixture-after($first), :fixtures(-> $db, $manager {
+        $db.execute(q[INSERT INTO workflow_user(name) VALUES ('existing')]);
+    }), :command[$*EXECUTABLE.Str, '-Ilib', '-e',
+        q[use Red; use Red::Migration::Environment; my $db = test-database();
+          my $row = $db.execute('SELECT name, email FROM workflow_user').row;
+          die 'lost fixture' unless $row<name> eq 'existing' && !$row<email>.defined;]])
+}, 'upgrade retains fixture data and initializes a new nullable column';
+
+my @versions = manager(Second).history;
+my $manifest = @versions.tail<path>.add('migration.rakuconf');
+my $original-manifest = $manifest.slurp;
+{
+    use MONKEY-SEE-NO-EVAL;
+    my %metadata = EVAL $original-manifest;
+    %metadata<drivers><SQLite><reversible> = False;
+    %metadata<drivers><SQLite><down-state> = 'irreversible';
+    $manifest.spurt(%metadata.raku);
+}
+my $down = @versions.head<path>.add('SQLite/down/001-schema.sql');
+my $original-down = $down.slurp;
+$down.spurt('DELETE FROM missing_rollback_table;');
+throws-like { manager(Second).test }, X::Red::Migration,
+    :reason(/'001-schema.sql'/), 'tests earlier down scripts behind an irreversible barrier';
+$down.spurt($original-down);
+$manifest.spurt($original-manifest);
+
+my $history = $root.add('recover');
+$history.mkdir;
+$history.add('original').spurt('safe');
+my $stage = staging-history($history);
+$stage.add('new').spurt('ready');
+my $backup = $root.add('.recover.backup-test');
+my $journal = history-lock-path($history).extension('journal.json');
+$journal.spurt(to-json(%(stage => $stage.absolute, backup => $backup.absolute)));
+$history.rename($backup);
+with-history-lock($history, { True });
+ok $history.add('original').f && !$history.add('new').e,
+    'recovers interrupted publication before the new history was installed';
+ok !$backup.e && !$stage.e && !$journal.e, 'recovery removes abandoned publication artifacts';
+my $complete = staging-history($history);
+$complete.add('new').spurt('ready');
+publish-history($history, $complete);
+ok $history.add('new').f, 'publishes a complete replacement';
+
+my $config = $root.add('red.rakuconf');
+$config.spurt('use Red::Migration::Configuration; Red::Migration::Configuration.new(:models[], '
+    ~ ':directory(' ~ $root.add('empty-history').Str.raku ~ '))');
+my $cli = run $*EXECUTABLE.Str, '-Ilib', 'bin/red', 'migration', 'apply', '--test',
+    '--config=' ~ $config.Str, '--', $*EXECUTABLE.Str, '-e', 'exit 0', :out, :err;
+is $cli.exitcode, 0, 'CLI apply --test accepts a child command';
+my $failed = run $*EXECUTABLE.Str, '-Ilib', 'bin/red', 'migration', 'apply', '--test',
+    '--config=' ~ $config.Str, '--', $*EXECUTABLE.Str, '-e', 'exit 7', :out, :err;
+ok $failed.exitcode != 0, 'CLI propagates child command failure';
+done-testing;

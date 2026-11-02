@@ -38,7 +38,7 @@ subtest 'Warnings are opt-in and runtime dynamic values are observed' => {
         my @messages = warnings({ unsupported-query() });
         is @messages.elems, 1, 'A runtime dynamic variable enables warnings';
         ok @messages[0].contains('red-compile: map'), 'The query operation is identified';
-        ok @messages[0].contains('106-compiler-warnings.rakutest'),
+        ok @messages[0].contains('105-compiler-warnings.rakutest'),
             'The callback location is identified';
         is warnings({ unsupported-query(); unsupported-query() }).elems, 2,
             'Separate query constructions each warn';

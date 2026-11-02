@@ -18,3 +18,5 @@ tags
 
 # Local migration preparation locks
 .prepare.lock
+
+.*.migration.lock

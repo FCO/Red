@@ -21,7 +21,7 @@ my $manager = Red::Migration::Manager.new(:$config);
 $db.execute('DROP TABLE IF EXISTS migration_failure');
 $db.execute('DROP TABLE IF EXISTS red_migrations');
 my $path = $manager.prepare('initial');
-my $file = $path.add($dialect).add('up.sql');
+my $file = $path.add($dialect).add('up/001-schema.sql');
 my $original = $file.slurp;
 $file.spurt($original ~ "\nINSERT INTO red_missing_table VALUES (1);\n");
 throws-like { $manager.apply }, X::Red::Migration,

@@ -1,4 +1,8 @@
 use Red;
+=head2 Red::Migration::Applied
+
+#| Store version execution state in red_migrations, including ancestry, direction, checksums and
+#| application or reversion timestamps. The migration manager owns these bookkeeping records.
 unit model Red::Migration::Applied is table<red_migrations>;
 
 has Str $.id is id;

@@ -1,0 +1,16 @@
+use lib 'lib';
+use Red;
+use Task;
+use Red::Migration::Configuration;
+config {
+    .models = [Task];
+    .drivers = ['Pg'];
+    .connections = %(
+        default => { database 'Pg', :host(%*ENV<PGHOST> // 'db-dev'),
+            :dbname<tasks>, :user<postgres>, :password<tutorial> },
+        production => { database 'Pg', :host(%*ENV<PROD_PGHOST> // 'db-prod'),
+            :dbname<tasks>, :user<postgres>, :password<tutorial> },
+    );
+    .test-servers = %(Pg => %(host => %*ENV<TEST_PGHOST> // 'db-dev', dbname => 'postgres',
+        user => 'postgres', password => 'tutorial'));
+}

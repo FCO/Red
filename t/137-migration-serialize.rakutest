@@ -1,0 +1,43 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+
+my $root = $*TMPDIR.add("red-serialize-{$*PID}-{100000.rand.Int}"); $root.mkdir;
+my $db = database 'SQLite';
+model Base is table<merge_user> { has Int $.id is serial; has Str $.name is column }
+model A is table<merge_user> {
+    has Int $.id is serial; has Str $.name is column;
+    has Str $.nickname is column{ :nullable };
+}
+model B is table<merge_user> {
+    has Int $.id is serial; has Str $.name is column;
+    has Str $.phone is column{ :nullable };
+}
+model Both is table<merge_user> {
+    has Int $.id is serial; has Str $.name is column;
+    has Str $.nickname is column{ :nullable }; has Str $.phone is column{ :nullable };
+}
+sub manager($directory, $model) {
+    Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+        :models[$model], :$directory, :connections{ default => $db })))
+}
+my $base = manager($root.add('base'), Base).prepare('initial');
+my $id = manager($root.add('base'), Base).history[0]<id>;
+copy-tree($root.add('base'), $root.add('a'));
+copy-tree($root.add('base'), $root.add('b'));
+my $a = manager($root.add('a'), A).prepare('nickname');
+my $b = manager($root.add('b'), B).prepare('phone');
+copy-tree($root.add('a'), $root.add('merged'));
+copy-tree($b, $root.add('merged').add($b.basename));
+my $merged = manager($root.add('merged'), Both);
+dies-ok { $merged.history }, 'ordinary history rejects sibling migrations';
+my $aid = manager($root.add('a'), A).history.tail<id>;
+my $bid = manager($root.add('b'), B).history.tail<id>;
+is $merged.serialize(:after($id), :order[$aid, $bid]), 1, 'rewrites only the rebased sibling';
+is $merged.history.elems, 3, 'retains all logical versions';
+is $merged.history.tail<predecessor>, $aid, 'rewritten migration follows the first branch';
+is $merged.history.tail<replaces>, $bid, 'records the replaced unpublished identity';
+lives-ok { $merged.test }, 'serialized chain builds, verifies and rolls back';
+done-testing;

@@ -1,0 +1,85 @@
+use Test;
+use Red;
+my $root = $*TMPDIR.add("red-migration-cli-{$*PID}-{100000.rand.Int}");
+$root.mkdir;
+my $lib = $*CWD.add('lib').absolute;
+my $bin = $*CWD.add('bin/red').absolute;
+my $config = $root.add('red.rakuconf');
+my $db = $root.add('test.sqlite').Str;
+my $migrations = $root.add('migrations').Str;
+$config.spurt: qq:to/CONFIG/;
+use Red;
+use Red::Migration::Configuration;
+model CliMigration is table<cli_migration> \{
+    has Int \$.id is serial;
+    has Str \$.name is column;
+}
+Red::Migration::Configuration.new(
+    :models[CliMigration], :drivers<SQLite>,
+    :directory($migrations.raku()),
+    :connections\{ default => \{ database 'SQLite', :database($db.raku()) } })
+CONFIG
+sub cli(*@args, Str :$configuration = $config.Str) {
+    my $proc = run $*EXECUTABLE, "-I$lib", $bin, 'migration', |@args, "--config=$configuration", :out, :err;
+    my $out = $proc.out.slurp-rest;
+    my $err = $proc.err.slurp-rest;
+    diag $err if $proc.exitcode;
+    ($proc.exitcode, $out, $err)
+}
+my ($code, $out) = cli('status', :configuration($root.add('missing.rakuconf').Str));
+is $code, 0, 'status succeeds before configuration exists';
+like $out, /'Not initialized'/, 'missing configuration is explicitly reported';
+like $out, /'Configured models: none'/, 'missing configuration has no configured models';
+ok !$db.IO.e, 'unconfigured status never opens a target database';
+($code, $out) = cli('prepare', 'initial');
+is $code, 0, 'CLI prepares migration in a separate process';
+ok !$db.IO.e, 'prepare never opens configured target database';
+($code, $out) = cli('status');
+is $code, 0, 'status succeeds for prepared but unapplied migrations';
+like $out, /'Not initialized'/, 'status does not confuse prepared files with database initialization';
+like $out, /'Configured models: 1'/, 'status reports the configured model count';
+like $out, /'CliMigration -> cli_migration'/, 'status includes model and table names';
+like $out, /'id: Int'/, 'status includes column types';
+like $out, /'primary key'/, 'status includes model key details';
+like $out, /'pending'/, 'prepared versions are listed as pending';
+my $database = database 'SQLite', :database($db);
+{
+    my $*RED-DB = $database;
+    is $database.schema-reader.tables-names.grep(*.defined).elems, 0,
+        'status creates neither migration tracking nor model tables';
+}
+($code, $out) = cli('apply');
+is $code, 0, 'CLI applies saved migration';
+($code, $out) = cli('plan');
+is $code, 0, 'plan compares existing schema';
+is $out.trim, '', 'plan is empty after apply';
+($code, $out) = cli('status');
+is $code, 0, 'CLI reads persisted status in another process';
+like $out, /applied/, 'status reports applied';
+like $out, /'Database migrations: Initialized'/, 'status reports database initialization after apply';
+like $out, /'table present'/, 'status reports configured table presence';
+($code, $out) = cli('apply');
+is $out.trim, '0', 'second process does not reapply';
+($code, $out) = cli('rollback');
+is $code, 0, 'CLI rolls back saved migration';
+($code, $out) = cli('status');
+like $out, /reverted/, 'status reports reverted';
+{
+    my $*CWD = $root;
+    ($code, $out) = cli('init-tests');
+    is $code, 0, 'init-tests scaffolds the standard project test';
+    my $test = $root.add('t/migrations.rakutest');
+    my $source = $test.slurp;
+    my ($again, $ignored, $error) = cli('init-tests');
+    ok $again != 0, 'init-tests refuses to overwrite a project test';
+    is $test.slurp, $source, 'existing project test is unchanged';
+    my $proc = run $*EXECUTABLE, "-I$lib", $test.Str, :out, :err;
+    is $proc.exitcode, 0, 'scaffold validates the configured history';
+}
+for <status apply> -> $old-command {
+    my $old = run $*EXECUTABLE, "-I$lib", $bin, $old-command, "--config=$config", :out, :err;
+    $old.out.slurp-rest;
+    $old.err.slurp-rest;
+    ok $old.exitcode != 0, "$old-command is no longer a top-level command";
+}
+done-testing;

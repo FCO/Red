@@ -1,0 +1,22 @@
+use Test;
+use Red 'experimental migrations';
+
+model PopulationSource {
+    has Int $.original is column;
+}
+model PopulationFirst {
+    has Int $.first is column;
+}
+model PopulationSecond {
+    has Int $.second is column;
+}
+
+PopulationFirst.^migration: { .first = .original * 2 };
+PopulationSecond.^migration: { .second = .original + 1 };
+my @first = PopulationFirst.^migrate(:from(PopulationSource));
+my @second = PopulationSecond.^migrate(:from(PopulationSource));
+is-deeply @first.map(*.key).Array, ['first'], 'population blocks belong to their model';
+is-deeply @second.map(*.key).Array, ['second'], 'other models have independent assignments';
+is PopulationFirst.^migrate(:from(PopulationSource)).elems, 1,
+    'compiling again does not accumulate previous assignments';
+done-testing;

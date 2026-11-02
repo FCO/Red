@@ -1,0 +1,29 @@
+name: Migration checks
+on: [push, pull_request]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: tutorial
+          POSTGRES_DB: tasks
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U postgres -d tasks"
+          --health-interval=2s --health-timeout=3s --health-retries=30
+    env:
+      PGHOST: localhost
+      TEST_PGHOST: localhost
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: '2026.09'
+      - run: sudo apt-get update && sudo apt-get install -y libpq-dev uuid-dev
+      # Until migrations ship in a release, install the same Red revision used by this workshop.
+      - run: zef install --/test .
+        working-directory: vendor/Red
+      - run: zef install --/test https://github.com/FCO/Red-Driver-Pg/archive/6615b55d109db7ea7ca3469364080e873f1bf9a5.tar.gz App::Prove6
+      - run: red migration apply --test --driver=Pg -- raku -Ilib t/application.rakutest

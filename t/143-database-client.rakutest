@@ -1,0 +1,74 @@
+use Test;
+use Red;
+use Red::Cli;
+
+class PgSettings {
+    has Str $!host = 'db.example';
+    has Int $!port = 5433;
+    has Str $!user = 'reader';
+    has Str $!dbname = 'project';
+    has Str $!password = 'secret';
+    method driver-name { 'Red::Driver::Pg' }
+}
+class MySQLSettings {
+    has Str $!host = 'db.example';
+    has Int $!port = 3307;
+    has Str $!user = 'reader';
+    has Str $!database = 'project';
+    has Str $!password = 'secret';
+    method driver-name { 'Red::Driver::MySQL' }
+}
+my %pg = database-client(PgSettings.new);
+is-deeply %pg<command>, ['psql'], 'PostgreSQL starts psql';
+is-deeply %pg<environment>, %(
+    PGHOST => 'db.example', PGPORT => '5433', PGUSER => 'reader',
+    PGDATABASE => 'project', PGPASSWORD => 'secret'), 'PostgreSQL connection environment';
+my %mysql = database-client(MySQLSettings.new);
+is-deeply %mysql<command>,
+    ['mysql', '--host=db.example', '--port=3307', '--user=reader', '--database=project'],
+    'MySQL connection arguments';
+is %mysql<environment><MYSQL_PWD>, 'secret', 'MySQL password stays outside arguments';
+throws-like { database-client(database('SQLite')) }, X::Red::Migration,
+    reason => /'in-memory'/, 'in-memory databases cannot be opened in another process';
+
+my $root = $*TMPDIR.add("red-connect-{$*PID}-{100000.rand.Int}");
+$root.mkdir;
+LEAVE { .unlink for $root.dir; $root.rmdir }
+my $file = $root.add('database with spaces.sqlite');
+is-deeply database-client(database('SQLite', :database($file.Str)))<command>,
+    ['sqlite3', $file.Str], 'SQLite filename remains one argument';
+my $client = $root.add('sqlite3');
+$client.spurt("#!{$*EXECUTABLE}\n" ~ q:to/CLIENT/);
+say @*ARGS.join('|');
+exit 7;
+CLIENT
+$client.chmod(0o755);
+my $config = $root.add('red.rakuconf');
+$config.spurt(q:to/CONFIG/.subst('DATABASE', $file.Str.raku));
+use Red;
+use Red::Migration::Configuration;
+Red::Migration::Configuration.new(:connections{
+    inspection => { database 'SQLite', :database(DATABASE) }
+})
+CONFIG
+my %environment = %*ENV;
+%environment<PATH> = $root.Str ~ ':' ~ %environment<PATH>;
+%environment<RED_MIGRATION_TEST>:delete;
+my $process = run $*EXECUTABLE, '-Ilib', 'bin/red', 'connect',
+    "--config=$config", '--connection=inspection', :env(%environment), :out, :err;
+is $process.out.slurp-rest.trim, $file.Str, 'CLI resolves a named lazy connection';
+is $process.err.slurp-rest, '', 'client starts without diagnostics';
+is $process.exitcode, 7, 'CLI preserves the client exit status';
+$client.unlink;
+%environment<PATH> = $root.Str;
+my $missing = run $*EXECUTABLE, '-Ilib', 'bin/red', 'connect',
+    "--config=$config", '--connection=inspection', :env(%environment), :out, :err;
+isnt $missing.exitcode, 0, 'missing client fails';
+like $missing.err.slurp-rest, /'install the database client'/,
+    'missing client has an actionable diagnostic';
+my $unknown = run $*EXECUTABLE, '-Ilib', 'bin/red', 'connect',
+    "--config=$config", '--connection=unknown', :env(%environment), :out, :err;
+isnt $unknown.exitcode, 0, 'unknown connection fails';
+like $unknown.err.slurp-rest, /'Unknown configured connection: unknown'/,
+    'unknown connection is identified';
+done-testing;

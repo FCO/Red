@@ -1,8 +1,13 @@
 use X::Red::Migration;
+=head2 Red::Migration::SQL
+
 unit module Red::Migration::SQL;
 
 # Split statements rather than lines. Stored programs require a database-aware
 # execution protocol and are rejected until that protocol is implemented.
+#| Split SQL into ordered executable statements while respecting quoted strings, comments and
+#| PostgreSQL dollar quoting. Reject transaction commands, client directives and stored-program
+#| protocols the migration executor cannot safely handle.
 sub statements(Str $source, Str :$dialect = 'SQL' --> Array) is export {
     my @out;
     my $buffer = '';

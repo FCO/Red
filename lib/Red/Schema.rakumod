@@ -1,8 +1,15 @@
 use Red::Do;
 use Red::DB;
+use Red::Runtime::Configuration;
 unit class Red::Schema;
 
 proto sub schema(|) { * }
+
+#| Build a schema from the configured models without opening the configured database.
+multi sub schema() is export is default {
+    my $settings = runtime-settings();
+    ::?CLASS.new($settings.defined ?? $settings.model-types !! [])
+}
 
 multi sub schema(+@models) is export {
     ::?CLASS.new: @models

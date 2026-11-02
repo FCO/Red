@@ -9,6 +9,9 @@ has      @.columns;
 has      @.constraints;
 has      @.indexes;
 has Str  @.checks;
+has @.portable-indexes;
+has @.portable-checks;
+has Str @.primary-key;
 has      @.relationships;
 has Bool $.exists = True;
 

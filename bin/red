@@ -17,6 +17,26 @@ proto MAIN(Str :$I, Bool :$debug, |) {
     {*}
 }
 
+#| Open the native database client for a configured connection.
+multi MAIN('connect', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
+    use Red::Migration::Environment;
+    my $settings = Red::Migration::Configuration.load($config.IO);
+    my $db = %*ENV<RED_MIGRATION_TEST>
+        ?? test-database() !! $settings.connections{$connection};
+    $db = $db() if $db ~~ Callable;
+    X::Red::Migration.new(:reason("Unknown configured connection: $connection")).throw
+        unless $db ~~ Red::Driver:D;
+    my %client = database-client($db);
+    my %environment = %*ENV;
+    %environment{.key} = .value for %client<environment>.pairs;
+    my $process = run |%client<command>, :env(%environment);
+    if $process.exitcode == -1 {
+        X::Red::Migration.new(:reason(
+            "Unable to start {%client<command>[0]}; install the database client and check PATH")).throw;
+    }
+    exit $process.exitcode;
+}
+
 #| List tables in database
 multi MAIN(
     "list-tables",
@@ -41,7 +61,7 @@ multi MAIN(
 
 #| Generates migration plan to upgrade database schema
 multi MAIN(
-    "migration-plan",
+    "migration", "plan",
     Str :$model!,
     Str :$require = $model,
     Str :$driver!,
@@ -76,7 +96,7 @@ multi MAIN(
 
 #| Prepare database
 multi MAIN(
-        "prepare-database",
+        "migration", "prepare-database",
         Bool :$populate,
         Str  :$models!,
         Str  :$driver!,
@@ -91,41 +111,101 @@ sub dyn-lib(@libs) {
 }
 
 #| Show the development database plan, without applying it.
-multi MAIN('plan', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
+multi MAIN('migration', 'plan', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
     .say for migration-manager($config).plan(:$connection)
 }
 
 #| Synchronize only the development database.
-multi MAIN('sync', Bool :$dev! where so *, Str :$config = 'red.rakuconf',
+multi MAIN('migration', 'sync', Bool :$dev! where so *, Str :$config = 'red.rakuconf',
            Str :$connection = 'default', Bool :$allow-destructive = False) {
     say migration-manager($config).sync(:$connection, :$allow-destructive)
 }
 
 #| Prepare versioned SQL and schema snapshots for all configured drivers.
-multi MAIN('prepare', Str $name, Str :$config = 'red.rakuconf',
+multi MAIN('migration', 'prepare', Str $name, Str :$config = 'red.rakuconf',
            Bool :$allow-destructive = False) {
     my $path = migration-manager($config).prepare($name, :$allow-destructive);
     say $path // 'No schema changes'
 }
 
 #| Apply all pending migrations to the selected configured connection.
-multi MAIN('apply', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
+multi MAIN('migration', 'apply', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
     say migration-manager($config).apply(:$connection)
 }
 
-#| Revert the last applied migration using its down.sql.
-multi MAIN('rollback', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
+#| Revert the last applied migration using its down scripts.
+multi MAIN('migration', 'rollback', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
     say migration-manager($config).rollback(:$connection)
 }
 
-#| Show migration state recorded in the selected database.
-multi MAIN('status', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
-    for migration-manager($config).status(:$connection) -> %migration {
+#| Show initialization, configured models and recorded migration states.
+multi MAIN('migration', 'status', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
+    unless $config.IO.e {
+        say 'Database migrations: Not initialized';
+        say "Configuration: not found ({$config.IO.absolute})";
+        say "Connection: $connection (not configured)";
+        say 'Configured models: none (configuration missing)';
+        return;
+    }
+    my %report = migration-manager($config).status-report(:$connection);
+    say 'Database migrations: ' ~ (%report<initialized> ?? 'Initialized' !! 'Not initialized');
+    say "Configuration: {$config.IO.absolute}";
+    say "Connection: {%report<connection>} ({%report<driver>})";
+    say "Migration directory: {%report<directory>}";
+    say "Configured models: {%report<models>.elems}";
+    for %report<models>.list -> %model {
+        say "  {%model<name>} -> {%model<table>} (table "
+            ~ (%model<table-exists> ?? 'present' !! 'missing') ~ ')';
+        for %model<columns>.list -> %column {
+            my @flags = %column<nullable> ?? 'nullable' !! 'required';
+            @flags.push('primary key') if %column<primary-key>;
+            @flags.push('automatic') if %column<auto-increment>;
+            say "    {%column<name>}: {%column<raku-type>} [{@flags.join(', ')}]";
+        }
+    }
+    say "Prepared migrations: {%report<migrations>.elems}";
+    say "Recorded migrations: {%report<recorded>}";
+    for %report<migrations>.list -> %migration {
         say "%migration<id> %migration<state> %migration<name>"
+    }
+    for (%report<drafts> // []).list -> %draft {
+        say "%draft<id> draft %draft<name> (run red migration prepare)";
     }
 }
 
 sub migration-manager(Str $file --> Red::Migration::Manager) {
     Red::Migration::Manager.new(
         :config(Red::Migration::Configuration.load($file.IO)))
+}
+
+#| Validate migrations using fresh disposable databases, optionally running a command.
+multi MAIN('migration', 'apply', Bool :$test! where so *, Str :$driver, Bool :$keep = False,
+           Str :$config = 'red.rakuconf', *@command) {
+    migration-manager($config).test(:$driver, :$keep, :@command)
+}
+
+#| Add the standard migration test without replacing project tests.
+multi MAIN('migration', 'init-tests', Str :$config = 'red.rakuconf') {
+    my $path = 't/migrations.rakutest'.IO;
+    X::Red::Migration.new(:reason('t/migrations.rakutest already exists')).throw if $path.e;
+    $path.parent.mkdir unless $path.parent.d;
+    $path.spurt("use Test;\nuse Red::Migration::Test;\nmigration-ok " ~ $config.raku ~ ";\ndone-testing;\n");
+    say $path
+}
+
+#| Generate missing SQL dialects across the entire migration history.
+multi MAIN('migration', 'backfill', Str :$driver!, Str :$config = 'red.rakuconf') {
+    say migration-manager($config).backfill(:$driver)
+}
+
+#| Rebase unpublished branches after an explicitly protected migration.
+multi MAIN('migration', 'serialize', Str :$after!, Str :$order,
+           :@check-connection = [], Str :$config = 'red.rakuconf') {
+    say migration-manager($config).serialize(:$after,
+        :order($order.defined ?? $order.split(',').Array !! []),
+        :check-connections(@check-connection))
+}
+#| Create a synchronous migration draft with historical models and migration.raku.
+multi MAIN('migration', 'create', Str $name, Str :$config = 'red.rakuconf') {
+    say migration-manager($config).create($name)
 }

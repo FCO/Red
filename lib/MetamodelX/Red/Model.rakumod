@@ -108,7 +108,8 @@ method rs-class(|) {
 }
 
 multi method emit(Mu $model, Red::Event $event) {
-    start try get-RED-DB.emit: $event.clone: :model($model.WHAT)
+    my $driver = try get-RED-DB();
+    start try $driver.emit: $event.clone: :model($model.WHAT)
 }
 
 multi method emit(Mu $model, $data, Exception :$error, Red::Model :$origin) {

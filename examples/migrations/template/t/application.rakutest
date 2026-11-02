@@ -1,0 +1,22 @@
+use Test;
+use lib 'lib';
+use Red;
+use Task;
+use Red::Migration::Configuration;
+use Red::Migration::Environment;
+set-config -> {
+    config {
+        .models = [Task];
+        .drivers = ['Pg'];
+        .connections = %(default => {
+            test-database() // die 'Run this test through red migration apply --test';
+        });
+    }
+}
+my %values = title => 'application-test';
+%values<description> = 'Created by application'
+    if Task.^columns.first(*.column.name eq 'description').defined;
+my $task = Task.^create(|%values);
+is Task.^find(:id($task.id)).title, 'application-test', 'task survives a database round trip';
+$task.^delete;
+done-testing;

@@ -1,14 +1,20 @@
 use Red;
 use Red::Migration::Snapshot;
 use X::Red::Migration;
+=head2 Red::Migration::Planner
+
 unit class Red::Migration::Planner;
 
 has $.driver is required;
 has Str $.dialect is required;
 
+#| Raise a typed error explaining why a schema operation cannot be generated safely.
 method !error(Str $reason) { X::Red::Migration.new(:$reason).throw }
+#| Quote a SQL identifier using the selected backend conventions.
 method !q(Str $name) { $!driver.table-name-wrapper($name) }
 
+#| Capture configured model schemas, indexes and constraints for this dialect. Reject unsupported
+#| model kinds, defaults and reserved bookkeeping table names.
 method capture(@models --> Red::Migration::Snapshot) {
     my $*RED-DB = $!driver;
     my @tables = @models.map: -> $model {
@@ -17,7 +23,8 @@ method capture(@models --> Red::Migration::Snapshot) {
         self!error("Column defaults require an explicit SQL migration: {$model.^name}")
             if $model.^columns.grep({ .column.default.defined }).elems;
         my $table = $model.^describe;
-        self!error('red_migrations is reserved for migration history') if $table.name eq 'red_migrations';
+        self!error("{$table.name} is reserved for migration history")
+            if $table.name eq any(<red_migrations red_migration_files>);
         self!error("Duplicate column names in {$table.name}")
             unless $table.columns.map(*.name).unique.elems == $table.columns.elems;
         my @indexes = $model.^indexes.grep({ !.inline && $!driver.schema-definition-applies($_) }).map: -> $index {
@@ -42,6 +49,8 @@ method capture(@models --> Red::Migration::Snapshot) {
     Red::Migration::Snapshot.new(:@tables)
 }
 
+#| Render a column definition with its nullability, uniqueness and supported automatic-primary-key
+#| syntax for this dialect.
 method !column($col, Bool :$single-pk = False --> Str) {
     my $type = $col.type;
     my $extra = '';
@@ -58,8 +67,12 @@ method !column($col, Bool :$single-pk = False --> Str) {
         ~ ($col.unique ?? ' UNIQUE' !! '')
 }
 
+#| Render CREATE TABLE from a captured table, including supported primary keys, unique groups,
+#| references and checks.
 method !create($table --> Str) {
-    my @pk = $table.columns.grep(*.pk);
+    my @pk = $table.primary-key
+        ?? $table.primary-key.map(-> $name { $table.columns.first(*.name eq $name) })
+        !! $table.columns.grep(*.pk);
     my @defs = $table.columns.map({ self!column($_, :single-pk(@pk.elems == 1)) });
     @defs.push('PRIMARY KEY (' ~ @pk.map({ self!q(.name) }).join(', ') ~ ')') if @pk > 1;
     for $table.constraints.grep(*.elems > 1) -> @cols {
@@ -73,6 +86,9 @@ method !create($table --> Str) {
     'CREATE TABLE ' ~ self!q($table.name) ~ " (\n    " ~ @defs.join(",\n    ") ~ "\n)"
 }
 
+#| Return ordered SQL statements that transform one snapshot into another. Create referenced tables
+#| first, require explicit destructive permission for removals, and reject unsupported conversions
+#| or constraint alterations.
 method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
             Bool :$allow-destructive = False --> Array) {
     my %old = $old.tables.map({ .name => $_ });
@@ -127,7 +143,7 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
                 if $before.type.lc ne $col.type.lc {
                     my $x = $before.type.lc.match(/^ 'varchar(' (\d+) ')' $/);
                     my $y = $col.type.lc.match(/^ 'varchar(' (\d+) ')' $/);
-                    self!error("Only VARCHAR widening is automatic: $name.$column")
+                    self!error("Only VARCHAR widening is automatic: $name.$column; provide explicit SQL for type conversions")
                         unless $x && $y && +$y[0] >= +$x[0];
                 }
                 my $prefix = 'ALTER TABLE ' ~ self!q($name);

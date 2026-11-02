@@ -1,0 +1,49 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Artifact;
+use Red::Migration::Snapshot;
+use MONKEY-SEE-NO-EVAL;
+
+my $path = $*TMPDIR.add("red-artifact-{$*PID}.rakuconf");
+LEAVE $path.unlink if $path.e;
+my $project-config = PROCESS::<$CONFIG-OBJECT>;
+my %manifest = format => 2, id => '01M00000000000000000000000', name => 'initial',
+    predecessor => '', logical-checksum => 'ABC',
+    drivers => %(SQLite => %(reversible => True, down-reason => ''));
+my $manifest-source = artifact-source('manifest', %manifest);
+like $manifest-source, /'config {'/, 'manifest uses the config builder';
+$path.spurt($manifest-source);
+is-deeply EVALFILE($path.Str), %manifest, 'manifest round trip';
+my @operations = %(
+    path => ['tables', 'task'], had => False, has => True, before => Any,
+    after => %(columns => %(id => %(raku-type => 'Int', references => %())))),
+    %(path => ['tables', 'empty'], before => [], after => %());
+my $source = artifact-source('operations', @operations);
+like $source, /'config {'/, 'operations use the config builder';
+$path.spurt($source);
+is-deeply EVALFILE($path.Str), @operations.Array,
+    'operations preserve nested hashes, empty containers and undefined values';
+is artifact-source('operations', EVALFILE($path.Str)), $source,
+    'operations serialization is deterministic';
+my @tables = <first second>.map({ Red::Cli::Table.new(:name($_), :columns[
+    Red::Cli::Column.new(:name<id>, :type<integer>, :raku-type<Int>, :pk),
+    Red::Cli::Column.new(:name<title>, :type<text>, :raku-type<Str>),
+]) });
+my $snapshot = Red::Migration::Snapshot.new(:@tables);
+like $snapshot.source, /'config {'/, 'schema uses the config builder';
+unlike $snapshot.source, /'Column.new'/, 'schema uses column builders';
+$path.spurt($snapshot.source);
+is-deeply Red::Migration::Snapshot.load($path).tables>>.name.Array, <first second>.Array,
+    'multiple table builders remain separate list elements';
+is Red::Migration::Snapshot.load($path).source, $snapshot.source,
+    'schema serialization is deterministic';
+ok PROCESS::<$CONFIG-OBJECT> === $project-config,
+    'artifact builders leave the project Configuration singleton intact';
+$path.spurt(q:to/LEGACY/);
+use Red::Cli::Table;
+[Red::Cli::Table.new(:name<legacy>, :columns[])]
+LEGACY
+is Red::Migration::Snapshot.load($path).tables[0].name, 'legacy',
+    'legacy constructor snapshots remain readable';
+done-testing;

@@ -1,0 +1,27 @@
+name: Migration workshop
+on:
+  push:
+  pull_request:
+jobs:
+  tutorial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: '2026.09'
+      - name: Install test tooling
+        run: zef install --/test JSON::Fast
+      - name: Check code-stage scripts
+        run: raku examples/migrations/test-guide.rakutest
+      - name: Execute the documented workshop
+        run: raku examples/migrations/test-walkthrough.raku
+      - name: Check default Compose startup
+        run: raku examples/migrations/test-compose.rakutest
+      - name: Upload failed workshop transcripts
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: migration-workshop
+          path: /tmp/red-migration-workshop-*/transcript.log

@@ -1,0 +1,67 @@
+use Test;
+use Red;
+use Red::Migration::Manager;
+use Red::Migration::Configuration;
+use Red::Migration::Storage;
+use Red::Migration::Artifact;
+use Red::Migration::Environment;
+use MONKEY-SEE-NO-EVAL;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $dialect = @connection.shift;
+my %server = @connection.map({ .split('=', 2) }).map({ .[0] => val(.[1]) }).Hash;
+temporary-database($dialect, %server, -> $db, $context, %parameters {
+    my $root = $*TMPDIR.add("red-explicit-sql-{$*PID}-{100000.rand.Int}");
+    $root.mkdir;
+    LEAVE remove-tree($root) if $root.e;
+    my $*RED-DB = $db;
+    model ExplicitBefore is table<explicit_conversion> {
+        has Int $.id is serial;
+        has Str $.value is column{ :nullable };
+    }
+    model ExplicitAfter is table<explicit_conversion> {
+        has Int $.id is serial;
+        has Int $.value is column{ :nullable };
+    }
+    my $config = Red::Migration::Configuration.new(:models[ExplicitBefore],
+        :drivers[$dialect], :directory($root.add('migrations')),
+        :connections{default => $db}, :test-servers{$dialect => %server});
+    my $base = Red::Migration::Manager.new(:$config);
+    my $initial = $base.prepare('initial'); $base.apply;
+    ExplicitBefore.^create(:value('4'));
+    my $next = Red::Migration::Manager.new(:config($config.clone(:models[ExplicitAfter])));
+    my $draft = $next.create('convert');
+    throws-like { $next.prepare('convert') }, X::Red::Migration,
+        'automatic generation refuses a general type conversion';
+    my $directory = $draft.add($dialect);
+    make-directory($directory.add('up'));
+    make-directory($directory.add('down'));
+    my $sql = do given $dialect {
+        when 'SQLite' { q:to/SQL/ }
+CREATE TABLE explicit_copy (id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, value INTEGER);
+INSERT INTO explicit_copy (id, value) SELECT id, CAST(value AS INTEGER) + 1 FROM explicit_conversion;
+DROP TABLE explicit_conversion;
+ALTER TABLE explicit_copy RENAME TO explicit_conversion;
+SQL
+        when 'Pg' { 'ALTER TABLE explicit_conversion ALTER COLUMN value TYPE integer USING (value::integer + 1);' }
+        when 'MySQL' { 'UPDATE explicit_conversion SET value = CAST(value AS SIGNED) + 1; ALTER TABLE explicit_conversion MODIFY COLUMN value integer NULL;' }
+    };
+    $directory.add('up/001-convert.sql').spurt($sql);
+    $directory.add('down/001-irreversible.sql').spurt('-- Explicitly irreversible conversion');
+    $directory.add('overrides.rakuconf').spurt(artifact-source('overrides',
+        %(manual => True, down-state => 'irreversible', reason => 'Explicit conversion policy')));
+    lives-ok { $next.prepare('convert') }, 'complete manual SQL can replace generation for a driver';
+    is $next.apply, 1, 'explicit conversion runs in the normal synchronous executor';
+    my $statement = $db.execute('SELECT value AS converted_value FROM explicit_conversion');
+    is $statement.row<converted_value>.Int, 5, 'explicit SQL defines the conversion semantics';
+    $statement.finish-transaction;
+    lives-ok { $next.test(:driver($dialect)) }, 'explicit schema conversion passes migration CI';
+    my %manifest = EVALFILE($initial.add('migration.rakuconf').Str);
+    %manifest<format> = 3;
+    %manifest<population> = %(before-checksum => 'legacy-job-metadata');
+    $initial.add('migration.rakuconf').spurt(artifact-source('manifest', %manifest));
+    throws-like { $next.history }, X::Red::Migration,
+        reason => /'job migrations are no longer supported'/,
+        'experimental job history is rejected instead of executed or converted';
+});
+done-testing;

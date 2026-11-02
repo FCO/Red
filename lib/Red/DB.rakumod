@@ -1,4 +1,5 @@
 use X::Red::Exceptions;
+use Red::Runtime::Configuration;
 
 =head2 Red::DB
 
@@ -9,5 +10,7 @@ sub get-RED-DB is export {
     if %*RED-DEFAULT-DRIVERS.defined and %*RED-DEFAULT-DRIVERS<default>:exists {
         return %*RED-DEFAULT-DRIVERS<default>
     }
+    $driver = runtime-database();
+    return $driver if $driver.defined;
     X::Red::RedDbNotDefined.new.throw
 }

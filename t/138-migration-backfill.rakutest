@@ -1,0 +1,59 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $driver = @connection.shift;
+if $driver eq 'SQLite' {
+    plan 1;
+    skip 'Backfill to a second native driver runs in Pg/MySQL jobs';
+    exit;
+}
+my %server = @connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
+my $root = $*TMPDIR.add("red-backfill-{$*PID}-{100000.rand.Int}");
+model First is table<backfill_user> { has Int $.id is serial; has Str $.name is column }
+model Second is table<backfill_user> {
+    has Int $.id is serial; has Str $.name is column;
+    has $!name-index is index{ .name };
+}
+sub manager($model, :@drivers = ['SQLite']) {
+    Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+        :models[$model], :@drivers, :directory($root), :test-servers{ $driver => %server })))
+}
+manager(First).prepare('initial');
+manager(Second).prepare('name-index');
+my @before = manager(Second).history.map(*.<id>);
+my $up = manager(Second).history[0]<path>.add('SQLite/up/001-schema.sql');
+my $original = $up.slurp;
+my $all = manager(Second, :drivers['SQLite', $driver]);
+my $custom = $up.parent.add('002-custom.sql');
+$custom.spurt('SELECT 1;');
+throws-like { $all.backfill(:$driver) }, X::Red::Migration,
+    :reason(/'custom SQL'/), 'requires manual overrides for custom historical SQL';
+ok !$all.history.head<path>.add($driver).e, 'failed backfill publishes no driver artifacts';
+$custom.unlink;
+ok !$all.prepare('no-schema-change').defined, 'prepare backfills without inventing a version';
+is-deeply $all.history.map(*.<id>).Array, @before.Array, 'preserves every historical identity';
+for $all.history -> %migration {
+    ok %migration<path>.add($driver).add('up/001-schema.sql').f, 'new driver has up for historical version';
+    ok %migration<path>.add($driver).add('down/001-schema.sql').f, 'new driver has down for historical version';
+}
+is $up.slurp, $original, 'existing driver SQL remains byte-for-byte unchanged';
+is $all.backfill(:$driver), 0, 'repeated backfill is idempotent';
+lives-ok { $all.test(:$driver) }, 'backfilled history runs on a fresh native database';
+my $first = $all.history.head<path>;
+my $manifest = $first.add('migration.rakuconf');
+{
+    use MONKEY-SEE-NO-EVAL;
+    my %metadata = EVALFILE $manifest.absolute;
+    %metadata<drivers>{$driver}:delete;
+    $manifest.spurt(%metadata.raku);
+}
+$custom.spurt('SELECT 1;');
+$first.add($driver).add('overrides.rakuconf').spurt(
+    '%(manual => True, down-state => "available")');
+is $all.backfill(:$driver), 1, 'manual SQL and snapshot overrides support customized history';
+lives-ok { $all.test(:$driver) }, 'manual backend override passes native validation';
+done-testing;

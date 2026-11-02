@@ -1,0 +1,46 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+
+my $root = $*TMPDIR.add("red-ancestry-{$*PID}-{100000.rand.Int}");
+$root.mkdir;
+LEAVE remove-tree($root) if $root.defined && $root.e;
+my $db = database 'SQLite';
+model Base is table<ancestry_user> { has Int $.id is serial }
+model A is table<ancestry_user> { has Int $.id is serial; has Str $.a is column{ :nullable } }
+model AA is table<ancestry_user> {
+    has Int $.id is serial; has Str $.a is column{ :nullable }; has Str $.aa is column{ :nullable };
+}
+model B is table<ancestry_user> { has Int $.id is serial; has Str $.b is column{ :nullable } }
+model All is table<ancestry_user> {
+    has Int $.id is serial; has Str $.a is column{ :nullable }; has Str $.aa is column{ :nullable };
+    has Str $.b is column{ :nullable };
+}
+sub manager(Str $branch, $model) {
+    Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+        :models[$model], :directory($root.add($branch)), :connections{ default => $db })))
+}
+manager('base', Base).prepare('initial');
+my $base = manager('base', Base).history.head<id>;
+copy-tree($root.add('base'), $root.add('a'));
+copy-tree($root.add('base'), $root.add('b'));
+manager('a', A).prepare('a');
+manager('a', AA).prepare('aa');
+my $b = manager('b', B).prepare('b');
+my $aid = manager('a', AA).history.tail<id>;
+my $bid = manager('b', B).history.tail<id>;
+manager('b', B).apply;
+copy-tree($root.add('a'), $root.add('merged'));
+copy-tree($b, $root.add('merged').add($b.basename));
+my $merged = manager('merged', All);
+throws-like { $merged.serialize(:after($base), :order[$aid, $bid], :check-connections['default']) },
+    X::Red::Migration, :reason(/'already executed'/), 'refuses rewriting an executed branch';
+dies-ok { $merged.history }, 'blocked serialization leaves the fork intact';
+is $merged.serialize(:after($base), :order[$bid, $aid], :check-connections['default']), 2,
+    'preserves the deployed branch and rewrites a longer tail with different parents';
+is-deeply $merged.history.map(*.<name>).Array, <initial b a aa>.Array,
+    'preserves ancestry within the rebased tail';
+lives-ok { $merged.test }, 'resulting history passes full validation';
+done-testing;
