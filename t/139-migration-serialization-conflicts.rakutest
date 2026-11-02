@@ -1,0 +1,37 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+
+model BaseConflict is table<conflict_user> { has Int $.id is serial }
+model TextConflict is table<conflict_user> {
+    has Int $.id is serial; has Str $.value is column{ :nullable };
+}
+model IntConflict is table<conflict_user> {
+    has Int $.id is serial; has Int $.value is column{ :nullable };
+}
+my $root = $*TMPDIR.add("red-conflict-{$*PID}-{100000.rand.Int}"); $root.mkdir;
+sub manager($name, $model) {
+    Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+        :models[$model], :directory($root.add($name)))))
+}
+manager('base', BaseConflict).prepare('initial');
+my $base = manager('base', BaseConflict).history[0]<id>;
+copy-tree($root.add('base'), $root.add('a'));
+copy-tree($root.add('base'), $root.add('b'));
+my $a = manager('a', TextConflict).prepare('text-value');
+my $b = manager('b', IntConflict).prepare('int-value');
+copy-tree($root.add('a'), $root.add('merged'));
+copy-tree($b, $root.add('merged').add($b.basename));
+my @files = $root.add('merged').dir.map(*.basename).sort;
+throws-like { manager('merged', TextConflict).serialize(:after($base)) }, X::Red::Migration,
+    reason => /'Serialization conflict'/, 'incompatible changes to the same column are rejected';
+is-deeply $root.add('merged').dir.map(*.basename).sort.Array, @files.Array,
+    'failed serialization does not replace history';
+$a.add('SQLite/up/002-custom.sql').spurt('SELECT 42;');
+copy-tree($root.add('a'), $root.add('custom'));
+copy-tree($b, $root.add('custom').add($b.basename));
+throws-like { manager('custom', TextConflict).serialize(:after($base)) }, X::Red::Migration,
+    reason => /'Custom SQL'/, 'custom SQL is never silently regenerated';
+done-testing;

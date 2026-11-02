@@ -1,0 +1,4 @@
+migrations/
+.precomp/
+lib/.precomp/
+.*.migration.lock

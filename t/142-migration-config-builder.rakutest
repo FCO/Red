@@ -1,0 +1,45 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+
+model ConfiguredTask { has Int $.id is serial }
+my $opened = 0;
+set-config -> {
+    config {
+        .models = [ConfiguredTask];
+        .drivers = <SQLite Pg>;
+        .directory = 'test-migrations';
+        .connections = %(default => { $opened++; database 'SQLite' });
+        .test-servers = %(Pg => %(host => 'localhost'));
+    }
+}
+# Read through a helper, as application code does: the test override must be visible there.
+sub application-settings { single-config-run }
+my $settings = application-settings;
+isa-ok $settings, Red::Migration::Configuration, 'standard reader returns migration settings';
+is $settings.directory.Str, 'test-migrations', 'application reader sees the test override';
+is-deeply $settings.model-types, [ConfiguredTask], 'model types survive the builder';
+is-deeply $settings.drivers.Array, ['SQLite', 'Pg'], 'driver lists survive the builder';
+is $settings.test-servers<Pg><host>, 'localhost', 'nested settings survive the builder';
+is $opened, 0, 'reading settings does not invoke connection factories';
+isa-ok $settings.connections<default>(), Red::Driver, 'configured factory remains callable';
+is $opened, 1, 'factory opens a connection only when requested';
+set-config -> { config { .drivers = ['SQLite']; .directory = 'second-test' } }
+is application-settings.directory.Str, 'second-test', 'subsequent test overrides replace prior settings';
+is application-settings.connections.elems, 0, 'test overrides do not leak prior connections';
+is $settings.directory.Str, 'test-migrations', 'existing settings objects remain immutable';
+set-config -> { config { .drivers = [42] } }
+throws-like { application-settings }, Exception, 'the Configuration builder enforces declared types';
+my $file = $*TMPDIR.add("red-default-config-{$*PID}.rakuconf");
+LEAVE $file.unlink if $file.defined && $file.f;
+$file.spurt('use Red::Migration::Configuration; config { .directory = "loaded-defaults" }');
+my $program = 'use MigrationSettingsReader; say read-migration-settings(@*ARGS[0]).directory.Str';
+for 1..2 -> $attempt {
+    my $child = run $*EXECUTABLE, '-Ilib', '-It/lib', '-e', $program, $file.Str, :out, :err;
+    my $out = $child.out.slurp-rest;
+    my $err = $child.err.slurp-rest;
+    is $child.exitcode, 0, "configuration reader initializes without test overrides (run $attempt)";
+    is $out.trim, 'loaded-defaults', 'precompiled readers retain the standard Configuration API';
+    diag $err if $child.exitcode;
+}
+done-testing;

@@ -2,6 +2,7 @@ use Test;
 use Red;
 use Red::Migration::Configuration;
 use Red::Migration::Manager;
+use Red::Migration::Storage;
 
 model Prepared is table<migration_prepared> { has Int $.id is serial }
 my $root = $*TMPDIR.add("red-prepare-{$*PID}-{100000.rand.Int}"); $root.mkdir;
@@ -14,7 +15,7 @@ is $calls, 0, 'preparation does not open configured connections';
 ok $path.d, 'prepares without any target connection';
 my $holder = run $*EXECUTABLE, '-e',
     'my $lock = @*ARGS[0].IO.open(:a); $lock.lock; say "locked"; $*OUT.flush; $*IN.get;',
-    $config.directory.add('.prepare.lock').Str, :in, :out, :err;
+    history-lock-path($config.directory).Str, :in, :out, :err;
 is $holder.out.get, 'locked', 'another process holds preparation lock';
 throws-like { $manager.prepare('concurrent') }, X::Red::Migration,
     reason => /'Another process'/, 'concurrent preparation fails explicitly';

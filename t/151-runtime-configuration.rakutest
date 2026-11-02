@@ -1,0 +1,113 @@
+use Test;
+use Red:api<2>;
+use Red::DB;
+use Red::Migration::Configuration;
+
+model RuntimeTask {
+    has Int $.id is serial;
+    has Str $.title is column;
+}
+
+my Int $opened = 0;
+set-config -> {
+    config {
+        .models = [RuntimeTask];
+        .connections = %(default => { $opened++; database 'SQLite' });
+    }
+}
+is-deeply schema().models.values.Array, [RuntimeTask], 'schema uses configured model types';
+is $opened, 0, 'resolving schema does not open a database';
+schema().create;
+RuntimeTask.^create(:title<configured>);
+is RuntimeTask.^all.head.title, 'configured', 'queries use the configured connection';
+is $opened, 1, 'the connection factory is called once';
+my $first = get-RED-DB();
+ok get-RED-DB() === $first, 'the configured connection is reused';
+my $other-thread = await start { get-RED-DB() };
+ok $other-thread !=== $first, 'another thread resolves its own factory connection';
+is $opened, 2, 'each thread opens its connection once';
+{
+    my $*RED-DB = database 'SQLite';
+    ok get-RED-DB() === $*RED-DB, 'an explicit dynamic connection takes precedence';
+}
+{
+    my %*RED-DEFAULT-DRIVERS = default => database 'SQLite';
+    ok get-RED-DB() === %*RED-DEFAULT-DRIVERS<default>, 'legacy defaults take precedence';
+}
+set-config -> {
+    config {
+        .models = [RuntimeTask];
+        .connections = %(default => { $opened++; database 'SQLite' });
+    }
+}
+ok get-RED-DB() !=== $first, 'replacing a test override invalidates the connection';
+is $opened, 3, 'the new override opens its own connection';
+is-deeply schema(RuntimeTask).models.values.Array, [RuntimeTask], 'explicit models remain supported';
+is schema(task => RuntimeTask).task, RuntimeTask, 'explicit aliases remain supported';
+is schema([]).models.elems, 0, 'an explicit empty model list remains empty';
+set-config -> { config {;} }
+is schema().models.elems, 0, 'an empty configured model list gives an empty schema';
+throws-like { get-RED-DB }, X::Red::Configuration,
+    reason => /'.connections<default>'/, 'missing default has an actionable error';
+my $direct = database 'SQLite';
+set-config -> { config { .connections = %(default => $direct) } }
+ok get-RED-DB() === $direct, 'configured driver objects are used directly';
+set-config -> { config { .connections = %(default => { 42 }) } }
+throws-like { get-RED-DB }, X::Red::Configuration, 'invalid factory results are rejected';
+set-config -> { config { .connections = %(default => { get-RED-DB() }) } }
+throws-like { get-RED-DB }, X::Red::Configuration,
+    reason => /'Recursive'/, 'recursive factories fail without hanging';
+
+my $folder = $*TMPDIR.add("red-runtime-config-{$*PID}-{now.Int}");
+$folder.mkdir;
+LEAVE {
+    if $folder.defined && $folder.d {
+        .unlink for $folder.dir.grep(*.f);
+        $folder.rmdir;
+    }
+}
+my $library = $*CWD.add('lib').Str;
+$folder.add('ConfiguredTask.rakumod').spurt(q:to/MODEL/);
+use Red:api<2>;
+unit model ConfiguredTask;
+has Int $.id is serial;
+has Str $.title is column;
+MODEL
+sub child(Str $program) {
+    my $process = run $*EXECUTABLE, "-I$library", "-I$folder", '-e', $program,
+        :cwd($folder), :out, :err;
+    my $out = $process.out.slurp-rest;
+    my $err = $process.err.slurp-rest;
+    diag $err if $process.exitcode;
+    ($process.exitcode, $out.trim)
+}
+is-deeply child('use Red; say schema().models.elems'), (0, '0'),
+    'without configuration schema remains empty';
+is-deeply child('use Red; use Red::DB; try get-RED-DB; say $!.^name'),
+    (0, 'X::Red::RedDbNotDefined'), 'without configuration the existing connection error remains';
+$folder.add('red.rakuconf').spurt(q:to/CONFIG/);
+use Red;
+use Red::Migration::Configuration;
+config {
+    .models = ['ConfiguredTask'];
+    .connections = %(default => { database 'SQLite', :database<project.sqlite> });
+}
+CONFIG
+is-deeply child('use Red; say schema().models<ConfiguredTask>.^name'), (0, 'ConfiguredTask'),
+    'use Red alone loads configured module names';
+ok !$folder.add('project.sqlite').e, 'loading a schema leaves the database unopened';
+is-deeply child(q:to/APP/), (0, 'from-file'), 'application queries use red.rakuconf automatically';
+use Red;
+schema().create;
+schema().ConfiguredTask.^create(:title<from-file>);
+say schema().ConfiguredTask.^all.head.title;
+APP
+$folder.add('red.rakuconf').spurt('42');
+is-deeply child('use Red; try schema(); say $!.^name'), (0, 'X::Red::Configuration'),
+    'an invalid configuration result is rejected';
+$folder.add('red.rakuconf').spurt('this is invalid Raku !!!');
+is-deeply child('use Red; say "loaded"'), (0, 'loaded'),
+    'importing Red does not evaluate project configuration';
+is-deeply child('use Red; try schema(); say $!.^name'), (0, 'X::Red::Configuration'),
+    'configuration parsing failures are typed errors';
+done-testing;

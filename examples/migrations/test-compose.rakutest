@@ -1,0 +1,80 @@
+#!/usr/bin/env raku
+use Test;
+use JSON::Fast;
+use lib $?FILE.IO.parent.Str;
+use Workshop;
+
+my %host-environment = %*ENV;
+sub MAIN {
+    my %*ENV = %host-environment;
+    %*ENV<COMPOSE_PROJECT_NAME>:delete;
+    %*ENV<COMPOSE_PROFILES>:delete;
+    %*ENV<COMPOSE_FILE>:delete;
+    my $source = $?FILE.IO.parent.resolve;
+    %*ENV<PWD> = $source.Str;
+    sub compose(*@args) { command(['docker', 'compose', |@args], :cwd($source)) }
+    my %configuration = from-json(compose('config', '--format', 'json')<out>);
+    is %configuration<name>, 'red-workshop', 'default project name is stable across terminals';
+    is-deeply compose('config', '--services')<out>.lines.sort.Array,
+        ['db-dev', 'db-prod', 'dev'], 'default startup excludes release images and tools';
+    ok compose('--profile', 'production', 'config', '--services')<out>.lines.grep(* eq 'prod'),
+        'production remains available through its profile';
+    my $root = unique-directory('red-compose-smoke');
+    my $project = 'red-compose-smoke-' ~ $root.basename.split('-')[*-1];
+    %*ENV<COMPOSE_PROJECT_NAME> = $project;
+    %*ENV<RED_SOURCE> = $source.parent.parent.Str;
+    my $dev = IO::Socket::INET.new(:localhost<127.0.0.1>, :localport(0), :listen);
+    my $prod = IO::Socket::INET.new(:localhost<127.0.0.1>, :localport(0), :listen);
+    %*ENV<DEV_PORT> = $dev.localport.Str;
+    %*ENV<PROD_PORT> = $prod.localport.Str;
+    $dev.close; $prod.close;
+    LEAVE {
+        my %cleanup = compose('--profile', '*', 'down', '-v', '--remove-orphans');
+        diag %cleanup<err> if %cleanup<status>;
+        remove-tree($root) if %cleanup<status> == 0;
+    }
+    my %up = compose('up', '-d', '--wait', '--wait-timeout', '90');
+    is %up<status>, 0, 'plain compose up starts dev without any release image';
+    diag %up<err> if %up<status>;
+    is compose('exec', '-T', 'dev', 'bash', '-c', 'command -v red && command -v nvim')<status>, 0,
+        'development shell is available after default startup';
+    is compose('exec', '-T', 'dev', 'workshop', 'compose', 'ps', '--services')<status>, 0,
+        'workshop helper is installed without shell aliases';
+    my %nested = from-json(compose('exec', '-T', 'dev', 'workshop', 'compose',
+        '--profile', 'production', 'config', '--format', 'json')<out>);
+    is %nested<services><prod><ports>[0]<published>.Str, %*ENV<PROD_PORT>,
+        'in-container deployment retains the isolated production port';
+    is %nested<services><dev><ports>[0]<published>.Str, %*ENV<DEV_PORT>,
+        'in-container deployment retains the isolated development port';
+    is %nested<services><dev><working_dir>, '/workspace', 'workspace is internal';
+    is %nested<services><dev><volumes>.elems, 1, 'only the Docker socket is mounted';
+    ok !%nested<services><ci><volumes>.defined, 'CI receives an image without host mounts';
+    is compose('exec', '-T', 'dev', 'docker', 'info', '--format', '{{.ServerVersion}}')<status>, 0,
+        'dev can access the shared Docker engine for deployments';
+    ok compose('exec', '-T', 'dev', './tutorial', 'status')<out>.contains('Current step: 1'),
+        'dev starts with step-1 code without a setup command';
+    is compose('exec', '-T', 'dev', './tutorial', 'next', '--yes')<status>, 0,
+        'the in-container script advances the code';
+    is compose('restart', 'dev')<status>, 0, 'development container restarts';
+    is compose('up', '-d', '--wait', '--wait-timeout', '90', 'dev')<status>, 0,
+        'restarted development container becomes ready';
+    ok compose('exec', '-T', 'dev', './tutorial', 'status')<out>.contains('Current step: 2'),
+        'restart preserves the current code stage';
+    is compose('exec', '-T', 'dev', 'bash', '-c', 'test ! -d migrations')<status>, 0,
+        'startup and code advancement never generate migrations implicitly';
+    is compose('up', '-d', '--wait', '--force-recreate', 'dev')<status>, 0,
+        'development container can be recreated';
+    ok compose('exec', '-T', 'dev', './tutorial', 'status')<out>.contains('Current step: 1'),
+        'recreating dev supplies fresh step-1 files';
+    is compose('--profile', '*', 'down', '-v', '--remove-orphans')<status>, 0,
+        'explicit full reset removes the isolated stack and database volumes';
+    is compose('up', '-d', '--wait')<status>, 0, 'stack starts again after a full reset';
+    ok compose('exec', '-T', 'dev', './tutorial', 'status')<out>.contains('Current step: 1'),
+        'full reset supplies step 1';
+    is compose('exec', '-T', 'db-dev', 'psql', '-U', 'postgres', '-d', 'tasks', '-Atc',
+        q[SELECT count(*) FROM information_schema.tables WHERE table_schema='public'])<out>.trim,
+        '0', 'full reset supplies an empty development database';
+    is-deeply compose('ps', '--services', '--status', 'running')<out>.lines.sort.Array,
+        ['db-dev', 'db-prod', 'dev'], 'only development and the two databases are running';
+    done-testing;
+}

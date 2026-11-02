@@ -1,6 +1,23 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Use red.rakuconf defaults for application queries and schema(), respecting explicit connections and test overrides.
+    - Compile synchronous migration and populate declarations into ordered SQL from historical snapshots.
+    - Support conditional assignments with Raku topic semantics and explicit data inverse review.
+    - Compile ordinary unary numeric coercion in migration setters using the same Red operators as application queries.
+    - Add offline migration drafts and historical .^migration population expressions compiled per driver.
+    - Print descriptive ok/nok results for workshop checks while preserving failure exit status.
+    - Materialize workshop query results before HTML rendering and allow idempotent targeted code stages.
+    - Keep workshop code inside disposable containers and run CI from project images without host mounts.
+    - Preconfigure workshop helpers in the development image.
+    - Generate migration manifests, operations and all schema snapshots with readable config builders.
+    - Add red connect to open a native SQL client using a configured connection.
+    - Group migration commands under red migration and report initialization and configured model details in status.
+    - Integrate migration settings with Configuration's config builder, readers and set-config test overrides.
+    - Add a script-driven migration workshop with prepared code stages, Docker environments and executable documentation.
+    - Add numbered migration script directories with per-file database progress and legacy compatibility.
+    - Validate migrations in disposable SQLite/PostgreSQL/MySQL databases with child commands and fixtures.
+    - Backfill new drivers across logical history and serialize compatible unpublished migration branches.
     - Rename Cli column type metadata to raku-type; retain deprecated legacy API compatibility.
     - Add configured versioned migrations with Raku Cli-object snapshots and per-driver up/down SQL.
     - Add plan, development sync, prepare, apply, rollback and status commands with database history,
@@ -98,7 +115,6 @@ Revision history for Red
       - t/82: Company.id marked as primary key to satisfy Pg FK
       - t/83/t/84: schema(...).drop.create to avoid DDL collisions
       - t/85: drop/create C to ensure correct columns for string funcs
-    - ci(pg): add PostgreSQL job to GitHub Actions; run t/ suite against Pg
     - pg(json): stringify-json; #> (path), #- (remove), and jsonb_set updates with to_jsonb/::jsonb binding
     - pg: map MINUS to EXCEPT; use $n placeholders for parameters
     - sql(binding): route AST::Value through wildcard-value; fix INSERT binding to use deflated values

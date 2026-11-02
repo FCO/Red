@@ -1,0 +1,61 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::File;
+use Red::Migration::Scripts;
+use Red::Migration::Storage;
+use nqp;
+
+my $root = $*TMPDIR.add("red-files-{$*PID}-{100000.rand.Int}");
+my $db = database 'SQLite';
+my $*RED-DB = $db;
+model FileUser is table<file_user> { has Int $.id is serial; has Str $.name is column }
+my $manager = Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+    :models[FileUser], :directory($root), :connections{ default => $db })));
+my $path = $manager.prepare('initial');
+ok $path.add('schema.rakuconf').f, 'stores logical snapshot';
+ok $path.add('operations.rakuconf').f, 'stores portable operations';
+ok $path.add('SQLite/up/001-schema.sql').f, 'generates numbered up directory';
+my $up = $path.add('SQLite/up');
+$up.add('002-populate.sql').spurt("INSERT INTO file_user(name) VALUES ('Ada');\n");
+$up.add('003-empty.sql').spurt('-- empty but versioned');
+is $manager.apply, 1, 'executes ordered files as one migration';
+is FileUser.^all.head.name, 'Ada', 'population runs after table creation';
+is Red::Migration::File.^all.elems, 3, 'records per-file progress';
+$up.add('004-added.sql').spurt('-- added later');
+dies-ok { $manager.status }, 'adding even an empty file changes the applied checksum';
+$up.add('004-added.sql').unlink;
+$up.add('0002-duplicate.sql').spurt('SELECT 1;');
+dies-ok { read-direction($path.add('SQLite'), 'up', 'SQLite') }, 'rejects duplicate numeric prefixes';
+$up.add('0002-duplicate.sql').unlink;
+$up.add('bad.sql').spurt('SELECT 1;');
+dies-ok { read-direction($path.add('SQLite'), 'up', 'SQLite') }, 'rejects invalid filenames';
+$up.add('bad.sql').unlink;
+my $legacy = $root.parent.add($root.basename ~ '-legacy'); $legacy.mkdir;
+$legacy.add('up.sql').spurt('SELECT 1;');
+is read-direction($legacy, 'up', 'SQLite')<checksum>, nqp::sha1('SELECT 1;'),
+    'legacy checksums retain their exact meaning';
+$legacy.add('up').mkdir;
+dies-ok { read-direction($legacy, 'up', 'SQLite') }, 'rejects mixed legacy and directory formats';
+my $old-root = $root.parent.add($root.basename ~ '-v1');
+copy-tree($root, $old-root);
+my $version = $old-root.add($path.basename);
+for <up down> -> $direction {
+    my $directory = $version.add('SQLite').add($direction);
+    my $source = $directory.dir.sort(*.basename).map(*.slurp).join("\n");
+    remove-tree($directory);
+    $version.add('SQLite').add("$direction.sql").spurt($source);
+}
+{
+    use MONKEY-SEE-NO-EVAL;
+    my $manifest = $version.add('migration.rakuconf');
+    my %metadata = EVALFILE $manifest.absolute;
+    %metadata<format> = 1;
+    $manifest.spurt(%metadata.raku);
+}
+my $old-manager = Red::Migration::Manager.new(:config(
+    $manager.config.clone(:directory($old-root), :connections{ default => database('SQLite') })));
+is $old-manager.apply, 1, 'applies a legacy flat-file history';
+is $old-manager.rollback, 1, 'rolls back a legacy flat-file history';
+done-testing;

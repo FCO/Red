@@ -69,6 +69,12 @@ class X::Red::RedDbNotDefined is X::Red {
     method message { Q[$*RED-DB wasn't defined] }
 }
 
+#| A project configuration could not supply valid Red runtime settings or a default connection.
+class X::Red::Configuration is X::Red {
+    has Str $.reason is required;
+    method message { $!reason }
+}
+
 class X::Red::Defaults::FromConfNotFound is X::Red {
     has Str $.file = "./.red.json";
     method message { "Red configuration file ($!file) not found" }

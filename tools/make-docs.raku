@@ -5,7 +5,7 @@ use File::Find;
 sub MAIN (:$filename, :$output = 'API.md') {
 
   my @files = $filename ??
-      $filename.Array
+      [$filename.IO]
       !!
       find
         dir => 'lib',

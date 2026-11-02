@@ -1,0 +1,76 @@
+use Test;
+use Red;
+use Red::Migration::Data;
+use Red::Migration::Planner;
+use Red::Migration::Snapshot;
+
+my $db = database 'SQLite';
+my $*RED-DB = $db;
+model DataExample is table<data_example> {
+    has Int $.id is serial;
+    has Str $.description is column{ :nullable };
+    has Int $.counter is column{ :nullable };
+    has Bool $.enabled is column{ :nullable };
+}
+my $snapshot = Red::Migration::Planner.new(:driver($db), :dialect<SQLite>).capture([DataExample]);
+DataExample.^create-table;
+sub compile(Str $source) {
+    compile-data($snapshot, $snapshot, $source, $db, 'SQLite')<sql>
+}
+sub reset {
+    $db.execute('DELETE FROM data_example');
+    $db.execute(q[INSERT INTO data_example(description, counter) VALUES (NULL, 1), ('', 2), ('existing', 3)]);
+}
+sub descriptions {
+    DataExample.^all.sort(*.id).List.map(*.description).Array
+}
+reset;
+my @sql = compile(q[DataExample.^migration: { $_ = 'No description' without .description; }]).list;
+like @sql[0], /'IS NULL'/, 'without becomes a NULL predicate';
+$db.execute($_) for @sql;
+is-deeply descriptions(), ['No description', '', 'existing'], 'without preserves defined values including empty strings';
+reset;
+$db.execute($_) for compile(q[DataExample.^migration: { .description = 'fallback' unless .description.defined; }]).list;
+is-deeply descriptions(), ['fallback', '', 'existing'], 'unless defined preserves the model topic';
+reset;
+$db.execute($_) for compile(q[DataExample.^migration: { $_ = $_ ~ '!' with .description; }]).list;
+is-deeply descriptions().skip(1).Array, ['!', 'existing!'], 'with keeps the column as its topic';
+reset;
+@sql = compile(q[DataExample.^migration: { .description = 'all rows'; }]).list;
+unlike @sql[0], /'WHERE'/, 'unconditional assignments have no implicit filter';
+$db.execute($_) for @sql;
+is-deeply descriptions(), ['all rows' xx 3], 'unconditional assignment updates all rows';
+reset;
+$db.execute($_) for compile(q[DataExample.^migration: { .counter = .counter + 10 if .counter > 1; }]).list;
+is-deeply DataExample.^all.sort(*.id).List.map(*.counter).Array, [1, 12, 13], 'ordinary arithmetic and if conditions compile';
+my $literal = "quote ' question ? backslash \\ unicode é";
+my $source = 'DataExample.^populate: { .^create: :description(' ~ $literal.raku ~ '), :counter(4); };'
+    ~ 'DataExample.^migration: { .counter = .counter + 1 if .counter == 4; };';
+@sql = compile($source).list;
+is @sql.elems, 2, 'populate and migration produce ordered statements';
+like @sql[0], /^'INSERT'/, 'populate stays in declaration order';
+$db.execute($_) for @sql;
+is DataExample.^all.sort(*.id).List.tail.description, $literal, 'SQL literals preserve quotes, backslashes and Unicode';
+is DataExample.^all.sort(*.id).List.tail.counter, 5, 'later update sees the earlier insert';
+$db.execute($_) for compile('DataExample.^migration: { .counter = 9 if .description.contains('
+    ~ $literal.raku ~ '); };').list;
+is DataExample.^all.sort(*.id).List.tail.counter, 9, 'column methods use safely rendered literals';
+reset;
+$db.execute($_) for compile(q[DataExample.^migration: { without .description { $_ = 'block' } };]).list;
+is descriptions()[0], 'block', 'without block preserves the column topic';
+$db.execute($_) for compile(q[DataExample.^migration: { if .counter == 1 { .counter = 7 } };]).list;
+is DataExample.^all.sort(*.id).List[0].counter, 7, 'if block compiles one guarded assignment';
+$db.execute($_) for compile(q[DataExample.^populate: { .^create: :description(Nil), :enabled(True); };]).list;
+ok DataExample.^all.sort(*.id).List.tail.enabled, 'populate renders Boolean literals';
+ok !DataExample.^all.sort(*.id).List.tail.description.defined, 'populate renders undefined literals as NULL';
+throws-like { compile(q[DataExample.^migration: { die "must never execute"; }]) },
+    X::Red::Migration, 'arbitrary Raku effects are rejected without execution';
+my $marker = $*TMPDIR.add("red-migration-no-begin-{$*PID}");
+LEAVE $marker.unlink if $marker.defined && $marker.e;
+throws-like { compile('BEGIN ' ~ $marker.Str.raku ~ '.IO.spurt("must not execute");') },
+    X::Red::Migration, reason => /'Unsupported declaration'/,
+    'compile-time effects are rejected before frontend parsing';
+ok !$marker.e, 'rejected BEGIN code has no side effects';
+throws-like { compile(q[DataExample.^populate: { .^create: :description(.description); }]) },
+    X::Red::Migration, 'populate cannot implicitly read another row';
+done-testing;

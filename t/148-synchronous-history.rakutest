@@ -1,0 +1,63 @@
+use Test;
+use Red;
+use Red::Migration::Manager;
+use Red::Migration::Configuration;
+use Red::Migration::Storage;
+use Red::Migration::Artifact;
+use MONKEY-SEE-NO-EVAL;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $dialect = @connection.shift;
+my %server = @connection.map({ .split('=', 2) }).map({ .[0] => val(.[1]) }).Hash;
+my $root = $*TMPDIR.add("red-sync-history-{$*PID}-{100000.rand.Int}");
+$root.mkdir;
+LEAVE remove-tree($root) if $root.e;
+model HistoryBase is table<history_base> { has Int $.id is serial; }
+model HistoryLeft is table<seed_left> {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+model HistoryRight is table<seed_right> {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+my $db = database 'SQLite', :database($root.add('data.sqlite').Str);
+my $*RED-DB = $db;
+my $config = Red::Migration::Configuration.new(:models[HistoryBase], :drivers<SQLite>,
+    :directory($root.add('base')), :connections{default => $db});
+my $initial = Red::Migration::Manager.new(:$config).prepare('initial');
+my @branches;
+for ([HistoryLeft, 'left'], [HistoryRight, 'right']) -> $branch {
+    my $directory = $root.add($branch[1]);
+    copy-tree($config.directory, $directory);
+    my $manager = Red::Migration::Manager.new(:config($config.clone(
+        :$directory, :models[HistoryBase, $branch[0]])));
+    my $draft = $manager.create($branch[1]);
+    $draft.add('migration.raku').spurt($branch[0].^name ~ '.^populate: { .^create: :name<' ~ $branch[1] ~ '>; };');
+    $manager.prepare($branch[1]);
+    my %manifest = EVALFILE($draft.add('migration.rakuconf').Str);
+    %manifest<drivers><SQLite><down-state> = $branch[1] eq 'left' ?? 'available' !! 'irreversible';
+    %manifest<drivers><SQLite><reversible> = $branch[1] eq 'left';
+    %manifest<drivers><SQLite><down-reason> = 'Reviewed data seed';
+    $draft.add('migration.rakuconf').spurt(artifact-source('manifest', %manifest));
+    @branches.push($draft);
+}
+my $merged = $root.add('merged');
+copy-tree($config.directory, $merged);
+copy-tree($_, $merged.add(.basename)) for @branches;
+my $manager = Red::Migration::Manager.new(:config($config.clone(:directory($merged),
+    :models[HistoryBase, HistoryLeft, HistoryRight], :test-servers{$dialect => %server})));
+throws-like { $manager.history }, X::Red::Migration, 'unresolved seed branches fail validation';
+is $manager.serialize(:after($initial.basename.substr(0, 26)),
+    :order(@branches.reverse.map(*.basename.substr(0, 26)).Array)), 1,
+    'serialization recompiles the rewritten historical populate block';
+is $manager.apply, 3, 'serialized history applies all versions';
+is HistoryLeft.^all.List[0].name, 'left', 'left data declaration survives serialization';
+is HistoryRight.^all.List[0].name, 'right', 'right data declaration survives serialization';
+lives-ok { $manager.test(:driver<SQLite>) }, 'serialized data history passes fresh-database CI';
+if $dialect ne 'SQLite' {
+    my $native = Red::Migration::Manager.new(:config($manager.config.clone(:drivers['SQLite', $dialect])));
+    is $native.backfill(:driver($dialect)), 3, 'backfill recompiles every version for the added driver';
+    lives-ok { $native.test(:driver($dialect)) }, 'native generated inserts pass migration CI';
+}
+done-testing;

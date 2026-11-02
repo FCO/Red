@@ -294,40 +294,40 @@ These are explicit diagnostics, not silently approximated support:
 
 ## Validation
 
-`t/107-compiled-regex.rakutest` covers compiler integration and the original
-PostgreSQL feature. `t/108-regex-dialects.rakutest` compares database results with
+`t/106-compiled-regex.rakutest` covers compiler integration and the original
+PostgreSQL feature. `t/109-regex-dialects.rakutest` compares database results with
 Raku on a shared ASCII corpus, checks Unicode scalar properties including
 supplementary-plane characters, exercises scopes/backreferences, atomic matching, conjunction, literal data binding and verifies
 compiled ORM predicates, projection rebinding and explicit errors without
-fallback. `t/109-regex-no-fallback.rakutest` checks rejected callbacks against a
+fallback. `t/110-regex-no-fallback.rakutest` checks rejected callbacks against a
 model whose table does not exist, proving rejection occurs before a row fetch.
-`t/110-regex-repetitions.rakutest` compares large repetition boundaries and
+`t/111-regex-repetitions.rakutest` compares large repetition boundaries and
 external capture references with Raku, including the PostgreSQL bound lowering.
-`t/111-regex-positions.rakutest` checks static position assertions, negations,
+`t/112-regex-positions.rakutest` checks static position assertions, negations,
 Match markers, surrounding context and rejection of executable argument values.
-`t/112-regex-named-assertions.rakutest` checks named lookaheads, lexical overrides,
+`t/113-regex-named-assertions.rakutest` checks named lookaheads, lexical overrides,
 exact adjacent-character assertions, Unicode scalars and internal capture numbering.
-`t/113-regex-assertion-captures.rakutest` checks assertion-local capture references,
+`t/114-regex-assertion-captures.rakutest` checks assertion-local capture references,
 positive/negative and nested lookaheads, scope isolation and backend diagnostics.
-`t/114-regex-repeated-scopes.rakutest` checks local references through repeated
+`t/115-regex-repeated-scopes.rakutest` checks local references through repeated
 capture scopes, lexical rules, lookaheads and literal binding, while keeping
 capture-list references explicit errors. Static Regex objects provide its Raku oracle.
-`t/115-regex-capture-reads.rakutest` covers predicate modifiers, guarded capture
+`t/116-regex-capture-reads.rakutest` covers predicate modifiers, guarded capture
 text, absent/empty groups, alternatives, aliases, literal binding, whole-match
 numbering and explicit unsupported cases.
-`t/116-regex-capture-presence.rakutest` checks whole-match and scalar group
+`t/117-regex-capture-presence.rakutest` checks whole-match and scalar group
 presence, absent/empty groups, negations, `unless` and explicit lookup diagnostics.
-`t/117-regex-whole-text.rakutest` checks first whole-match text, groups,
+`t/118-regex-whole-text.rakutest` checks first whole-match text, groups,
 lookaround context, case/trailing spaces, empty matches, Unicode and literal binding.
-`t/118-regex-logical-captures.rakutest` checks logical capture flow, nested guards,
+`t/119-regex-logical-captures.rakutest` checks logical capture flow, nested guards,
 failed matches, equivalent sources and explicit ambiguity diagnostics.
-`t/119-regex-cache-driver.rakutest` checks SQLite opt-in enforcement through
+`t/120-regex-cache-driver.rakutest` checks SQLite opt-in enforcement through
 cache wrappers, nested wrappers and reused compiled callbacks.
-`t/120-regex-property-literals.rakutest` compares static parenthesized Unicode
+`t/121-regex-property-literals.rakutest` compares static parenthesized Unicode
 properties with Raku and checks nonliteral argument diagnostics.
-`t/121-regex-text-methods.rakutest` checks explicit string coercion, chained
+`t/122-regex-text-methods.rakutest` checks explicit string coercion, chained
 SQL text operations and backend extraction restrictions.
-`t/122-regex-capture-chars.rakutest` checks native capture lengths, Unicode scalar
+`t/123-regex-capture-chars.rakutest` checks native capture lengths, Unicode scalar
 characters, empty/absent groups and direct/interpreted factory agreement.
 Run these tests with the desired `RED_DATABASE`; it uses SQLite by default.
 

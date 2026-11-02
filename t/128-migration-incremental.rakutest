@@ -41,12 +41,12 @@ is manager(After).status.tail<state>, 'applied', 'history records both migration
 is manager(After).rollback, 1, 'reverts nullable column addition';
 is Before.^all.head.name, 'Alice', 'rollback preserves existing columns and data';
 is manager(After).apply, 1, 'reapplies incremental migration';
-my $up = $second.add($dialect).add('up.sql');
+my $up = $second.add($dialect).add('up/001-schema.sql');
 my $original = $up.slurp;
 $up.spurt($original ~ "-- edited after application\n");
 dies-ok { manager(After).apply }, 'refuses modified applied SQL';
 $up.spurt($original);
-my $down = $second.add($dialect).add('down.sql');
+my $down = $second.add($dialect).add('down/001-schema.sql');
 my $original-down = $down.slurp;
 $down.spurt($original-down ~ "-- changed down\n");
 dies-ok { manager(After).rollback }, 'refuses modified applied rollback SQL';

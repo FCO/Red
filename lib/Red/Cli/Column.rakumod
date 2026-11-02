@@ -13,6 +13,8 @@ has Bool $.unique   is rw = False;
 has Bool $.auto-increment = False;
 has      $.references     = {};
 has Str  $.comment;
+has Str  $.type-origin = 'unknown';
+has %.type-overrides;
 
 # Published drivers still pass the old constructor key. Normalize it here;
 # snapshots and all current callers use raku-type exclusively.

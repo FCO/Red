@@ -18,6 +18,9 @@ my $manager = Red::Migration::Manager.new(:$config);
 my $path = $manager.prepare('initial');
 ok $path.d, 'prepares initial migration';
 ok $path.add('SQLite/schema.rakuconf').f, 'snapshot is Raku configuration';
+for <migration.rakuconf operations.rakuconf schema.rakuconf SQLite/schema.rakuconf> -> $file {
+    like $path.add($file).slurp, /'config {'/, "$file uses the config format";
+}
 is $manager.apply, 1, 'applies initial migration';
 MigrationUser.^create(:name<Alice>);
 is MigrationUser.^all.elems, 1, 'generated serial ID and table work';

@@ -71,7 +71,8 @@ multi prefix:<->(Red::AST $a) is export {
 
 #| +X
 multi prefix:<+>(Red::AST $a) is export {
-    Red::AST::Mul.new: ast-value(1), $a
+    my $value = $a.returns ~~ Numeric ?? $a !! Red::AST::Cast.new($a, 'num');
+    Red::AST::Mul.new: ast-value(1), $value
 }
 
 #| X + Y

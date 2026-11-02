@@ -1,0 +1,57 @@
+use Test;
+use Red::Migration::Storage;
+use Red::Migration::Artifact;
+use Red::Migration::Snapshot;
+use MONKEY-SEE-NO-EVAL;
+
+my $root = $*TMPDIR.add("red-sync-cli-{$*PID}-{100000.rand.Int}");
+$root.mkdir;
+LEAVE remove-tree($root) if $root.e;
+my $config = $root.add('red.rakuconf');
+my $database = $root.add('db.sqlite');
+my $directory = $root.add('migrations');
+$config.spurt(qq:to/CONFIG/);
+use Red;
+use Red::Migration::Configuration;
+model CliSync is table<cli_sync> \{
+    has Int \$.id is serial;
+    has Str \$.name is column;
+}
+config \{
+    .models = [CliSync];
+    .directory = {$directory.Str.raku};
+    .connections = %(default => \{ database 'SQLite', :database({$database.Str.raku}) });
+}
+CONFIG
+sub cli(*@args) {
+    my $process = run $*EXECUTABLE.Str, '-I' ~ $*CWD.add('lib').Str,
+        $*CWD.add('bin/red').Str, 'migration', |@args, "--config=$config", :out, :err;
+    my $out = $process.out.slurp-rest;
+    my $err = $process.err.slurp-rest;
+    %(status => $process.exitcode, :$out, :$err)
+}
+is cli('create', 'seed')<status>, 0, 'create is available through the CLI';
+ok !$database.e, 'create does not open the configured database';
+my $draft = $directory.dir.grep(*.d).head;
+my $model-name = Red::Migration::Snapshot.load($draft.add('schema.rakuconf')).tables[0].model-name;
+$draft.add('migration.raku').spurt($model-name ~ '.^populate: { .^create: :name("created"); };');
+my %prepared = cli('prepare', 'seed');
+is %prepared<status>, 0, 'prepare compiles the data declaration through the CLI';
+diag %prepared<err> if %prepared<status>;
+ok !$database.e, 'prepare is offline';
+my %manifest = EVALFILE($draft.add('migration.rakuconf').Str);
+%manifest<drivers><SQLite><down-state> = 'irreversible';
+%manifest<drivers><SQLite><reversible> = False;
+%manifest<drivers><SQLite><down-reason> = 'Reviewed seed';
+$draft.add('migration.rakuconf').spurt(artifact-source('manifest', %manifest));
+is cli('apply')<status>, 0, 'apply completes synchronous SQL';
+like cli('status')<out>, /'applied seed'/, 'status reports an applied version without worker states';
+is cli('apply', '--test')<status>, 0, 'CLI validates the complete history';
+for <worker daemon confirm retry> -> $command {
+    my %result = cli($command);
+    isnt %result<status>, 0, "$command is no longer accepted";
+    like %result<out> ~ %result<err>, /'Usage:'/, "$command is absent from command dispatch";
+}
+isnt cli('apply', '--wait')<status>, 0, 'obsolete asynchronous apply option is rejected';
+isnt cli('create', 'manual', '--manual')<status>, 0, 'obsolete confirmation option is rejected';
+done-testing;

@@ -1,0 +1,81 @@
+name: red-workshop
+services:
+  dev:
+    image: red-migrations-dev:local
+    build:
+      context: ${RED_SOURCE:-../..}
+      dockerfile: examples/migrations/Dockerfile
+    working_dir: /workspace
+    environment:
+      PGHOST: db-dev
+      HOME: /tmp
+      RED_SOURCE: /opt/red
+      WORKSHOP_ROOT: /opt/workshop
+      WORKSHOP_WORKSPACE: /workspace
+      WORKSHOP_CHECKOUTS: /parallel
+      COMPOSE_PROJECT_NAME: ${COMPOSE_PROJECT_NAME:-red-workshop}
+      DEV_PORT: ${DEV_PORT:-8081}
+      PROD_PORT: ${PROD_PORT:-8082}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    ports: ["127.0.0.1:${DEV_PORT:-8081}:8080"]
+    depends_on:
+      db-dev:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "test -f \"$$WORKSHOP_WORKSPACE/.tutorial-state.json\""]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  db-dev:
+    image: postgres:15
+    environment: &database
+      POSTGRES_PASSWORD: tutorial
+      POSTGRES_DB: tasks
+    volumes: ["dev-data:/var/lib/postgresql/data"]
+    healthcheck: &health
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tasks"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+  db-prod:
+    image: postgres:15
+    environment: *database
+    volumes: ["prod-data:/var/lib/postgresql/data"]
+    healthcheck: *health
+  prod:
+    profiles: ["production"]
+    image: ${COMPOSE_PROJECT_NAME:-red-workshop}-release:${RELEASE:-v1}
+    environment:
+      PGHOST: db-prod
+      RELEASE: ${RELEASE:-v1}
+    ports: ["127.0.0.1:${PROD_PORT:-8082}:8080"]
+    depends_on:
+      db-prod:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8080/health"]
+      interval: 2s
+      timeout: 3s
+      retries: 60
+  migrate:
+    image: ${COMPOSE_PROJECT_NAME:-red-workshop}-release:${RELEASE:-v1}
+    environment:
+      PGHOST: db-prod
+    command: ["red", "migration", "apply"]
+    profiles: ["tools"]
+    depends_on:
+      db-prod:
+        condition: service_healthy
+  ci:
+    environment:
+      HOME: /tmp
+    image: ${CI_IMAGE:-${COMPOSE_PROJECT_NAME:-red-workshop}-ci:local}
+    command: ["red", "migration", "apply", "--test", "--driver=Pg", "--", "raku", "-Ilib", "t/application.rakutest"]
+    profiles: ["tools"]
+    depends_on:
+      db-dev:
+        condition: service_healthy
+volumes:
+  dev-data:
+  prod-data:

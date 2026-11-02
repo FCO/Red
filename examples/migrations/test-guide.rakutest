@@ -1,0 +1,93 @@
+#!/usr/bin/env raku
+use Test;
+use lib $?FILE.IO.parent.Str;
+use Workshop;
+
+my $source = $?FILE.IO.parent.resolve;
+my $folder = unique-directory('red-stage-guide');
+LEAVE remove-tree($folder) if $folder.defined && $folder.e;
+%*ENV<WORKSHOP_ASSETS> = $source.Str;
+%*ENV<WORKSHOP_RED_SOURCE> = $source.parent.parent.Str;
+%*ENV<WORKSHOP_CHECKOUTS> = $folder.add('parallel').Str;
+my $root = $folder.add('project');
+command([$*EXECUTABLE.Str, $source.add('guide.raku').Str, 'init', $root.Str], :check);
+ok $root.add('lib/Task.rakumod').f, 'initialization supplies step-1 code';
+ok !$root.add('.git').e, 'workspace requires no Git repository';
+sub invoke(*@args, Str :$input --> Hash) {
+    command([$root.add('tutorial').Str, |@args], :cwd($root), :$input)
+}
+ok invoke('status')<out>.contains('Current step: 1'), 'initial status identifies step 1';
+my $model = $root.add('lib/Task.rakumod');
+my $initial = $model.slurp;
+$model.spurt($initial ~ "# local edit\n");
+ok invoke('next', '--yes')<status>, 'local code edits block advancement';
+ok $model.slurp.ends-with("# local edit\n"), 'refused advance preserves user edits';
+$model.spurt($initial);
+ok invoke('next', :input(''))<status>, 'EOF stops advancement';
+is $model.slurp, $initial, 'EOF leaves code unchanged';
+my $migration = $root.add('migrations/shared/Pg/up/001-schema.sql');
+make-directory($migration.parent);
+$migration.spurt('SELECT 1;');
+is invoke('next', '--to=2', '--yes')<status>, 0, 'script constructs step 2';
+ok $model.slurp.contains('description'), 'step 2 contains the new field';
+my $second-model = $model.slurp;
+is invoke('next', '--to=2', '--yes')<status>, 0, 'repeating a targeted stage is safe';
+is $model.slurp, $second-model, 'repeated step 2 does not add step-3 fields';
+is $migration.slurp, 'SELECT 1;', 'advancement preserves migration files';
+is command([$*EXECUTABLE.Str, $source.add('guide.raku').Str, 'init', $root.Str])<status>, 0,
+    'restart initialization preserves an existing stage';
+ok invoke('status')<out>.contains('Current step: 2'), 'restart does not reset progress';
+is invoke('parallel', '--yes')<status>, 0, 'parallel command constructs independent variants';
+ok invoke('parallel', '--yes')<status>, 'parallel workspaces are not overwritten';
+for <owner priority conflict> -> $name {
+    my $file = $folder.add("parallel/$name/migrations/$name/Pg/up/001-schema.sql");
+    make-directory($file.parent);
+    $file.spurt("SELECT '$name';");
+}
+my $owner-model = $folder.add('parallel/owner/lib/Task.rakumod');
+my $owner = $owner-model.slurp;
+$owner-model.spurt($owner ~ '# modified');
+ok invoke('integrate', '--yes')<status>, 'integration refuses edited parallel code';
+ok !$root.add('migrations/owner').e, 'refused integration copies no migrations';
+$owner-model.spurt($owner);
+is invoke('integrate', '--yes')<status>, 0, 'integration constructs combined step-3 code';
+ok $model.slurp.contains('owner') && $model.slurp.contains('priority'), 'combined code has both fields';
+ok invoke('next', '--to=2', '--yes')<status>, 'an earlier targeted stage is explicitly refused';
+is $root.add('migrations/owner/Pg/up/001-schema.sql').slurp, "SELECT 'owner';",
+    'integration preserves custom migration contents';
+ok invoke('next', '--yes')<status>, 'final stage cannot advance beyond available steps';
+is invoke('conflict', '--yes')<status>, 0, 'conflict history is constructed separately';
+ok $folder.add('parallel/conflict-demo/migrations/conflict').d, 'conflict workspace includes both histories';
+ok !$root.add('migrations/conflict').e, 'conflict demonstration leaves main history unchanged';
+my $unrecognized = $folder.add('existing'); $unrecognized.mkdir;
+$unrecognized.add('user-file').spurt('keep');
+ok command([$*EXECUTABLE.Str, $source.add('guide.raku').Str, 'init', $unrecognized.Str])<status>,
+    'initialization refuses an unrecognized nonempty workspace';
+is $unrecognized.add('user-file').slurp, 'keep', 'initialization preserves unrelated files';
+is steps($source.add('README.md')).elems, 11, 'document has bootstrap plus ten container steps';
+is steps($source.add('README.md')).grep(*.<context> eq 'host').elems, 1,
+    'only bootstrap executes on the host';
+my @helper = $*EXECUTABLE.Str, $source.add('workshop.raku').Str, 'expect-failure', 'expected';
+is command([|@helper, 'sh', '-c', 'echo expected >&2; exit 3'])<status>, 0,
+    'expected failures match captured diagnostics';
+is command([|@helper, '--stdin', 'sh', '-se'], :input("echo expected >&2\nexit 3\n"))<status>, 0,
+    'expected failures accept stdin blocks';
+ok command([|@helper, 'sh', '-c', 'exit 0'])<status>, 'unexpected success fails validation';
+my @check = $*EXECUTABLE.Str, $source.add('workshop.raku').Str, 'check', 'Visible check';
+my %success = command([|@check, 'test', '1', '=', '1']);
+is %success<status>, 0, 'successful check returns success';
+is %success<out>.trim, 'ok - Visible check', 'successful check prints its description';
+my %failure = command([|@check, 'test', '1', '=', '2']);
+isnt %failure<status>, 0, 'failed check keeps a failing exit status';
+is %failure<out>.trim, 'nok - Visible check', 'failed check prints its description';
+my @lookup = $*EXECUTABLE.Str, $source.add('workshop.raku').Str, 'migration-id', 'add-owner';
+my %missing = command(@lookup, :cwd($root));
+isnt %missing<status>, 0, 'missing migration lookup fails';
+ok %missing<err>.contains('Check your working directory'), 'missing lookup explains recovery';
+make-directory($root.add('migrations/01M00000000000000000000000-add-owner'));
+my %found = command(@lookup, :cwd($root));
+is %found<out>.trim, '01M00000000000000000000000', 'lookup returns the prepared migration ID';
+is %found<status>, 0, 'unique lookup succeeds';
+make-directory($root.add('migrations/01M00000000000000000000001-add-owner'));
+ok command(@lookup, :cwd($root))<status>, 'ambiguous lookup fails instead of choosing an ID';
+done-testing;

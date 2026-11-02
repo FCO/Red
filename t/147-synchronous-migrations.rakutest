@@ -1,0 +1,99 @@
+use Test;
+use Red;
+use Red::Migration::Manager;
+use Red::Migration::Configuration;
+use Red::Migration::Storage;
+use Red::Migration::Artifact;
+use Red::Migration::Environment;
+use MONKEY-SEE-NO-EVAL;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $dialect = @connection.shift;
+my %server = @connection.map({ .split('=', 2) }).map({ .[0] => val(.[1]) }).Hash;
+temporary-database($dialect, %server, -> $db, $context, %parameters {
+    my $root = $*TMPDIR.add("red-synchronous-{$*PID}-{100000.rand.Int}");
+    $root.mkdir;
+    LEAVE remove-tree($root) if $root.e;
+    my $*RED-DB = $db;
+    model SyncBefore is table<sync_task> {
+        has Int $.id is serial;
+        has Str $.title is column;
+        has Str $.description is column{ :nullable };
+    }
+    model SyncAfter is table<sync_task> {
+        has Int $.id is serial;
+        has Str $.title is column;
+        has Str $.description is column;
+        has Str $.owner is column;
+    }
+    model SyncStatus is table<sync_status> {
+        has Int $.id is serial;
+        has Str $.name is column;
+    }
+    my $calls = 0;
+    my $config = Red::Migration::Configuration.new(:models[SyncBefore],
+        :drivers[$dialect], :directory($root.add('migrations')),
+        :connections{default => { $calls++; $db }}, :test-servers{ $dialect => %server });
+    my $base = Red::Migration::Manager.new(:$config);
+    my $initial = $base.create('initial');
+    $initial.add('migration.raku').spurt('SyncBefore.^populate: { .^create: :title("first"); };');
+    is $calls, 0, 'draft creation is offline';
+    ok !$initial.add($dialect).e, 'draft contains no driver SQL';
+    $base.prepare('initial');
+    is $calls, 0, 'populate compilation does not access the configured database';
+    throws-like { $base.test(:driver($dialect)) }, X::Red::Migration,
+        reason => /'Rollback implementation pending'/, 'data inverse must be reviewed before CI';
+    declare-irreversible($initial, $dialect);
+    is $base.apply, 1, 'initial schema and populate apply synchronously';
+    is SyncBefore.^all.elems, 1, 'populate inserts initial records';
+    my $next = Red::Migration::Manager.new(:config($config.clone(:models[SyncAfter, SyncStatus])));
+    throws-like { $next.prepare('required') }, X::Red::Migration,
+        reason => /'red migration create required'/, 'direct prepare explains the data preparation workflow';
+    my $draft = $next.create('required');
+    like $draft.add('migration.raku').slurp, /'without .description'/, 'template suggests conditional filling';
+    throws-like { $next.apply }, X::Red::Migration, reason => /'draft'/,
+        'unprepared drafts block execution';
+    $draft.add('migration.raku').spurt(q:to/DATA/);
+SyncStatus.^populate: { .^create: :name<pending>; };
+SyncAfter.^migration: {
+    $_ = 'No description' without .description;
+    .owner = .title ~ ' owner';
+};
+DATA
+    if $dialect eq 'SQLite' {
+        throws-like { $next.prepare('required') }, X::Red::Migration,
+            reason => /'SQLite table reconstruction'/,
+            'SQLite tightening requires explicit reconstruction';
+        ok !$draft.add($dialect).e, 'failed preparation publishes no SQL';
+        remove-tree($draft);
+    } else {
+        $next.prepare('required');
+        ok $draft.add("$dialect/up/001-structure.sql").f, 'structure precedes data';
+        ok $draft.add("$dialect/up/002-data.sql").f, 'data is ordinary ordered SQL';
+        ok $draft.add("$dialect/up/003-constraints.sql").f, 'constraints follow data';
+        ok !$draft.add("$dialect/up/jobs").e, 'no job phases exist';
+        declare-irreversible($draft, $dialect);
+        is $next.apply, 1, 'NULL filling and NOT NULL execute in one apply';
+        is SyncAfter.^all.List[0].description, 'No description', 'historical NULL is filled';
+        is SyncAfter.^all.List[0].owner, 'first owner', 'new required column is filled before its constraint';
+        is SyncStatus.^all.List[0].name, 'pending', 'populate and updates share the migration';
+        lives-ok { $next.test(:driver($dialect)) }, 'full history validates on a fresh database';
+        my $source = $draft.add('migration.raku').slurp;
+        $draft.add('migration.raku').spurt($source ~ "\n# modified\n");
+        throws-like { $next.status }, X::Red::Migration, reason => /'Modified migration.raku'/,
+            'historical source checksums are enforced';
+        $draft.add('migration.raku').spurt($source);
+    }
+    lives-ok { $base.test(:driver($dialect), :!compare-models) }, 'seed migration validates without executing application populate methods';
+    ok !$db.schema-reader.tables-names.List.grep({ $_ eq any(<red_migration_jobs red_migration_confirmations>) }),
+        'synchronous execution creates no job infrastructure';
+});
+
+sub declare-irreversible(IO::Path $path, Str $dialect) {
+    my %manifest = EVALFILE($path.add('migration.rakuconf').Str);
+    %manifest<drivers>{$dialect}<down-state> = 'irreversible';
+    %manifest<drivers>{$dialect}<reversible> = False;
+    %manifest<drivers>{$dialect}<down-reason> = 'Explicit data migration';
+    $path.add('migration.rakuconf').spurt(artifact-source('manifest', %manifest));
+}
+done-testing;
