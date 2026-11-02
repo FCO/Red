@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.8  2026-11-02T02:08:21Z
     - Preserve inherited environment variables when provisioning migration databases and running child commands.
     - Compile migration data on Rakudo 2026.06 using its supported phaser inspection API.
     - Use red.rakuconf defaults for application queries and schema(), respecting explicit connections and test overrides.
