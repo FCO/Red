@@ -1,4 +1,5 @@
 use Test;
+use Red;
 use Red::Migration::Storage;
 use Red::Migration::Artifact;
 use Red::Migration::Snapshot;
