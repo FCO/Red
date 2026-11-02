@@ -71,6 +71,11 @@ throws-like { compile('BEGIN ' ~ $marker.Str.raku ~ '.IO.spurt("must not execute
     X::Red::Migration, reason => /'Unsupported declaration'/,
     'compile-time effects are rejected before frontend parsing';
 ok !$marker.e, 'rejected BEGIN code has no side effects';
+throws-like { compile('DataExample.^migration: { LEAVE '
+    ~ $marker.Str.raku ~ '.IO.spurt("must not execute"); .counter = 1; };') },
+    X::Red::Migration, reason => /'Unsupported declaration'/,
+    'runtime phasers are rejected without executing them';
+ok !$marker.e, 'rejected runtime phasers have no side effects';
 throws-like { compile(q[DataExample.^populate: { .^create: :description(.description); }]) },
     X::Red::Migration, 'populate cannot implicitly read another row';
 done-testing;

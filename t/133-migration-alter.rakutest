@@ -2,6 +2,8 @@ use Test;
 use Red;
 use Red::Migration::Configuration;
 use Red::Migration::Manager;
+use Red::Migration::Artifact;
+use MONKEY-SEE-NO-EVAL;
 
 my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
 my $dialect = @connection.shift;
@@ -35,15 +37,27 @@ $db.execute('DROP TABLE IF EXISTS migration_alter');
 $db.execute('DROP TABLE IF EXISTS red_migrations');
 manager(Narrow).prepare('initial');
 is manager(Narrow).apply, 1, 'creates bounded nullable column';
-Narrow.^create;
+my $row = Narrow.^create;
 manager(Wide).prepare('widen');
 is manager(Wide).apply, 1, 'widens VARCHAR';
 dies-ok { manager(Wide).rollback }, 'refuses automatic narrowing on rollback';
+throws-like { manager(Required).prepare('require-note') }, X::Red::Migration,
+    reason => /'red migration create require-note'/,
+    'nullable tightening requires an explicit data migration';
+my $draft = manager(Required).create('require-note');
+$draft.add('migration.raku').spurt(
+    Required.^name ~ q[.^migration: { $_ = 'filled' without .note; };]);
 manager(Required).prepare('require-note');
-throws-like { manager(Required).apply }, X::Red::Migration,
-    reason => /'existing NULL values'/, 'preflights nullability before DDL';
-is manager(Required).status.tail<state>, 'pending', 'preflight failure does not record application';
-$db.execute("UPDATE migration_alter SET note = 'filled'");
-is manager(Required).apply, 1, 'applies after data is populated';
+# This fixture starts with one NULL row. Restore it explicitly after relaxing the constraint.
+$draft.add("$dialect/down/002-restore-null.sql").spurt(
+    "UPDATE migration_alter SET note = NULL WHERE id = {$row.id};\n");
+my %manifest = EVALFILE($draft.add('migration.rakuconf').Str);
+%manifest<drivers>{$dialect}<down-state> = 'available';
+%manifest<drivers>{$dialect}<reversible> = True;
+%manifest<drivers>{$dialect}<down-reason> = '';
+$draft.add('migration.rakuconf').spurt(artifact-source('manifest', %manifest));
+is manager(Required).apply, 1, 'fills data before enforcing NOT NULL in the same apply';
+is Required.^find(:id($row.id)).note, 'filled', 'the declared migration fills the NULL value';
 is manager(Required).rollback, 1, 'reverts nullable addition and relaxes nullability';
+ok !Wide.^find(:id($row.id)).note.defined, 'the explicit inverse restores the original NULL';
 done-testing;

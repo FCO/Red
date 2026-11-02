@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Compile migration data on Rakudo 2026.06 using its supported phaser inspection API.
     - Use red.rakuconf defaults for application queries and schema(), respecting explicit connections and test overrides.
     - Compile synchronous migration and populate declarations into ordered SQL from historical snapshots.
     - Support conditional assignments with Raku topic semantics and explicit data inverse review.

@@ -10,6 +10,14 @@ unit module Red::Migration::Data;
 #| Raise a typed migration compilation error instead of falling back to runtime Raku execution.
 sub fail(Str $reason) { X::Red::Migration.new(:$reason).throw }
 
+#| Detect block phasers on both older and newer RakuAST implementations.
+sub has-phasers($block --> Bool) {
+    return so $block.has-any-phasers if $block.^can('has-any-phasers');
+    so <ENTER LEAVE KEEP UNDO FIRST NEXT LAST PRE POST QUIT TEMP CLOSE let temp>.first({
+        $block.has-phaser($_)
+    })
+}
+
 # Reject declarations and phasers before asking the Raku frontend to parse them:
 # some declarations execute BEGIN-time code even when only requesting an AST.
 #| Reject unsupported declarations, phasers and interpolation before frontend parsing can execute
@@ -282,7 +290,7 @@ class Compiler {
     #| re-evaluating a mutated predicate.
     method statements($block, $model, Str $kind, $topic = $model, $condition = Any) {
         fail('Migration blocks cannot declare parameters or phasers')
-            if $block.has-any-phasers || $block.has-placeholder-parameters || $block.signature.DEFINITE;
+            if has-phasers($block) || $block.has-placeholder-parameters || $block.signature.DEFINITE;
         for $block.body.statement-list.statements -> $statement {
             if $statement.^name eq any(<RakuAST::Statement::If RakuAST::Statement::Unless
                     RakuAST::Statement::With RakuAST::Statement::Without>) {
