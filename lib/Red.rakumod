@@ -162,17 +162,17 @@ Take a look at our Documentation: L<https://fco.github.io/Red/>
 
 Other recent highlights include:
 
-  * **Queries:** opt-in RakuAST compilation, compiled regex filters translated to SQL, and isolated SQL plan caching. See [compiled regex filters](#compiled-regex-filters).
+=item B<Queries:> opt-in RakuAST compilation, compiled regex filters translated to SQL, and isolated SQL plan caching. See L<compiled regex filters|#compiled-regex-filters>.
 
-  * **Schema:** named, composite and partial indexes, `CHECK` and PostgreSQL `EXCLUDE` constraints, and native range/regex helpers. See [indexes and constraints](#named-indexes-and-schema-constraints) and [PostgreSQL ranges](#postgresql-ranges-regex-and-exclusion-constraints).
+=item B<Schema:> named, composite and partial indexes, C<CHECK> and PostgreSQL C<EXCLUDE> constraints, and native range/regex helpers. See L<indexes and constraints|#named-indexes-and-schema-constraints> and L<PostgreSQL ranges|#postgresql-ranges-regex-and-exclusion-constraints>.
 
-  * **Transactions:** nested savepoints and explicit guards with asynchronous work. See [transactions and savepoints](#transactions-and-savepoints).
+=item B<Transactions:> nested savepoints and explicit guards with asynchronous work. See L<transactions and savepoints|#transactions-and-savepoints>.
 
-  * **Models and relationships:** creation through empty scalar relationships, stable `has-one`, `.^refresh` and `is handling`, plus dirty tracking for in-place collection mutations. See [relationship creation](#creating-through-a-scalar-relationship), [refresh](#refresh) and [is handling](#is-handling).
+=item B<Models and relationships:> creation through empty scalar relationships, stable C<has-one>, C<.^refresh> and C<is handling>, plus dirty tracking for in-place collection mutations. See L<relationship creation|#creating-through-a-scalar-relationship>, L<refresh|#refresh> and L<is handling|#is-handling>.
 
-  * **Results and JSON:** chainable scalar/container projections, SQL `tail`/`reverse`, `ResultSeq` products and expanded JSON operations.
+=item B<Results and JSON:> chainable scalar/container projections, SQL C<tail>/C<reverse>, C<ResultSeq> products and expanded JSON operations.
 
-  * **Performance and reliability:** faster hydration and projections, safer concurrent query/class initialization, and fixes for generated getters and formatter handling.
+=item B<Performance and reliability:> faster hydration and projections, safer concurrent query/class initialization, and fixes for generated getters and formatter handling.
 
 See [Changes](Changes) for the complete list.
 
