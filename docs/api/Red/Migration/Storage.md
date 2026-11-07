@@ -105,3 +105,37 @@ sub discard-staging-history(
 
 Remove a staging tree and its associated lock and journal files after validation or cleanup.
 
+### sub recover-bundle
+
+```raku
+sub recover-bundle(
+    IO(Any) $project
+) returns Mu
+```
+
+Recover both resources and META6 together. A committed publication is finalized; an interrupted, uncommitted one is rolled back. Call under with-bundle-lock.
+
+### sub with-bundle-lock
+
+```raku
+sub with-bundle-lock(
+    IO(Any) $project,
+    &body
+) returns Mu
+```
+
+Serialize project-wide publications and recover a previous interrupted bundle first.
+
+### sub publish-bundle
+
+```raku
+sub publish-bundle(
+    IO(Any) $project,
+    IO(Any) $stage,
+    IO(Any) $metadata,
+    Callable :$checkpoint = -> Str $phase { #`(Block|5896361078216) ... }
+) returns Mu
+```
+
+Publish a staged resource tree and metadata as one recoverable operation. The optional checkpoint callback permits subprocess crash tests without production environment flags.
+

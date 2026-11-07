@@ -27,6 +27,39 @@ method execute(
 
 Reject SQL execution through the translation-only adapter. Preparing migration artifacts must remain offline.
 
+### method bundle
+
+```raku
+method bundle(
+    IO(Any) :$project = "."
+) returns Mu
+```
+
+Publish prepared artifacts as resources without regenerating their contents.
+
+### method import
+
+```raku
+method import(
+    IO(Any) :$project = ".",
+    :@bundles
+) returns Mu
+```
+
+Import immutable SQL bundles from the installed runtime dependencies, without a database.
+
+### method adopt
+
+```raku
+method adopt(
+    Str :$dependency!,
+    IO(Any) :$project = ".",
+    :@bundles
+) returns Mu
+```
+
+Adopt published history without evaluating dependency artifacts or changing the database.
+
 ### method error
 
 ```raku
@@ -283,11 +316,26 @@ method run(
     Bool :$rollback = Bool::False,
     Bool :$inspect = Bool::False,
     Bool :$report = Bool::False,
-    Str :$to
+    Str :$to,
+    :$database,
+    Bool :$already-locked = Bool::False
 ) returns Mu
 ```
 
 Apply, revert or inspect a validated migration chain on a pinned connection. Maintain per-version and per-file checkpoints, with transactional behavior appropriate to the selected dialect.
+
+### method resolve
+
+```raku
+method resolve(
+    Str $id,
+    Str :$as!,
+    Str :$reason!,
+    Str :$connection = "default"
+) returns Hash
+```
+
+Reconcile a manually repaired MySQL execution without executing migration SQL.
 
 ### method apply
 
@@ -309,6 +357,28 @@ method rollback(
 ```
 
 Synchronously execute the latest non-reverted version in the down direction. Refuse unavailable inverses; structural rollback does not restore discarded data.
+
+### method drop-tables
+
+```raku
+method drop-tables(
+    Str :$connection = "default",
+    Callable :$confirm
+) returns Mu
+```
+
+Drop configured and historical managed tables, together with all migration bookkeeping. An optional confirmation callback receives the ordered table names before any DDL executes.
+
+### method reset
+
+```raku
+method reset(
+    Str :$connection = "default",
+    Callable :$confirm
+) returns Mu
+```
+
+Drop managed tables and replay the prepared history on the same pinned connection. Fixtures are not applied. Existing migration locking and per-dialect execution rules apply.
 
 ### method status
 
@@ -444,5 +514,5 @@ method serialize(
 ) returns Mu
 ```
 
-Rebase unpublished branches after a protected prefix in the requested tip order. Reject conflicts and custom SQL, regenerate rewritten versions with new IDs, and validate before atomic publication. Check every supplied deployment connection for already executed versions.
+Rebase unpublished branches after a protected prefix in the requested tip order. Reject conflicts and custom SQL, regenerate affected artifacts with stable IDs, and validate before atomic publication. Check every supplied deployment connection for already executed versions.
 

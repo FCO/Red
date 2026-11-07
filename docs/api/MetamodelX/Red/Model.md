@@ -151,6 +151,18 @@ method attr-to-column(
 
 A map from attr to column
 
+### method add_meta_method
+
+```raku
+method add_meta_method(
+    Mu $target,
+    Str $name,
+    $method
+) returns Mu
+```
+
+Keep custom no-argument populators while supporting explicit fixture data.
+
 ### method compose
 
 ```raku
