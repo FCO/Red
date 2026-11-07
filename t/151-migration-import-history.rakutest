@@ -1,0 +1,71 @@
+use Test;
+use Red;
+use Red::Migration::Bundle;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+use Red::Migration::SQL;
+use X::Red::Migration;
+
+my $root = $*TMPDIR.add("red-import-history-{$*PID}-{100000.rand.Int}");
+make-directory($root);
+LEAVE remove-tree($root) if $root.e;
+sub manager(Str $name) {
+    Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+        :directory($root.add($name)), :connections{ default => { die 'Must stay offline' } }))
+}
+my $a = '01AAAAAAAAAAAAAAAAAAAAAAAA';
+my $b = '01BBBBBBBBBBBBBBBBBBBBBBBB';
+my $c = '01CCCCCCCCCCCCCCCCCCCCCCCC';
+sub source(Str $identity, Str $id, Str $predecessor = '', :@requires = [],
+           :%tables = {}, Str :$up = 'SELECT 1;', Str :$down = 'SELECT 1;') {
+    Red::Migration::Bundle.new(:$identity, migrations => [%( :$id, :$predecessor,
+        name => 'dependency', :@requires, :%tables,
+        drivers => %(SQLite => %( :$up, :$down)),
+        sql => %(SQLite => %( :$up, :$down))).item])
+}
+my $manager = manager('chain');
+is $manager.import(:bundles[source('A', $b, $a), source('A', $a)]), 2,
+    'orders original predecessor earlier in the same batch';
+is-deeply $manager.history.map(*.<id>).Array, [$a, $b], 'preserves IDs in ancestry order';
+is $manager.import(:bundles[source('B', $c, :requires[%(identity => 'A', id => $b).item])]), 1,
+    'cross-distribution requirement resolves against imported history';
+is $manager.history.tail<predecessor>, $b, 'connects independent source to local tip';
+is $manager.history.tail<origin><predecessor>, '', 'preserves original root predecessor';
+throws-like { $manager.import(:bundles[source('Other', $a)]) }, X::Red::Migration,
+    'same ID from another distribution is a collision';
+my $cycle = manager('cycle');
+throws-like { $cycle.import(:bundles[source('A', $a, $b), source('A', $b, $a)]) },
+    X::Red::Migration, 'rejects predecessor cycles';
+is $cycle.history.elems, 0, 'cycle publishes nothing';
+my $ownership = manager('ownership');
+throws-like { $ownership.import(:bundles[
+    source('A', $a, :tables{ create => ['shared'] }),
+    source('B', $b, :tables{ create => ['shared'] })]) },
+    X::Red::Migration, 'rejects overlapping table ownership';
+is $ownership.history.elems, 0, 'ownership failure is atomic';
+my $invalid = manager('invalid-sql');
+throws-like { $invalid.import(:bundles[source('A', $a, :up('BEGIN; SELECT 1;'))]) },
+    X::Red::Migration, 'rejects unsupported SQL before publishing';
+is $invalid.history.elems, 0, 'SQL validation failure is atomic';
+model ExternalTable is table<external_table> { has Int $.id is id }
+model LocalTable is table<local_table> {
+    has Int $.id is id;
+    has Int $.external-id is referencing{ :model(ExternalTable), :column<id> };
+}
+my $directory = $root.add('local-models');
+my $local = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+    :$directory, :models[ExternalTable, LocalTable]));
+is $local.import(:bundles[source('A', $a,
+    :tables{ create => ['external_table'] },
+    :up('CREATE TABLE external_table (id INTEGER PRIMARY KEY);'),
+    :down('DROP TABLE external_table;'))]), 1,
+    'imports schema owned by dependency';
+my $path = $local.prepare('local');
+ok $path.defined, 'prepares local table referencing external table';
+my $sql = $path.add('SQLite/up/001-schema.sql').slurp;
+like $sql, /'local_table'/, 'generates local table';
+is statements($sql).elems, 1, 'only creates the local table';
+ok !$local.prepare('unchanged').defined, 'external model does not create repeated changes';
+is $local.serialize(:after($a)), 0, 'local suffix can be serialized with imported prefix protected';
+done-testing;

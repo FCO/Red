@@ -3,6 +3,7 @@ use Red::Migration::Configuration;
 use Red::Migration::Snapshot;
 use Red::Migration::Planner;
 use Red::Migration::Applied;
+use Red::Migration::Resolution;
 use Red::Migration::File;
 use Red::Migration::SQL;
 use Red::Migration::Scripts;
@@ -11,8 +12,11 @@ use Red::Migration::Logical;
 use Red::Migration::Storage;
 use Red::Migration::Artifact;
 use Red::Migration::Data;
+use Red::Migration::Dependencies;
+use Red::Migration::Import;
 use X::Red::Migration;
 use UUID;
+use JSON::Fast;
 use nqp;
 
 =head2 Red::Migration::Manager
@@ -33,6 +37,416 @@ class Translation {
 }
 
 has Red::Migration::Configuration $.config is required;
+
+#| Publish prepared artifacts as resources without regenerating their contents.
+method bundle(IO() :$project = '.') {
+    CATCH {
+        when X::Red::Migration { .rethrow }
+        default { self!error("Cannot publish migration bundle: {.message}") }
+    }
+    with-history-lock($!config.directory, {
+        with-bundle-lock($project, {
+        self!error('Prepare or remove drafts before bundling')
+            if self!entries.grep({ (.<state> // '') eq 'draft' });
+        my @history = self!history;
+        my $meta-file = $project.add('META6.json');
+        self!error("Missing distribution metadata: $meta-file") unless $meta-file.f;
+        my %meta = from-json($meta-file.slurp);
+        my $root = $project.add('resources/red/migrations');
+        my $stage = $project.add('resources/.red-migrations-' ~ UUID.new.Str);
+        LEAVE remove-tree($stage) if $stage.defined && $stage.e;
+        my %managed = 'red/migrations/index.json' => True;
+        if $root.d {
+            copy-tree($root, $stage);
+            my $old-index = $root.add('index.json');
+            if $old-index.f {
+                my %old-index = from-json($old-index.slurp);
+                sub inventory($value) {
+                    if $value ~~ Associative {
+                        if $value<path> ~~ Str && $value<path>.starts-with('red/migrations/') {
+                            my $relative = $value<path>.substr('red/migrations/'.chars);
+                            self!error('Invalid resource path in previous bundle')
+                                if $relative.split('/').grep({ $_ eq any('', '.', '..') })
+                                    || $relative.contains('\\');
+                            %managed{$value<path>} = True;
+                        }
+                        inventory($_) for $value.values;
+                    } elsif $value ~~ Positional { inventory($_) for $value.list }
+                }
+                for (%old-index<migrations> // []).list -> $entry {
+                    inventory($entry<files> // {});
+                    inventory($entry<drivers> // {});
+                }
+            }
+            for %managed.keys -> $resource {
+                my $file = $stage.add($resource.substr('red/migrations/'.chars));
+                self!error("Expected a managed resource file: $resource") if $file.e && !$file.f;
+                $file.unlink if $file.f;
+            }
+        } else { make-directory($stage) }
+        my @entries;
+        my %previous;
+        my $previous-id = '';
+        my %requirements;
+        my %dependency-state = import-state($!config.directory);
+        my $has-adopted = False;
+        my %positions = @history.kv.map(-> $index, $entry { $entry<id> => $index });
+        my %adoption-position;
+        for (%dependency-state<adoptions> // {}).kv -> $identity, $adoption {
+            %adoption-position{$identity} = $adoption<versions>.values.map({
+                %positions{.<anchor>} // -1
+            }).max;
+        }
+        my %table-origins;
+        my @resources = 'red/migrations/index.json';
+        for @history -> %migration {
+            my $adopted = %migration<imported>
+                && so %dependency-state<adopted>{%migration<origin><identity>};
+            if %migration<imported> && !$adopted {
+                %requirements{%migration<origin><identity>} = %migration<id>;
+                next;
+            }
+            $has-adopted ||= $adopted;
+            self!error('Migration directory symlinks are unsupported') if %migration<path>.l;
+            my $id = %migration<id>;
+            my %files;
+            sub publishable(IO::Path $file --> Bool) {
+                (!$file.basename.starts-with('.') || $file.basename eq '.origin')
+                    && !$file.basename.ends-with('.lock')
+                    && !$file.basename.ends-with('.journal.json')
+            }
+            sub copy-artifact(IO::Path $source, Str $relative) {
+                self!error("Migration symlinks are unsupported: $source") if $source.l;
+                if $source.d {
+                    copy-artifact($_, "$relative/{.basename}") for $source.dir.grep(&publishable).sort(*.basename);
+                } else {
+                    my $target = $stage.add("$id/$relative");
+                    make-directory($target.parent);
+                    self!error("Resource already exists outside the previous bundle: $target")
+                        if $target.e;
+                    $source.copy($target);
+                    my $resource = "red/migrations/$id/$relative";
+                    my $text = try $source.slurp;
+                    my $binary = !$text.defined;
+                    my $fingerprint = $binary ?? $source.slurp(:bin).decode('iso-8859-1') !! $text;
+                    %files{$relative} = %(path => $resource,
+                        checksum => self!checksum($fingerprint), :$binary);
+                    @resources.push($resource);
+                }
+            }
+            for %migration<path>.dir.grep(&publishable).sort(*.basename) -> $file {
+                copy-artifact($file, $file.basename);
+            }
+            if $adopted {
+                my $adoption = %dependency-state<adoptions>{%migration<origin><identity>};
+                my $baseline = $adoption<versions>{$id}<path>;
+                if $baseline.defined && $baseline ne %migration<path>.basename {
+                    my $archive = $!config.directory.add($baseline);
+                    for $archive.dir.grep(&publishable).sort(*.basename) -> $file {
+                        copy-artifact($file, "adopt-baseline/{$file.basename}");
+                    }
+                }
+            }
+            my %drivers;
+            for %migration<drivers>.keys -> $driver {
+                for <up down> -> $direction {
+                    my %script = read-direction(%migration<path>.add($driver), $direction, $driver);
+                    %drivers{$driver}{$direction} = %script<files>.map({
+                        %( |%files{"$driver/{.<file>}"}, name => .<file> )
+                    }).Array;
+                }
+            }
+            my %current;
+            if $adopted {
+                %current = %previous;
+                my %changes = %migration<origin><tables> // {};
+                for (%changes<create> // []).list -> $table {
+                    %current{$table} = True;
+                    %table-origins{$table} = %migration<origin><identity>;
+                }
+                for (%changes<rename> // {}).kv -> $old, $new {
+                    %current{$old}:delete;
+                    %current{$new} = True;
+                    %table-origins{$new} = %table-origins{$old}:delete;
+                }
+                %current{$_}:delete for (%changes<drop> // []).list;
+            } else {
+                %current = self!logical(%migration).tables.map({ .name => True });
+                for %previous.keys -> $table {
+                    my $origin = %table-origins{$table};
+                    %current{$table} = True if $origin.defined
+                        && %positions{$id} <= (%adoption-position{$origin} // -1);
+                }
+            }
+            my %manifest = %migration;
+            %manifest<path>:delete;
+            @entries.push: %(id => $id, name => %migration<name>,
+                predecessor => $previous-id, manifest => %manifest,
+                requires => %requirements.keys.sort.map({
+                    %(identity => $_, id => %requirements{$_})
+                }).Array,
+                files => %files, drivers => %drivers,
+                tables => %(create => %current.keys.grep({ !(%previous{$_}:exists) }).sort.Array,
+                    drop => %previous.keys.grep({ !(%current{$_}:exists) }).sort.Array));
+            %previous = %current;
+            $previous-id = $id;
+        }
+        # Once ownership has transferred, its original SQL must travel with our distribution.
+        # Publish a composed final baseline alongside (not over) the original artifacts.
+        if $has-adopted && @entries {
+            my $entry = @entries.tail;
+            for ('logical', |$!config.drivers) -> $driver {
+                my $snapshot = $driver eq 'logical'
+                    ?? self!local-snapshot(@history)
+                    !! self!local-snapshot(@history, :$driver);
+                my $namespace = nqp::sha1(%meta<name> ~ ':auth<' ~ (%meta<auth> // '') ~ '>');
+                my $name = "bundle-baseline/$namespace/$driver.rakuconf";
+                my $file = $stage.add("{$entry<id>}/$name");
+                make-directory($file.parent);
+                $file.spurt($snapshot.source);
+                my $resource = "red/migrations/{$entry<id>}/$name";
+                $entry<files>{$name} = %(path => $resource,
+                    checksum => self!checksum($file.slurp), binary => False);
+                $entry<baseline>{$driver} = $name;
+                @resources.push($resource);
+            }
+        }
+        $stage.add('index.json').spurt(to-json(%(format => 2, migrations => @entries.Array), :sorted-keys));
+        my @old = (%meta<resources> // []).list;
+        %meta<resources> = (|@old.grep({ !%managed{$_} }), |@resources).unique.sort.Array;
+        my $meta-stage = $meta-file.parent.add('.META6-migrations-' ~ UUID.new.Str);
+        LEAVE $meta-stage.unlink if $meta-stage.defined && $meta-stage.e;
+        $meta-stage.spurt(to-json(%meta, :sorted-keys));
+        publish-bundle($project, $stage, $meta-stage);
+        @entries.elems
+        });
+    }, :!wait)
+}
+
+#| Import immutable SQL bundles from the installed runtime dependencies, without a database.
+method import(IO() :$project = '.', :@bundles) {
+    with-history-lock($!config.directory, {
+        self!error('Prepare or remove migration drafts before importing')
+            if self!entries.grep({ (.<state> // '') eq 'draft' });
+        my @sources = @bundles ?? @bundles !! discover-bundles($project);
+        my @history = self!history;
+        my %state = import-state($!config.directory);
+        my %owned = %state<tables>;
+        my %local-tables;
+        my @local = @history.grep({ !.<imported> });
+        if @local { %local-tables = self!logical(@local.tail).tables.map({ .name => True }) }
+        # Imported/adopted snapshots are executable artifacts: use the ownership registry
+        # for conflict checks, never evaluate them while copying another dependency.
+        my %positions = @history.kv.map(-> $index, $entry { $entry<id> => $index });
+        my $local-position = @local ?? %positions{@local.tail<id>} !! -1;
+        for (%state<adoptions> // {}).values -> $adoption {
+            my @anchors = $adoption<versions>.values.grep({ %positions{.<anchor>}:exists });
+            next unless @anchors;
+            my $anchor = @anchors.map({ %positions{.<anchor>} }).max;
+            if $anchor >= $local-position {
+                %local-tables{$_} = True for $adoption<tables>.list;
+            }
+        }
+        %local-tables{$_} = True for (%state<baselines> // {}).keys;
+        my %records = %state<records>;
+        for @sources -> $bundle {
+            for $bundle.migrations -> $migration {
+                next if %records{$migration<id>}:exists;
+                my @introduced = (|($migration<tables><create> // []).list,
+                    |($migration<tables><rename> // {}).values);
+                for @introduced -> $table {
+                    self!error("Table already managed locally: $table")
+                        if !(%owned{$table}:exists)
+                            && (%local-tables{$table}:exists);
+                }
+            }
+        }
+        import-bundles($!config.directory, @history, @sources, $!config.drivers)
+    }, :!wait)
+}
+
+method !external-tables(--> Array) {
+    import-state($!config.directory)<tables>.keys.Array
+}
+
+method !models(--> Array) {
+    my @external = self!external-tables;
+    $!config.model-types.grep({ !(.^table eq any(@external)) }).Array
+}
+
+# Local snapshots deliberately exclude schemas owned by dependencies.
+method !local-snapshot(@history, Str :$driver) {
+    my @local = @history.grep({ !.<imported> });
+    if @local && $driver.defined {
+        my $file = @local.tail<path>.add($driver).add('schema.rakuconf');
+        self!error("Modified snapshot: $file") unless $file.f && self!checksum($file.slurp)
+            eq @local.tail<drivers>{$driver}<snapshot-checksum>;
+    }
+    my $snapshot = @local
+        ?? ($driver.defined
+            ?? Red::Migration::Snapshot.load(@local.tail<path>.add($driver).add('schema.rakuconf'))
+            !! self!logical(@local.tail))
+        !! Red::Migration::Snapshot.new;
+    my $adopted = $!config.directory.add('.adopt-' ~ ($driver // 'logical') ~ '.rakuconf');
+    if $adopted.f {
+        my %baseline = import-state($!config.directory)<baselines> // {};
+        my @all = @history;
+        my %positions = @all.kv.map(-> $index, $entry { $entry<id> => $index });
+        my $local-position = @local ?? %positions{@local.tail<id>} !! -1;
+        my %tables = Red::Migration::Snapshot.load($adopted).tables.grep({
+            my $anchor = %baseline{.name} // '';
+            my $anchor-position = $anchor.chars ?? (%positions{$anchor} // -1) !! -1;
+            (%baseline{.name}:exists) && $local-position <= $anchor-position
+                && (!$anchor.chars || @history.grep(*.<id> eq $anchor).elems)
+        }).map({ .name => $_ });
+        %tables{.name} = $_ for $snapshot.tables;
+        $snapshot = Red::Migration::Snapshot.new(:tables(%tables.values.sort(*.name).Array));
+    }
+    my %state = import-state($!config.directory);
+    my %positions = @history.kv.map(-> $index, $entry { $entry<id> => $index });
+    my $local-position = @local ?? %positions{@local.tail<id>} !! -1;
+    my %merged = $snapshot.tables.map({ .name => $_ });
+    for (%state<adoptions> // {}).values -> $adoption {
+        my @versions = $adoption<versions>.values.grep({ %positions{.<anchor>}:exists })
+            .sort({ %positions{.<anchor>} });
+        next unless @versions;
+        my $version = @versions.tail;
+        next if %positions{$version<anchor>} < $local-position;
+        my $key = $driver // 'logical';
+        my $name = $version<names>{$key}
+            // ($driver.defined ?? "$driver/schema.rakuconf" !! 'schema.rakuconf');
+        my $file = $!config.directory.add($version<path>).add($name);
+        self!error("Modified adopted snapshot: $file")
+            unless $file.f && self!checksum($file.slurp) eq $version<checksums>{$name}<checksum>;
+        my $historical = Red::Migration::Snapshot.load($file);
+        for $historical.tables -> $table {
+            self!error("Adopted table conflicts with local schema: {$table.name}")
+                if %merged{$table.name}:exists;
+            %merged{$table.name} = $table;
+        }
+    }
+    $snapshot = Red::Migration::Snapshot.new(:tables(%merged.values.sort(*.name).Array));
+    $snapshot
+}
+
+# Adoption is a metadata event at an existing migration ID. Include its baseline in
+# subsequent rebased schemas without generating CREATE SQL for already imported tables.
+method !activate-adoptions(Str $anchor, %schema) {
+    my %state = import-state($!config.directory);
+    for (%state<adoptions> // {}).values -> $adoption {
+        for $adoption<versions>.values.grep(*.<anchor> eq $anchor) -> $version {
+            my $name = $version<names><logical> // 'schema.rakuconf';
+            my $file = $!config.directory.add($version<path>).add($name);
+            self!error("Modified adopted snapshot: $file")
+                unless $file.f && self!checksum($file.slurp) eq $version<checksums>{$name}<checksum>;
+            my %incoming = schema-data(Red::Migration::Snapshot.load($file));
+            for %incoming<tables>.kv -> $name, $table {
+                self!error("Adopted table conflicts with serialized schema: $name")
+                    if %schema<tables>{$name}:exists;
+                %schema<tables>{$name} = $table;
+            }
+        }
+    }
+    %schema
+}
+
+method !snapshot-through(%by-id, Str $id) {
+    my @ancestors;
+    my %seen;
+    my $cursor = $id;
+    while $cursor.chars {
+        self!error('Incomplete or cyclic snapshot ancestry')
+            if %seen{$cursor}++ || !(%by-id{$cursor}:exists);
+        @ancestors.unshift: %by-id{$cursor}.item;
+        $cursor = %by-id{$cursor}<predecessor>;
+    }
+    self!local-snapshot(@ancestors)
+}
+
+#| Adopt published history without evaluating dependency artifacts or changing the database.
+method adopt(Str :$dependency!, IO() :$project = '.', :@bundles) {
+    with-history-lock($!config.directory, {
+        my %initial = import-state($!config.directory);
+        self!error("Dependency already adopted: $dependency") if %initial<adopted>{$dependency};
+        self!error('Prepare or remove drafts before adopting')
+            if self!entries.grep({ (.<state> // '') eq 'draft' });
+        my @sources = @bundles ?? @bundles !! discover-bundles($project);
+        my @matches = @sources.grep(*.identity eq $dependency);
+        self!error("Expected one installed migration bundle for $dependency") unless @matches == 1;
+        my $bundle = @matches[0];
+        my @history = self!history;
+        my %known = @history.map({ .<id> => $_ });
+        my @existing = @history.grep({ (.<origin><identity> // '') eq $dependency });
+        my $last = @existing ?? @existing.tail<id> !! '';
+        my %entries = $bundle.migrations.map({ .<id> => $_ });
+        self!error("Bundle does not contain last imported version: $last")
+            if $last.chars && !(%entries{$last}:exists);
+        # SQL-only legacy bundles cannot establish a historical baseline. Intermediate
+        # execution-only versions are valid when a later complete baseline is supplied.
+        my $final = $bundle.migrations.tail;
+        self!error('Cannot adopt an empty migration bundle') unless $final.defined;
+        my %baseline-names = logical => 'schema.rakuconf';
+        %baseline-names{$_} = "$_/schema.rakuconf" for $!config.drivers;
+        %baseline-names = $final<baseline> if $final<baseline>.defined;
+        for ('logical', |$!config.drivers) -> $driver {
+            my $name = %baseline-names{$driver};
+            self!error("Publish a complete bundle before adopting: {$final<id>}/$driver snapshot")
+                unless $name.defined && ($final<artifacts>{$name}:exists);
+        }
+        make-directory($!config.directory);
+        my $stage = staging-history($!config.directory);
+        LEAVE discard-staging-history($stage) if $stage.defined && $stage.e;
+        my $manager = self.WHAT.new(:config($!config.clone(:directory($stage))));
+        $manager.import(:bundles[$bundle]);
+        my @updated = $manager.history;
+        my %state = import-state($stage);
+        my %versions;
+        for @updated.grep({ (.<origin><identity> // '') eq $dependency }) -> %migration {
+            my $id = %migration<id>;
+            next if %known{$id}:exists && $id ne $last;
+            my $entry = %entries{$id};
+            my $existing = %known{$id}:exists;
+            my $relative = $existing ?? ".adopt-$id" !! %migration<path>.basename;
+            my $target = $stage.add($relative);
+            make-directory($target);
+            my %sql-files;
+            for ($entry<sql-files> // {}).kv -> $driver, $files {
+                %sql-files{"$driver/$_"} = True for $files.keys;
+            }
+            for $entry<artifacts>.kv -> $name, $source {
+                if $existing {
+                    next unless $name eq 'schema.rakuconf'
+                        || $name ~~ /^ <[A..Za..z]>+ '/schema.rakuconf' $/
+                        || $name eq any(($entry<baseline> // {}).values);
+                } else {
+                    # SQL was copied by import, retaining names and file checkpoint identities.
+                    next if %sql-files{$name}:exists;
+                }
+                my $destination = $target.add($name eq 'migration.rakuconf'
+                    ?? '.origin/' ~ nqp::sha1($dependency) ~ '-migration.rakuconf' !! $name);
+                make-directory($destination.parent);
+                $destination.spurt($source);
+            }
+            if $id eq $final<id> || $existing {
+                my %names = logical => 'schema.rakuconf';
+                %names{$_} = "$_/schema.rakuconf" for $!config.drivers;
+                %names = $entry<baseline> if $entry<baseline>.defined;
+                if %names.values.grep({ !($entry<artifacts>{$_}:exists) }).elems == 0 {
+                    %versions{$id} = %(path => $relative, names => %names,
+                        anchor => ($existing ?? (@history ?? @history.tail<id> !! '') !! $id),
+                        checksums => $entry<files>);
+                }
+            }
+        }
+        my @tables = %state<tables>.keys.grep({ %state<tables>{$_} eq $dependency });
+        %state<tables>{$_}:delete for @tables;
+        %state<adopted>{$dependency} = True;
+        %state<adoptions>{$dependency} = %(versions => %versions, tables => @tables.Array);
+        write-import-state($stage, %state);
+        publish-history($!config.directory, $stage);
+        @tables.elems
+    }, :!wait)
+}
 
 #| Raise X::Red::Migration with an actionable explanation of an invalid migration or execution
 #| state.
@@ -178,10 +592,11 @@ method create(Str $name) {
         my %snapshots;
         for $!config.drivers -> $dialect {
             %snapshots{$dialect} = Red::Migration::Planner.new(
-                :driver(self!driver($dialect)), :$dialect).capture($!config.model-types);
+                :external-tables(self!external-tables),
+                :driver(self!driver($dialect)), :$dialect).capture(self!models);
         }
-        my $target = logical-capture($!config.model-types, %snapshots, $!config.drivers);
-        my $before = @history ?? self!logical(@history.tail) !! Red::Migration::Snapshot.new;
+        my $target = logical-capture(self!models, %snapshots, $!config.drivers);
+        my $before = self!local-snapshot(@history);
         my $id = self!id;
         make-directory($!config.directory);
         my $stage = $!config.directory.add(".{$id}-draft");
@@ -258,7 +673,7 @@ method !data-variant(IO::Path $directory, $before, $after, Str $source, Str $dia
     my $new = translate-logical($after, $driver, $dialect, $!config.type-mappings{$dialect} // {});
     my $middle = intermediate-schema($old, $new);
     my %data = compile-data($old, $new, $source, $driver, $dialect);
-    my $planner = Red::Migration::Planner.new(:$driver, :$dialect);
+    my $planner = Red::Migration::Planner.new(:external-tables(self!external-tables), :$driver, :$dialect);
     my @before = $planner.diff($old, $middle, :$allow-destructive);
     my @after = $planner.diff($middle, $new, :$allow-destructive);
     my @down;
@@ -306,17 +721,11 @@ method !prepare(Str $name, Bool :$allow-destructive = False) {
     for $!config.drivers.sort -> $dialect {
         self!scripts(@history, $dialect) if @history;
         my $db = self!driver($dialect);
-        my $planner = Red::Migration::Planner.new(:driver($db), :$dialect);
-        my $new = $planner.capture($!config.model-types);
+        my $planner = Red::Migration::Planner.new(:external-tables(self!external-tables), :driver($db), :$dialect);
+        my $new = $planner.capture(self!models);
         %snapshots{$dialect} = $new;
         my $old = Red::Migration::Snapshot.new;
-        if @history {
-            my $file = @history.tail<path>.add($dialect).add('schema.rakuconf');
-            self!error("Previous migration has no $dialect snapshot") unless $file.f;
-            self!error("Modified snapshot: $file")
-                unless self!checksum($file.slurp) eq @history.tail<drivers>{$dialect}<snapshot-checksum>;
-            $old = Red::Migration::Snapshot.load($file);
-        }
+        $old = self!local-snapshot(@history, :driver($dialect));
         my @required = required-columns($old, $new);
         self!error("Columns require data preparation: " ~ @required.map({ .<table> ~ '.' ~ .<column> }).join(', ')
             ~ ". Run `red migration create $name`, complete migration.raku, then run `red migration prepare $name`.") if @required;
@@ -343,12 +752,10 @@ method !prepare(Str $name, Bool :$allow-destructive = False) {
             generated-down => self!checksum(statements(%artifacts{$dialect}<down>, :$dialect).raku));
     }
     return Nil unless $changed;
-    my $logical = logical-capture($!config.model-types, %snapshots, $!config.drivers);
+    my $logical = logical-capture(self!models, %snapshots, $!config.drivers);
     my $logical-source = $logical.source;
     my %before = tables => {};
-    if @history && @history.tail<path>.add('schema.rakuconf').f {
-        %before = schema-data(Red::Migration::Snapshot.load(@history.tail<path>.add('schema.rakuconf')));
-    }
+    if @history { %before = schema-data(self!local-snapshot(@history)) }
     my @operations = changes(%before, schema-data($logical));
     my $id = self!id;
     my %manifest = format => 2, :$id, :$name, predecessor => $previous, :%drivers, logical-checksum => self!checksum($logical-source);
@@ -386,9 +793,11 @@ method !scripts(@history, Str $dialect --> Array) {
         my $dir = %m<path>.add($dialect);
         my %up = read-direction($dir, 'up', $dialect);
         my %down = read-direction($dir, 'down', $dialect);
-        my $snapshot = $dir.add('schema.rakuconf').slurp;
-        self!error("Modified snapshot: {%m<id>}")
-            unless self!checksum($snapshot) eq %m<drivers>{$dialect}<snapshot-checksum>;
+        unless %m<imported> {
+            my $snapshot = $dir.add('schema.rakuconf').slurp;
+            self!error("Modified snapshot: {%m<id>}")
+                unless self!checksum($snapshot) eq %m<drivers>{$dialect}<snapshot-checksum>;
+        }
         %( |%m, up => %up<sql>, down => %down<sql>,
             up-instructions => %up<instructions>, down-instructions => %down<instructions>,
             up-files => %up<files>, down-files => %down<files>,
@@ -445,12 +854,11 @@ method !unlock($db, Str $dialect) {
 #| Inspect the source and target snapshots before execution and reject unsafe alterations. NULL
 #| checks are deferred until their constraint statement so earlier data updates can run.
 method !preflight($db, Str $dialect, %migration, @history, Bool $rollback) {
+    return if %migration<imported>;
     my $index = @history.first(*.<id> eq %migration<id>, :k);
     my $current = Red::Migration::Snapshot.load(
         %migration<path>.add($dialect).add('schema.rakuconf'));
-    my $previous = $index > 0
-        ?? Red::Migration::Snapshot.load(@history[$index - 1]<path>.add($dialect).add('schema.rakuconf'))
-        !! Red::Migration::Snapshot.new;
+    my $previous = self!local-snapshot(@history[^$index], :driver($dialect));
     my $from = $rollback ?? $current !! $previous;
     my $to = $rollback ?? $previous !! $current;
     self!validate-alterations($db, $dialect, $from, $to, :!check-nulls)
@@ -499,11 +907,11 @@ method !validate-alterations($db, Str $dialect, $from, $to,
 #| Apply, revert or inspect a validated migration chain on a pinned connection. Maintain per-version
 #| and per-file checkpoints, with transactional behavior appropriate to the selected dialect.
 method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
-            Bool :$report = False, Str :$to) {
+            Bool :$report = False, Str :$to, :$database, Bool :$already-locked = False) {
     self!error('Run migrations outside an existing Red transaction') if CALLERS::<$*RED-TRANSACTION-RUNNING>;
     my $locked = False;
     my $pg-open = False;
-    my $db = self!connection($connection);
+    my $db = $database // self!connection($connection);
     my $dialect = self!dialect($db);
     my $session;
     if $dialect eq 'Pg' && $db.dbh.^name eq 'DB::Pg' {
@@ -516,8 +924,10 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
     my @history = self!scripts(self.history, $dialect);
     self!error('Unprepared migration drafts exist; run red migration prepare first')
         if !$inspect && self!entries.grep({ (.<state> // '') eq 'draft' });
-    self!lock($db, $dialect, :read-only($inspect));
-    $locked = True;
+    unless $already-locked {
+        self!lock($db, $dialect, :read-only($inspect));
+        $locked = True;
+    }
     LEAVE { self!unlock($db, $dialect) if $locked }
     my $sqlite-open = $dialect eq 'SQLite';
     CATCH {
@@ -625,7 +1035,7 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
                     $file-record.^save;
                 }
                 $current = "{%instruction<file>}:{%instruction<statement>}: $sql";
-                if $sql.uc.contains('NOT NULL') && $sql.uc.starts-with('ALTER TABLE ') {
+                if !%m<imported> && $sql.uc.contains('NOT NULL') && $sql.uc.starts-with('ALTER TABLE ') {
                     my $target = Red::Migration::Snapshot.load(%m<path>.add("$dialect/schema.rakuconf"));
                     my $actual = Red::Migration::Snapshot.new(:tables($target.tables.map({
                         $db.schema-reader.table-definition(.name)
@@ -668,6 +1078,102 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
     $sqlite-open = False;
     @pending.elems
 }
+#| Reconcile a manually repaired MySQL execution without executing migration SQL.
+method resolve(Str $id, Str :$as!, Str :$reason!, Str :$connection = 'default' --> Hash) {
+    CATCH {
+        when X::Red::Migration { .rethrow }
+        default { self!error("Cannot reconcile migration $id: {.message}") }
+    }
+    self!error('Resolution state must be applied or reverted') unless $as eq any(<applied reverted>);
+    self!error('A non-empty reconciliation reason is required') unless $reason.trim.chars;
+    self!error('Resolve migrations outside an existing Red transaction')
+        if CALLERS::<$*RED-TRANSACTION-RUNNING>;
+    with-history-lock($!config.directory, {
+        self!error('Prepare or remove migration drafts before resolving')
+            if self!entries.grep({ (.<state> // '') eq 'draft' });
+        my $locked = False;
+        my $db = self!connection($connection);
+        self!error('Explicit reconciliation is supported only for MySQL')
+            unless self!dialect($db) eq 'MySQL';
+        my $*RED-DB = $db;
+        my $*RED-TRANSACTION-RUNNING = True;
+        my @history = self!scripts(self!history, 'MySQL');
+        my $index = @history.first(*.<id> eq $id, :k);
+        self!error("Unknown migration: $id") unless $index.defined;
+        my %migration = @history[$index];
+        self!lock($db, 'MySQL');
+        LEAVE self!unlock($db, 'MySQL') if $locked;
+        $locked = True;
+        my @tables = $db.schema-reader.tables-names.List;
+        self!error('Migration execution records are not initialized')
+            unless 'red_migrations' eq any(@tables) && 'red_migration_files' eq any(@tables);
+        my @rows = Red::Migration::Applied.^all.List;
+        my $row = @rows.first(*.id eq $id);
+        self!error("Migration $id has no unresolved execution")
+            unless $row.defined && $row.state eq any(<running failed>);
+        self!error('Resolve exactly one outstanding execution at a time')
+            unless @rows.grep({ .state ne any(<applied reverted>) }).elems == 1;
+        self!validate(@history, @rows, :allow-unresolved);
+        my $gap = False;
+        for @history -> %entry {
+            my $record = @rows.first(*.id eq %entry<id>);
+            my $state = %entry<id> eq $id ?? $as !! ($record.defined ?? $record.state !! 'pending');
+            self!error('Resolution would introduce a migration history gap') if $gap && $state eq 'applied';
+            $gap = True unless $state eq 'applied';
+        }
+        self!error('Invalid execution direction') unless $row.direction eq any(<up down>);
+        my @files = Red::Migration::File.^all.grep(*.migration-id eq $id).List;
+        for @files -> $file {
+            self!error('Invalid file checkpoint direction') unless $file.direction eq any(<up down>);
+            my $expected = %migration{"{$file.direction}-files"}.first(*.<file> eq $file.file);
+            self!error("Modified or missing checkpoint file: {$file.file}")
+                unless $expected.defined && $expected<checksum> eq $file.checksum
+                    && $file.id eq self!checksum("$id|{$file.direction}|{$file.file}");
+            my $total = %migration{"{$file.direction}-instructions"}.grep(*.<file> eq $file.file).elems;
+            self!error('Invalid observed file statement count')
+                unless 0 <= $file.completed-statements <= $total;
+        }
+        self!error('Invalid observed migration statement count')
+            unless 0 <= $row.completed-statements <= %migration{"{$row.direction}-instructions"}.elems;
+        my @prefix = @history[^($index + ($as eq 'applied' ?? 1 !! 0))];
+        my $verification = self!verify-prefix($db, 'MySQL', @prefix);
+        my %before = <id predecessor up-checksum down-checksum state direction applied-at reverted-at completed-statements>
+            .map({ $_ => $row."$_"() });
+        my @before-files = @files.map(-> $file {
+            %( <id migration-id direction file checksum state completed-statements>
+                .map({ $_ => $file."$_"() }) )
+        });
+        Red::Migration::Resolution.^create-table(:if-not-exists);
+        my $timestamp = DateTime.now.Str;
+        $db.dbh.execute('START TRANSACTION');
+        try {
+            $row.state = $as;
+            if $as eq 'applied' { $row.applied-at = $timestamp }
+            else { $row.reverted-at = $timestamp }
+            $row.^save;
+            for %migration{"{$row.direction}-files"}.list -> %file {
+                my $record = @files.first({ .direction eq $row.direction && .file eq %file<file> });
+                if $record.defined {
+                    $record.state = 'resolved';
+                    $record.^save;
+                } else {
+                    Red::Migration::File.^create(:id(self!checksum("$id|{$row.direction}|{%file<file>}")),
+                        :migration-id($id), :direction($row.direction), :file(%file<file>),
+                        :checksum(%file<checksum>), :state<resolved>, :completed-statements(0));
+                }
+            }
+            Red::Migration::Resolution.^create(:id(UUID.new.Str), :migration-id($id),
+                :before-state(%before<state>), :after-state($as), :direction(%before<direction>),
+                :reason($reason.trim), :resolved-at($timestamp), :$verification,
+                :version-data(to-json(%before, :sorted-keys)),
+                :checkpoint-data(to-json(@before-files.Array, :sorted-keys)));
+            $db.dbh.execute('COMMIT');
+            CATCH { default { try $db.dbh.execute('ROLLBACK'); .rethrow } }
+        }
+        %(id => $id, state => $as, :$verification, data-verified => False)
+    })
+}
+
 #| Synchronously apply pending versions to the selected connection, optionally stopping at a target
 #| ID. Return the number applied; recorded versions are not executed again.
 method apply(Str :$connection = 'default', Str :$to) {
@@ -678,6 +1184,112 @@ method apply(Str :$connection = 'default', Str :$to) {
 method rollback(Str :$connection = 'default') {
     with-history-lock($!config.directory, { self!run($connection, :rollback) })
 }
+#| Drop configured and historical managed tables, together with all migration bookkeeping.
+#| An optional confirmation callback receives the ordered table names before any DDL executes.
+method drop-tables(Str :$connection = 'default', Callable :$confirm) {
+    with-history-lock($!config.directory, { self!rebuild($connection, :$confirm) })
+}
+
+#| Drop managed tables and replay the prepared history on the same pinned connection.
+#| Fixtures are not applied. Existing migration locking and per-dialect execution rules apply.
+method reset(Str :$connection = 'default', Callable :$confirm) {
+    with-history-lock($!config.directory, { self!rebuild($connection, :$confirm, :reset) })
+}
+
+method !rebuild(Str $connection, Callable :$confirm, Bool :$reset = False) {
+    self!error('Run table removal outside an existing Red transaction')
+        if CALLERS::<$*RED-TRANSACTION-RUNNING>;
+    my $db = self!connection($connection);
+    my $dialect = self!dialect($db);
+    my $session;
+    if $dialect eq 'Pg' && $db.dbh.^name eq 'DB::Pg' {
+        $session = $db.dbh.db;
+        $db = $db.new-connection($session);
+    }
+    LEAVE $session.finish if $session.defined;
+    my $*RED-DB = $db;
+    my $locked = False;
+    my $transaction-open = False;
+    LEAVE { self!unlock($db, $dialect) if $locked }
+    CATCH {
+        default {
+            try $db.execute('ROLLBACK') if $transaction-open;
+            .rethrow;
+        }
+    }
+    my @history = self!history;
+    if $reset {
+        self!scripts(@history, $dialect);
+        self!error('Unprepared migration drafts exist; run red migration prepare first')
+            if self!entries.grep({ (.<state> // '') eq 'draft' });
+    }
+    my %wanted;
+    for $!config.model-types -> $model {
+        self!error("Views and temporary models cannot be dropped: {$model.^name}")
+            if $model.^temp || $model.HOW.^name.contains('View');
+        %wanted{$model.^table} = True;
+    }
+    for @history -> %migration {
+        if %migration<imported> {
+            my %changes = %migration<origin><tables> // {};
+            %wanted{$_} = True for |(%changes<create> // []), |(%changes<drop> // []),
+                |(%changes<rename> // {}).keys, |(%changes<rename> // {}).values;
+        } else {
+            my $snapshot = %migration<path>.add("$dialect/schema.rakuconf");
+            self!error("Missing historical snapshot: $snapshot") unless $snapshot.f;
+            %wanted{.name} = True for Red::Migration::Snapshot.load($snapshot).tables;
+        }
+    }
+    %wanted{$_} = True for <red_migrations red_migration_files red_migration_resolutions>;
+    self!lock($db, $dialect);
+    $locked = True;
+    $transaction-open = $dialect eq 'SQLite';
+    my @existing = $db.schema-reader.tables-names.grep({ .defined && $_ ne 'sqlite_sequence' }).List;
+    my %dependencies;
+    for @existing -> $table {
+        my $definition = $db.schema-reader.table-definition($table);
+        my @references = $definition.columns.map({ .references<table> // () }).flat.unique;
+        if !(%wanted{$table}:exists) && @references.grep({ %wanted{$_}:exists }) {
+            self!error("Unmanaged table $table references a table selected for removal");
+        }
+        %dependencies{$table} = @references.Array;
+    }
+    my @pending = @existing.grep({ %wanted{$_}:exists }).sort;
+    my @tables;
+    while @pending {
+        my @ready = @pending.grep(-> $candidate {
+            !@pending.grep(-> $other {
+                $other ne $candidate && $candidate eq any(%dependencies{$other})
+            }).elems
+        });
+        self!error('Cyclic table dependencies prevent removal; use an explicit migration')
+            unless @ready;
+        @tables.append(@ready);
+        @pending = @pending.grep({ $_ ne any(@ready) });
+    }
+    # Keep execution evidence until application tables have been removed on nontransactional DDL.
+    my %bookkeeping = set <red_migrations red_migration_files red_migration_resolutions>;
+    @tables = (|@tables.grep({ !(%bookkeeping{$_}:exists) }),
+        |@tables.grep({ %bookkeeping{$_}:exists }));
+    self!error('Cancelled; no tables were removed')
+        if $confirm.defined && !$confirm(@tables.Array);
+    if $dialect eq 'Pg' {
+        self!execute($db, 'BEGIN');
+        $transaction-open = True;
+    }
+    self!execute($db, 'DROP TABLE ' ~ $db.table-name-wrapper($_)) for @tables;
+    unless $reset && $dialect eq 'SQLite' {
+        self!execute($db, 'COMMIT') if $transaction-open;
+        $transaction-open = False;
+    }
+    if $reset {
+        my $applied = self!run($connection, :database($db), :already-locked);
+        $transaction-open = False;
+        return $applied;
+    }
+    @tables.elems
+}
+
 #| Return migration identities, names and database execution states without creating history tables
 #| or changing application schemas.
 method status(Str :$connection = 'default') {
@@ -695,8 +1307,8 @@ method plan(Str :$connection = 'default', Bool :$allow-destructive = True, Bool 
     my $db = self!connection($connection);
     my $dialect = self!dialect($db);
     my $*RED-DB = $db;
-    my $planner = Red::Migration::Planner.new(:driver($db), :$dialect);
-    my $target = $planner.capture($!config.model-types);
+    my $planner = Red::Migration::Planner.new(:external-tables(self!external-tables), :driver($db), :$dialect);
+    my $target = $planner.capture(self!models);
     my @tables;
     my @existing = $db.schema-reader.tables-names.List;
     for $target.tables -> $table {
@@ -721,7 +1333,7 @@ method plan(Str :$connection = 'default', Bool :$allow-destructive = True, Bool 
             }).Array));
         }
         # Index catalog APIs normalize expressions and driver-specific syntax.
-        my $model = $!config.model-types.first(*.^table eq $table.name);
+        my $model = self!models.first(*.^table eq $table.name);
         my @catalog = $db.indexes-for-table($table.name);
         my @indexes;
         for $model.^indexes.grep({ !.inline && $db.schema-definition-applies($_) }) -> $index {
@@ -822,8 +1434,10 @@ method test(Str :$driver, :@command = [], Bool :$keep = False, Callable :$fixtur
                 my %child-environment = %*ENV;
                 if @command {
                     my %*ENV = %child-environment;
-                    my @libraries = $*REPO.repo-chain.grep(*.^name eq 'CompUnit::Repository::FileSystem')
-                        .map(*.prefix.Str);
+                    my @libraries = $*REPO.repo-chain.grep({
+                        $_ ~~ CompUnit::Repository::FileSystem
+                            || $_ ~~ CompUnit::Repository::Installation
+                    }).map(*.path-spec);
                     %*ENV<RAKULIB> = (|@libraries, |(%*ENV<RAKULIB> // '').split(','))
                         .grep(*.chars).unique.join(',');
                     %*ENV<RED_MIGRATION_TEST> = $context.Str;
@@ -864,6 +1478,8 @@ method test(Str :$driver, :@command = [], Bool :$keep = False, Callable :$fixtur
 #| Load a version logical schema after checking its fingerprint. Portable history is required for
 #| automatic backfill and serialization.
 method !logical(%migration --> Red::Migration::Snapshot) {
+    self!error('Imported SQL cannot be regenerated or serialized; prepare it in its distribution')
+        if %migration<imported>;
     my $file = %migration<path>.add('schema.rakuconf');
     self!error("Migration {%migration<id>} needs a logical schema snapshot before backfill or serialization")
         unless $file.f && %migration<logical-checksum>.defined;
@@ -918,7 +1534,7 @@ method !variant(IO() $directory, $before, $after, Str $driver,
     make-directory($directory);
     my %metadata;
     if !$manual {
-        my $planner = Red::Migration::Planner.new(:driver($backend), :dialect($driver));
+        my $planner = Red::Migration::Planner.new(:external-tables(self!external-tables), :driver($backend), :dialect($driver));
         my @up = $planner.diff($old, $new, :allow-destructive);
         my @down;
         my $reason = '';
@@ -965,9 +1581,13 @@ method backfill(Str :$driver!) {
         return 0 unless @history.grep({ !(.<drivers>{$driver}:exists) });
         my $stage = staging-history($!config.directory);
         LEAVE discard-staging-history($stage) if $stage.defined;
-        my $previous = Red::Migration::Snapshot.new;
+        my %by-id = @history.map({ .<id> => $_ });
         my $count = 0;
         for @history -> %migration {
+            self!error("Dependency must publish $driver SQL for {%migration<id>}")
+                if %migration<imported> && !(%migration<drivers>{$driver}:exists);
+            next if %migration<imported>;
+            my $previous = self!snapshot-through(%by-id, %migration<predecessor>);
             my $logical = self!logical(%migration);
             unless %migration<drivers>{$driver}:exists {
                 my $target = $stage.add(%migration<path>.basename);
@@ -1000,7 +1620,6 @@ method backfill(Str :$driver!) {
                 $target.add('migration.rakuconf').spurt(artifact-source('manifest', %manifest));
                 $count++;
             }
-            $previous = $logical;
         }
         my $prepared = staging-history($stage);
         LEAVE discard-staging-history($prepared) if $prepared.defined;
@@ -1022,11 +1641,39 @@ method verify(Str :$connection = 'default') {
     my @history = self.history;
     my @states = self.status(:$connection);
     my $last = @states.grep(*.<state> eq 'applied').tail;
-    my $snapshot = $last.defined
-        ?? Red::Migration::Snapshot.load(@history.first(*.<id> eq $last<id>)<path>.add($driver).add('schema.rakuconf'))
-        !! Red::Migration::Snapshot.new;
-    my @actual = $db.schema-reader.tables-names.grep({ .defined && !($_ eq any(<red_migrations red_migration_files sqlite_sequence>)) }).sort;
-    my @wanted = $snapshot.tables.map(*.name).sort;
+    my $index = $last.defined ?? @history.first(*.<id> eq $last<id>, :k) + 1 !! 0;
+    my @prefix = @history[^$index];
+    self!verify-prefix($db, $driver, @prefix);
+    True
+}
+
+method !verify-prefix($db, Str $driver, @prefix) {
+    my $snapshot = self!local-snapshot(@prefix, :$driver);
+    my %external;
+    for @prefix.grep(*.<imported>) -> %migration {
+        my %changes = %migration<origin><tables> // {};
+        %external{$_} = %migration<origin><identity> for (%changes<create> // []).list;
+        for (%changes<rename> // {}).kv -> $old, $new {
+            %external{$new} = %external{$old}:delete;
+        }
+        %external{$_}:delete for (%changes<drop> // []).list;
+    }
+    my %adoptions = import-state($!config.directory)<adoptions> // {};
+    my %positions = @prefix.kv.map(-> $index, $entry { $entry<id> => $index });
+    my @local = @prefix.grep({ !.<imported> });
+    my $local-position = @local ?? %positions{@local.tail<id>} !! -1;
+    for %adoptions.kv -> $identity, $adoption {
+        my @anchors = $adoption<versions>.values.grep({ %positions{.<anchor>}:exists });
+        next unless @anchors;
+        if @anchors.map({ %positions{.<anchor>} }).max < $local-position {
+            for $adoption<tables>.list -> $table {
+                %external{$table}:delete if (%external{$table} // '') eq $identity;
+            }
+        }
+    }
+    %external{.name}:delete for $snapshot.tables;
+    my @actual = $db.schema-reader.tables-names.grep({ .defined && !($_ eq any(<red_migrations red_migration_files red_migration_resolutions sqlite_sequence>)) }).sort;
+    my @wanted = (|$snapshot.tables.map(*.name), |%external.keys).unique.sort;
     self!error('Database table set differs from the migration snapshot') unless @actual eqv @wanted;
     for $snapshot.tables -> $table {
         my $actual = $db.schema-reader.table-definition($table.name);
@@ -1036,10 +1683,10 @@ method verify(Str :$connection = 'default') {
                 unless $db.indexes-for-table($table.name).first(*.<name> eq %index<name>).defined;
         }
     }
-    True
+    $snapshot.tables.elems == @wanted.elems ?? 'schema' !! 'tables-only'
 }
 #| Rebase unpublished branches after a protected prefix in the requested tip order. Reject conflicts
-#| and custom SQL, regenerate rewritten versions with new IDs, and validate before atomic
+#| and custom SQL, regenerate affected artifacts with stable IDs, and validate before atomic
 #| publication. Check every supplied deployment connection for already executed versions.
 method serialize(Str :$after!, :@order = [], :@check-connections = []) {
     with-history-lock($!config.directory, {
@@ -1106,20 +1753,20 @@ method serialize(Str :$after!, :@order = [], :@check-connections = []) {
         }
         my $stage = staging-history($!config.directory);
         LEAVE discard-staging-history($stage) if $stage.defined;
-        my %state = schema-data(self!logical(%by-id{$after}));
+        my %state = schema-data(self!snapshot-through(%by-id, $after));
         my $previous = $after;
         my $changed = 0;
         for @sequence -> $original-id {
             my %migration = %by-id{$original-id};
-            my %before = schema-data(self!logical(%by-id{%migration<predecessor>}));
+            my %before = schema-data(self!snapshot-through(%by-id, %migration<predecessor>));
             my %target = schema-data(self!logical(%migration));
             my @operations = changes(%before, %target);
             my $stored = self!load(%migration<path>.add('operations.rakuconf'));
             self!error("Modified portable operations: $original-id") unless @operations eqv $stored.list.Array;
             my %merged = rebase(%state, @operations);
-            if $previous eq %migration<predecessor> {
+            if !%rewritten{$original-id} {
                 $previous = $original-id;
-                %state = %merged;
+                %state = self!activate-adoptions($original-id, %merged);
                 next;
             }
             my $logical = schema-from-data(%merged);
@@ -1136,8 +1783,9 @@ method serialize(Str :$after!, :@order = [], :@check-connections = []) {
                     .clone(:model-name(%aliases{.name} // .model-name))
                 }).Array));
             }
-            my $id = self!id;
-            my $directory = $stage.add("$id-{%migration<name>}");
+            my $id = $original-id;
+            remove-tree($stage.add(%migration<path>.basename));
+            my $directory = $stage.add(%migration<path>.basename);
             $directory.mkdir;
             my %drivers;
             for %migration<drivers>.keys.sort -> $driver {
@@ -1159,7 +1807,8 @@ method serialize(Str :$after!, :@order = [], :@check-connections = []) {
             $directory.add('operations.rakuconf').spurt(
                 artifact-source('operations', changes(%state, %merged)));
             my %manifest = format => 2, :$id, name => %migration<name>, predecessor => $previous,
-                replaces => $original-id, :%drivers, logical-checksum => self!checksum($source);
+                :%drivers, logical-checksum => self!checksum($source);
+            %manifest<replaces> = %migration<replaces> if %migration<replaces>.defined;
             if $data.defined {
                 $directory.add('migration.raku').spurt($data);
                 $directory.add('before.rakuconf').spurt($old.source);
@@ -1168,9 +1817,8 @@ method serialize(Str :$after!, :@order = [], :@check-connections = []) {
                 %manifest<state> = 'prepared';
             }
             $directory.add('migration.rakuconf').spurt(artifact-source('manifest', %manifest));
-            remove-tree($stage.add(%migration<path>.basename));
             $previous = $id;
-            %state = %merged;
+            %state = self!activate-adoptions($original-id, %merged);
             $changed++;
         }
         my $config = $!config.clone(:directory($stage));

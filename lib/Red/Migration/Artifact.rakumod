@@ -15,6 +15,8 @@ module Red::Migration::Artifact {
         has %.drivers;
         has Str $.logical-checksum;
         has Str $.replaces;
+        has Bool $.imported;
+        has %.origin;
         has Str $.state;
         has Str $.before-checksum;
         has Str $.data-checksum;
@@ -25,9 +27,10 @@ module Red::Migration::Artifact {
         #| integrity fingerprints. Retain legacy population metadata only for format rejection.
         method artifact-data(--> Hash) {
             my %data;
-            for <format id name predecessor drivers logical-checksum replaces state before-checksum data-checksum> -> $key {
+            for <format id name predecessor drivers logical-checksum replaces state before-checksum data-checksum imported> -> $key {
                 %data{$key} = self."$key"() if self."$key"().defined;
             }
+            %data<origin> = %!origin if %!origin;
             %data<population> = %!population if %!population;
             %data
         }

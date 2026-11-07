@@ -1,0 +1,76 @@
+use Test;
+use JSON::Fast;
+use Red::Migration::Storage;
+use X::Red::Migration;
+
+my $root = $*TMPDIR.add("red-publication-recovery-{$*PID}-{100000.rand.Int}");
+make-directory($root);
+LEAVE remove-tree($root) if $root.defined && $root.e;
+my $program = q:to/PROGRAM/;
+use Red::Migration::Storage;
+sub MAIN(Str $folder, Str $stop) {
+    my $project = $folder.IO;
+    with-bundle-lock($project, {
+        publish-bundle($project, $project.add('stage'), $project.add('meta-stage'),
+            :checkpoint(-> Str $phase {
+                if $phase eq $stop {
+                    say 'CHECKPOINT';
+                    $*OUT.flush;
+                    sleep 60;
+                }
+            }));
+    });
+}
+PROGRAM
+
+for False, True -> $existing {
+    for <prepared resources-backed-up resources-published metadata-published committed> -> $phase {
+        subtest "interruption at $phase (existing=$existing)", {
+            my $project = $root.add("$phase-$existing");
+            make-directory($project.add('stage'));
+            $project.add('META6.json').spurt('{"generation":"old"}');
+            $project.add('meta-stage').spurt('{"generation":"new"}');
+            $project.add('stage/version').spurt('new');
+            if $existing {
+                make-directory($project.add('resources/red/migrations'));
+                $project.add('resources/red/migrations/version').spurt('old');
+            }
+            my $ready = Promise.new;
+            my $child = Proc::Async.new($*EXECUTABLE.Str, "-I{$*CWD.add('lib')}",
+                '-e', $program, $project.Str, $phase);
+            my $errors = '';
+            $child.stdout.tap(-> $chunk {
+                $ready.keep(True) if $chunk.contains('CHECKPOINT') && $ready.status ~~ Planned;
+            });
+            $child.stderr.tap(-> $chunk { $errors ~= $chunk });
+            my $running = $child.start;
+            my $observed = try await Promise.anyof($ready, $running, Promise.in(30));
+            my $ignored = so $observed;
+            my $reached = $ready.status ~~ Kept;
+            $child.kill(9) if $running.status ~~ Planned;
+            my $finished = try await $running;
+            $ignored = so $finished;
+            ok $reached, 'child reached requested publication checkpoint';
+            diag $errors unless $reached;
+            lives-ok { with-bundle-lock($project, { True }) }, 'next lock recovers interrupted publication';
+            my $committed = $phase eq 'committed';
+            is from-json($project.add('META6.json').slurp)<generation>,
+                $committed ?? 'new' !! 'old', 'metadata matches chosen generation';
+            my $resource = $project.add('resources/red/migrations/version');
+            if $committed || $existing {
+                is $resource.slurp, $committed ?? 'new' !! 'old', 'resource generation matches metadata';
+            } else {
+                ok !$project.add('resources/red/migrations').e, 'first publication rolls back to absent resources';
+            }
+            ok !$project.add('.red-bundle-publication.json').e, 'journal removed only after recovery';
+            lives-ok { with-bundle-lock($project, { True }) }, 'recovery is idempotent';
+        }
+    }
+}
+my $invalid = $root.add('invalid');
+make-directory($invalid);
+$invalid.add('.red-bundle-publication.json').spurt(to-json(%(
+    format => 1, token => '../outside', had-root => True, state => 'prepared')));
+throws-like { with-bundle-lock($invalid, { True }) }, X::Red::Migration,
+    'malformed journal cannot redirect recovery outside project';
+done-testing;

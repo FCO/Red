@@ -1,0 +1,105 @@
+use Test;
+use Red;
+use Red::Fixture;
+use Red::Migration::Configuration;
+use Red::Migration::Storage;
+
+my $root = $*TMPDIR.add("red-fixture-data-{$*PID}-{100000.rand.Int}");
+$root.mkdir;
+LEAVE remove-tree($root) if $root.e;
+my $config = $root.add('red.rakuconf');
+my $source = q:to/CONFIG/;
+use Red;
+use Red::Migration::Configuration;
+my model FixtureParent is table<fixture_parent> {
+    has Int $.id is serial;
+    has Str $.name is column;
+    method ^populate($model) { $model.^create(:name<custom>); }
+}
+my model FixtureChild is table<fixture_child> {
+    has Int $.id is serial;
+    has Int $.parent-id is referencing(*.id, :model(FixtureParent));
+    has Str $.text is column;
+    has Bool $.enabled is column;
+    has Rat $.amount is column;
+    has Date $.date is column;
+    has DateTime $.timestamp is column;
+    has Str $.optional is column{ :nullable } = 'default';
+    has @.tags is column{ :type<varchar>, :inflate{ .split(',').Array }, :deflate{ .join(',') } };
+}
+my model FixtureTree is table<fixture_tree> {
+    has Int $.id is id;
+    has Int $.parent-id is referencing(*.id, :model(FixtureTree), :nullable);
+}
+config {
+    .models = [FixtureChild, FixtureTree, FixtureParent];
+    .fixtures-directory = 'named';
+}
+CONFIG
+$config.spurt($source);
+my $settings = Red::Migration::Configuration.load($config);
+my ($child, $tree, $parent) = $settings.model-types;
+my @connection = (%*ENV<RED_FIXTURE_DATABASE> // 'SQLite').words;
+my $driver = @connection.shift;
+my $*RED-DB = database $driver,
+    |%(@connection.map({ .split('=', 2).List }).map(-> ($key, $value) { $key => val($value) }));
+# Dedicated databases only; the optional driver setting supports integration containers.
+$parent.^create-table;
+$child.^create-table;
+$tree.^create-table;
+LEAVE {
+    for ($child, $tree, $parent) -> $model {
+        $*RED-DB.execute('DROP TABLE ' ~ $*RED-DB.table-name-wrapper($model.^table));
+    }
+}
+$parent.^populate;
+is $parent.^all.head.name, 'custom', 'custom no-argument populate remains available';
+$parent.^all.delete;
+$parent.^populate(:rows([{id => 50, name => 'parent'},]));
+is $parent.^all.head.id, 50, 'custom populate also accepts explicit fixture rows';
+$child.^populate(:rows([{
+    id => 80, parent-id => 50, text => "quotes '\" \\ newline\n Unicode café \$ \{\}",
+    enabled => False, amount => 12.5, date => Date.new('2026-11-07'),
+    timestamp => DateTime.new('2026-11-07T12:34:56Z'), optional => Str,
+    tags => ['one', 'two']
+},]));
+$tree.^populate(:rows([{id => 2, parent-id => Int}, {id => 1, parent-id => 2}]));
+fixture-command('save', 'typed', :config($config.Str));
+my $saved = $root.add('named/typed.raku').slurp;
+like $saved, /'^populate'/, 'saved file uses populate';
+ok $saved.index('FixtureParent') < $saved.index('FixtureChild'), 'parent is emitted before child';
+$child.^all.delete;
+$tree.^all.delete;
+$parent.^all.delete;
+# Model order in the configuration is not part of the fixture format.
+$config.spurt($source.subst('[FixtureChild, FixtureTree, FixtureParent]',
+    '[FixtureParent, FixtureChild, FixtureTree]'));
+fixture-command('apply', 'typed', :config($config.Str));
+is $parent.^all.head.id, 50, 'parent ID preserved';
+my $restored = $child.^all.head;
+is $restored.parent-id, 50, 'reference preserved';
+is $restored.text, "quotes '\" \\ newline\n Unicode café \$ \{\}", 'string round trips';
+ok !$restored.enabled, 'false round trips';
+is $restored.amount, 12.5, 'decimal round trips';
+is $restored.date.Str, '2026-11-07', 'date round trips';
+is $restored.timestamp.Str, '2026-11-07T12:34:56Z', 'timestamp round trips';
+ok !$*RED-DB.execute('SELECT optional FROM fixture_child').row<optional>.defined,
+    'stored NULL does not become attribute default';
+is-deeply $restored.tags.Array, ['one', 'two'], 'custom inflate/deflate round trips';
+is $tree.^all.elems, 2, 'self references are ordered by row';
+my $next = $parent.^create(:name<next>);
+ok $next.id > 50, 'automatic ID follows restored explicit IDs';
+# Omitted referenced data must not produce a misleading, incomplete export.
+$config.spurt($source.subst('[FixtureChild, FixtureTree, FixtureParent]', '[FixtureChild]'));
+throws-like { fixture-command('save', 'missing-parent', :config($config.Str)) }, X::Red::Fixture,
+    reason => /'Missing referenced row'/, 'missing references are rejected';
+ok !$root.add('named/missing-parent.raku').e, 'failed export publishes nothing';
+# Build a cycle using deferred updates after inserting initially nullable references.
+$config.spurt($source);
+$tree.^all.delete;
+$tree.^populate(:rows([{id => 1, parent-id => Int}, {id => 2, parent-id => 1}]));
+$*RED-DB.execute('UPDATE fixture_tree SET parent_id = 2 WHERE id = 1');
+throws-like { fixture-command('save', 'cycle', :config($config.Str)) }, X::Red::Fixture,
+    reason => /'Cyclic references'/, 'cyclic row references are rejected';
+ok !$root.add('named/cycle.raku').e, 'cyclic export publishes nothing';
+done-testing;

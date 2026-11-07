@@ -1,0 +1,144 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Bundle;
+use Red::Migration::Manager;
+use Red::Migration::Environment;
+use Red::Migration::Resolution;
+use Red::Migration::Storage;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $dialect = @connection.shift;
+my %server = @connection.map({ .split('=', 2) }).map({ .[0] => val(.[1]) }).Hash;
+temporary-database($dialect, %server, -> $db, $context, %parameters {
+    my $root = $*TMPDIR.add("red-reset-{$*PID}-{100000.rand.Int}");
+    $root.mkdir;
+    LEAVE remove-tree($root) if $root.e;
+    my $*RED-DB = $db;
+    model RebuildParent is table<rebuild_parent> {
+        has Int $.id is serial;
+        has Str $.name is column;
+    }
+    model RebuildChild is table<rebuild_child> {
+        has Int $.id is serial;
+        has Int $.parent-id is referencing(*.id, :model(RebuildParent));
+    }
+    model RebuildCycleA is table<rebuild_cycle_a> { has Int $.id is id; }
+    model RebuildCycleB is table<rebuild_cycle_b> { has Int $.id is id; }
+    my $calls = 0;
+    my $config = Red::Migration::Configuration.new(:models[RebuildParent, RebuildChild],
+        :drivers[$dialect], :directory($root.add('migrations')),
+        :connections{selected => { $calls++; $db }, default => { die 'wrong connection' }});
+    my $manager = Red::Migration::Manager.new(:$config);
+    my $draft = $manager.create('initial');
+    $draft.add('migration.raku').spurt(q:to/DATA/);
+RebuildParent.^populate: { .^create: :id(1), :name<seed>; };
+RebuildChild.^populate: { .^create: :id(1), :parent-id(1); };
+DATA
+    $manager.prepare('initial');
+    is $manager.apply(:connection<selected>), 1, 'applies initial schema and migration data';
+    Red::Migration::Resolution.^create-table;
+    $db.execute('CREATE TABLE unmanaged_reset (id INTEGER PRIMARY KEY)');
+    my %files = $root.add('migrations').dir.grep(*.d).map(-> $dir {
+        $dir.basename => $dir.add('migration.rakuconf').slurp
+    });
+    my @preview;
+    throws-like {
+        $manager.drop-tables(:connection<selected>, :confirm(-> @tables {
+            @preview = @tables; False
+        }))
+    }, X::Red::Migration, reason => /'Cancelled'/, 'cancellation is explicit';
+    ok 'red_migrations' eq any(@preview), 'preview includes migration versions';
+    ok 'red_migration_files' eq any(@preview), 'preview includes file checkpoints';
+    ok 'red_migration_resolutions' eq any(@preview), 'preview includes resolutions';
+    ok @preview.first(* eq 'rebuild_child', :k) < @preview.first(* eq 'rebuild_parent', :k),
+        'preview orders child before parent';
+    is RebuildParent.^all.head.name, 'seed', 'cancellation preserves data';
+    $db.execute('CREATE TABLE external_reset (id INTEGER PRIMARY KEY, parent_id INTEGER, '
+        ~ 'FOREIGN KEY (parent_id) REFERENCES rebuild_parent(id))');
+    throws-like { $manager.drop-tables(:connection<selected>) }, X::Red::Migration,
+        reason => /'Unmanaged table external_reset'/, 'unmanaged dependent blocks removal';
+    is RebuildParent.^all.elems, 1, 'dependency rejection precedes destructive SQL';
+    $db.execute('DROP TABLE external_reset');
+    my $cycle-reference = 'FOREIGN KEY (other_id) REFERENCES rebuild_cycle_b(id)';
+    $db.execute('CREATE TABLE rebuild_cycle_a (id INTEGER PRIMARY KEY, other_id INTEGER'
+        ~ ($dialect eq 'SQLite' ?? ", $cycle-reference" !! '') ~ ')');
+    $db.execute('CREATE TABLE rebuild_cycle_b (id INTEGER PRIMARY KEY, other_id INTEGER, '
+        ~ 'FOREIGN KEY (other_id) REFERENCES rebuild_cycle_a(id))');
+    $db.execute("ALTER TABLE rebuild_cycle_a ADD CONSTRAINT reset_cycle_fk $cycle-reference")
+        unless $dialect eq 'SQLite';
+    my $cyclic = Red::Migration::Manager.new(:config($config.clone(
+        :models[RebuildParent, RebuildChild, RebuildCycleA, RebuildCycleB])));
+    throws-like { $cyclic.drop-tables(:connection<selected>) }, X::Red::Migration,
+        reason => /'Cyclic table dependencies'/, 'cycles are rejected before removal';
+    is RebuildParent.^all.elems, 1, 'cycle rejection preserves existing data';
+    $db.execute('ALTER TABLE rebuild_cycle_a DROP '
+        ~ ($dialect eq 'MySQL' ?? 'FOREIGN KEY' !! 'CONSTRAINT') ~ ' reset_cycle_fk')
+        unless $dialect eq 'SQLite';
+    $db.execute('DROP TABLE rebuild_cycle_b');
+    $db.execute('DROP TABLE rebuild_cycle_a');
+    is $manager.drop-tables(:connection<selected>), 5, 'removes both models and all bookkeeping';
+    my @remaining = $db.schema-reader.tables-names.grep(*.defined).List;
+    ok 'unmanaged_reset' eq any(@remaining), 'unrelated tables are preserved';
+    ok !('red_migrations' eq any(@remaining)), 'migration versions table is removed';
+    ok !('red_migration_files' eq any(@remaining)), 'file checkpoint table is removed';
+    ok !('red_migration_resolutions' eq any(@remaining)), 'resolution table is removed';
+    is $manager.drop-tables(:connection<selected>), 0, 'dropping twice is harmless';
+    $calls = 0;
+    is $manager.reset(:connection<selected>), 1, 'reset reapplies prepared history';
+    is $calls, 1, 'reset resolves the selected connection factory only once';
+    is RebuildParent.^all.head.name, 'seed', 'reset restores migration seed data';
+    RebuildParent.^create(:id(20), :name<extra>);
+    is $manager.reset(:connection<selected>), 1, 'reset drops existing data and replays';
+    is RebuildParent.^all.elems, 1, 'reset removes data outside migration history';
+    is RebuildChild.^all.elems, 1, 'reset restores related migration data';
+    for %files.kv -> $name, $contents {
+        is $root.add("migrations/$name/migration.rakuconf").slurp, $contents,
+            'migration artifacts remain unchanged';
+    }
+    {
+        my $*RED-TRANSACTION-RUNNING = True;
+        throws-like { $manager.reset(:connection<selected>) }, X::Red::Migration,
+            reason => /'existing Red transaction'/, 'reset rejects an outer transaction';
+    }
+    if $dialect eq 'SQLite' {
+        RebuildParent.^create(:name<preserved-on-error>);
+        my $sql-file = $draft.add("$dialect/up").dir.grep(*.extension eq 'sql').sort(*.basename).tail;
+        my $original = $sql-file.slurp;
+        $sql-file.spurt($original ~ "\nINSERT INTO absent_reset_table (id) VALUES (1);\n");
+        throws-like { $manager.reset(:connection<selected>) }, X::Red::Migration,
+            'failed SQLite replay rolls back the reset';
+        $sql-file.spurt($original);
+        is RebuildParent.^all.elems, 2, 'SQLite rollback restores data from before the reset';
+        is $manager.status(:connection<selected>).head<state>, 'applied',
+            'SQLite rollback also restores migration bookkeeping';
+        $manager.reset(:connection<selected>);
+    }
+    my $pending = $manager.create('pending');
+    throws-like { $manager.reset(:connection<selected>) }, X::Red::Migration,
+        reason => /'draft'/, 'reset rejects drafts before dropping';
+    is RebuildParent.^all.elems, 1, 'invalid reset preserves existing tables';
+    remove-tree($pending);
+    # A historical table must still be dropped if no longer present in .models.
+    my $historical = Red::Migration::Manager.new(:config($config.clone(:models([]))));
+    is $historical.reset(:connection<selected>), 1, 'reset includes historical model tables';
+    is RebuildParent.^all.elems, 1, 'historical tables are recreated';
+    $db.execute('DROP TABLE unmanaged_reset');
+    # Imported SQL-only distributions have no configured models or local schema snapshots.
+    $historical.drop-tables(:connection<selected>);
+    my $imported = Red::Migration::Manager.new(config => $config.clone(
+        :models([]), :directory($root.add('imported'))));
+    my $up = 'CREATE TABLE reset_imported (id INTEGER PRIMARY KEY);';
+    my $down = 'DROP TABLE reset_imported;';
+    my $bundle = Red::Migration::Bundle.new(identity => 'Reset:auth<zef:reset-test>', version => '1',
+        migrations => [%(id => '01AAAAAAAAAAAAAAAAAAAAAAAA', name => 'imported', predecessor => '',
+            tables => %(create => ['reset_imported']),
+            drivers => %($dialect => %( :$up, :$down )),
+            sql => %($dialect => %( :$up, :$down ))).item]);
+    is $imported.import(:bundles[$bundle]), 1, 'imports a SQL-only dependency';
+    is $imported.apply(:connection<selected>), 1, 'applies imported table';
+    is $imported.reset(:connection<selected>), 1, 'reset rebuilds imported tables without models';
+    is $imported.drop-tables(:connection<selected>), 3, 'drops imported table and bookkeeping';
+    True
+});
+done-testing;

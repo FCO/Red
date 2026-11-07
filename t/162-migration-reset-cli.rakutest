@@ -1,0 +1,75 @@
+use Test;
+use Red;
+use Red::Migration::Storage;
+use Red::Migration::Snapshot;
+
+my $root = $*TMPDIR.add("red-reset-cli-{$*PID}-{100000.rand.Int}");
+$root.mkdir;
+LEAVE remove-tree($root) if $root.e;
+my $config = $root.add('red.rakuconf');
+my $database = $root.add('db.sqlite');
+my $directory = $root.add('migrations');
+$config.spurt(qq:to/CONFIG/);
+use Red;
+use Red::Migration::Configuration;
+model CliReset is table<cli_reset> \{
+    has Int \$.id is serial;
+    has Str \$.name is column;
+}
+config \{
+    .models = [CliReset];
+    .directory = {$directory.Str.raku};
+    .connections = %(
+        default => \{ die 'wrong default connection' },
+        selected => \{ database 'SQLite', :database({$database.Str.raku}) }
+    );
+}
+CONFIG
+sub cli(*@args, Str :$input = '') {
+    my $process = run $*EXECUTABLE.Str, '-I' ~ $*CWD.add('lib').Str,
+        $*CWD.add('bin/red').Str, 'migration', |@args, "--config=$config",
+        :in, :out, :err;
+    $process.in.print($input);
+    my $closed = $process.in.close; # Avoid sinking Proc; assert its exit code below.
+    my $out = $process.out.slurp-rest;
+    my $err = $process.err.slurp-rest;
+    %(status => $process.exitcode, :$out, :$err)
+}
+is cli('create', 'initial')<status>, 0, 'CLI creates migration draft';
+my $draft = $directory.dir.grep(*.d).head;
+my $model-name = Red::Migration::Snapshot.load($draft.add('schema.rakuconf')).tables[0].model-name;
+$draft.add('migration.raku').spurt($model-name ~ '.^populate: { .^create: :name<seed>; };');
+my %prepared = cli('prepare', 'initial');
+is %prepared<status>, 0, 'CLI prepares seed migration';
+diag %prepared<err> if %prepared<status>;
+is cli('apply', '--connection=selected')<status>, 0, 'CLI applies to named connection';
+my $*RED-DB = database 'SQLite', :database($database.Str);
+sub count { $*RED-DB.execute('SELECT COUNT(*) AS total FROM cli_reset').row<total> }
+my %cancelled = cli('drop-tables', '--connection=selected', :input("n\n"));
+isnt %cancelled<status>, 0, 'negative confirmation cancels removal';
+like %cancelled<out>, /'cli_reset'/, 'preview names the application table';
+like %cancelled<out>, /'red_migrations'/, 'preview names migration bookkeeping';
+is count(), 1, 'cancellation preserves existing data';
+isnt cli('reset', '--connection=selected')<status>, 0, 'EOF does not grant confirmation';
+is count(), 1, 'EOF preserves the database';
+my %drop = cli('drop-tables', '--connection=selected', :input("yes\n"));
+is %drop<status>, 0, 'affirmative confirmation removes tables';
+diag %drop<err> if %drop<status>;
+ok !('red_migrations' eq any($*RED-DB.schema-reader.tables-names.List)),
+    'CLI removes migration history table';
+my %reset = cli('reset', '--connection=selected', '--force');
+is %reset<status>, 0, 'forced reset rebuilds an empty database';
+diag %reset<err> if %reset<status>;
+like %reset<out>, /'1 migrations applied'/, 'reset reports applied migration count';
+is count(), 1, 'reset restores seed data';
+$*RED-DB.execute("INSERT INTO cli_reset(name) VALUES ('extra')");
+$root.add('fixtures').mkdir;
+$root.add('fixtures/extra.raku').spurt('die "reset must not run fixtures";');
+my %confirmed = cli('reset', '--connection=selected', :input("Y\n"));
+is %confirmed<status>, 0, 'interactive reset accepts an affirmative response';
+diag %confirmed<err> if %confirmed<status>;
+is count(), 1, 'reset discards extra data and never executes fixtures';
+is cli('drop-tables', '--connection=selected', '--force')<status>, 0,
+    'force skips confirmation for drop-tables';
+ok $draft.add('migration.rakuconf').f, 'migration files remain available';
+done-testing;

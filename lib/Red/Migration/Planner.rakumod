@@ -7,6 +7,7 @@ unit class Red::Migration::Planner;
 
 has $.driver is required;
 has Str $.dialect is required;
+has Str @.external-tables;
 
 #| Raise a typed error explaining why a schema operation cannot be generated safely.
 method !error(Str $reason) { X::Red::Migration.new(:$reason).throw }
@@ -24,7 +25,7 @@ method capture(@models --> Red::Migration::Snapshot) {
             if $model.^columns.grep({ .column.default.defined }).elems;
         my $table = $model.^describe;
         self!error("{$table.name} is reserved for migration history")
-            if $table.name eq any(<red_migrations red_migration_files>);
+            if $table.name eq any(<red_migrations red_migration_files red_migration_resolutions>);
         self!error("Duplicate column names in {$table.name}")
             unless $table.columns.map(*.name).unique.elems == $table.columns.elems;
         my @indexes = $model.^indexes.grep({ !.inline && $!driver.schema-definition-applies($_) }).map: -> $index {
@@ -95,6 +96,7 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
     my %new = $new.tables.map({ .name => $_ });
     for $new.tables -> $table {
         for $table.columns.grep({ .references<table>.defined }) -> $column {
+            next if $column.references<table> eq any(@!external-tables);
             my $parent = %new{$column.references<table>};
             self!error("Missing referenced table {$column.references<table>}") unless $parent.defined;
             my $key = $parent.columns.first(*.name eq $column.references<column>);
@@ -105,6 +107,7 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
     my @sql;
     my @create = %new.keys.grep({ !(%old{$_}:exists) }).sort;
     my %done = %old;
+    %done{$_} = True for @!external-tables;
     while @create {
         my $table = @create.first: -> $name {
             %new{$name}.columns.grep({ .references<table>.defined }).grep({

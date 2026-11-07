@@ -1,0 +1,22 @@
+ARG RAKU_IMAGE=rakudo-star:2026.09-bookworm
+FROM ${RAKU_IMAGE}
+
+RUN apt-get update -qq \
+    && apt-get install -y -qq --no-install-recommends \
+       git libpq-dev libmariadb-dev-compat libsqlite3-dev uuid-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Match the driver revisions used by .github/workflows/matrix.yaml.
+ARG PG_DRIVER_REF=6615b55d109db7ea7ca3469364080e873f1bf9a5
+ARG MYSQL_DRIVER_REF=d1be6590927f552151bb033fedb738dfeedc766f
+RUN git clone https://github.com/FCO/Red-Driver-Pg.git /drivers/pg \
+    && git -C /drivers/pg checkout "$PG_DRIVER_REF" \
+    && git clone https://github.com/FCO/Red-Driver-MySQL.git /drivers/mysql \
+    && git -C /drivers/mysql checkout "$MYSQL_DRIVER_REF"
+
+WORKDIR /work
+COPY . .
+RUN zef install --/test --test-depends --deps-only . \
+    && zef install --/test DB::Pg App::Prove6
+ENV RAKULIB=/work/lib,/drivers/pg/lib,/drivers/mysql/lib
+CMD ["bash", "tools/test-migration-chain.sh", "all"]

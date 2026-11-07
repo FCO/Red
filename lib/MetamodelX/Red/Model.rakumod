@@ -259,6 +259,20 @@ method SubsetHOW(|) {
     MetamodelX::Red::SubsetHOW
 }
 
+#| Keep custom no-argument populators while supporting explicit fixture data.
+method add_meta_method(Mu $target, Str $name, $method) {
+    if $name eq 'populate' {
+        $method.wrap(my method ($how: $model, |arguments) {
+            if arguments.hash<rows>:exists {
+                $how.fixture-populate($model, |arguments)
+            } else {
+                callsame
+            }
+        });
+    }
+    self.Metamodel::ClassHOW::add_meta_method($target, $name, $method)
+}
+
 #| Compose
 method compose(Mu \type) {
 

@@ -1,0 +1,37 @@
+name: red-migration-chain
+services:
+  pg:
+    image: postgres:15
+    environment:
+      POSTGRES_PASSWORD: chain-test
+    healthcheck:
+      test: [CMD-SHELL, "pg_isready -U postgres"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
+    tmpfs:
+      - /var/lib/postgresql/data
+  mysql:
+    image: mysql:8.4
+    environment:
+      MYSQL_ROOT_PASSWORD: chain-test
+      MYSQL_ROOT_HOST: "%"
+    healthcheck:
+      test: [CMD-SHELL, "mysqladmin ping -h 127.0.0.1 -uroot -pchain-test --silent"]
+      interval: 2s
+      timeout: 5s
+      retries: 90
+    tmpfs:
+      - /var/lib/mysql
+  tests:
+    build:
+      context: ..
+      dockerfile: .ci/Dockerfile.migration-chain
+    depends_on:
+      pg:
+        condition: service_healthy
+      mysql:
+        condition: service_healthy
+    environment:
+      RED_CHAIN_PG_DATABASE: "Pg host=pg dbname=postgres user=postgres password=chain-test"
+      RED_CHAIN_MYSQL_DATABASE: "MySQL host=mysql database=mysql user=root password=chain-test port=3306"

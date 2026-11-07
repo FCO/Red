@@ -1,0 +1,49 @@
+use Test;
+use Red;
+use Red::Migration::Bundle;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+use X::Red::Migration;
+
+my $directory = $*TMPDIR.add("red-import-{$*PID}-{100000.rand.Int}");
+LEAVE {
+    remove-tree($directory) if $directory.e;
+    my $lock = history-lock-path($directory);
+    $lock.unlink if $lock.f;
+}
+my $db = database 'SQLite';
+my $manager = Red::Migration::Manager.new(config =>
+    Red::Migration::Configuration.new(:$directory, :connections{ default => $db }));
+sub bundle(Str $id, Str $previous = '', Str :$up = 'CREATE TABLE imported (id INTEGER);',
+           Str :$down = 'DROP TABLE imported;', :%tables = %(create => ['imported'])) {
+    Red::Migration::Bundle.new(identity => 'Example:auth<zef:example>', version => '1',
+        migrations => [%( :$id, name => 'example', predecessor => $previous,
+            :%tables, drivers => %(SQLite => %(up => $up, down => $down)),
+            sql => %(SQLite => %( :$up, :$down ))).item])
+}
+my $first = '01AAAAAAAAAAAAAAAAAAAAAAAA';
+my $second = '01BBBBBBBBBBBBBBBBBBBBBBBB';
+is $manager.import(:bundles[bundle($first)]), 1, 'imports SQL without local models';
+is $manager.history[0]<id>, $first, 'preserves original ID';
+ok $manager.history[0]<imported>, 'marks imported SQL';
+is $manager.import(:bundles[bundle($first)]), 0, 'reimport is idempotent';
+throws-like { $manager.import(:bundles[bundle($first, :up('SELECT 1;'))]) },
+    X::Red::Migration, 'changed published SQL rejected';
+throws-like { $manager.import(:bundles[bundle($second, '01CCCCCCCCCCCCCCCCCCCCCCCC')]) },
+    X::Red::Migration, 'missing original predecessor rejected';
+is $manager.history.elems, 1, 'failure leaves history unchanged';
+is $manager.apply, 1, 'executes imported SQL without snapshots';
+ok $manager.verify, 'verifies imported table existence';
+is $manager.rollback, 1, 'executes original down SQL';
+ok $manager.verify, 'verifies reverted history';
+is $manager.apply, 1, 'reapplies imported SQL';
+my $next = bundle($second, $first, :up('ALTER TABLE imported ADD COLUMN label TEXT;'),
+    :down('SELECT 1;'), :tables{});
+is $manager.import(:bundles[$next]), 1, 'accepts previously imported original predecessor';
+is $manager.history[1]<predecessor>, $first, 'local chain is connected';
+is $manager.apply, 1, 'applies dependency update';
+throws-like { $manager.adopt(:dependency('Example:auth<zef:example>'), :bundles[$next]) },
+    X::Red::Migration, 'SQL-only bundle cannot supply a historical adoption baseline';
+is $manager.history.elems, 2, 'failed adoption preserves SQL-only history';
+done-testing;

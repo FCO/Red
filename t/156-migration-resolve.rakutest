@@ -1,0 +1,211 @@
+use Test;
+use Red;
+use JSON::Fast;
+use Red::Migration::Applied;
+use Red::Migration::Bundle;
+use Red::Migration::File;
+use Red::Migration::Resolution;
+use Red::Migration::Configuration;
+use Red::Migration::Environment;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+use X::Red::Migration;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $driver = @connection.shift;
+my %server = @connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
+my $root = $*TMPDIR.add("red-resolve-{$*PID}-{100000.rand.Int}");
+make-directory($root);
+LEAVE remove-tree($root) if $root.defined && $root.e;
+my $offline = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+    :directory($root.add('offline')), :connections{ default => { die 'Must remain offline' } }));
+throws-like { $offline.resolve('unknown', :as<pending>, :reason<invalid>) }, X::Red::Migration,
+    'invalid resolution target is rejected before opening a connection';
+throws-like { $offline.resolve('unknown', :as<applied>, :reason('   ')) }, X::Red::Migration,
+    'empty reason is rejected before opening a connection';
+
+model ResolutionControl is table<resolution_control> {
+    has Int $.id is serial;
+    has Str $.value is column;
+}
+model ResolutionRecord is table<resolution_record> {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+sub command($db, Str $sql) { $db.execute($sql).finish-transaction }
+sub query($db, Str $sql) {
+    my $statement = $db.execute($sql);
+    LEAVE $statement.finish-transaction;
+    $statement.row
+}
+
+sub scenario($db, $context, %parameters) {
+    my $*RED-DB = $db;
+    my $directory = $root.add('history');
+    my $config = Red::Migration::Configuration.new(:$directory, :drivers[$driver],
+        :connections{ default => $db });
+    my $manager = Red::Migration::Manager.new(:$config);
+    if $driver ne 'MySQL' {
+        throws-like { $manager.resolve('unknown', :as<applied>, :reason<manual>) },
+            X::Red::Migration, reason => /'only for MySQL'/, 'native reconciliation is MySQL-only';
+        ok !('red_migration_resolutions' eq any($db.schema-reader.tables-names.List)),
+            'unsupported driver creates no audit table';
+        return True;
+    }
+    my $base = Red::Migration::Manager.new(:config($config.clone(:models[ResolutionControl])));
+    $base.prepare('control');
+    $base.apply;
+    my $base-id = $base.history.head<id>;
+    my $next = Red::Migration::Manager.new(:config($config.clone(:models[ResolutionControl, ResolutionRecord])));
+    my $path = $next.prepare('record');
+    my $id = $next.history.tail<id>;
+    my $up = $path.add('MySQL/up/001-schema.sql');
+    my $down = $path.add('MySQL/down/001-schema.sql');
+    my $insert = 'INSERT INTO resolution_record (name) VALUES ((SELECT value FROM resolution_control WHERE id = 1));';
+    $up.spurt($up.slurp ~ "\n$insert\n");
+    $down.spurt("DELETE FROM resolution_record;\n" ~ $down.slurp);
+    my $original = $up.slurp;
+    throws-like { $next.apply }, X::Red::Migration, 'missing prerequisite data produces a real partial up';
+    is $next.status.tail<state>, 'failed', 'partial up is durable';
+    my $row = Red::Migration::Applied.^all.first(*.id eq $id);
+    is $row.completed-statements, 1, 'successful CREATE TABLE remains observed';
+    throws-like { $next.resolve('missing', :as<applied>, :reason<manual>) }, X::Red::Migration,
+        'unknown migration is rejected';
+    $up.spurt($original ~ "-- changed\n");
+    throws-like { $next.resolve($id, :as<applied>, :reason<manual>) }, X::Red::Migration,
+        'changed SQL cannot be acknowledged';
+    $up.spurt($original);
+    command($db, 'DROP TABLE resolution_record');
+    throws-like { $next.resolve($id, :as<applied>, :reason<manual>) }, X::Red::Migration,
+        'schema must match intended applied state';
+    is $next.status.tail<state>, 'failed', 'rejected resolution preserves failed state';
+    ResolutionRecord.^create-table;
+    my $base-row = Red::Migration::Applied.^all.first(*.id eq $base-id);
+    $base-row.state = 'reverted'; $base-row.^save;
+    throws-like { $next.resolve($id, :as<applied>, :reason<manual>) }, X::Red::Migration,
+        'resolution cannot introduce a history gap';
+    $base-row.state = 'failed'; $base-row.^save;
+    throws-like { $next.resolve($id, :as<applied>, :reason<manual>) }, X::Red::Migration,
+        'multiple unresolved executions require inspection';
+    $base-row.state = 'applied'; $base-row.^save;
+    my $locker = database 'MySQL', |%parameters;
+    query($locker, "SELECT GET_LOCK(CONCAT('red_migrations:', SHA1(DATABASE())), 0) AS acquired");
+    throws-like { $next.resolve($id, :as<applied>, :reason<manual>) }, X::Red::Migration,
+        'resolution respects another physical connection lock';
+    query($locker, "SELECT RELEASE_LOCK(CONCAT('red_migrations:', SHA1(DATABASE()))) AS released");
+    command($db, "INSERT INTO resolution_control (id, value) VALUES (1, 'restored')");
+    command($db, $insert);
+    {
+        my $*RED-TRANSACTION-RUNNING = True;
+        throws-like { $next.resolve($id, :as<applied>, :reason<manual>) },
+            X::Red::Migration, reason => /'existing Red transaction'/,
+            'resolution cannot join an outer transaction';
+    }
+    Red::Migration::Resolution.^create-table;
+    $db.dbh.execute(q:to/TRIGGER/);
+        CREATE TRIGGER reject_resolution BEFORE INSERT ON red_migration_resolutions
+        FOR EACH ROW SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'audit rejected'
+        TRIGGER
+    dies-ok { $next.resolve($id, :as<applied>, :reason<manual>) },
+        'audit failure aborts reconciliation';
+    is $next.status.tail<state>, 'failed', 'audit failure rolls back version update';
+    is Red::Migration::File.^all.first(*.migration-id eq $id).state, 'failed',
+        'audit failure rolls back checkpoint update';
+    is Red::Migration::Resolution.^all.elems, 0, 'failed reconciliation leaves no audit event';
+    $db.dbh.execute('DROP TRIGGER reject_resolution');
+    my %result = $next.resolve($id, :as<applied>, :reason('Completed missing data insertion'));
+    is %result<verification>, 'schema', 'reports structural verification';
+    nok %result<data-verified>, 'does not claim to validate manual data effects';
+    is $next.status.tail<state>, 'applied', 'manual completion unblocks history';
+    is query($db, 'SELECT COUNT(*) AS total FROM resolution_record')<total>.Int, 1,
+        'resolve did not rerun INSERT';
+    my $audit = Red::Migration::Resolution.^all.head;
+    is $audit.reason, 'Completed missing data insertion', 'audits explicit operator reason';
+    is from-json($audit.version-data)<completed-statements>, 1, 'audit retains observed version progress';
+    is from-json($audit.checkpoint-data)[0]<completed-statements>, 1,
+        'audit retains original file progress';
+    is Red::Migration::Applied.^all.first(*.id eq $id).completed-statements, 1,
+        'manual completion does not fabricate executed statement counts';
+    throws-like { $next.resolve($id, :as<applied>, :reason<again>) }, X::Red::Migration,
+        'already resolved version cannot receive a duplicate acknowledgement';
+    is $next.rollback, 1, 'rollback works after explicit completion';
+    is $next.apply, 1, 'original SQL can be reapplied after prerequisite data was repaired';
+    ok $next.verify, 'audit table does not interfere with schema verification';
+
+    my $blocker = 'CREATE TABLE resolution_blocker (record_id INTEGER, FOREIGN KEY (record_id) REFERENCES resolution_record(id))';
+    command($db, $blocker);
+    throws-like { $next.rollback }, X::Red::Migration, 'foreign key produces real partial down';
+    is Red::Migration::Applied.^all.first(*.id eq $id).direction, 'down', 'records failing direction';
+    is query($db, 'SELECT COUNT(*) AS total FROM resolution_record')<total>.Int, 0,
+        'earlier down DML committed despite subsequent DDL failure';
+    command($db, 'DROP TABLE resolution_blocker');
+    command($db, $insert);
+    $next.resolve($id, :as<applied>, :reason('Restored data after failed rollback'));
+    ok $next.verify, 'failed down can be restored to applied';
+    command($db, $blocker);
+    throws-like { $next.rollback }, X::Red::Migration, 'another down failure remains explicit';
+    command($db, 'DROP TABLE resolution_blocker');
+    command($db, 'DROP TABLE resolution_record');
+    $next.resolve($id, :as<reverted>, :reason('Completed manual removal'));
+    is $next.status.tail<state>, 'reverted', 'failed down can be completed manually';
+    is $next.apply, 1, 'can apply after manually completed down';
+    $next.rollback;
+    command($db, 'DELETE FROM resolution_control');
+    throws-like { $next.apply }, X::Red::Migration, 'another missing prerequisite causes partial up';
+    command($db, 'DROP TABLE resolution_record');
+    $row = Red::Migration::Applied.^all.first(*.id eq $id);
+    $row.state = 'running'; $row.^save;
+    my $configuration = $root.add('red.rakuconf');
+    $configuration.spurt("use Red::Migration::Configuration; use Red::Migration::Environment;\n"
+        ~ "Red::Migration::Configuration.new(:drivers<MySQL>, :directory({$directory.Str.raku}), "
+        ~ ':connections{default => { test-database() }})' ~ "\n");
+    {
+        temp %*ENV<RED_MIGRATION_TEST> = $context.Str;
+        my @libraries = $*REPO.repo-chain.grep({
+            $_ ~~ CompUnit::Repository::FileSystem || $_ ~~ CompUnit::Repository::Installation
+        }).map({ "-I{.path-spec}" });
+        my $process = run $*EXECUTABLE, |@libraries, $*CWD.add('bin/red').Str,
+            'migration', 'resolve', $id, '--as=reverted', '--reason=Undid interrupted up',
+            "--config=$configuration", :out, :err;
+        my $output = $process.out.slurp-rest;
+        my $errors = $process.err.slurp-rest;
+        is $process.exitcode, 0, 'CLI reconciles interrupted running execution';
+        diag $errors if $process.exitcode;
+        like $output, /'resolved as reverted'/, 'CLI reports the acknowledged state';
+    }
+    is $next.status.tail<state>, 'reverted', 'interrupted up can be manually undone';
+    is Red::Migration::Resolution.^all.elems, 4, 'each successful reconciliation has one audit event';
+    command($db, "INSERT INTO resolution_control (id, value) VALUES (1, 'restored')");
+    is $next.apply, 1, 'reconciliation permits future successful execution';
+    ok $next.verify, 'final reconciled schema is consistent';
+    True
+}
+temporary-database($driver, %server, &scenario);
+if $driver eq 'MySQL' {
+    temporary-database($driver, %server, -> $db, $context, %parameters {
+        my $*RED-DB = $db;
+        my $id = '01SSSSSSSSSSSSSSSSSSSSSSSS';
+        my $up = 'CREATE TABLE resolve_external (id INTEGER); '
+            ~ 'INSERT INTO resolve_external VALUES (1); SELECT missing_column FROM resolve_external;';
+        my $down = 'DROP TABLE resolve_external;';
+        my $bundle = Red::Migration::Bundle.new(identity => 'External:auth<zef:fixture>',
+            version => '1', migrations => [%(:$id, name => 'external', predecessor => '',
+                tables => %(create => ['resolve_external']),
+                drivers => %(MySQL => %(:$up, :$down)),
+                sql => %(MySQL => %(:$up, :$down))).item]);
+        my $manager = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+            :directory($root.add('external')), :drivers<MySQL>, :connections{ default => $db }));
+        $manager.import(:bundles[$bundle]);
+        throws-like { $manager.apply }, X::Red::Migration,
+            'SQL-only imported migration can fail after committing data';
+        my %result = $manager.resolve($id, :as<applied>, :reason('Reviewed data and table manually'));
+        is %result<verification>, 'tables-only', 'SQL-only imports report limited verification';
+        is query($db, 'SELECT COUNT(*) AS total FROM resolve_external')<total>.Int, 1,
+            'tables-only reconciliation never repeats committed data SQL';
+        is Red::Migration::Resolution.^all.head.verification, 'tables-only',
+            'verification limitation is retained in the audit';
+        is $manager.rollback, 1, 'reconciled SQL-only history can roll back';
+        True
+    });
+}
+done-testing;

@@ -82,4 +82,25 @@ for <status apply> -> $old-command {
     $old.err.slurp-rest;
     ok $old.exitcode != 0, "$old-command is no longer a top-level command";
 }
+subtest 'apply to a specific version' => {
+    my $first-id = $migrations.IO.dir.grep(*.d).head.basename.split('-').head;
+    $config.spurt($config.slurp.subst('has Str $.name is column;',
+        'has Str $.name is column; has Str $.email is column{ :nullable };'));
+    my ($code, $out) = cli('prepare', 'add-email');
+    is $code, 0, 'prepare a second version';
+    ($code, $out) = cli('apply', "--to=$first-id");
+    is $code, 0, 'CLI accepts target migration ID';
+    is $out.trim, '1', 'only the first version is applied';
+    ($code, $out) = cli('apply', "--to=$first-id");
+    is $code, 0, 'target can already be applied';
+    is $out.trim, '0', 'targeted apply is idempotent';
+    ($code, $out) = cli('apply', '--to=unknown-migration');
+    isnt $code, 0, 'unknown target fails';
+    ($code, $out) = cli('apply');
+    is $code, 0, 'untargeted apply still succeeds';
+    is $out.trim, '1', 'later version remained pending until untargeted apply';
+    ($code, $out) = cli('apply', "--to=$first-id");
+    is $code, 0, 'earlier target does not roll back';
+    is $out.trim, '0', 'earlier target applies nothing';
+};
 done-testing;

@@ -1,0 +1,179 @@
+use Test;
+use Red;
+use JSON::Fast;
+use Red::Migration::Bundle;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+use X::Red::Migration;
+
+my $root = $*TMPDIR.add("red-complete-bundle-{$*PID}-{100000.rand.Int}");
+make-directory($root);
+LEAVE remove-tree($root) if $root.e;
+my $source = $root.add('source');
+make-directory($source);
+$source.add('META6.json').spurt(to-json(%(name => 'Historical', auth => 'zef:example',
+    version => '1', depends => [], provides => {}, resources => ['unrelated.txt'])));
+make-directory($source.add('resources'));
+$source.add('resources/unrelated.txt').spurt('Keep me');
+model Original is table<historical> {
+    has Int $.id is serial;
+}
+model Updated is table<historical> {
+    has Int $.id is serial;
+    has Str $.label is column{ :nullable };
+}
+my $config = Red::Migration::Configuration.new(:directory($source.add('migrations')),
+    :models[Original]);
+my $producer = Red::Migration::Manager.new(:$config);
+my $first = $producer.prepare('initial');
+my $original-sql = $first.add('SQLite/up/001-schema.sql').slurp;
+$first.add('SQLite/up/001-schema.sql').spurt("-- reviewed SQL\n" ~ $original-sql);
+$first.add('auxiliary.bin').spurt(Blob.new(0, 255, 254, 1));
+$first.add('review-me.rakuconf').spurt('BEGIN { die "Do not evaluate while adopting" };');
+is $producer.bundle(:project($source)), 1, 'publishes complete prepared version';
+my %with-custom = from-json($source.add('META6.json').slurp);
+%with-custom<resources>.push('red/migrations/custom.txt');
+$source.add('META6.json').spurt(to-json(%with-custom));
+$source.add('resources/red/migrations/custom.txt').spurt('Unmanaged resource');
+is $producer.bundle(:project($source)), 1, 'bundling again is repeatable';
+my %meta = from-json($source.add('META6.json').slurp);
+ok 'unrelated.txt' eq any(%meta<resources>.list), 'preserves unrelated resource registration';
+is $source.add('resources/unrelated.txt').slurp, 'Keep me', 'preserves unrelated resource file';
+is $source.add('resources/red/migrations/custom.txt').slurp, 'Unmanaged resource',
+    'preserves unmanaged files even within the migration resource namespace';
+ok 'red/migrations/custom.txt' eq any(%meta<resources>.list), 'preserves unmanaged resource registration';
+my $bundle = Red::Migration::Bundle.load(Distribution::Path.new($source));
+my $id = $bundle.migrations[0]<id>;
+ok $bundle.migrations[0]<artifacts><schema.rakuconf>:exists, 'bundle includes logical snapshot';
+ok $bundle.migrations[0]<artifacts><operations.rakuconf>:exists, 'bundle includes operations';
+my $directory = $root.add('consumer');
+my $db = database 'SQLite';
+my $consumer = Red::Migration::Manager.new(config =>
+    Red::Migration::Configuration.new(:$directory, :connections{ default => $db }));
+is $consumer.import(:bundles[$bundle]), 1, 'imports SQL from complete bundle';
+my $local-first = $consumer.history[0]<path>;
+ok !$local-first.add('schema.rakuconf').e, 'ordinary import leaves snapshots in distribution';
+my $local-sql = $local-first.add('SQLite/up/001-schema.sql');
+is $local-sql.slurp, "-- reviewed SQL\n" ~ $original-sql, 'preserves numbered reviewed SQL';
+$local-sql.spurt("-- consumer review\n" ~ $local-sql.slurp);
+my $reviewed = $local-sql.slurp;
+model ApplicationTable is table<application_table> { has Int $.id is serial }
+my $application = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+    :$directory, :models[ApplicationTable], :connections{ default => $db }));
+ok $application.prepare('application').defined, 'application owns a separate local schema before adoption';
+my $updated-producer = Red::Migration::Manager.new(:config($config.clone(:models[Updated])));
+my $second = $updated-producer.prepare('label');
+is $updated-producer.bundle(:project($source)), 2, 'publishes subsequent complete version';
+my $complete = Red::Migration::Bundle.load(Distribution::Path.new($source));
+my $source-config = $source.add('red.rakuconf');
+$source-config.spurt("use Red::Migration::Configuration;\n"
+    ~ "Red::Migration::Configuration.new(:directory({$config.directory.Str.raku}))\n");
+sub cli(IO::Path $configuration, *@arguments, Str :$repository) {
+    my @libraries = "-I{$*CWD.add('lib')}";
+    @libraries.push("-Iinst#$repository") if $repository.defined;
+    my $process = run $*EXECUTABLE, |@libraries, $*CWD.add('bin/red').Str,
+        'migration', |@arguments, "--config=$configuration", :out, :err;
+    my $out = $process.out.slurp-rest;
+    my $err = $process.err.slurp-rest;
+    diag $err if $process.exitcode;
+    ($process.exitcode, $out)
+}
+my ($code, $output) = cli($source-config, 'bundle', "--project=$source");
+is $code, 0, 'CLI bundles existing artifacts without requiring current model code';
+like $output, /'2 migrations bundled'/, 'CLI reports bundle count';
+my $repository = CompUnit::Repository::Installation.new(:prefix($root.add('installed')));
+$repository.install(Distribution::Path.new($source), :!precompile);
+my $cli-project = $root.add('cli');
+make-directory($cli-project);
+$cli-project.add('META6.json').spurt(to-json(%(depends => ['Historical:auth<zef:example>'])));
+my $cli-config = $cli-project.add('red.rakuconf');
+$cli-config.spurt("use Red; use Red::Migration::Configuration;\n"
+    ~ "Red::Migration::Configuration.new(:directory({$cli-project.add('migrations').Str.raku}), "
+    ~ ":connections\{ default => \{ database 'SQLite', :database({$cli-project.add('test.sqlite').Str.raku}) } })\n");
+($code, $output) = cli($cli-config, 'adopt', "--dependency={$complete.identity}",
+    "--project=$cli-project", :repository($root.add('installed').Str));
+is $code, 0, 'CLI adopts installed complete bundle without current model code';
+ok !$cli-project.add('test.sqlite').e, 'CLI adoption does not open the target database';
+is $consumer.adopt(:dependency($complete.identity), :bundles[$complete]), 1,
+    'adopts history without configured local models';
+is $local-sql.slurp, $reviewed, 'adoption never overwrites previously reviewed SQL';
+is $consumer.history.elems, 3, 'adoption appends new source version after existing local migration';
+ok $consumer.history.tail<path>.add('operations.rakuconf').f, 'new version includes portable operations';
+ok $consumer.history.tail<path>.add('SQLite/schema.rakuconf').f, 'new version includes driver snapshot';
+ok $directory.add(".adopt-$id/schema.rakuconf").f, 'copies historical baseline of last imported version';
+my $empty = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+    :directory($root.add('empty')), :connections{ default => database 'SQLite' }));
+is $empty.adopt(:dependency($complete.identity), :bundles[$complete]), 1,
+    'adoption without prior import copies complete history';
+is $empty.history.elems, 2, 'all original IDs retained for fresh adoption';
+is-deeply $empty.history[0]<path>.add('auxiliary.bin').slurp(:bin).list.Array, [0, 255, 254, 1],
+    'fresh adoption preserves auxiliary binary artifacts';
+ok $empty.history[0]<path>.add('review-me.rakuconf').f,
+    'copies executable artifact without evaluating it';
+my $all = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+    :directory($root.add('all')), :connections{ default => database 'SQLite' }));
+is $all.import(:bundles[$complete]), 2, 'imports complete SQL history before adoption';
+my @sql-before = $all.history.map({ .<path>.add('SQLite/up/001-schema.sql').slurp });
+is $all.adopt(:dependency($complete.identity), :bundles[$complete]), 1,
+    'adopts when all published SQL versions are already imported';
+is-deeply $all.history.map({ .<path>.add('SQLite/up/001-schema.sql').slurp }).Array,
+    @sql-before.Array, 'full prior import SQL remains unchanged';
+is $all.history.elems, 2, 'full prior import produces no duplicate versions';
+remove-tree($source);
+remove-tree($root.add('installed'));
+($code, $output) = cli($cli-config, 'apply');
+is $code, 0, 'fresh process applies adopted history after installed distribution was removed';
+is $output.trim, '2', 'fresh process executes every original version';
+is $consumer.apply, 3, 'fresh database installs all versions without distribution source';
+ok $consumer.verify, 'historical snapshots verify migrated schema without distribution';
+ok $consumer.test(:!compare-models), 'isolated apply and rollback remain self-contained';
+is $empty.apply, 2, 'fresh adoption also installs without distribution';
+is $all.apply, 2, 'fully imported adoption installs without distribution';
+my $evolver = Red::Migration::Manager.new(config =>
+    Red::Migration::Configuration.new(:$directory, :models[Updated, ApplicationTable], :connections{ default => $db }));
+ok !$evolver.prepare('unchanged').defined, 'published snapshot supplies unchanged local baseline';
+model LocalEvolution is table<historical> {
+    has Int $.id is serial;
+    has Str $.label is column{ :nullable };
+    has Str $.extra is column{ :nullable };
+}
+my $changed = Red::Migration::Manager.new(config =>
+    Red::Migration::Configuration.new(:$directory, :models[LocalEvolution, ApplicationTable],
+        :connections{ default => $db }));
+ok $changed.prepare('extra').defined, 'current model changes are compared with published history';
+is $changed.apply, 1, 'applies new local change after adopted history';
+ok $changed.verify, 'new local snapshot incorporates adopted schema';
+ok !$changed.prepare('unchanged-again').defined, 'historical baseline does not replace newer local schema';
+my $repackaged = $root.add('repackaged');
+make-directory($repackaged);
+$repackaged.add('META6.json').spurt(to-json(%(name => 'NewOwner', auth => 'zef:example',
+    version => '1', provides => {}, resources => [], depends => [])));
+is $changed.bundle(:project($repackaged)), 4, 'bundling adopted history retains its original SQL versions';
+my $owned = Red::Migration::Bundle.load(Distribution::Path.new($repackaged));
+my $recipient = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+    :directory($root.add('recipient')), :connections{ default => database 'SQLite' }));
+is $recipient.adopt(:dependency($owned.identity), :bundles[$owned]), 2,
+    'another distribution can adopt republished self-contained history';
+remove-tree($repackaged);
+is $recipient.apply, 4, 'republished history installs without either former distribution';
+ok $recipient.verify, 'republished composed baseline describes the complete owned schema';
+ok $recipient.test(:!compare-models), 'republished mixed history passes prefix and rollback verification';
+my $dropper = Red::Migration::Manager.new(config =>
+    Red::Migration::Configuration.new(:$directory, :models[ApplicationTable],
+        :connections{ default => $db }));
+ok $dropper.prepare('remove-adopted', :allow-destructive).defined,
+    'generates removal of a previously adopted table';
+is $dropper.apply, 1, 'applies removal of adopted table';
+ok $dropper.verify, 'verify respects local removal of adopted table';
+my $reuse = Red::Migration::Bundle.new(identity => 'Replacement:auth<zef:example>',
+    migrations => [%(id => '01ZZZZZZZZZZZZZZZZZZZZZZZZ', name => 'reuse', predecessor => '',
+        tables => %(create => ['historical']),
+        drivers => %(SQLite => %(up => 'CREATE TABLE historical (id INTEGER);',
+            down => 'DROP TABLE historical;')),
+        sql => %(SQLite => %(up => 'CREATE TABLE historical (id INTEGER);',
+            down => 'DROP TABLE historical;'))).item]);
+is $dropper.import(:bundles[$reuse]), 1, 'new dependency may reuse a released adopted table name';
+is $dropper.apply, 1, 'applies migration of replacement owner';
+ok $dropper.verify, 'replacement ownership is reflected in schema verification';
+done-testing;

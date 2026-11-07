@@ -25,7 +25,7 @@ jobs:
     env:
       RAKUDO_RAKUAST: ${{ matrix.rakuast }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - uses: Raku/setup-raku@v1
         with:
           raku-version: ${{ matrix.raku-version }}
@@ -34,8 +34,12 @@ jobs:
         run: |
           zef install --/test --test-depends --deps-only .
           zef install --/test App::Prove6
-      - name: Run tests
+      # Includes installed chains, diamonds, crash recovery and reconciliation flows.
+      - name: Run tests (SQLite, including five-level migrations)
         run: prove6 -lj8 t
+      - name: Test staged installation
+        if: matrix.raku-version == '2026.09'
+        run: zef install --dry .
 
   mysql:
     name: MySQL (RakuAST=${{ matrix.rakuast }})
@@ -82,7 +86,7 @@ jobs:
           sudo apt-get install -y libmariadb-dev-compat libsqlite3-dev uuid-dev
           zef install --/test --test-depends --deps-only .
           zef install --/test App::Prove6
-      - name: Run tests (MySQL)
+      - name: Run tests (MySQL, including five-level migrations)
         run: prove6 -j8 -e "raku $GITHUB_WORKSPACE/.ci/mysql-driver/tools/red-test-exec.raku" t
 
   pg:
@@ -133,5 +137,5 @@ jobs:
           zef install --/test --test-depends --deps-only .
           zef install --/test --test-depends --deps-only .ci/pg-driver
           zef install --/test App::Prove6
-      - name: Run tests (Pg)
+      - name: Run tests (Pg, including five-level migrations)
         run: prove6 -j8 -e "bash $GITHUB_WORKSPACE/.ci/pg-driver/tools/pg-test-exec.sh" t

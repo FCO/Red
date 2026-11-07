@@ -121,6 +121,22 @@ multi MAIN('migration', 'sync', Bool :$dev! where so *, Str :$config = 'red.raku
     say migration-manager($config).sync(:$connection, :$allow-destructive)
 }
 
+#| Publish prepared migration artifacts in distribution resources.
+multi MAIN('migration', 'bundle', Str :$config = 'red.rakuconf', Str :$project = '.') {
+    say migration-manager($config).bundle(:$project) ~ ' migrations bundled'
+}
+
+#| Import prepared SQL resources from installed runtime dependencies for local review.
+multi MAIN('migration', 'import', Str :$config = 'red.rakuconf', Str :$project = '.') {
+    say migration-manager($config).import(:$project) ~ ' migrations imported; review before applying'
+}
+
+#| Transfer all tables of an explicitly named dependency to local schema management.
+multi MAIN('migration', 'adopt', Str :$dependency!, Str :$config = 'red.rakuconf',
+           Str :$project = '.') {
+    say migration-manager($config).adopt(:$dependency, :$project) ~ ' tables adopted'
+}
+
 #| Prepare versioned SQL and schema snapshots for all configured drivers.
 multi MAIN('migration', 'prepare', Str $name, Str :$config = 'red.rakuconf',
            Bool :$allow-destructive = False) {
@@ -128,9 +144,41 @@ multi MAIN('migration', 'prepare', Str $name, Str :$config = 'red.rakuconf',
     say $path // 'No schema changes'
 }
 
-#| Apply all pending migrations to the selected configured connection.
-multi MAIN('migration', 'apply', Str :$config = 'red.rakuconf', Str :$connection = 'default') {
-    say migration-manager($config).apply(:$connection)
+#| Apply pending migrations to the selected connection, optionally stopping at a migration ID.
+multi MAIN('migration', 'apply', Str :$config = 'red.rakuconf',
+           Str :$connection = 'default', Str :$to) {
+    say migration-manager($config).apply(:$connection, :$to)
+}
+
+sub confirm-table-removal(Str $command, Str $connection, Bool $force, @tables --> Bool) {
+    say "Connection: $connection";
+    say 'Tables to remove: ' ~ (@tables ?? @tables.join(', ') !! '(none)');
+    return True if $force;
+    my $answer = prompt "$command removes all data in these tables. Continue? [y/N] ";
+    so ($answer.defined && $answer.trim.lc eq any(<y yes>))
+}
+
+#| Remove managed tables and all migration bookkeeping, preserving migration files.
+multi MAIN('migration', 'drop-tables', Str :$config = 'red.rakuconf',
+           Str :$connection = 'default', Bool :$force = False) {
+    my $removed = migration-manager($config).drop-tables(:$connection,
+        :confirm(-> @tables { confirm-table-removal('drop-tables', $connection, $force, @tables) }));
+    say "$removed tables removed";
+}
+
+#| Remove managed tables and replay all prepared migrations, without applying fixtures.
+multi MAIN('migration', 'reset', Str :$config = 'red.rakuconf',
+           Str :$connection = 'default', Bool :$force = False) {
+    my $applied = migration-manager($config).reset(:$connection,
+        :confirm(-> @tables { confirm-table-removal('reset', $connection, $force, @tables) }));
+    say "$applied migrations applied";
+}
+
+#| Reconcile a manually completed or reverted partial MySQL migration.
+multi MAIN('migration', 'resolve', Str $id, Str :$as!, Str :$reason!,
+           Str :$config = 'red.rakuconf', Str :$connection = 'default') {
+    my %result = migration-manager($config).resolve($id, :$as, :$reason, :$connection);
+    say "{%result<id>} resolved as {%result<state>}; verification: {%result<verification>}; data checked manually"
 }
 
 #| Revert the last applied migration using its down scripts.
@@ -208,4 +256,22 @@ multi MAIN('migration', 'serialize', Str :$after!, Str :$order,
 #| Create a synchronous migration draft with historical models and migration.raku.
 multi MAIN('migration', 'create', Str $name, Str :$config = 'red.rakuconf') {
     say migration-manager($config).create($name)
+}
+
+#| List named fixtures without opening the database.
+multi MAIN('fixture', 'list', Str :$config = 'red.rakuconf') {
+    use Red::Fixture;
+    fixture-command('list', :$config);
+}
+
+#| Save configured models as a named fixture.
+multi MAIN('fixture', 'save', Str $name, Str :$config = 'red.rakuconf', Bool :$force = False) {
+    use Red::Fixture;
+    fixture-command('save', $name, :$config, :$force);
+}
+
+#| Apply a named fixture in a transaction.
+multi MAIN('fixture', 'apply', Str $name, Str :$config = 'red.rakuconf') {
+    use Red::Fixture;
+    fixture-command('apply', $name, :$config);
 }

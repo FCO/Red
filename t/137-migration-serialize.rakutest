@@ -38,6 +38,6 @@ my $bid = manager($root.add('b'), B).history.tail<id>;
 is $merged.serialize(:after($id), :order[$aid, $bid]), 1, 'rewrites only the rebased sibling';
 is $merged.history.elems, 3, 'retains all logical versions';
 is $merged.history.tail<predecessor>, $aid, 'rewritten migration follows the first branch';
-is $merged.history.tail<replaces>, $bid, 'records the replaced unpublished identity';
+is $merged.history.tail<id>, $bid, 'preserves the original unpublished identity';
 lives-ok { $merged.test }, 'serialized chain builds, verifies and rolls back';
 done-testing;

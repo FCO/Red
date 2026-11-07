@@ -1,0 +1,55 @@
+use Test;
+use JSON::Fast;
+use nqp;
+use Red::Migration::Dependencies;
+use Red::Migration::Storage;
+
+my $root = $*TMPDIR.add("red-discovery-{$*PID}-{100000.rand.Int}");
+make-directory($root);
+LEAVE remove-tree($root) if $root.e;
+my $source = $root.add('source');
+make-directory($source.add('lib'));
+make-directory($source.add('resources/red/migrations'));
+$source.add('lib/DiscoveryFixture.rakumod').spurt('BEGIN { die "Must not load dependency" };');
+my $up = 'CREATE TABLE discovered (id INTEGER);';
+my $down = 'DROP TABLE discovered;';
+$source.add('resources/red/migrations/up.sql').spurt($up);
+$source.add('resources/red/migrations/down.sql').spurt($down);
+my %migration = id => '01DDDDDDDDDDDDDDDDDDDDDDDD', name => 'discovered', predecessor => '',
+    tables => %(create => ['discovered']), drivers => %(SQLite => %(
+        up => %(path => 'red/migrations/up.sql', checksum => nqp::sha1($up)),
+        down => %(path => 'red/migrations/down.sql', checksum => nqp::sha1($down))));
+$source.add('resources/red/migrations/index.json').spurt(
+    to-json(%(format => 1, migrations => [%migration.item])));
+$source.add('META6.json').spurt(to-json(%(name => 'DistributionFixture', auth => 'zef:example',
+    version => '1.0', provides => %(DiscoveryFixture => 'lib/DiscoveryFixture.rakumod'),
+    resources => <red/migrations/index.json red/migrations/up.sql red/migrations/down.sql>.Array,
+    depends => [])));
+my $repository = CompUnit::Repository::Installation.new(:prefix($root.add('installed')));
+$repository.install(Distribution::Path.new($source), :!precompile);
+my $project = $root.add('project');
+make-directory($project);
+$project.add('META6.json').spurt(to-json(%(depends => ['DistributionFixture:auth<zef:example>:ver<1.0>'])));
+my @bundles = discover-bundles($project, :$repository);
+is @bundles.elems, 1, 'discovers bundle in installed distribution without executing module';
+is @bundles[0].identity, 'DistributionFixture:auth<zef:example>', 'reads full lazy metadata';
+is @bundles[0].migrations[0]<sql><SQLite><up>, $up, 'reads installed hashed resource';
+my $spec = dependency-spec('Foo::Bar:ver<1.2+>:auth<zef:someone>:api<2>');
+is $spec.short-name, 'Foo::Bar', 'parses qualified module name';
+is $spec.auth-matcher, 'zef:someone', 'parses auth without evaluation';
+my $config = $project.add('red.rakuconf');
+my $directory = $project.add('migrations');
+$config.spurt("use Red::Migration::Configuration;\n"
+    ~ "Red::Migration::Configuration.new(:directory({$directory.Str.raku}), "
+    ~ ":connections\{ default => \{ die 'Must stay offline' } })\n");
+my $process = run $*EXECUTABLE, "-I{$*CWD.add('lib')}",
+    "-Iinst#{$root.add('installed')}", $*CWD.add('bin/red').Str,
+    'migration', 'import', "--project=$project", "--config=$config", :out, :err;
+my $output = $process.out.slurp-rest;
+my $error = $process.err.slurp-rest;
+is $process.exitcode, 0, 'CLI imports installed dependency resources offline';
+diag $error if $process.exitcode;
+like $output, /'1 migrations imported'/, 'CLI reports imported count';
+ok $directory.add('01DDDDDDDDDDDDDDDDDDDDDDDD-discovered/SQLite/up.sql').f,
+    'CLI writes reviewable SQL into local history';
+done-testing;

@@ -21,7 +21,7 @@ my $program = 'use Red; use Red::Migration::Environment; '
     ~ 'my $*RED-DB = test-database(); '
     ~ 'die "missing database" unless $*RED-DB.defined; '
     ~ 'die "wrong schema" unless "env_user" eq any($*RED-DB.schema-reader.tables-names.List);';
-lives-ok { $manager.test(:$driver, :command[$*EXECUTABLE.Str, '-Ilib', '-e', $program]) },
+lives-ok { $manager.test(:$driver, :command[$*EXECUTABLE.Str, '-e', $program]) },
     'child command receives the temporary connection and inherited environment';
 dies-ok { $manager.test(:$driver, :command[$*EXECUTABLE.Str, '-e', 'exit 7']) },
     'child failures fail migration validation';

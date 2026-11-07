@@ -1,5 +1,162 @@
 # Versioned migrations
 
+## Migrations supplied by dependencies
+
+Distributions can publish prepared SQL as resources. In the consuming project, run:
+
+```sh
+red migration import
+git diff -- migrations/
+red migration apply --test
+red migration apply
+```
+
+`import` resolves the project's installed runtime dependencies, including transitive
+dependencies, using `META6.json`. It reads their resources without loading their
+modules and never opens a target database. `--project=path` selects a different
+project root; `--config=path` selects the usual migration configuration. No list
+of migration dependencies is required in `red.rakuconf`.
+
+New migrations retain their original IDs and SQL. They are appended to the local
+chain in dependency order, with their original predecessor and distribution
+identity retained as provenance. Each original predecessor must already be
+imported from the same distribution, or occur earlier in the same import batch.
+Explicit cross-distribution requirements are checked in the same way. Import
+rejects gaps, cycles, ID collisions and overlapping table ownership before
+publishing the history. Reimporting unchanged migrations is a no-op; changed
+published content is an error. Updating an installed distribution never changes
+the local history automatically.
+
+Review and commit the complete migration directory, including `.dependencies.json`
+and any `.adopt-*` directories containing historical baselines. Deployments run
+`apply` against those committed files; they do not rediscover or import dependency migrations. Imported SQL runs
+with the application's database permissions, so importing is not a security
+approval or a SQL sandbox.
+
+### Publishing a bundle
+
+Prepare, review and test migrations in the owning distribution, then publish the
+prepared artifacts with:
+
+```sh
+red migration prepare change
+red migration apply --test
+red migration bundle
+```
+
+`bundle` copies every prepared version's SQL, manifests, snapshots, operations,
+transformation sources and auxiliary files into `resources/red/migrations/`. It
+preserves numbered SQL filenames and manual changes, generates a declarative JSON
+index with checksums, and updates `META6.json` without changing unrelated resources
+or metadata. It rejects drafts and symbolic links, and excludes hidden files,
+locks, journals, staging directories and caches. It never regenerates SQL or opens
+a target database. Run it again after reviewing or editing prepared SQL.
+
+Publication holds a project lock and journals the resource directory together with
+`META6.json`. If the process stops during publication, the next `bundle` invocation
+restores the previous pair or completes cleanup of the committed pair. Keep the
+`.red-bundle-publication.json` journal and its backups until recovery completes.
+
+The generated format-2 index describes the full artifact inventory and ordered
+SQL files for each driver. Earlier format-1 SQL-only bundles remain importable,
+but cannot supply the historical artifacts required by `adopt`. Versions still owned by dependencies
+are represented as explicit requirements of the distribution's own
+migrations, rather than republished under its identity. Adopted versions are included in
+subsequent bundles, retaining the original SQL and IDs. A composed final baseline
+is published alongside the original artifacts so the new distribution remains
+self-contained.
+
+Run `backfill` in the owning distribution for additional supported drivers and
+perform any serialization before publishing. The consumer requires SQL for every
+configured driver; it never translates dependency SQL. Published migrations remain
+immutable, so corrections are new versions. Migration sources are packaged for
+adoption, but normal import copies only prepared SQL and execution metadata.
+Discovery, import and adoption never evaluate dependency Raku artifacts.
+
+### Local models and adoption
+
+Dependency-owned tables are excluded from local schema generation, even when their
+models are configured. Local tables may reference them. `verify` checks their
+expected table names and execution history; detailed dependency schema checks
+belong in the owning distribution. Integration tests still apply the complete
+local history in a disposable database.
+
+To take responsibility for a dependency's tables, run:
+
+```sh
+red migration adopt --dependency='Users:auth<zef:example>'
+```
+
+The identity is mandatory. Adoption resolves the installed bundle and finds the
+last version of that origin in the local history. SQL and execution records
+already imported are preserved, including local review edits. The published
+snapshot of the last imported version becomes the historical baseline; every
+later version is copied with all its artifacts. When no versions were previously
+imported, adoption copies the entire history. The original manifest is retained
+under `.origin/`, while the local manifest preserves the local predecessor chain.
+No migrations are executed and no database is consulted.
+
+After adoption, the versioned local directory can install a fresh database without
+the original distribution. Review the copied artifacts before commands that read
+historical snapshots: they are executable local Raku configuration. Adopted
+snapshots are kept separately and combined with the application's schema, rather
+than replacing its tables. Configure local models for future changes; their
+current definitions do not determine the adoption baseline. New migrations from
+an adopted origin are rejected. No history squashing is performed.
+Imported SQL cannot be automatically regenerated by `backfill` or rewritten by
+`serialize`; obtain additional SQL from the owning distribution instead. Local
+migrations after an imported prefix can still be serialized when that prefix is
+protected with `--after`.
+
+### Testing installed dependency chains
+
+`t/154-migration-five-levels.rakutest` builds and installs five real distributions
+in an isolated repository. Every level publishes two migrations and references
+its parent's table. The test imports from the leaf, inserts and joins data across
+all five tables, publishes an incremental leaf release, adopts all five levels,
+and republishes the resulting application. It then removes the original sources
+and installations and validates a fresh installation from the republished history.
+IDs, idempotency, ownership, pending upgrades, rollback and prefix verification
+are checked; fixture modules must never be loaded by consumer commands.
+
+The same runner also checks diamond dependencies with incompatible installed
+versions, bundled populate/update SQL, destructive and irreversible boundaries,
+independent deployment databases, adopted snapshots during branch serialization,
+publication interrupted by process termination, and MySQL reconciliation including
+audit failure rollback. GitHub Actions includes these tests in every driver job.
+
+Run SQLite with both frontends locally:
+
+```sh
+bash tools/test-migration-chain.sh SQLite
+```
+
+For native drivers, make the driver libraries available through `RAKULIB` and
+provide a server connection with database creation/removal privileges:
+
+```sh
+RED_CHAIN_PG_DATABASE='Pg host=localhost dbname=postgres user=postgres' \
+  bash tools/test-migration-chain.sh Pg
+RED_CHAIN_MYSQL_DATABASE='MySQL host=localhost database=mysql user=root' \
+  bash tools/test-migration-chain.sh MySQL
+```
+
+Each scenario provisions its own databases and removes them afterward. Set
+`RED_CHAIN_MODES=0` or `RED_CHAIN_MODES=1` to select one frontend. The reproducible
+Docker environment supplies PostgreSQL 15, MySQL 8.4, SQLite, Rakudo 2026.09 and
+the same pinned driver revisions as GitHub Actions:
+
+```sh
+docker compose -f .ci/migration-chain.compose.yaml up --build \
+  --abort-on-container-exit --exit-code-from tests
+docker compose -f .ci/migration-chain.compose.yaml down --volumes
+```
+
+The regular `prove6 ... t` jobs in `.github/workflows/matrix.yaml` include this
+test for SQLite, PostgreSQL and MySQL with `RAKUDO_RAKUAST=0` and `1`. It fails
+rather than skipping when its selected driver or fixture distributions cannot be
+used; no developer-local services or installed fixture modules are required in CI.
+
 Configure the models, SQL dialects, target connections and artifact directory in
 `red.rakuconf`. This file and schema snapshots are executable Raku configuration.
 Run commands from the project root and keep migration files in version control.
@@ -111,17 +268,24 @@ raku -Ilib bin/red migration sync --dev
 raku -Ilib bin/red migration prepare add-user-email
 raku -Ilib bin/red migration status --connection=production
 raku -Ilib bin/red migration apply --connection=production
+raku -Ilib bin/red migration apply --connection=production --to=MIGRATION_ID
 raku -Ilib bin/red migration rollback --connection=production
+raku -Ilib bin/red migration drop-tables
+raku -Ilib bin/red migration reset
 ```
 
 All commands accept `--config=path/to/red.rakuconf`; connection commands default
 to the configured `default` connection. `plan` prints DDL without applying it.
+`apply --to=MIGRATION_ID` applies pending migrations up to and including that exact
+ID. Already applied versions are skipped; selecting an earlier version does not
+roll back the database. An unknown ID is an error. Without `--to`, all pending
+migrations are applied.
 `sync` applies the development plan and requires `--dev`. These operations do not
 advance migration history. Tables outside the configured models are not dropped
 by development synchronization.
 
 Migration commands live under `red migration`: `plan`, `sync`, `create`, `prepare`, `apply`,
-`rollback`, `status`, `init-tests`, `backfill` and `serialize`. The former top-level
+`rollback`, `drop-tables`, `reset`, `status`, `init-tests`, `backfill` and `serialize`. The former top-level
 spellings are no longer accepted. The older model-based planner is available as
 `red migration plan --model=... --driver=...`; the legacy database bootstrap command
 is `red migration prepare-database`.
@@ -155,6 +319,44 @@ or production database. Initially it compares against an empty schema. An empty
 diff produces no migration. Destructive preparation and development sync require
 `--allow-destructive`; the generated SQL must still be reviewed before use.
 Preparing an initial migration does not adopt an existing database automatically.
+
+### Remove tables and rebuild a database
+
+```sh
+red migration drop-tables
+red migration reset
+red migration reset --config=red.rakuconf --connection=development --force
+```
+
+`drop-tables` removes existing tables represented by configured models or prepared
+migration history, including imported dependency tables and historical table names.
+It also removes all three bookkeeping tables: `red_migrations`,
+`red_migration_files` and `red_migration_resolutions`. Migration files and fixtures
+are preserved. Unrelated database tables are left intact.
+
+`reset` performs the same removal and reapplies the complete prepared migration
+chain on the selected connection. Data inserted by migrations is recreated;
+fixtures are not applied automatically. It does not generate migrations or create
+model tables that have no corresponding migration.
+
+Both commands display the selected connection and ordered table list, then require
+`y` or `yes` to continue. A negative answer or end of input cancels without dropping
+anything. `--force` skips the question for automation. `--config` and `--connection`
+follow the usual migration command conventions, including disposable migration test
+connections. The programmatic manager methods accept an optional `:confirm`
+callback receiving the ordered table names; `drop-tables` returns the number of
+tables removed and `reset` returns the number of migrations applied.
+
+Foreign-key dependencies determine removal order. Unmanaged dependent tables and
+cycles between managed tables cause rejection before removal; no cascading removal
+of unrelated objects is requested. Reset validates prepared artifacts and rejects
+unprepared drafts before removing tables. Both operations must run outside an
+existing Red transaction and use the migration history and database locks.
+
+SQLite wraps removal and reset replay in one transaction. PostgreSQL removal is
+transactional, followed by the normal transaction for each migration during reset.
+MySQL DDL can commit implicitly: a failure can leave partially removed or rebuilt
+tables, and reset does not promise an all-or-nothing operation on that backend.
 
 ## Artifacts
 
@@ -469,12 +671,41 @@ and different parents. The default tip order is lexical. Portable operations are
 rebased onto the accumulated logical schema. Conflicting changes and custom SQL
 require manual resolution. Ordinary apply/test refuses unresolved forks.
 
-Unchanged versions keep their IDs. Rewritten versions receive new IDs and record
-`replaces`; their SQL is regenerated and tested. Connections named by repeated
+Every version keeps its original ID and directory. Affected unpublished versions
+receive regenerated predecessors, snapshots, operations and SQL, validated before
+publication. Existing `replaces` metadata is retained only for legacy histories.
+Adopted baselines compose with the rebased application schema. Connections named by repeated
 `--check-connection` options are checked for executed rewritten versions. Include all
 shared deployment databases; filesystem history alone cannot discover deployments.
 Never rewrite deployed migrations. Publication uses a stable filesystem lock and a
 recovery journal so interrupted directory replacement can be recovered on next use.
+
+## Reconcile a failed MySQL execution
+
+MySQL DDL can commit before a later statement fails. Inspect the failed SQL and
+the actual database, then manually complete the intended change or undo it. The
+executor deliberately blocks automatic retries of unresolved executions.
+
+```sh
+red migration resolve MIGRATION_ID --as=applied \
+    --reason='Completed the missing data update and checked its result' --connection=production
+red migration resolve MIGRATION_ID --as=reverted \
+    --reason='Manually removed the partially created objects' --connection=production
+```
+
+`resolve` executes no migration SQL. It accepts one `running` or `failed` frontier,
+holds the migration locks, checks original IDs, SQL checksums and checkpoints, and
+rejects history gaps or calls within an existing Red transaction. Before recording
+the result it verifies the schema for the chosen state. SQL-only imports can only
+be checked for expected table names; the result explicitly reports `tables-only`.
+Neither verification level proves that manual data changes are correct.
+
+The version/checkpoint updates and an append-only `red_migration_resolutions`
+event commit together. The event retains the operator's reason, time, original
+execution state, observed statement counts and verification level. Resolution never
+fabricates successful statement counts. After `applied`, normal continuation or
+rollback is available; after `reverted`, the original up migration can be retried.
+This API is specific to MySQL; transactional failures on SQLite/Pg do not require it.
 
 ## Hands-on workshop
 

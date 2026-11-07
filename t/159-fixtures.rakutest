@@ -1,0 +1,89 @@
+use Test;
+use Red;
+use Red::Fixture;
+use Red::Migration::Configuration;
+use Red::Migration::Storage;
+my $root = $*TMPDIR.add("red-fixtures-{$*PID}");
+$root.mkdir;
+LEAVE remove-tree($root) if $root.e;
+my $config = $root.add('red.rakuconf');
+$config.spurt(q:to/CONFIG/);
+use Red;
+use Red::Migration::Configuration;
+model FixtureRow is table<fixture_row> {
+    has Int $.id is id;
+    has Str $.name is column;
+}
+config { .models = [FixtureRow]; .connections = %(default => { database 'SQLite' }); }
+CONFIG
+my $settings = Red::Migration::Configuration.load($config);
+set-config -> { $settings };
+my $*RED-DB = database 'SQLite', :database($root.add('db.sqlite').Str);
+my $model = $settings.model-types[0];
+$model.^create-table;
+$model.^populate(:rows([{id => 1, name => 'hello'},]));
+fixture-command('save', 'demo', :config($config.Str));
+ok $root.add('fixtures/demo.raku').f, 'save creates named fixture';
+$model.^all.delete;
+fixture-command('apply', 'demo', :config($config.Str));
+is $model.^all.head.name, 'hello', 'saved fixture restores data';
+throws-like { fixture-command('apply', 'demo', :config($config.Str)) }, Exception,
+    'duplicate application fails';
+is $model.^all.elems, 1, 'conflict leaves data intact';
+throws-like { fixture-command('save', '../bad', :config($config.Str)) }, X::Red::Fixture,
+    'reject paths';
+throws-like { fixture-command('save', 'demo', :config($config.Str)) }, X::Red::Fixture,
+    'protect existing fixture';
+
+# Exercise the public CLI in separate processes: no inherited dynamic connection.
+sub cli(*@args, Str :$configuration = $config.Str, :%environment = %*ENV.Hash) {
+    my $process = run $*EXECUTABLE.Str, '-I' ~ $*CWD.add('lib').Str,
+        $*CWD.add('bin/red').Str, 'fixture', |@args, "--config=$configuration",
+        :out, :err, :env(%environment);
+    my $out = $process.out.slurp-rest;
+    my $err = $process.err.slurp-rest;
+    %(status => $process.exitcode, :$out, :$err)
+}
+my $cli-config = $root.add('cli.rakuconf');
+$cli-config.spurt($config.slurp.subst("database 'SQLite'",
+    "database 'SQLite', :database(" ~ $root.add('db.sqlite').Str.raku ~ ')'));
+is cli('list', :configuration($cli-config.Str))<out>, "demo\n", 'list returns fixture names';
+my %saved = cli('save', 'second', :configuration($cli-config.Str));
+is %saved<status>, 0, 'CLI saves using configuration factory';
+diag %saved<err> if %saved<status>;
+$model.^all.delete;
+my %applied = cli('apply', 'second', :configuration($cli-config.Str));
+is %applied<status>, 0, 'CLI applies using configuration factory';
+diag %applied<err> if %applied<status>;
+is $model.^all.head.name, 'hello', 'CLI restores the original record';
+isnt cli('save', 'second', :configuration($cli-config.Str))<status>, 0,
+    'CLI rejects overwrite';
+is cli('save', 'second', '--force', :configuration($cli-config.Str))<status>, 0,
+    'CLI permits explicit overwrite';
+$root.add('fixtures/rollback.raku').spurt(q:to/FIXTURE/);
+use Red::Runtime::Configuration;
+my $model = runtime-settings().model-types[0];
+$model.^populate(:rows([{id => 2, name => 'temporary'},]));
+die 'fixture exploded';
+FIXTURE
+isnt cli('apply', 'rollback', :configuration($cli-config.Str))<status>, 0,
+    'a failing script exits unsuccessfully';
+is $model.^all.elems, 1, 'earlier inserts in a failing script are rolled back';
+my $offline = $root.add('offline.rakuconf');
+$offline.spurt(q:to/CONFIG/);
+use Red::Migration::Configuration;
+config { .fixtures-directory = 'missing'; .connections = %(default => { die 'opened' }); }
+CONFIG
+is cli('list', :configuration($offline.Str))<status>, 0, 'listing missing directory is offline';
+is cli('list', :configuration($offline.Str))<out>, '', 'missing directory is empty';
+unlike cli('apply', 'absent', :configuration($offline.Str))<err>, /'opened'/,
+    'missing fixture is diagnosed before opening database';
+my $context = $root.add('context.json');
+$context.spurt('{"driver":"SQLite","parameters":{"database":'
+    ~ $root.add('db.sqlite').Str.raku ~ '}}');
+my %environment = %*ENV.Hash;
+%environment<RED_MIGRATION_TEST> = $context.Str;
+is cli('save', 'isolated', :configuration($offline.Str), :%environment)<status>, 0,
+    'migration test database overrides normal connection factory';
+
+done-testing;

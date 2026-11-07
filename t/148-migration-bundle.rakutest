@@ -1,0 +1,51 @@
+use Test;
+use JSON::Fast;
+use nqp;
+use Red::Migration::Bundle;
+use X::Red::Migration;
+
+class BundleDistribution does Distribution {
+    has %.files;
+    method meta() {
+        %(name => 'Example', auth => 'zef:example', version => '1.0',
+            resources => %!files.keys.map(*.subst('resources/', '')).Array)
+    }
+    method content($path) { %!files{$path}.IO.open }
+}
+
+my $root = $*TMPDIR.add("red-bundle-{$*PID}-{now.Int}");
+$root.mkdir;
+LEAVE { .unlink for $root.dir; $root.rmdir }
+my $up = 'CREATE TABLE example (id INTEGER);';
+my $down = 'DROP TABLE example;';
+$root.add('up.sql').spurt($up);
+$root.add('down.sql').spurt($down);
+my %entry = id => '01AAAAAAAAAAAAAAAAAAAAAAAA', name => 'create_example', predecessor => '',
+    drivers => %(SQLite => %(
+        up => %(path => 'red/migrations/up.sql', checksum => nqp::sha1($up)),
+        down => %(path => 'red/migrations/down.sql', checksum => nqp::sha1($down))));
+my $index = $root.add('index.json');
+sub write-index() { $index.spurt(to-json(%(format => 1, migrations => [%entry.item]))) }
+write-index;
+my $distribution = BundleDistribution.new(files => %(
+    'resources/red/migrations/index.json' => $index.Str,
+    'resources/red/migrations/up.sql' => $root.add('up.sql').Str,
+    'resources/red/migrations/down.sql' => $root.add('down.sql').Str));
+my $bundle = Red::Migration::Bundle.load($distribution);
+is $bundle.identity, 'Example:auth<zef:example>', 'distribution identity';
+is $bundle.version, '1.0', 'distribution version';
+is $bundle.migrations[0]<sql><SQLite><up>, $up, 'SQL preserved exactly';
+$root.add('up.sql').spurt('SELECT 1;');
+throws-like { Red::Migration::Bundle.load($distribution) }, X::Red::Migration,
+    'changed resource rejected';
+$root.add('up.sql').spurt($up);
+%entry<drivers><SQLite><up><path> = '../outside.sql';
+write-index;
+throws-like { Red::Migration::Bundle.load($distribution) }, X::Red::Migration,
+    'outside resource rejected';
+%entry<drivers><SQLite><up><path> = 'red/migrations/up.sql';
+%entry<data-checksum> = 'external-code';
+write-index;
+throws-like { Red::Migration::Bundle.load($distribution) }, X::Red::Migration,
+    'Raku migration rejected';
+done-testing;

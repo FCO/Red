@@ -1,0 +1,182 @@
+use Test;
+use Red;
+use JSON::Fast;
+use MONKEY-SEE-NO-EVAL;
+use Red::Migration::Artifact;
+use Red::Migration::Bundle;
+use Red::Migration::Configuration;
+use Red::Migration::Dependencies;
+use Red::Migration::Environment;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $driver = @connection.shift;
+my %server = @connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
+my $root = $*TMPDIR.add("red-diamond-{$*PID}-{100000.rand.Int}");
+make-directory($root);
+LEAVE remove-tree($root) if $root.e;
+my $repository = CompUnit::Repository::Installation.new(:prefix($root.add('installed')));
+model Shared is table<diamond_shared> {
+    has Int $.id is serial;
+    has Str $.label is column;
+}
+model Left is table<diamond_left> {
+    has Int $.id is serial;
+    has Int $.shared-id is referencing{ :model(Shared), :column<id>, :!nullable };
+}
+model Right is table<diamond_right> {
+    has Int $.id is serial;
+    has Int $.shared-id is referencing{ :model(Shared), :column<id>, :!nullable };
+}
+model Top is table<diamond_top> {
+    has Int $.id is serial;
+    has Int $.left-id is referencing{ :model(Left), :column<id>, :!nullable };
+    has Int $.right-id is referencing{ :model(Right), :column<id>, :!nullable };
+}
+model Scratch is table<diamond_scratch> { has Int $.id is serial }
+sub manager(IO::Path $directory, @models = [], %connections = {}) {
+    Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+        :$directory, :@models, :drivers[$driver], :connections(%connections),
+        :test-servers{ $driver => %server }))
+}
+sub irreversible(IO::Path $path) {
+    my %manifest = EVALFILE($path.add('migration.rakuconf').Str);
+    %manifest<drivers>{$driver}<down-state> = 'irreversible';
+    %manifest<drivers>{$driver}<reversible> = False;
+    %manifest<drivers>{$driver}<down-reason> = 'Reviewed data loss boundary';
+    $path.add('migration.rakuconf').spurt(artifact-source('manifest', %manifest));
+}
+sub metadata(IO::Path $project, Str $name, @dependencies, Str $version = '1') {
+    make-directory($project.add('lib'));
+    my $module = "DiamondFixture::$name";
+    $project.add('lib/fixture.rakumod').spurt('BEGIN { die "Do not load fixture module" };');
+    $project.add('META6.json').spurt(to-json(%(name => "Red-Diamond-$name",
+        auth => 'zef:diamond', :$version, depends => @dependencies.Array,
+        provides => { $module => 'lib/fixture.rakumod' }, resources => [])));
+}
+sub dependency(Str $name, Str $version = '1') {
+    "Red-Diamond-{$name}:auth<zef:diamond>:ver<$version>"
+}
+my @ids;
+for <Shared Left Right Top> -> $name {
+    my $project = $root.add($name);
+    my @dependencies = do given $name {
+        when 'Shared' { () }
+        when 'Top' { dependency('Left'), dependency('Right') }
+        default { dependency('Shared') }
+    };
+    metadata($project, $name, @dependencies);
+    my @models = do given $name {
+        when 'Shared' { Shared }
+        when 'Left' { Left }
+        when 'Right' { Right }
+        when 'Top' { Top, Scratch }
+    };
+    my $producer = manager($project.add('migrations'), @models);
+    $producer.import(:bundles(discover-bundles($project, :$repository)));
+    if $name eq 'Shared' {
+        my $seed = $producer.create('seed');
+        $seed.add('migration.raku').spurt('Shared.^populate: { .^create: :label<seed>; };');
+        $producer.prepare('seed');
+        irreversible($seed);
+        my $transform = $producer.create('transform');
+        $transform.add('migration.raku').spurt('Shared.^migration: { .label = "transformed"; };');
+        $producer.prepare('transform');
+        irreversible($transform);
+    } else {
+        $producer.prepare('initial');
+        if $name eq 'Top' {
+            $producer = manager($project.add('migrations'), [Top]);
+            my $drop = $producer.prepare('remove-scratch', :allow-destructive);
+            irreversible($drop);
+        }
+    }
+    $producer.bundle(:$project);
+    my $bundle = Red::Migration::Bundle.load(Distribution::Path.new($project));
+    @ids.append($bundle.migrations.map(*.<id>));
+    $repository.install(Distribution::Path.new($project), :!precompile);
+}
+my $application = $root.add('application');
+metadata($application, 'Application', [dependency('Top')]);
+my @bundles = discover-bundles($application, :$repository);
+is @bundles.elems, 4, 'diamond discovers shared distribution once without loading modules';
+is @bundles.grep(*.identity eq 'Red-Diamond-Shared:auth<zef:diamond>').elems, 1,
+    'shared dependency is deduplicated';
+my $directory = $application.add('migrations');
+my $consumer = manager($directory);
+is $consumer.import(:@bundles), 6, 'imports both shared versions and both top versions once';
+my @imported = $consumer.history.map(*.<id>);
+is-deeply @imported.sort.Array, @ids.sort.Array, 'diamond keeps every original ID';
+my %positions = @imported.kv.map(-> $index, $id { $id => $index });
+ok %positions{@ids[0]} < %positions{@ids[1]}
+    && %positions{@ids[1]} < %positions{@ids[2]}
+    && %positions{@ids[1]} < %positions{@ids[3]}
+    && %positions{@ids[2]} < %positions{@ids[4]}
+    && %positions{@ids[3]} < %positions{@ids[4]}
+    && %positions{@ids[4]} < %positions{@ids[5]},
+    'shared ancestors precede both siblings, and both siblings precede their consumer';
+is $consumer.import(:@bundles), 0, 'reimport of the diamond is idempotent';
+sub row($db, Str $sql) {
+    my $statement = $db.execute($sql);
+    LEAVE $statement.finish-transaction;
+    $statement.row
+}
+temporary-database($driver, %server, -> $staging, $staging-context, %staging-parameters {
+    temporary-database($driver, %server, -> $production, $production-context, %production-parameters {
+        my $*RED-DB = $production;
+        my $live = manager($directory, [], { staging => $staging, production => $production });
+        is $live.apply(:connection<staging>, :to(@ids[0])), 1, 'staging stops before data transform';
+        is row($staging, 'SELECT label FROM diamond_shared')<label>, 'seed',
+            'bundled populate SQL creates the original data';
+        is $live.apply(:connection<production>), 6, 'production independently applies complete history';
+        is $live.status(:connection<staging>).grep(*.<state> eq 'applied').elems, 1,
+            'production execution cannot change staging checkpoints';
+        is row($production, 'SELECT label FROM diamond_shared')<label>, 'transformed',
+            'bundled data transformation executes as SQL';
+        ok !('diamond_scratch' eq any($production.schema-reader.tables-names.List)),
+            'destructive dependency version removes its former table';
+        throws-like { $live.rollback(:connection<production>) }, X::Red::Migration,
+            'import preserves explicitly irreversible destructive boundary';
+        is $live.apply(:connection<staging>, :to(@ids[1])), 1,
+            'staging independently advances through the data transformation';
+        throws-like { $live.rollback(:connection<staging>) }, X::Red::Migration,
+            'import preserves explicitly irreversible data boundary';
+        is $live.apply(:connection<staging>), 4, 'staging can complete the remaining diamond';
+        for $staging, $production -> $db {
+            for <left right> -> $side {
+                $db.execute("INSERT INTO diamond_$side (shared_id) SELECT id FROM diamond_shared")
+                    .finish-transaction;
+            }
+            $db.execute('INSERT INTO diamond_top (left_id, right_id) '
+                ~ 'SELECT l.id, r.id FROM diamond_left l CROSS JOIN diamond_right r')
+                .finish-transaction;
+            is row($db, 'SELECT COUNT(*) AS total FROM diamond_top t '
+                ~ 'JOIN diamond_left l ON t.left_id = l.id '
+                ~ 'JOIN diamond_right r ON t.right_id = r.id '
+                ~ 'JOIN diamond_shared s ON l.shared_id = s.id AND r.shared_id = s.id')<total>.Int,
+                1, 'both sides of the installed diamond reference the same shared table';
+        }
+        ok $live.verify(:connection<staging>), 'staging schema verifies after independent upgrade';
+        ok $live.verify(:connection<production>), 'production schema verifies after destructive upgrade';
+        True
+    });
+    True
+});
+ok $consumer.test(:!compare-models), 'disposable validation respects imported irreversible barriers';
+
+# Install a second incompatible release on one side of the diamond.
+for <Shared Right> -> $name {
+    my $project = $root.add($name);
+    my %meta = from-json($project.add('META6.json').slurp);
+    %meta<version> = '2';
+    %meta<depends> = [dependency('Shared', '2')] if $name eq 'Right';
+    $project.add('META6.json').spurt(to-json(%meta));
+    $repository.install(Distribution::Path.new($project), :!precompile);
+}
+metadata($application, 'Application', [dependency('Left'), dependency('Right', '2')]);
+throws-like { discover-bundles($application, :$repository) }, X::Red::Migration,
+    reason => /'Conflicting installed versions'/, 'incompatible diamond releases are rejected';
+is-deeply $consumer.history.map(*.<id>).Array, @imported.Array,
+    'failed discovery cannot mutate reviewed local history';
+done-testing;

@@ -1,0 +1,94 @@
+use Test;
+use Red;
+use JSON::Fast;
+use Red::Migration::Bundle;
+use Red::Migration::Configuration;
+use Red::Migration::Environment;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $driver = @connection.shift;
+my %server = @connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
+my $root = $*TMPDIR.add("red-adopt-serialize-{$*PID}-{100000.rand.Int}");
+make-directory($root);
+LEAVE remove-tree($root) if $root.e;
+model Owned is table<serialize_owned> { has Int $.id is serial }
+model Base is table<serialize_application> { has Int $.id is serial }
+model A is table<serialize_application> {
+    has Int $.id is serial;
+    has Str $.a is column{ :nullable };
+}
+model B is table<serialize_application> {
+    has Int $.id is serial;
+    has Str $.b is column{ :nullable };
+}
+model Both is table<serialize_application> {
+    has Int $.id is serial;
+    has Str $.a is column{ :nullable };
+    has Str $.b is column{ :nullable };
+}
+sub manager(Str $directory, @models, %connections = {}) {
+    Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+        :directory($root.add($directory)), :@models, :drivers[$driver],
+        :connections(%connections), :test-servers{ $driver => %server }))
+}
+my $source = $root.add('source');
+make-directory($source);
+$source.add('META6.json').spurt(to-json(%(name => 'Serialize-Owned',
+    auth => 'zef:fixture', version => '1', depends => [], provides => {}, resources => [])));
+my $producer = manager('source/migrations', [Owned]);
+$producer.prepare('owned');
+$producer.bundle(:project($source));
+my $bundle = Red::Migration::Bundle.load(Distribution::Path.new($source));
+manager('base', []).import(:bundles[$bundle]);
+manager('base', [Base]).prepare('base');
+my $base = manager('base', [Base]).history.tail<id>;
+copy-tree($root.add('base'), $root.add('a'));
+copy-tree($root.add('base'), $root.add('b'));
+my $apath = manager('a', [A]).prepare('a');
+manager('b', [B]).prepare('b');
+manager('b', [B]).adopt(:dependency($bundle.identity), :bundles[$bundle]);
+my $aid = manager('a', [A]).history.tail<id>;
+my $bid = manager('b', [B]).history.tail<id>;
+sub merged(Str $name) {
+    copy-tree($root.add('b'), $root.add($name));
+    copy-tree($apath, $root.add($name).add($apath.basename));
+}
+temporary-database($driver, %server, -> $first, $first-context, %first-parameters {
+    temporary-database($driver, %server, -> $second, $second-context, %second-parameters {
+        manager('a', [A], { default => $first }).apply;
+        manager('b', [B], { default => $second }).apply;
+        for [$aid, $bid], [$bid, $aid] -> @order {
+            my $name = "blocked-{@order[0]}";
+            merged($name);
+            my $candidate = manager($name, [Owned, Both],
+                { staging => $first, production => $second });
+            throws-like {
+                $candidate.serialize(:after($base), :@order,
+                    :check-connections<staging production>)
+            }, X::Red::Migration, reason => /'already executed'/,
+                'checks both deployments before rewriting either branch';
+            dies-ok { $candidate.history }, 'rejected serialization preserves original fork';
+        }
+        True
+    });
+    True
+});
+for [$aid, $bid], [$bid, $aid] -> @order {
+    my $name = "serialized-{@order[0]}";
+    merged($name);
+    my $candidate = manager($name, [Owned, Both]);
+    is $candidate.serialize(:after($base), :@order), 1, 'rebases one unpublished sibling';
+    is-deeply $candidate.history.tail(2).map(*.<id>).Array, @order.Array,
+        'preserves original IDs in either order';
+    ok $candidate.test, 'adoption baseline composes with rebased native snapshots';
+    temporary-database($driver, %server, -> $db, $context, %parameters {
+        my $live = manager($name, [Owned, Both], { default => $db });
+        is $live.apply, 4, 'fresh deployment runs original and adopted history once';
+        ok $live.verify, 'composed final schema verifies';
+        is ([+] (^4).map({ $live.rollback })), 4, 'entire combined history rolls back';
+        True
+    });
+}
+done-testing;

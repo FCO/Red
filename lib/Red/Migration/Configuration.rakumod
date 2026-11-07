@@ -6,6 +6,7 @@ use X::Red::Migration;
 
 class Red::Migration::Configuration does Configuration::Node {
     has @.models;
+    has IO() $.fixtures-directory = 'fixtures'.IO;
     has Str @.drivers = <SQLite>;
     has %.connections;
     has %.test-servers;

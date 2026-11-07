@@ -1,6 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Expose migration apply --to to stop at a specific migration ID.
+    - Add migration drop-tables and reset with confirmation and complete bookkeeping removal.
+    - Add named fixture save, list and apply commands and populate rows support.
 
 0.2.9  2026-11-02T19:32:59Z
     - Recognize Red operators from installed repositories when compiling RakuAST queries.

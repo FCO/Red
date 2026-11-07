@@ -1,0 +1,224 @@
+use Test;
+use Red;
+use JSON::Fast;
+use Red::Migration::Bundle;
+use Red::Migration::Configuration;
+use Red::Migration::Dependencies;
+use Red::Migration::Environment;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $driver = @connection.shift;
+my %server = @connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
+diag "Five installed distribution levels: $driver; RakuAST=" ~ (%*ENV<RAKUDO_RAKUAST> // '0');
+my $root = $*TMPDIR.add("red-five-levels-{$*PID}-{100000.rand.Int}");
+make-directory($root);
+LEAVE remove-tree($root) if $root.defined && $root.e;
+my $repository-path = $root.add('repository');
+my $repository = CompUnit::Repository::Installation.new(:prefix($repository-path));
+my $marker = $root.add('unexpected-module-load');
+my Bool $consumer-phase = False;
+# zef tests through a staging repository, rather than a filesystem lib directory.
+# Keep its full path-spec so children use the same distribution as this process.
+my @libraries = $*REPO.repo-chain.grep({
+    $_ ~~ CompUnit::Repository::FileSystem || $_ ~~ CompUnit::Repository::Installation
+}).map(*.path-spec).unique;
+my $bin = $*CWD.add('bin/red').absolute;
+my @original-ids;
+my @identities;
+
+sub cli(IO::Path $project, Str $command, *@arguments, IO::Path :$model-lib,
+        IO::Path :$context, IO::Path :$installed = $repository-path) {
+    temp %*ENV<RED_MIGRATION_TEST> = $context.defined ?? $context.Str !! '';
+    temp %*ENV<RED_CHAIN_MODULE_MARKER> = $consumer-phase && !$model-lib.defined
+        ?? $marker.Str !! '';
+    my @include;
+    @include.push("-I$model-lib") if $model-lib.defined;
+    @include.push("-Iinst#$installed") if $installed.defined && $installed.d;
+    @include.append(@libraries.map({ "-I$_" }));
+    my $process = run $*EXECUTABLE, |@include, $bin, 'migration', $command,
+        |@arguments, "--config={$project.add('red.rakuconf')}", :out, :err;
+    my $output = $process.out.slurp-rest;
+    my $error = $process.err.slurp-rest;
+    is $process.exitcode, 0, "$command succeeds ($driver, {$project.basename})";
+    if $process.exitcode {
+        diag $error;
+        bail-out("Cannot continue five-level fixture after $command failed");
+    }
+    $output.trim
+}
+
+sub configuration(IO::Path $project, Str :$model) {
+    my $source = "use Red; use Red::Migration::Configuration; use Red::Migration::Environment;\n";
+    $source ~= "use $model;\n" if $model.defined;
+    $source ~= "Red::Migration::Configuration.new(:drivers[{$driver.raku}], "
+        ~ ":directory({$project.add('migrations').Str.raku}), "
+        ~ ($model.defined ?? ":models[$model], " !! '')
+        ~ ':connections{ default => { test-database() } })' ~ "\n";
+    $project.add('red.rakuconf').spurt($source);
+}
+
+sub write-model(IO::Path $project, Int $level, Bool :$updated = False, Bool :$extra = False) {
+    my $source = "use Red:api<2>;\n";
+    $source ~= "use MigrationChain::Model{$level - 1};\n" if $level > 1;
+    $source ~= "unit model MigrationChain::Model$level is table<chain_level_$level>;\n";
+    $source ~= q:to/MARKER/;
+INIT {
+    if %*ENV<RED_CHAIN_MODULE_MARKER> -> $marker {
+        $marker.IO.spurt("fixture module loaded\n", :append);
+    }
+}
+MARKER
+    $source ~= 'has Int $.id is serial;' ~ "\n";
+    $source ~= 'has Str $.name is column;' ~ "\n";
+    $source ~= 'has Int $.parent-id is referencing{ :model(MigrationChain::Model'
+        ~ ($level - 1) ~ '), :column<id>, :!nullable };' ~ "\n" if $level > 1;
+    $source ~= 'has Str $.note is column{ :nullable };' ~ "\n" if $updated;
+    $source ~= 'has Str $.extra is column{ :nullable };' ~ "\n" if $extra;
+    my $file = $project.add("lib/MigrationChain/Model$level.rakumod");
+    make-directory($file.parent);
+    $file.spurt($source);
+}
+
+# Each distribution is prepared and bundled in separate processes, then genuinely installed.
+# Its distribution name deliberately differs from its provided model module.
+for 1..5 -> $level {
+    my $project = $root.add("level-$level");
+    make-directory($project);
+    my $name = "Red-Migration-Chain-$level";
+    my $model = "MigrationChain::Model$level";
+    my @depends = 'Red:api<2>';
+    @depends.push("Red-Migration-Chain-{$level - 1}:auth<zef:red-chain-test>:ver<1>")
+        if $level > 1;
+    my $depends = $level %% 2 ?? %(runtime => %(requires => @depends.Array)) !! @depends.Array;
+    $project.add('META6.json').spurt(to-json(%(:$name, auth => 'zef:red-chain-test',
+        version => '1', provides => %($model => "lib/MigrationChain/Model$level.rakumod"),
+        :$depends, resources => [])));
+    write-model($project, $level);
+    configuration($project, :$model);
+    cli($project, 'import', "--project=$project", :model-lib($project.add('lib')));
+    cli($project, 'prepare', 'initial', :model-lib($project.add('lib')));
+    write-model($project, $level, :updated);
+    cli($project, 'prepare', 'note', :model-lib($project.add('lib')));
+    is cli($project, 'bundle', "--project=$project", :model-lib($project.add('lib'))),
+        '2 migrations bundled', 'bundle contains only the two owned migrations';
+    my $bundle = Red::Migration::Bundle.load(Distribution::Path.new($project));
+    is $bundle.migrations.elems, 2, "level $level publishes both versions";
+    @original-ids.append($bundle.migrations.map(*.<id>));
+    @identities.push($bundle.identity);
+    $repository.install(Distribution::Path.new($project), :!precompile);
+}
+is @original-ids.unique.elems, 10, 'all ten published migration IDs are unique';
+$consumer-phase = True;
+
+my $application = $root.add('application');
+make-directory($application);
+$application.add('META6.json').spurt(to-json(%(name => 'Red-Migration-Chain-App',
+    auth => 'zef:red-chain-test', version => '1', provides => {}, resources => [],
+    depends => ['Red-Migration-Chain-5:auth<zef:red-chain-test>:ver<1+>'])));
+configuration($application);
+my $orphan-repository = $root.add('orphan-repository');
+
+sub row($db, Str $sql) {
+    my $statement = $db.execute($sql);
+    LEAVE $statement.finish-transaction if $statement.defined;
+    $statement.row
+}
+
+sub exercise-data($db) {
+    my $parent;
+    for 1..5 -> $level {
+        my $columns = $level == 1 ?? 'name' !! 'name, parent_id';
+        my $values = "'level-$level'" ~ ($level == 1 ?? '' !! ", $parent");
+        $db.execute("INSERT INTO chain_level_$level ($columns) VALUES ($values)").finish-transaction;
+        my $record = row($db, "SELECT id, name, note FROM chain_level_$level");
+        is $record<name>, "level-$level", "level $level accepts real data";
+        ok !$record<note>.defined, "level $level has its nullable second-migration column";
+        $parent = $record<id>;
+    }
+    my $sql = 'SELECT COUNT(*) AS total FROM chain_level_5 c5';
+    $sql ~= " JOIN chain_level_$_ c$_ ON c{$_ + 1}.parent_id = c$_.id" for (1..4).reverse;
+    is row($db, $sql)<total>.Int, 1, 'five-level foreign-key chain can be joined';
+}
+
+temporary-database($driver, %server, -> $db, $context, %parameters {
+    is cli($application, 'import', "--project=$application", :$context),
+        '10 migrations imported; review before applying', 'leaf dependency discovers all five levels';
+    my $manager = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+        :directory($application.add('migrations')), :drivers[$driver],
+        :connections{ default => $db }, :test-servers{ $driver => %server }));
+    is-deeply $manager.history.map(*.<id>).Array, @original-ids.Array,
+        'original IDs and transitive predecessor order survive installation and import';
+    is cli($application, 'import', "--project=$application", :$context),
+        '0 migrations imported; review before applying', 'transitive reimport is idempotent';
+    ok !$marker.e, 'discovery/import never initializes fixture model modules';
+    is cli($application, 'apply', :$context), '10', 'executes every dependency version';
+    is cli($application, 'apply', :$context), '0', 'second application executes nothing';
+    ok $manager.verify, 'imported schema is consistent';
+    exercise-data($db);
+
+    # Publish a new release after the application's original import. Adoption must retain
+    # all existing SQL while appending just this previously unseen migration.
+    my $leaf = $root.add('level-5');
+    my %release = from-json($leaf.add('META6.json').slurp);
+    %release<version> = '2';
+    $leaf.add('META6.json').spurt(to-json(%release));
+    write-model($leaf, 5, :updated, :extra);
+    cli($leaf, 'prepare', 'extra', :model-lib($leaf.add('lib')));
+    is cli($leaf, 'bundle', "--project=$leaf", :model-lib($leaf.add('lib'))),
+        '3 migrations bundled', 'new leaf release adds one owned version';
+    my $release = Red::Migration::Bundle.load(Distribution::Path.new($leaf));
+    @original-ids.push($release.migrations.tail<id>);
+    $repository.install(Distribution::Path.new($leaf), :!precompile);
+
+    # Adopt from leaf to root so previously adopted artifacts coexist with later imports.
+    for @identities.reverse -> $identity {
+        is cli($application, 'adopt', "--dependency=$identity", "--project=$application", :$context),
+            '1 tables adopted', "transfers ownership of $identity";
+    }
+    is $manager.history.elems, 11, 'adoption appends only the new leaf migration';
+    is $manager.status.grep(*.<state> eq 'pending').elems, 1, 'adoption leaves new SQL pending';
+    is cli($application, 'apply', :$context), '1', 'applies only the newly adopted migration';
+    is row($db, 'SELECT COUNT(*) AS total FROM chain_level_5')<total>.Int, 1,
+        'adopting and upgrading retains existing leaf data';
+    ok !$marker.e, 'all adoption operations remain metadata-only';
+    ok $manager.verify, 'five separately adopted historical schemas compose correctly';
+    ok $manager.test(:!compare-models), 'all prefixes, rollback and reapplication pass in disposable database';
+
+    # The application can now itself be installed as a migration-owning distribution.
+    my %meta = from-json($application.add('META6.json').slurp);
+    %meta<depends> = [];
+    $application.add('META6.json').spurt(to-json(%meta));
+    is cli($application, 'bundle', "--project=$application", :$context),
+        '11 migrations bundled', 'republishes all adopted versions without original dependencies';
+    my $installed = CompUnit::Repository::Installation.new(:prefix($orphan-repository));
+    $installed.install(Distribution::Path.new($application), :!precompile);
+    True
+});
+
+remove-tree($repository-path);
+remove-tree($root.add("level-$_")) for 1..5;
+remove-tree($application);
+my $orphan = $root.add('orphan');
+make-directory($orphan);
+$orphan.add('META6.json').spurt(to-json(%(depends =>
+    ['Red-Migration-Chain-App:auth<zef:red-chain-test>:ver<1>'])));
+configuration($orphan);
+temporary-database($driver, %server, -> $db, $context, %parameters {
+    is cli($orphan, 'adopt', '--dependency=Red-Migration-Chain-App:auth<zef:red-chain-test>',
+        "--project=$orphan", :$context, :installed($orphan-repository)),
+        '5 tables adopted', 'adopts republished package after all five original distributions were removed';
+    remove-tree($orphan-repository);
+    is cli($orphan, 'apply', :$context), '11', 'fresh process installs entire history without any fixture distribution';
+    my $manager = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+        :directory($orphan.add('migrations')), :drivers[$driver],
+        :connections{ default => $db }, :test-servers{ $driver => %server }));
+    is-deeply $manager.history.map(*.<id>).Array, @original-ids.Array, 'republishing preserves all original IDs';
+    ok $manager.verify, 'republished baseline covers all five schemas';
+    exercise-data($db);
+    ok $manager.test(:!compare-models), 'self-contained republished history also passes rollback/prefix tests';
+    ok !$marker.e, 'consumer processes never loaded any original model module';
+    True
+});
+done-testing;

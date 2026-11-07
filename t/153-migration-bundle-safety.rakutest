@@ -1,0 +1,72 @@
+use Test;
+use Red;
+use JSON::Fast;
+use nqp;
+use Red::Migration::Bundle;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+use Red::Migration::Snapshot;
+use X::Red::Migration;
+
+my $root = $*TMPDIR.add("red-bundle-safety-{$*PID}-{100000.rand.Int}");
+make-directory($root);
+LEAVE remove-tree($root) if $root.e;
+my $source = $root.add('source');
+make-directory($source);
+$source.add('META6.json').spurt(to-json(%(name => 'Child', auth => 'zef:example',
+    version => '1', provides => {}, depends => [], resources => [])));
+model ChildTable is table<child_table> { has Int $.id is serial }
+my $config = Red::Migration::Configuration.new(:directory($source.add('migrations')),
+    :models[ChildTable]);
+my $producer = Red::Migration::Manager.new(:$config);
+my $foreign-id = '01FFFFFFFFFFFFFFFFFFFFFFFF';
+my $foreign = Red::Migration::Bundle.new(identity => 'Parent:auth<zef:example>',
+    migrations => [%(id => $foreign-id, name => 'parent', predecessor => '',
+        tables => %(create => ['parent']),
+        drivers => %(SQLite => %(up => 'CREATE TABLE parent (id INTEGER);', down => 'DROP TABLE parent;')),
+        sql => %(SQLite => %(up => 'CREATE TABLE parent (id INTEGER);', down => 'DROP TABLE parent;'))).item]);
+$producer.import(:bundles[$foreign]);
+my $local = $producer.prepare('child');
+is $producer.bundle(:project($source)), 1, 'publishes owned versions rather than foreign imported SQL';
+my $index = $source.add('resources/red/migrations/index.json');
+my %index = from-json($index.slurp);
+is %index<migrations>[0]<predecessor>, '', 'published predecessor belongs to owning history';
+is %index<migrations>[0]<requires>[0]<identity>, $foreign.identity, 'retains foreign dependency identity';
+is %index<migrations>[0]<requires>[0]<id>, $foreign-id, 'retains foreign dependency version requirement';
+my $before = $index.slurp;
+my $meta-before = $source.add('META6.json').slurp;
+$producer.create('unfinished');
+throws-like { $producer.bundle(:project($source)) }, X::Red::Migration,
+    'cannot publish drafts';
+is $index.slurp, $before, 'failed bundle leaves published index intact';
+is $source.add('META6.json').slurp, $meta-before, 'failed bundle leaves META6 intact';
+
+# A snapshot is executable local configuration, but adoption must only copy it.
+my $marker = $root.add('evaluated');
+my $entry = %index<migrations>[0];
+my $snapshot-resource = $entry<files><schema.rakuconf><path>;
+my $snapshot = $source.add('resources').add($snapshot-resource);
+$snapshot.spurt('BEGIN { ' ~ $marker.Str.raku ~ '.IO.spurt("unexpected") };' ~ "\n" ~ $snapshot.slurp);
+$entry<files><schema.rakuconf><checksum> = nqp::sha1($snapshot.slurp);
+$index.spurt(to-json(%index));
+my $bundle = Red::Migration::Bundle.load(Distribution::Path.new($source));
+my $consumer = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
+    :directory($root.add('consumer'))));
+$consumer.import(:bundles[$foreign, $bundle]);
+is $consumer.adopt(:dependency($bundle.identity), :bundles[$bundle]), 1,
+    'adopts published snapshot without evaluating it';
+ok !$marker.e, 'no dependency snapshot code ran during loading, import or adopt';
+is $consumer.history.elems, 2, 'adoption does not duplicate already imported SQL';
+my $empty-schema = Red::Migration::Snapshot.new.source;
+my $other = Red::Migration::Bundle.new(identity => 'Other:auth<zef:example>',
+    migrations => [%(id => '01EEEEEEEEEEEEEEEEEEEEEEEE', name => 'other', predecessor => '',
+        tables => {}, drivers => %(SQLite => %(up => 'SELECT 1;', down => 'SELECT 1;')),
+        sql => %(SQLite => %(up => 'SELECT 1;', down => 'SELECT 1;')),
+        artifacts => %('schema.rakuconf' => $empty-schema, 'SQLite/schema.rakuconf' => $empty-schema),
+        files => %('schema.rakuconf' => %(checksum => nqp::sha1($empty-schema)),
+            'SQLite/schema.rakuconf' => %(checksum => nqp::sha1($empty-schema)))).item]);
+is $consumer.adopt(:dependency($other.identity), :bundles[$other]), 0,
+    'another adoption uses ownership data without evaluating previously adopted snapshots';
+ok !$marker.e, 'previous dependency snapshot code also remains unexecuted';
+done-testing;
