@@ -1,0 +1,20 @@
+use Red::Migration::Artifact 'manifest';
+
+config {
+    .drivers = %(
+        "SQLite" => %(
+            "down-reason" => "",
+            "down-state" => "available",
+            "generated-down" => "A7B752BE9D725E538C346FF26B6CD739A0FC2B23",
+            "generated-mode" => "statements-v1",
+            "generated-up" => "5CA29DF253F6F059713CC078CBACE42DFAADDF65",
+            "reversible" => Bool::True,
+            "snapshot-checksum" => "3E2E9E280BD1421D92A00B2CA67B8B48163BE60D",
+        ),
+    );
+    .format = 2;
+    .id = "01M6T0BGTRMVJEEHW0WTY0930S";
+    .logical-checksum = "FF7364ABF7E148874F11BA243B70764628FC4689";
+    .name = "add-tasks";
+    .predecessor = "01M6T0BGTRR7RD5PM7CB578945";
+}

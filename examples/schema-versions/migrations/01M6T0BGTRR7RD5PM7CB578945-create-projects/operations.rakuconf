@@ -1,0 +1,54 @@
+use Red::Migration::Artifact 'operations';
+
+config {
+    .operations = [
+        $(%(
+            "after" => %(
+                "columns" => %(
+                    "id" => %(
+                        "auto-increment" => Bool::True,
+                        "name" => "id",
+                        "nullable" => Bool::False,
+                        "pk" => Bool::True,
+                        "raku-type" => "Int",
+                        "references" => %(),
+                        "type" => "",
+                        "type-origin" => "derived",
+                        "type-overrides" => %(
+                            "SQLite" => "integer",
+                        ),
+                        "unique" => Bool::False,
+                    ),
+                    "name" => %(
+                        "auto-increment" => Bool::False,
+                        "name" => "name",
+                        "nullable" => Bool::False,
+                        "pk" => Bool::False,
+                        "raku-type" => "Str",
+                        "references" => %(),
+                        "type" => "",
+                        "type-origin" => "derived",
+                        "type-overrides" => %(
+                            "SQLite" => "text",
+                        ),
+                        "unique" => Bool::False,
+                    ),
+                ),
+                "constraints" => [],
+                "name" => "project",
+                "portable-checks" => [],
+                "portable-indexes" => [],
+                "primary-key" => [
+                    "id",
+                ],
+            ),
+            "before" => Any,
+            "had" => Bool::False,
+            "has" => Bool::True,
+            "path" => [
+                "tables",
+                "project",
+            ],
+        )),
+    ];
+}

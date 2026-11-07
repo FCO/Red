@@ -1,0 +1,4 @@
+CREATE TABLE "project" (
+    "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    "name" text NOT NULL
+);

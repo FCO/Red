@@ -1,0 +1,9 @@
+use lib 'lib';
+use Red;
+use Models;
+use Red::Migration::Configuration;
+config {
+    .models = [Project, Task, Comment];
+    .drivers = ['SQLite'];
+    .connections = %(default => { database 'SQLite', :database<example.db> });
+}

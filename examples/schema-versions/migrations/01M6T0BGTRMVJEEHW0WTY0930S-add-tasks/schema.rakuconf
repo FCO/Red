@@ -1,0 +1,107 @@
+use Red::Migration::Artifact 'schema';
+
+config {
+    .tables = [
+        table({
+            .name = "project";
+            .model-name = "Project";
+            .columns = [
+                column({
+                    .name = "id";
+                    .type = "";
+                    .raku-type = "Int";
+                    .nullable = Bool::False;
+                    .pk = Bool::True;
+                    .unique = Bool::False;
+                    .type-origin = "derived";
+                    .type-overrides = %(
+                        "SQLite" => "integer",
+                    );
+                    .references = %();
+                    .auto-increment = Bool::True;
+                }),
+                column({
+                    .name = "name";
+                    .type = "";
+                    .raku-type = "Str";
+                    .nullable = Bool::False;
+                    .pk = Bool::False;
+                    .unique = Bool::False;
+                    .type-origin = "derived";
+                    .type-overrides = %(
+                        "SQLite" => "text",
+                    );
+                    .references = %();
+                    .auto-increment = Bool::False;
+                })
+            ];
+            .constraints = [];
+            .indexes = [];
+            .checks = [];
+            .portable-indexes = [];
+            .portable-checks = [];
+            .primary-key = [
+                "id",
+            ];
+        }),
+        table({
+            .name = "task";
+            .model-name = "Task";
+            .columns = [
+                column({
+                    .name = "id";
+                    .type = "";
+                    .raku-type = "Int";
+                    .nullable = Bool::False;
+                    .pk = Bool::True;
+                    .unique = Bool::False;
+                    .type-origin = "derived";
+                    .type-overrides = %(
+                        "SQLite" => "integer",
+                    );
+                    .references = %();
+                    .auto-increment = Bool::True;
+                }),
+                column({
+                    .name = "title";
+                    .type = "";
+                    .raku-type = "Str";
+                    .nullable = Bool::False;
+                    .pk = Bool::False;
+                    .unique = Bool::False;
+                    .type-origin = "derived";
+                    .type-overrides = %(
+                        "SQLite" => "text",
+                    );
+                    .references = %();
+                    .auto-increment = Bool::False;
+                }),
+                column({
+                    .name = "project_id";
+                    .type = "";
+                    .raku-type = "Int";
+                    .nullable = Bool::True;
+                    .pk = Bool::False;
+                    .unique = Bool::False;
+                    .type-origin = "derived";
+                    .type-overrides = %(
+                        "SQLite" => "integer",
+                    );
+                    .references = %(
+                        "column" => "id",
+                        "table" => "project",
+                    );
+                    .auto-increment = Bool::False;
+                })
+            ];
+            .constraints = [];
+            .indexes = [];
+            .checks = [];
+            .portable-indexes = [];
+            .portable-checks = [];
+            .primary-key = [
+                "id",
+            ];
+        })
+    ];
+}

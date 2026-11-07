@@ -1,0 +1,71 @@
+use Red::Migration::Artifact 'operations';
+
+config {
+    .operations = [
+        $(%(
+            "after" => %(
+                "columns" => %(
+                    "body" => %(
+                        "auto-increment" => Bool::False,
+                        "name" => "body",
+                        "nullable" => Bool::False,
+                        "pk" => Bool::False,
+                        "raku-type" => "Str",
+                        "references" => %(),
+                        "type" => "",
+                        "type-origin" => "derived",
+                        "type-overrides" => %(
+                            "SQLite" => "text",
+                        ),
+                        "unique" => Bool::False,
+                    ),
+                    "id" => %(
+                        "auto-increment" => Bool::True,
+                        "name" => "id",
+                        "nullable" => Bool::False,
+                        "pk" => Bool::True,
+                        "raku-type" => "Int",
+                        "references" => %(),
+                        "type" => "",
+                        "type-origin" => "derived",
+                        "type-overrides" => %(
+                            "SQLite" => "integer",
+                        ),
+                        "unique" => Bool::False,
+                    ),
+                    "task_id" => %(
+                        "auto-increment" => Bool::False,
+                        "name" => "task_id",
+                        "nullable" => Bool::True,
+                        "pk" => Bool::False,
+                        "raku-type" => "Int",
+                        "references" => %(
+                            "column" => "id",
+                            "table" => "task",
+                        ),
+                        "type" => "",
+                        "type-origin" => "derived",
+                        "type-overrides" => %(
+                            "SQLite" => "integer",
+                        ),
+                        "unique" => Bool::False,
+                    ),
+                ),
+                "constraints" => [],
+                "name" => "comment",
+                "portable-checks" => [],
+                "portable-indexes" => [],
+                "primary-key" => [
+                    "id",
+                ],
+            ),
+            "before" => Any,
+            "had" => Bool::False,
+            "has" => Bool::True,
+            "path" => [
+                "tables",
+                "comment",
+            ],
+        )),
+    ];
+}

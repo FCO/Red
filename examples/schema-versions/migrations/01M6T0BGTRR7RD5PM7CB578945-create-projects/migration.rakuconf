@@ -1,0 +1,20 @@
+use Red::Migration::Artifact 'manifest';
+
+config {
+    .drivers = %(
+        "SQLite" => %(
+            "down-reason" => "",
+            "down-state" => "available",
+            "generated-down" => "0D50A5536E87681CE4D9F84F6FA8ACA7750B9EAA",
+            "generated-mode" => "statements-v1",
+            "generated-up" => "C57029B3D775EDAF9C6ACA08FF0E8CAE95E517F7",
+            "reversible" => Bool::True,
+            "snapshot-checksum" => "E3FC4BBCFC70EFBC7D68F4913A29C069F8237634",
+        ),
+    );
+    .format = 2;
+    .id = "01M6T0BGTRR7RD5PM7CB578945";
+    .logical-checksum = "C27A4A4C31E0BDD02142597B3AB1BF0FEA14486E";
+    .name = "create-projects";
+    .predecessor = "";
+}
