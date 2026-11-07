@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.10  2026-11-07T04:54:14Z
     - Expose migration apply --to to stop at a specific migration ID.
     - Add migration drop-tables and reset with confirmation and complete bookkeeping removal.
     - Add named fixture save, list and apply commands and populate rows support.
