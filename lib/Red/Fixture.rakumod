@@ -1,5 +1,5 @@
 use Red;
-use Configuration;
+use Configuration ();
 use Red::DB;
 use Red::Do;
 use Red::Runtime::Configuration;
