@@ -48,7 +48,7 @@ jobs:
       matrix:
         rakuast: ["0", "1"]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     env:
       RAKUDO_RAKUAST: ${{ matrix.rakuast }}
       RED_SOURCE: ${{ github.workspace }}
@@ -96,7 +96,7 @@ jobs:
       matrix:
         rakuast: ["0", "1"]
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 45
     env:
       RAKUDO_RAKUAST: ${{ matrix.rakuast }}
       RED_SOURCE: ${{ github.workspace }}

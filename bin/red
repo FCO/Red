@@ -30,11 +30,12 @@ multi MAIN('connect', Str :$config = 'red.rakuconf', Str :$connection = 'default
     my %environment = %*ENV;
     %environment{.key} = .value for %client<environment>.pairs;
     my $process = run |%client<command>, :env(%environment);
-    if $process.exitcode == -1 {
+    my Int $status = $process.exitcode;
+    if $status == -1 {
         X::Red::Migration.new(:reason(
             "Unable to start {%client<command>[0]}; install the database client and check PATH")).throw;
     }
-    exit $process.exitcode;
+    exit $status;
 }
 
 #| List tables in database
