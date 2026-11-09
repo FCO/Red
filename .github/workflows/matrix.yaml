@@ -135,6 +135,8 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libpq-dev postgresql-client libsqlite3-dev uuid-dev
           zef install --/test --test-depends --deps-only .
+          # Satisfy the driver's Red dependency from this checkout, not the published release.
+          zef install --/test .
           zef install --/test --test-depends --deps-only .ci/pg-driver
           zef install --/test App::Prove6
       - name: Run tests (Pg, including five-level migrations)
