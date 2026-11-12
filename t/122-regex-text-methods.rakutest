@@ -27,7 +27,7 @@ my @whole =
     [-> { RegexTextMethodRow.^all.grep({ $/.Str.substr(1, 1) eq 'b' if .text ~~ /^ <[a..z A..Z]>+ $/ }) }, set('ab')],
     [-> { RegexTextMethodRow.^all.grep({ (~$/).lc eq 'ab' if .text ~~ /^ <[a..z A..Z]>+ $/ }) }, set('ab', 'AB')];
 for @whole.kv -> $index, $case {
-    if $backend eq any(<Pg MySQL>) {
+    if $backend eq any(<Pg MySQL DuckDB>) {
         is-deeply $case[0]().map(*.text).Array.Set, $case[1],
             "Whole text operation $index executes in SQL";
     } else {

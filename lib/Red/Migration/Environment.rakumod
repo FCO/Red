@@ -31,12 +31,14 @@ sub provision-database(Str $driver, %server, &body, %environment, Bool :$keep) {
     my $folder = $*TMPDIR.add($name);
     $folder.mkdir;
     my $admin;
+    my $temporary;
     my $created = False;
     my %parameters = %server;
     my $result;
     my Exception $body-error;
     CATCH { default { $body-error = $_; .rethrow } }
     LEAVE {
+        if $driver eq 'DuckDB' && $temporary.defined { $temporary.close; $temporary.dbh.close }
         if !$keep && $folder.defined && $folder.d {
             my Exception $cleanup-error;
             if $created {
@@ -57,8 +59,8 @@ sub provision-database(Str $driver, %server, &body, %environment, Bool :$keep) {
             remove-tree($folder);
         }
     }
-    if $driver eq 'SQLite' {
-        %parameters = database => $folder.add('test.sqlite').Str;
+    if $driver eq any(<SQLite DuckDB>) {
+        %parameters = database => $folder.add($driver eq 'DuckDB' ?? 'test.duckdb' !! 'test.sqlite').Str;
     } elsif $driver eq any(<Pg MySQL>) {
         X::Red::Migration.new(:reason("Configure a test server for $driver")).throw unless %server;
         my %admin = %server;
@@ -75,6 +77,7 @@ sub provision-database(Str $driver, %server, &body, %environment, Bool :$keep) {
     $context.spurt(to-json(%( :$driver, :%parameters )));
     $context.chmod(0o600);
     note "Temporary migration database retained: $context" if $keep;
-    $result = body(database($driver, |%parameters), $context, %parameters);
+    $temporary = database($driver, |%parameters);
+    $result = body($temporary, $context, %parameters);
     $result
 }

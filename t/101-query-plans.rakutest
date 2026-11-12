@@ -80,14 +80,15 @@ subtest 'Changing the driver cannot reuse a connection or cursor' => {
         my ($key, $value) = .split('=');
         $key => val($value)
     }));
-    my $sqlite = $driver eq 'SQLite';
-    if $sqlite {
+    my $isolated = $driver eq any('SQLite', 'DuckDB')
+        && ($other.?database // ':memory:') eq ':memory:';
+    if $isolated {
         my $*RED-DB = $other;
         QueryPlanRow.^create-table;
         QueryPlanRow.^create(:number(99), :label<other>);
     }
     my $changed = $query.with($other);
-    is-deeply numbers($changed), ($sqlite ?? [99] !! [1, 2, 3, 4]),
+    is-deeply numbers($changed), ($isolated ?? [99] !! [1, 2, 3, 4]),
         'The explicit driver handles this execution';
     is-deeply numbers($query), [1, 2, 3, 4], 'Original query retains its driver behavior';
 };

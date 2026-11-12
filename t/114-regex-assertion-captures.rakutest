@@ -37,7 +37,7 @@ for @patterns -> $source {
     subtest $source => {
         my $quoted = $source.AST.statements[*-1].expression;
         my $regex = Red::Compiler::Regex.new.compile($quoted);
-        if $backend ne 'MySQL' {
+        if $backend ne 'MySQL' && $backend ne 'DuckDB' {
             throws-like {
                 my Int $*bind-counter = 0;
                 $*RED-DB.translate(Red::AST::RegexMatch.checked(ast-value('aa'), $regex))
@@ -79,7 +79,7 @@ my $schema = schema(AssertionCaptureRow);
 $schema.drop.create;
 LEAVE $schema.drop;
 AssertionCaptureRow.^create(:name($_)) for <aa ab bb>;
-if $backend eq 'MySQL' {
+if $backend eq any(<MySQL DuckDB>) {
     is-deeply AssertionCaptureRow.^all.grep({ .name ~~ /^ <?before [(a) $0]> .. $/ })
         .map(*.name).Array, ['aa'], 'Assertion-local references execute in compiled SQL';
 } else {

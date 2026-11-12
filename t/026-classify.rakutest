@@ -52,7 +52,7 @@ my %d := Bla.^all.classify({ .bla, .id });
 is %d.elems, 2;
 isa-ok %d<test1>, Red::ResultAssociative;
 is %d<test1>.elems, 2;
-is %d<test1>.keys, <1 2>;
+is %d<test1>.keys.Seq.sort, <1 2>, 'nested group keys are independent of SQL row order';
 
 isa-ok %d<test2>, Red::ResultAssociative;
 is %d<test2>.elems, 1;

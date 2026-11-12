@@ -7,9 +7,11 @@ my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
 my $dialect = @connection.shift;
 my %parameters = @connection.map({ do given .split('=', 2) { .[0] => val .[1] } }).Hash;
 my $root = $*TMPDIR.add("red-locks-{$*PID}-{100000.rand.Int}"); $root.mkdir;
-%parameters<database> = $root.add('lock.sqlite').Str if $dialect eq 'SQLite';
+%parameters<database> = $root.add('lock.sqlite').Str if $dialect eq any(<SQLite DuckDB>);
 my $db = database $dialect, |%parameters;
-my $other = database $dialect, |%parameters;
+my $other = $dialect eq 'DuckDB'
+    ?? database($dialect, $db.dbh)
+    !! database($dialect, |%parameters);
 my $session;
 if $dialect eq 'Pg' {
     $session = $other.dbh.db;
@@ -25,12 +27,14 @@ $db.execute('DROP TABLE IF EXISTS migration_locked');
 $db.execute('DROP TABLE IF EXISTS red_migrations');
 $manager.prepare('initial');
 given $dialect {
+    when 'DuckDB' { $other.acquire-migration-lock }
     when 'SQLite' { $other.execute('BEGIN IMMEDIATE') }
     when 'Pg' { $other.execute('SELECT pg_advisory_lock(1380271181)') }
     when 'MySQL' { $other.execute("SELECT GET_LOCK(CONCAT('red_migrations:', SHA1(DATABASE())), 0)") }
 }
 dies-ok { $manager.apply }, 'another physical connection cannot migrate concurrently';
 given $dialect {
+    when 'DuckDB' { $other.release-migration-lock }
     when 'SQLite' { $other.execute('ROLLBACK') }
     when 'Pg' { $other.execute('SELECT pg_advisory_unlock(1380271181)') }
     when 'MySQL' { $other.execute("SELECT RELEASE_LOCK(CONCAT('red_migrations:', SHA1(DATABASE())))") }

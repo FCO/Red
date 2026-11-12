@@ -170,11 +170,12 @@ subtest 'constraints are preflighted before schema creation', {
 subtest 'partial unique indexes keep their predicate and identity', {
     schema(PartialRule).drop.create;
     lives-ok { PartialRule.^create-indexes }, 'Repeating creation preserves partial indexes';
-    if $backend eq 'MySQL' {
-        pass 'Both explicitly selected partial indexes are omitted on MySQL';
+    if !PartialRule.^indexes.grep({ $*RED-DB.schema-definition-applies($_) }) {
+        is $*RED-DB.indexes-for-table(PartialRule.^table).grep(*.<partial>).elems, 0,
+            "Driver-specific partial indexes are omitted on $backend";
         my $index = PartialRule.^indexes.head.clone(:driver(''));
         throws-like { $*RED-DB.translate($index) }, X::Red::Index,
-            'MySQL rejects an unguarded partial index';
+            "$backend rejects an unguarded partial index";
     } else {
         PartialRule.^create: :label<same>, :active(0);
         PartialRule.^create: :label<same>, :active(0);

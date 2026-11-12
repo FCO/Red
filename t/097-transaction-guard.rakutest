@@ -10,6 +10,15 @@ my $*RED-DB = database $driver, |%(@conf.map: {
 });
 my $*RED-FALLBACK = False;
 
+my Bool $supports-savepoints = $*RED-DB.?supports-savepoints // True;
+sub savepoint-test(Str $name, &body) {
+    subtest $name, sub {
+        if $supports-savepoints { body() }
+        else { plan :skip-all('Driver explicitly does not support native savepoints') }
+    }
+}
+
+
 model GuardRecord {
     has UInt $.id is serial;
     has Str $.label is column is unique;
@@ -192,7 +201,7 @@ subtest 'Closed drivers, statements and result iterators reject use', {
     is-deeply labels(), ('kept',), 'The original driver outside the scope remains usable';
 };
 
-subtest 'Open children prevent parent queries and commit', {
+savepoint-test 'Open children prevent parent queries and commit', {
     reset;
     red-do :transaction, -> $_, :$guard! {
         GuardRecord.^create: :label<parent>;
@@ -215,7 +224,7 @@ subtest 'Open children prevent parent queries and commit', {
     is-deeply labels(), <after child parent>.List, 'The parent resumes after child commit';
 };
 
-subtest 'Parent rollback invalidates all descendants', {
+savepoint-test 'Parent rollback invalidates all descendants', {
     reset;
     my ($child, $grandchild, $child-db, $root-session);
     red-do :transaction, -> $_, :$guard! {
@@ -248,7 +257,7 @@ subtest 'Parent rollback invalidates all descendants', {
     }
 };
 
-subtest 'Automatic parents cannot leave a manual child open', {
+savepoint-test 'Automatic parents cannot leave a manual child open', {
     reset;
     my $child;
     throws-like {
@@ -449,19 +458,21 @@ subtest 'An escaping exception closes retained participants immediately', {
 };
 
 subtest 'Savepoint participants are independent and parent release invalidates children', {
-    reset;
-    red-do :transaction, -> :$guard! {
-        GuardRecord.^create: :label<parent>;
+    savepoint-test 'Native child scope', {
+        reset;
         red-do :transaction, -> :$guard! {
-            $guard.retain;
-            GuardRecord.^create: :label<child>;
-            $guard.release;
-            is GuardRecord.^all.elems, 2, 'The child remains open with one participant';
+            GuardRecord.^create: :label<parent>;
+            red-do :transaction, -> :$guard! {
+                $guard.retain;
+                GuardRecord.^create: :label<child>;
+                $guard.release;
+                is GuardRecord.^all.elems, 2, 'The child remains open with one participant';
+            };
+            is GuardRecord.^all.elems, 1, 'Last child release rolls back only its savepoint';
+            $guard.commit;
         };
-        is GuardRecord.^all.elems, 1, 'Last child release rolls back only its savepoint';
-        $guard.commit;
+        is-deeply labels(), ('parent',);
     };
-    is-deeply labels(), ('parent',);
     my $root = Red::Transaction::Guard.new(:driver(GuardProbeDriver.new));
     my $child = $root.child;
     $child.retain;
@@ -643,7 +654,7 @@ subtest 'do does not extend its participation for a returned Promise', {
     $promise.keep(True);
 };
 
-subtest 'do and start outside red-do restore the context for nested savepoints', {
+savepoint-test 'do and start outside red-do restore the context for nested savepoints', {
     reset;
     my $guard = red-do :transaction, -> :$guard! { $guard.retain };
     $guard.do: {
@@ -719,24 +730,26 @@ subtest 'A scheduling failure returns the reserved participation', {
 };
 
 subtest 'A child start keeps its savepoint open until its task completes', {
-    reset;
-    red-do :transaction, -> :$guard! {
-        GuardRecord.^create: :label<parent>;
-        my $continue = Promise.new;
-        my $task = red-do :transaction, -> :$guard! {
-            $guard.start: -> :&commit! {
-                await $continue;
-                GuardRecord.^create: :label<async-child>;
-                commit();
-                66
-            }
+    savepoint-test 'Native child scope', {
+        reset;
+        red-do :transaction, -> :$guard! {
+            GuardRecord.^create: :label<parent>;
+            my $continue = Promise.new;
+            my $task = red-do :transaction, -> :$guard! {
+                $guard.start: -> :&commit! {
+                    await $continue;
+                    GuardRecord.^create: :label<async-child>;
+                    commit();
+                    66
+                }
+            };
+            throws-like { $guard.commit }, X::Red::Transaction;
+            $continue.keep(True);
+            is await($task), 66;
+            $guard.commit;
         };
-        throws-like { $guard.commit }, X::Red::Transaction;
-        $continue.keep(True);
-        is await($task), 66;
-        $guard.commit;
+        is-deeply labels(), <async-child parent>.List;
     };
-    is-deeply labels(), <async-child parent>.List;
     my $saved;
     my $manual = red-do :transaction, :async, -> :$guard! {
         $saved = $guard;

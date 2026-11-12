@@ -479,7 +479,7 @@ method !load(IO() $path) {
 }
 #| Resolve a supported SQL backend for offline translation; no target connection is constructed.
 method !driver(Str $name) {
-    self!error("Unsupported migration driver: $name") unless $name eq any(<SQLite Pg MySQL>);
+    self!error("Unsupported migration driver: $name") unless $name eq any(<SQLite Pg MySQL DuckDB>);
     require ::("Red::Driver::$name");
     Translation.new(:backend(::("Red::Driver::$name")))
 }
@@ -496,7 +496,7 @@ method !connection(Str $name) {
 #| backends.
 method !dialect($db --> Str) {
     my $name = $db.driver-name.split('::').tail;
-    self!error("Unsupported migration connection: $name") unless $name eq any(<SQLite Pg MySQL>);
+    self!error("Unsupported migration connection: $name") unless $name eq any(<SQLite Pg MySQL DuckDB>);
     $name
 }
 #| Generate a 26-character migration identifier from the current millisecond timestamp and random
@@ -835,6 +835,15 @@ method !lock($db, Str $dialect, Bool :$read-only = False) {
             LEAVE { try $statement.statement.finish }
             $statement.execute;
         }
+        when 'DuckDB' {
+            if $read-only { $db.execute('BEGIN') }
+            else {
+                try {
+                    $db.acquire-migration-lock;
+                    CATCH { default { self!error("Cannot acquire DuckDB migration lock: {.message}") } }
+                }
+            }
+        }
         when 'Pg' {
             my $row = self!row($db, 'SELECT pg_try_advisory_lock(1380271181) AS acquired');
             self!error('Another migration executor holds the database lock') unless $row<acquired>.Str.lc eq any(<1 true t>);
@@ -848,6 +857,7 @@ method !lock($db, Str $dialect, Bool :$read-only = False) {
 #| Release native advisory or named migration locks. SQLite transaction completion is handled by the
 #| executor.
 method !unlock($db, Str $dialect) {
+    $db.release-migration-lock if $dialect eq 'DuckDB';
     self!execute($db, 'SELECT pg_advisory_unlock(1380271181)') if $dialect eq 'Pg';
     self!execute($db, "SELECT RELEASE_LOCK(CONCAT('red_migrations:', SHA1(DATABASE())))") if $dialect eq 'MySQL';
 }
@@ -929,7 +939,7 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
         $locked = True;
     }
     LEAVE { self!unlock($db, $dialect) if $locked }
-    my $sqlite-open = $dialect eq 'SQLite';
+    my $sqlite-open = $dialect eq 'SQLite' || ($dialect eq 'DuckDB' && $inspect);
     CATCH {
         default {
             try $db.execute('ROLLBACK') if $sqlite-open || $pg-open;
@@ -986,7 +996,7 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
         self!error("Rollback is unavailable for {%m<id>}: {%m<drivers>{$dialect}<down-reason>}")
             if $rollback && !%m<drivers>{$dialect}<reversible>;
         self!preflight($db, $dialect, %m, @history, $rollback);
-        my $transaction = $dialect eq 'Pg';
+        my $transaction = $dialect eq any(<Pg DuckDB>);
         $db.execute('BEGIN') if $transaction;
         $pg-open = $transaction;
         my $row = @rows.first(*.id eq %m<id>);
@@ -1042,7 +1052,21 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
                     }).Array));
                     self!validate-alterations($db, $dialect, $actual, $target, :statement($sql));
                 }
-                self!execute($db, $sql);
+                my $rebuilt = False;
+                if $dialect eq 'DuckDB' && !%m<imported> {
+                    my $target = Red::Migration::Snapshot.load(%m<path>.add("$dialect/schema.rakuconf"));
+                    for $target.tables -> $table {
+                        for $table.columns.grep({ !.nullable }) -> $column {
+                            my $tighten = 'ALTER TABLE ' ~ $db.table-name-wrapper($table.name)
+                                ~ ' ALTER COLUMN ' ~ $db.table-name-wrapper($column.name) ~ ' SET NOT NULL';
+                            if $sql eq $tighten {
+                                $db.migration-set-not-null($table.name, $column.name);
+                                $rebuilt = True;
+                            }
+                        }
+                    }
+                }
+                self!execute($db, $sql) unless $rebuilt;
                 $completed++;
                 $file-record.completed-statements = %instruction<statement>;
                 $file-record.state = %instruction<statement> == %totals{$file-name} ?? 'applied' !! 'running';
@@ -1273,11 +1297,20 @@ method !rebuild(Str $connection, Callable :$confirm, Bool :$reset = False) {
         |@tables.grep({ %bookkeeping{$_}:exists }));
     self!error('Cancelled; no tables were removed')
         if $confirm.defined && !$confirm(@tables.Array);
-    if $dialect eq 'Pg' {
+    if $dialect eq any(<Pg DuckDB>) {
         self!execute($db, 'BEGIN');
         $transaction-open = True;
     }
+    my @sequences;
+    if $dialect eq 'DuckDB' {
+        for @tables -> $table {
+            for $db.schema-reader.table-definition($table).columns.grep(*.auto-increment) -> $column {
+                @sequences.push: 'red_seq_' ~ $table ~ '_' ~ $column.name;
+            }
+        }
+    }
     self!execute($db, 'DROP TABLE ' ~ $db.table-name-wrapper($_)) for @tables;
+    self!execute($db, 'DROP SEQUENCE IF EXISTS ' ~ $db.table-name-wrapper($_)) for @sequences;
     unless $reset && $dialect eq 'SQLite' {
         self!execute($db, 'COMMIT') if $transaction-open;
         $transaction-open = False;
@@ -1378,7 +1411,7 @@ method sync(Str :$connection = 'default', Bool :$allow-destructive = False) {
     $locked = True;
     LEAVE { self!unlock($db, $dialect) if $locked }
     my $transaction = $dialect ne 'MySQL';
-    $db.execute('BEGIN') if $dialect eq 'Pg';
+    $db.execute('BEGIN') if $dialect eq any(<Pg DuckDB>);
     CATCH {
         default {
             try $db.execute('ROLLBACK') if $transaction;
@@ -1431,6 +1464,8 @@ method test(Str :$driver, :@command = [], Bool :$keep = False, Callable :$fixtur
                     }
                     self!error('Migrated database does not match configured models') if @remaining;
                 }
+                my $reopened;
+                LEAVE { if $reopened.defined { $reopened.close; $reopened.dbh.close } }
                 my %child-environment = %*ENV;
                 if @command {
                     my %*ENV = %child-environment;
@@ -1442,7 +1477,15 @@ method test(Str :$driver, :@command = [], Bool :$keep = False, Callable :$fixtur
                         .grep(*.chars).unique.join(',');
                     %*ENV<RED_MIGRATION_TEST> = $context.Str;
                     %*ENV<RED_DATABASE> = ($dialect, |%parameters.pairs.map({ .key ~ '=' ~ .value })).join(' ');
+                    # DuckDB permits one writer process per database. Release the
+                    # parent handle while the validation child owns the file.
+                    if $dialect eq 'DuckDB' { $db.close; $db.dbh.close }
                     my $child = run |@command;
+                    if $dialect eq 'DuckDB' {
+                        $reopened = database($dialect, |%parameters);
+                        $manager = self.WHAT.new(:config(
+                            $!config.clone(:connections{ default => $reopened })));
+                    }
                     self!error("Child command failed with exit code {$child.exitcode}") if $child.exitcode;
                 }
                 my @history = $manager.history;
@@ -1672,7 +1715,7 @@ method !verify-prefix($db, Str $driver, @prefix) {
         }
     }
     %external{.name}:delete for $snapshot.tables;
-    my @actual = $db.schema-reader.tables-names.grep({ .defined && !($_ eq any(<red_migrations red_migration_files red_migration_resolutions sqlite_sequence>)) }).sort;
+    my @actual = $db.schema-reader.tables-names.grep({ .defined && !($_ eq any(<red_migrations red_migration_files red_migration_resolutions red_migration_lock sqlite_sequence>)) }).sort;
     my @wanted = (|$snapshot.tables.map(*.name), |%external.keys).unique.sort;
     self!error('Database table set differs from the migration snapshot') unless @actual eqv @wanted;
     for $snapshot.tables -> $table {

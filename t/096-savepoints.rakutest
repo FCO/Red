@@ -12,6 +12,15 @@ my $*RED-DB = database $driver, |%(@conf.map: {
 });
 my $*RED-DEBUG = $_ with %*ENV<RED_DEBUG>;
 
+my Bool $supports-savepoints = $*RED-DB.?supports-savepoints // True;
+sub savepoint-test(Str $name, &body) {
+    subtest $name, sub {
+        if $supports-savepoints { body() }
+        else { plan :skip-all('Driver explicitly does not support native savepoints') }
+    }
+}
+
+
 model SavepointParent {
     has UInt $.id is serial;
     has Str $.name is column is unique;
@@ -50,7 +59,7 @@ subtest 'Savepoint SQL quotes names as identifiers', {
     }
 };
 
-subtest 'Nested transactions see outer writes and execute once', {
+savepoint-test 'Nested transactions see outer writes and execute once', {
     reset;
     my Int $outer-runs = 0;
     my Int $inner-runs = 0;
@@ -75,7 +84,7 @@ subtest 'Nested transactions see outer writes and execute once', {
     is SavepointChild.^all.elems, 1, 'Foreign-key write commits with the parent';
 };
 
-subtest 'Outer rollback undoes released savepoints', {
+savepoint-test 'Outer rollback undoes released savepoints', {
     reset;
     throws-like {
         red-do :transaction, {
@@ -89,7 +98,7 @@ subtest 'Outer rollback undoes released savepoints', {
     is SavepointParent.^all.elems, 0, 'Both outer and inner writes are rolled back';
 };
 
-subtest 'Caught inner failure rolls back only the inner work', {
+savepoint-test 'Caught inner failure rolls back only the inner work', {
     reset;
     my $error = TestRollback.new;
     red-do :transaction, {
@@ -109,7 +118,7 @@ subtest 'Caught inner failure rolls back only the inner work', {
     is-deeply names(), <after before>.List, 'The outer transaction can continue and commit';
 };
 
-subtest 'Database errors are recoverable at an inner savepoint', {
+savepoint-test 'Database errors are recoverable at an inner savepoint', {
     reset;
     red-do :transaction, {
         SavepointParent.^create: :name<unique>;
@@ -125,7 +134,7 @@ subtest 'Database errors are recoverable at an inner savepoint', {
         'Rollback to savepoint recovers the connection after a constraint violation';
 };
 
-subtest 'Uncaught nested failure rolls back the entire transaction', {
+savepoint-test 'Uncaught nested failure rolls back the entire transaction', {
     reset;
     throws-like {
         red-do :transaction, {
@@ -139,7 +148,7 @@ subtest 'Uncaught nested failure rolls back the entire transaction', {
     is SavepointParent.^all.elems, 0, 'No writes survive the propagated failure';
 };
 
-subtest 'Multiple levels and consecutive savepoints remain independent', {
+savepoint-test 'Multiple levels and consecutive savepoints remain independent', {
     reset;
     red-do :transaction, {
         SavepointParent.^create: :name<root>;
@@ -163,7 +172,7 @@ subtest 'Multiple levels and consecutive savepoints remain independent', {
         'Each savepoint ends without closing its parents or siblings';
 };
 
-subtest 'Driver savepoint operations preserve the named marker after rollback', {
+savepoint-test 'Driver savepoint operations preserve the named marker after rollback', {
     reset;
     red-do :transaction, {
         my Str $name = 'manual"` savepoint';
@@ -181,4 +190,28 @@ subtest 'Driver savepoint operations preserve the named marker after rollback', 
     is-deeply names(), ('kept',), 'Releasing a savepoint leaves its transaction usable';
 };
 
+unless $supports-savepoints {
+    subtest 'Unsupported savepoints preserve root transaction guarantees', {
+        reset;
+        red-do :transaction, {
+            SavepointParent.^create: :name<outer>;
+            for <savepoint rollback-to-savepoint release-savepoint> -> $operation {
+                throws-like { $*RED-DB."$operation"('unsupported') },
+                    X::Red::Compiler::Unsupported, 'savepoint API rejects unsupported execution';
+            }
+            throws-like {
+                red-do :transaction, { flunk 'unsupported inner body must not run' }
+            }, X::Red::Compiler::Unsupported, 'nested transaction rejected before its body';
+            is-deeply names(), ('outer',), 'caught rejection preserves outer writes';
+        };
+        is-deeply names(), ('outer',), 'outer transaction can still commit';
+        throws-like {
+            red-do :transaction, {
+                SavepointParent.^create: :name<discarded>;
+                red-do :transaction, { flunk 'unsupported inner body must not run' }
+            }
+        }, X::Red::Compiler::Unsupported, 'escaping rejection rolls back the root';
+        is-deeply names(), ('outer',), 'failed root transaction leaves no new row';
+    };
+}
 done-testing;

@@ -26,8 +26,8 @@ my $*RED-FALLBACK = False;
 
 given Child.^find(:name<Fernanda>) {
     isa-ok .asked.create(:gift{:name<ball>}), ChildAskedOnYear;
-    is-deeply .asked.map(*.gift).Seq, (Gift.^load(:name<pokemon>), Gift.^load(:name<ball>)).Seq;
-    is-deeply .asked.map(*.gift.name).Seq, <pokemon ball>.Seq;
+    is-deeply .asked.sort(*.id).map(*.gift).Seq, (Gift.^load(:name<pokemon>), Gift.^load(:name<ball>)).Seq;
+    is-deeply .asked.sort(*.id).map(*.gift.name).Seq, <pokemon ball>.Seq;
 }
 
 isa-ok Child.^find(:name<Sophia>).asked.create(:gift{:name<ball>}), ChildAskedOnYear;

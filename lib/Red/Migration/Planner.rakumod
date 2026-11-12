@@ -25,7 +25,7 @@ method capture(@models --> Red::Migration::Snapshot) {
             if $model.^columns.grep({ .column.default.defined }).elems;
         my $table = $model.^describe;
         self!error("{$table.name} is reserved for migration history")
-            if $table.name eq any(<red_migrations red_migration_files red_migration_resolutions>);
+            if $table.name eq any(<red_migrations red_migration_files red_migration_resolutions red_migration_lock>);
         self!error("Duplicate column names in {$table.name}")
             unless $table.columns.map(*.name).unique.elems == $table.columns.elems;
         my @indexes = $model.^indexes.grep({ !.inline && $!driver.schema-definition-applies($_) }).map: -> $index {
@@ -52,7 +52,7 @@ method capture(@models --> Red::Migration::Snapshot) {
 
 #| Render a column definition with its nullability, uniqueness and supported automatic-primary-key
 #| syntax for this dialect.
-method !column($col, Bool :$single-pk = False --> Str) {
+method !column($col, Bool :$single-pk = False, Str :$table = '' --> Str) {
     my $type = $col.type;
     my $extra = '';
     if $col.auto-increment {
@@ -62,6 +62,12 @@ method !column($col, Bool :$single-pk = False --> Str) {
             when 'SQLite' { $type = 'INTEGER'; $extra = ' PRIMARY KEY AUTOINCREMENT' }
             when 'Pg' { $type = $type.lc.contains('big') ?? 'BIGSERIAL' !! 'SERIAL'; $extra = ' PRIMARY KEY' }
             when 'MySQL' { $extra = ' PRIMARY KEY AUTO_INCREMENT' }
+            when 'DuckDB' {
+                self!error('Automatic DuckDB IDs require a table name') unless $table.chars;
+                $type = 'BIGINT';
+                my $sequence = self!q('red_seq_' ~ $table ~ '_' ~ $col.name).subst("'", "''", :g);
+                $extra = " PRIMARY KEY DEFAULT nextval('$sequence')";
+            }
         }
     } elsif $single-pk && $col.pk { $extra = ' PRIMARY KEY' }
     self!q($col.name) ~ " $type" ~ ($col.nullable ?? '' !! ' NOT NULL') ~ $extra
@@ -74,7 +80,7 @@ method !create($table --> Str) {
     my @pk = $table.primary-key
         ?? $table.primary-key.map(-> $name { $table.columns.first(*.name eq $name) })
         !! $table.columns.grep(*.pk);
-    my @defs = $table.columns.map({ self!column($_, :single-pk(@pk.elems == 1)) });
+    my @defs = $table.columns.map({ self!column($_, :table($table.name), :single-pk(@pk.elems == 1)) });
     @defs.push('PRIMARY KEY (' ~ @pk.map({ self!q(.name) }).join(', ') ~ ')') if @pk > 1;
     for $table.constraints.grep(*.elems > 1) -> @cols {
         @defs.push('UNIQUE (' ~ @cols.map({ self!q($_) }).join(', ') ~ ')');
@@ -117,6 +123,11 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
         # Avoid junction truthiness and provide an explicit cycle/missing-parent error.
         unless $table.defined {
             self!error('New tables contain a dependency cycle or reference an absent table');
+        }
+        if $!dialect eq 'DuckDB' {
+            for %new{$table}.columns.grep(*.auto-increment) -> $column {
+                @sql.push: 'CREATE SEQUENCE ' ~ self!q('red_seq_' ~ $table ~ '_' ~ $column.name);
+            }
         }
         @sql.push: self!create(%new{$table});
         @sql.append: %new{$table}.indexes.map(*.<sql>);
@@ -194,6 +205,11 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
         };
         self!error('Table removal has dependent tables; use an explicit migration') unless $name.defined;
         @sql.push: 'DROP TABLE ' ~ self!q($name);
+        if $!dialect eq 'DuckDB' {
+            for %old{$name}.columns.grep(*.auto-increment) -> $column {
+                @sql.push: 'DROP SEQUENCE ' ~ self!q('red_seq_' ~ $name ~ '_' ~ $column.name);
+            }
+        }
         %done{$name}:delete;
         @drop = @drop.grep(* ne $name);
     }

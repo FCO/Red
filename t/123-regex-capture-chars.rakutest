@@ -31,7 +31,7 @@ my @whole =
     [-> { CaptureCharsRow.^all.grep({ (~$/).chars == 2 if .text ~~ /^ .* $/ }) }, set('ab')],
     [-> { CaptureCharsRow.^all.grep({ $/.chars == 0 unless .text ~~ /z/ }) }, set('', 'a', 'ab', 'é', '😀')];
 for @whole.kv -> $index, $case {
-    if $backend eq any(<Pg MySQL>) {
+    if $backend eq any(<Pg MySQL DuckDB>) {
         is-deeply $case[0]().map(*.text).Array.Set, $case[1],
             "Whole capture character count $index uses native SQL";
     } else {
@@ -56,7 +56,7 @@ for @scalar.kv -> $index, $case {
             'Scalar character counts retain the backend extraction restriction';
     }
 }
-if $backend eq any(<Pg MySQL>) {
+if $backend eq any(<Pg MySQL DuckDB>) {
     my $pattern = Red::Compiler::Regex.new.compile(q[/^.*$/].AST.statements[0].expression);
     my @plan = 'regex-chars', ['regex-value', ['regex', ['subject'], $pattern], '$/'];
     my $template = Red::Compiler::Template.new(:@plan);

@@ -47,7 +47,7 @@ is $comprador.logins.map(*.id), <1>;
 is $vendedor.logins .map(*.id), <2>;
 
 is
-    Login.^all.Seq.map({
+    Login.^all.sort(*.id).Seq.map({
         "Login: { .id }; Buyer: { .name with .buyer }; Seller: { .name with .seller }"
     }).join("\n"),
     chomp q:to/END/;

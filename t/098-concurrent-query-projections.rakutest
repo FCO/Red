@@ -67,8 +67,10 @@ sub populate() {
     ConcurrentUpload.^create(:filename<foo>, :uploaded(20));
 }
 
-# Server databases share read-only fixtures; SQLite connections own in-memory databases.
-populate() unless $driver eq 'SQLite';
+# Embedded in-memory databases are isolated per driver object.
+my $isolated = $driver eq any('SQLite', 'DuckDB')
+    && (%connection<database> // ':memory:') eq ':memory:';
+populate() unless $isolated;
 my @readers = (^8).map({
     start {
         CATCH {
@@ -78,7 +80,7 @@ my @readers = (^8).map({
             }
         }
         my $*RED-DB = database $driver, |%connection;
-        populate() if $driver eq 'SQLite';
+        populate() if $isolated;
         for ^10 {
             die 'Existing upload was not found'
                 unless ConcurrentUpload.^all.grep(*.filename eq 'foo').so;

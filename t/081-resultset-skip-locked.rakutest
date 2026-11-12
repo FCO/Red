@@ -17,9 +17,14 @@ Foo.^create-table;
 
 Foo.^create: foo => "babaa";
 
-my @rows;
-lives-ok { @rows = Foo.^rs.skip-locked.all }, 'with skip-locked';
+if $driver eq 'DuckDB' {
+    throws-like { Foo.^rs.skip-locked.all }, X::Red::Compiler::Unsupported,
+        reason => /'row-level locking'/, 'unsupported locking is rejected explicitly';
+    is Foo.^all.elems, 1, 'rejected lock leaves ordinary queries and data usable';
+} else {
+    my @rows;
+    lives-ok { @rows = Foo.^rs.skip-locked.all }, 'with skip-locked';
+    is @rows.elems, 1, 'got the right number of rows';
+}
 
-is @rows.elems, 1, "got the right number of rows";
-
-done-testing
+done-testing;

@@ -11,13 +11,40 @@ my @conf                = (%*ENV<RED_DATABASE> // "SQLite").split(" ");
 my $driver              = @conf.shift;
 my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=" { .[0] => val .[1] } } );
 
-schema(Zub, Foo).drop.create;
+if $driver eq 'DuckDB' {
+    throws-like { schema(Zub, Foo).create }, X::Red::Compiler::Unsupported,
+        reason => /'Cyclic foreign keys'/, 'unsupported cyclic DDL is rejected';
+    is-deeply $*RED-DB.schema-reader.tables-names.Array, [],
+        'cyclic schema rejection leaves no partially created tables';
 
-my $zub = Zub.^create;
-my $one = $zub.foos.create( bar => "one" );
-my $two = $zub.foos.create( bar => "two" );
-$zub.default-foo = $one;
-$zub.^save;
+    # A parent/child relationship is enough to exercise pretty printing without
+    # requiring a second, reverse database FK. Both navigation directions remain.
+    model PrettyChild { ... }
+    model PrettyParent {
+        has Int $.id is serial;
+        has PrettyChild @.children is relationship({ .parent-id });
+    }
+    model PrettyChild {
+        has Int $.id is serial;
+        has Str $.bar is column;
+        has Int $.parent-id is referencing(*.id, :model<PrettyParent>);
+        has PrettyParent $.parent is relationship({ .parent-id });
+    }
+    schema(PrettyChild, PrettyParent).create;
+    my $parent = PrettyParent.^create;
+    my $one = $parent.children.create(:bar<one>);
+    my $two = $parent.children.create(:bar<two>);
+    is $one.parent.id, $parent.id, 'inverse relationship remains available';
+    lives-ok { [$one, $two].raku }, 'pretty prints persisted related objects';
+} else {
+    schema(Zub, Foo).drop.create;
 
-lives-ok { [ $one, $two ].raku }
+    my $zub = Zub.^create;
+    my $one = $zub.foos.create( bar => "one" );
+    my $two = $zub.foos.create( bar => "two" );
+    $zub.default-foo = $one;
+    $zub.^save;
+
+    lives-ok { [ $one, $two ].raku }
+}
 done-testing;

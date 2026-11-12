@@ -24,8 +24,9 @@ my $path = $manager.prepare('initial');
 my $file = $path.add($dialect).add('up/001-schema.sql');
 my $original = $file.slurp;
 $file.spurt($original ~ "\nINSERT INTO red_missing_table VALUES (1);\n");
+my $completed = $dialect eq 'DuckDB' ?? 2 !! 1;
 throws-like { $manager.apply }, X::Red::Migration,
-    reason => /'failed after 1 statements'/, 'reports failing SQL and completed statement count';
+    reason => /'failed after ' $completed ' statements'/, 'reports failing SQL and completed statement count';
 if $dialect eq 'MySQL' {
     is $manager.status[0]<state>, 'failed', 'partial execution is visible in status';
     is Red::Migration::Applied.^all.head.completed-statements, 1, 'partial progress is durable';

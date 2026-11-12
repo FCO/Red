@@ -54,7 +54,8 @@ DATA
     ok @preview.first(* eq 'rebuild_child', :k) < @preview.first(* eq 'rebuild_parent', :k),
         'preview orders child before parent';
     is RebuildParent.^all.head.name, 'seed', 'cancellation preserves data';
-    $db.execute('CREATE TABLE external_reset (id INTEGER PRIMARY KEY, parent_id INTEGER, '
+    my $parent-type = $dialect eq 'DuckDB' ?? 'BIGINT' !! 'INTEGER';
+    $db.execute('CREATE TABLE external_reset (id INTEGER PRIMARY KEY, parent_id ' ~ $parent-type ~ ', '
         ~ 'FOREIGN KEY (parent_id) REFERENCES rebuild_parent(id))');
     throws-like { $manager.drop-tables(:connection<selected>) }, X::Red::Migration,
         reason => /'Unmanaged table external_reset'/, 'unmanaged dependent blocks removal';
@@ -65,16 +66,24 @@ DATA
         ~ ($dialect eq 'SQLite' ?? ", $cycle-reference" !! '') ~ ')');
     $db.execute('CREATE TABLE rebuild_cycle_b (id INTEGER PRIMARY KEY, other_id INTEGER, '
         ~ 'FOREIGN KEY (other_id) REFERENCES rebuild_cycle_a(id))');
-    $db.execute("ALTER TABLE rebuild_cycle_a ADD CONSTRAINT reset_cycle_fk $cycle-reference")
-        unless $dialect eq 'SQLite';
-    my $cyclic = Red::Migration::Manager.new(:config($config.clone(
-        :models[RebuildParent, RebuildChild, RebuildCycleA, RebuildCycleB])));
-    throws-like { $cyclic.drop-tables(:connection<selected>) }, X::Red::Migration,
-        reason => /'Cyclic table dependencies'/, 'cycles are rejected before removal';
-    is RebuildParent.^all.elems, 1, 'cycle rejection preserves existing data';
-    $db.execute('ALTER TABLE rebuild_cycle_a DROP '
-        ~ ($dialect eq 'MySQL' ?? 'FOREIGN KEY' !! 'CONSTRAINT') ~ ' reset_cycle_fk')
-        unless $dialect eq 'SQLite';
+    if $dialect eq 'DuckDB' {
+        throws-like {
+            $db.execute("ALTER TABLE rebuild_cycle_a ADD CONSTRAINT reset_cycle_fk $cycle-reference")
+        }, Exception, message => /'No support for adding FOREIGN_KEY'/,
+            'DuckDB rejects adding a cyclic foreign key';
+        is RebuildParent.^all.elems, 1, 'unsupported cycle creation preserves existing data';
+    } else {
+        $db.execute("ALTER TABLE rebuild_cycle_a ADD CONSTRAINT reset_cycle_fk $cycle-reference")
+            unless $dialect eq 'SQLite';
+        my $cyclic = Red::Migration::Manager.new(:config($config.clone(
+            :models[RebuildParent, RebuildChild, RebuildCycleA, RebuildCycleB])));
+        throws-like { $cyclic.drop-tables(:connection<selected>) }, X::Red::Migration,
+            reason => /'Cyclic table dependencies'/, 'cycles are rejected before removal';
+        is RebuildParent.^all.elems, 1, 'cycle rejection preserves existing data';
+        $db.execute('ALTER TABLE rebuild_cycle_a DROP '
+            ~ ($dialect eq 'MySQL' ?? 'FOREIGN KEY' !! 'CONSTRAINT') ~ ' reset_cycle_fk')
+            unless $dialect eq 'SQLite';
+    }
     $db.execute('DROP TABLE rebuild_cycle_b');
     $db.execute('DROP TABLE rebuild_cycle_a');
     is $manager.drop-tables(:connection<selected>), 5, 'removes both models and all bookkeeping';

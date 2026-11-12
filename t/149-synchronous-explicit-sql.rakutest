@@ -43,6 +43,7 @@ INSERT INTO explicit_copy (id, value) SELECT id, CAST(value AS INTEGER) + 1 FROM
 DROP TABLE explicit_conversion;
 ALTER TABLE explicit_copy RENAME TO explicit_conversion;
 SQL
+        when 'DuckDB' { 'ALTER TABLE explicit_conversion ALTER COLUMN value TYPE BIGINT USING (CAST(value AS BIGINT) + 1);' }
         when 'Pg' { 'ALTER TABLE explicit_conversion ALTER COLUMN value TYPE integer USING (value::integer + 1);' }
         when 'MySQL' { 'UPDATE explicit_conversion SET value = CAST(value AS SIGNED) + 1; ALTER TABLE explicit_conversion MODIFY COLUMN value integer NULL;' }
     };

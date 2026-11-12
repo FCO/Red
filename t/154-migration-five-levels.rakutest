@@ -19,6 +19,7 @@ my $repository-path = $root.add('repository');
 my $repository = CompUnit::Repository::Installation.new(:prefix($repository-path));
 my $marker = $root.add('unexpected-module-load');
 my Bool $consumer-phase = False;
+my $*MIGRATION-PARENT-DB;
 # zef tests through a staging repository, rather than a filesystem lib directory.
 # Keep its full path-spec so children use the same distribution as this process.
 my @libraries = $*REPO.repo-chain.grep({
@@ -30,6 +31,11 @@ my @identities;
 
 sub cli(IO::Path $project, Str $command, *@arguments, IO::Path :$model-lib,
         IO::Path :$context, IO::Path :$installed = $repository-path) {
+    # DuckDB permits one writer process. Relinquish the parent file handle
+    # for each CLI process, then reopen the same driver for in-process checks.
+    my $parent = $*MIGRATION-PARENT-DB;
+    if $parent.defined { $parent.close; $parent.dbh.close }
+    LEAVE $parent.reopen if $parent.defined;
     temp %*ENV<RED_MIGRATION_TEST> = $context.defined ?? $context.Str !! '';
     temp %*ENV<RED_CHAIN_MODULE_MARKER> = $consumer-phase && !$model-lib.defined
         ?? $marker.Str !! '';
@@ -143,6 +149,7 @@ sub exercise-data($db) {
 }
 
 temporary-database($driver, %server, -> $db, $context, %parameters {
+    my $*MIGRATION-PARENT-DB = $driver eq 'DuckDB' ?? $db !! Nil;
     is cli($application, 'import', "--project=$application", :$context),
         '10 migrations imported; review before applying', 'leaf dependency discovers all five levels';
     my $manager = Red::Migration::Manager.new(config => Red::Migration::Configuration.new(
@@ -206,6 +213,7 @@ $orphan.add('META6.json').spurt(to-json(%(depends =>
     ['Red-Migration-Chain-App:auth<zef:red-chain-test>:ver<1>'])));
 configuration($orphan);
 temporary-database($driver, %server, -> $db, $context, %parameters {
+    my $*MIGRATION-PARENT-DB = $driver eq 'DuckDB' ?? $db !! Nil;
     is cli($orphan, 'adopt', '--dependency=Red-Migration-Chain-App:auth<zef:red-chain-test>',
         "--project=$orphan", :$context, :installed($orphan-repository)),
         '5 tables adopted', 'adopts republished package after all five original distributions were removed';

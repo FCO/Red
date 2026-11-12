@@ -64,6 +64,15 @@ my $*RED-DB = database $driver, |%(@conf.map: {
     do given .split('=') { .[0] => val .[1] }
 });
 my $*RED-DEBUG = $_ with %*ENV<RED_DEBUG>;
+
+my Bool $supports-savepoints = $*RED-DB.?supports-savepoints // True;
+sub savepoint-test(Str $name, &body) {
+    subtest $name, sub {
+        if $supports-savepoints { body() }
+        else { plan :skip-all('Driver explicitly does not support native savepoints') }
+    }
+}
+
 my $schema = schema(
     NamedParent, NamedChild, TypedParent, TypedChild, ColumnChild, KeyParent, KeyChild
 );
@@ -172,7 +181,7 @@ subtest 'Failed FK updates roll back database and source state', {
     is NamedChild.^load($child.id).label, 'child', 'Other updated columns were rolled back';
 };
 
-subtest 'Caught failures use savepoints and leave outer transactions usable', {
+savepoint-test 'Caught failures use savepoints and leave outer transactions usable', {
     my $child = NamedChild.^create;
     my $count = NamedParent.^all.elems;
     red-do :transaction, {
@@ -187,7 +196,7 @@ subtest 'Caught failures use savepoints and leave outer transactions usable', {
     is NamedChild.^load($child.id).parent.name, 'after', 'Successful retry saved the FK';
 };
 
-subtest 'Outer rollback undoes successful relationship creation', {
+savepoint-test 'Outer rollback undoes successful relationship creation', {
     my $count = NamedChild.^all.elems;
     throws-like {
         red-do :transaction, {
@@ -199,7 +208,22 @@ subtest 'Outer rollback undoes successful relationship creation', {
     is NamedChild.^all.elems, $count, 'Related row participates in the outer transaction';
 };
 
-subtest 'Creation requires a persisted source', {
+unless $supports-savepoints {
+    subtest 'Nested relationship creation rejects unsupported savepoints before writes', {
+        my $child = NamedChild.^create;
+        my $count = NamedParent.^all.elems;
+        red-do :transaction, {
+            NamedParent.^create: :name<outer-before>;
+            throws-like { $child.parent.^create }, X::Red::Compiler::Unsupported;
+            is NamedParent.^all.elems, $count + 1, 'rejected operation inserts no related row';
+            nok $child.parent-id.defined, 'rejected operation leaves source FK unchanged';
+            nok NamedChild.^load($child.id).parent-id.defined, 'persisted FK remains unchanged';
+        };
+        is NamedParent.^all.elems, $count + 1, 'outer transaction remains able to commit';
+    };
+}
+
+subtest 'Creation requires a persisted source' , {
     throws-like { NamedChild.new.parent.^create }, X::Red::RelationshipCreate;
     throws-like { NamedParent.new.child.^create }, X::Red::RelationshipCreate;
 };

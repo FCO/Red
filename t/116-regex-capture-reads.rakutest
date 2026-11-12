@@ -49,7 +49,7 @@ my @queries =
     -> { CaptureReadRow.^all.grep({ if .ble ~~ /^ ('bla ' \w+)/ { $0 eq 'bla ble' } }) },
     -> { CaptureReadRow.^all.grep({ .ble ~~ /^ ('bla ' \w+)/ ?? $0 eq 'bla ble' !! False }) };
 for @queries.kv -> $index, &query {
-    if $backend eq 'Pg' || ($backend eq 'MySQL' && $index == any(1, 2, 3)) {
+    if $backend eq 'Pg' || ($backend eq any(<MySQL DuckDB>) && $index == any(1, 2, 3)) {
         is-deeply query().map(*.ble).Array, ['bla ble'], "Guarded capture query $index executes in SQL";
     } else {
         my $*RED-FALLBACK = True;

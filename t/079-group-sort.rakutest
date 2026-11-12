@@ -1,7 +1,9 @@
 use Test;
 use Red;
 
-plan :skip-all("Different driver setted ($_)") with %*ENV<RED_DATABASE>;
+my $configured-driver = (%*ENV<RED_DATABASE> // 'SQLite').split(' ').head;
+plan :skip-all("Group-sort is not validated for $configured-driver")
+    unless $configured-driver eq any('SQLite', 'DuckDB');
 model TestModel {
     has Str $.name is column;
     has Int $.count is column;
@@ -16,9 +18,15 @@ my $*RED-DB             = database $driver, |%( @conf.map: { do given .split: "=
 schema(TestModel).drop;
 TestModel.^create-table;
 
-# TODO: fix: sort column should be on group by as well on Pg
+TestModel.^create(:name<one>, :count(3));
+TestModel.^create(:name<two>, :count(1));
+TestModel.^create(:name<one>, :count(2));
+
+# Bag aggregates group membership; ordering applies to rows within each group.
 my $b = TestModel.^all.sort(*.count).classify(*.name).Bag;
 
-pass('sort + classify should produce correct SQL');
+is-deeply $b, bag(<one one two>), 'sort + classify preserves group counts';
+is-deeply TestModel.^all.sort(*.count).classify(*.name)<one>.map(*.count).Array,
+    [2, 3], 'group members retain explicit ordering';
 
 done-testing;
