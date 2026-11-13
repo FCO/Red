@@ -20,7 +20,7 @@ method unsupported($node) {
         :reason("Unsupported SQL regex syntax: {$node.^name}")).throw
 }
 
-method translate($quoted, Str:D :$dialect = 'Pg' --> Str:D) {
+method translate($quoted, Str:D :$dialect! --> Str:D) {
     self.compile($quoted).render(:$dialect)
 }
 

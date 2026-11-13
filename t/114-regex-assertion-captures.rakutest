@@ -64,12 +64,6 @@ subtest 'Lookaround scopes do not export their captures' => {
     }
 };
 
-subtest 'Backreferences do not acquire a fictitious bounded lookbehind width' => {
-    my $regex = Red::Compiler::Regex.new.compile(
-        q[/aa <?after [(a) $0]>/].AST.statements[0].expression);
-    throws-like { $regex.render(:dialect<MySQL>) }, X::Red::Compiler::Unsupported,
-        :fatal(*.so), 'MySQL lookbehind remains subject to its native width restrictions';
-};
 
 model AssertionCaptureRow {
     has Int $.id is serial;

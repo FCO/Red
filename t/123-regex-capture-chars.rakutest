@@ -36,7 +36,7 @@ for @whole.kv -> $index, $case {
             "Whole capture character count $index uses native SQL";
     } else {
         throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported,
-            :fatal(*.so), :reason(*.contains('whole regex text')),
+            :fatal(*.so), :reason(*.contains('Regex capture text is unsupported')),
             'SQLite reports its text extraction limit explicitly';
     }
 }
@@ -52,7 +52,7 @@ for @scalar.kv -> $index, $case {
             "Scalar capture character count $index uses native SQL";
     } else {
         throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported,
-            :fatal(*.so), :reason(*.contains('only implemented for PostgreSQL')),
+            :fatal(*.so), :reason(*.contains('Regex capture text is unsupported')),
             'Scalar character counts retain the backend extraction restriction';
     }
 }

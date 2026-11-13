@@ -1,0 +1,18 @@
+use Test;
+use lib 't/lib';
+use Red::Regex;
+use Red::Driver::SQLite;
+
+my $regex = Red::Regex.new(:tree(('literal', 'delegated').List));
+is $regex.render(:dialect<Contract>), 'delegated',
+    'A driver unknown to core owns regex rendering';
+is-deeply $regex.render-info(:dialect<Contract>)<groups>, Map.new,
+    'Renderer metadata is returned unchanged';
+ok !Red::Regex.^can('pg-repeat'), 'Backend-only lowering is absent from core';
+is +Red::Driver::SQLite.inflate(1.5e0, :to(Duration)), 1.5e0,
+    'Numeric duration construction preserves fractional seconds';
+is +Red::Driver::SQLite.inflate(2, :to(Duration)), 2,
+    'Integer duration construction preserves seconds';
+is +Red::Driver::SQLite.inflate('123', :to(Duration)), 123,
+    'Text duration construction preserves its numeric value';
+done-testing;

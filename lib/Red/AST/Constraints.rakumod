@@ -21,15 +21,3 @@ class Red::AST::Check is Red::AST::Constraint {
     has Red::AST $.expression is required;
     method args { $!expression }
 }
-
-#| A PostgreSQL exclusion constraint with ordered expression/operator pairs.
-class Red::AST::Exclude is Red::AST::Constraint {
-    has Str $.name is required;
-    has Str $.driver = '';
-    has Str $.using = 'gist';
-    has Red::AST @.keys;
-    has Str @.operators;
-    has Str @.opclasses;
-    has Red::AST $.predicate;
-    method args { |@!keys, |($!predicate if $!predicate.DEFINITE) }
-}

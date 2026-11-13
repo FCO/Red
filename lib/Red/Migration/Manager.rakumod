@@ -24,7 +24,7 @@ use nqp;
 unit class Red::Migration::Manager;
 
 # Delegate pure translation to the driver's type object, without constructing a
-# connection. Driver constructors may connect eagerly (notably MySQL).
+# connection. Driver constructors may connect eagerly.
 #| Provide access to a driver type's pure translation methods while forbidding SQL execution.
 class Translation {
     has Mu $.backend is required;
@@ -61,7 +61,7 @@ method bundle(IO() :$project = '.') {
             my $old-index = $root.add('index.json');
             if $old-index.f {
                 my %old-index = from-json($old-index.slurp);
-                sub inventory($value) {
+                sub inventory($value --> Nil) {
                     if $value ~~ Associative {
                         if $value<path> ~~ Str && $value<path>.starts-with('red/migrations/') {
                             my $relative = $value<path>.substr('red/migrations/'.chars);
@@ -459,7 +459,7 @@ method !execute($db, Str $sql) {
     my $executed = False;
     LEAVE {
         if $executed { $statement.finish-transaction }
-        elsif $db.driver-name.ends-with(any(<SQLite MySQL>)) { try $statement.statement.finish }
+        elsif $db.migration-finish-unexecuted { try $statement.statement.finish }
     }
     $statement.execute;
     $executed = True;
@@ -479,8 +479,13 @@ method !load(IO() $path) {
 }
 #| Resolve a supported SQL backend for offline translation; no target connection is constructed.
 method !driver(Str $name) {
-    self!error("Unsupported migration driver: $name") unless $name eq any(<SQLite Pg MySQL DuckDB>);
-    require ::("Red::Driver::$name");
+    self!error("Invalid migration driver: $name") unless $name ~~ /^ <[A..Za..z_]> <[A..Za..z_0..9]>* $/;
+    try {
+        require ::("Red::Driver::$name");
+        CATCH {
+            default { self!error("Cannot load migration driver $name: {.message}") }
+        }
+    }
     Translation.new(:backend(::("Red::Driver::$name")))
 }
 #| Resolve a configured connection or lazy factory. A disposable test context overrides the normal
@@ -496,7 +501,7 @@ method !connection(Str $name) {
 #| backends.
 method !dialect($db --> Str) {
     my $name = $db.driver-name.split('::').tail;
-    self!error("Unsupported migration connection: $name") unless $name eq any(<SQLite Pg MySQL DuckDB>);
+
     $name
 }
 #| Generate a 26-character migration identifier from the current millisecond timestamp and random
@@ -825,41 +830,14 @@ method !validate(@history, @rows, Bool :$allow-unresolved = False) {
         $gap = True unless $applied;
     }
 }
-#| Acquire the dialect-specific migration lock. SQLite opens a transaction; PostgreSQL and MySQL use
-#| database-scoped advisory or named locks.
+#| Acquire the lock implemented by the selected driver.
 method !lock($db, Str $dialect, Bool :$read-only = False) {
-    given $dialect {
-        when 'SQLite' {
-            $db.execute('PRAGMA foreign_keys = ON') unless $read-only;
-            my $statement = $db.prepare($read-only ?? 'BEGIN' !! 'BEGIN IMMEDIATE');
-            LEAVE { try $statement.statement.finish }
-            $statement.execute;
-        }
-        when 'DuckDB' {
-            if $read-only { $db.execute('BEGIN') }
-            else {
-                try {
-                    $db.acquire-migration-lock;
-                    CATCH { default { self!error("Cannot acquire DuckDB migration lock: {.message}") } }
-                }
-            }
-        }
-        when 'Pg' {
-            my $row = self!row($db, 'SELECT pg_try_advisory_lock(1380271181) AS acquired');
-            self!error('Another migration executor holds the database lock') unless $row<acquired>.Str.lc eq any(<1 true t>);
-        }
-        when 'MySQL' {
-            my $row = self!row($db, "SELECT GET_LOCK(CONCAT('red_migrations:', SHA1(DATABASE())), 0) AS acquired");
-            self!error('Another migration executor holds the database lock') unless $row<acquired>.Str.lc eq any(<1 true t>);
-        }
-    }
+    $db.migration-lock(:$read-only);
 }
 #| Release native advisory or named migration locks. SQLite transaction completion is handled by the
 #| executor.
 method !unlock($db, Str $dialect) {
-    $db.release-migration-lock if $dialect eq 'DuckDB';
-    self!execute($db, 'SELECT pg_advisory_unlock(1380271181)') if $dialect eq 'Pg';
-    self!execute($db, "SELECT RELEASE_LOCK(CONCAT('red_migrations:', SHA1(DATABASE())))") if $dialect eq 'MySQL';
+    $db.migration-unlock;
 }
 #| Inspect the source and target snapshots before execution and reject unsafe alterations. NULL
 #| checks are deferred until their constraint statement so earlier data updates can run.
@@ -894,23 +872,7 @@ method !validate-alterations($db, Str $dialect, $from, $to,
                 self!error("Cannot make {$table.name}.{$column.name} NOT NULL: existing NULL values")
                     if $row<red_nulls>;
             }
-            if $dialect eq 'MySQL' && ($before.normalized-type ne $column.normalized-type
-                    || $before.nullable != $column.nullable) {
-                my $row = self!row($db, q:to/SQL/, $table.name, $column.name);
-                    SELECT c.COLUMN_DEFAULT AS column_default, c.EXTRA AS extra,
-                           c.COLUMN_COMMENT AS comment, c.COLLATION_NAME AS collation_name,
-                           t.TABLE_COLLATION AS table_collation
-                    FROM information_schema.COLUMNS c
-                    JOIN information_schema.TABLES t
-                      ON t.TABLE_SCHEMA = c.TABLE_SCHEMA AND t.TABLE_NAME = c.TABLE_NAME
-                    WHERE c.TABLE_SCHEMA = DATABASE() AND c.TABLE_NAME = ? AND c.COLUMN_NAME = ?
-                    SQL
-                self!error("MySQL alteration would lose unmanaged metadata: {$table.name}.{$column.name}")
-                    if !$row || $row<column_default>.defined || ($row<extra> // '').Str.chars
-                        || ($row<comment> // '').Str.chars
-                        || ($row<collation_name>.defined
-                            && $row<collation_name> ne $row<table_collation>);
-            }
+            $db.migration-validate-column($table, $before, $column);
         }
     }
 }
@@ -920,14 +882,11 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
             Bool :$report = False, Str :$to, :$database, Bool :$already-locked = False) {
     self!error('Run migrations outside an existing Red transaction') if CALLERS::<$*RED-TRANSACTION-RUNNING>;
     my $locked = False;
-    my $pg-open = False;
+    my $ddl-transaction-open = False;
     my $db = $database // self!connection($connection);
     my $dialect = self!dialect($db);
     my $session;
-    if $dialect eq 'Pg' && $db.dbh.^name eq 'DB::Pg' {
-        $session = $db.dbh.db;
-        $db = $db.new-connection($session);
-    }
+    ($db, $session) = $db.migration-session;
     LEAVE $session.finish if $session.defined;
     my $*RED-DB = $db;
     my $*RED-TRANSACTION-RUNNING = True;
@@ -939,10 +898,10 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
         $locked = True;
     }
     LEAVE { self!unlock($db, $dialect) if $locked }
-    my $sqlite-open = $dialect eq 'SQLite' || ($dialect eq 'DuckDB' && $inspect);
+    my $lock-transaction-open = $db.migration-lock-transaction || ($db.migration-read-transaction && $inspect);
     CATCH {
         default {
-            try $db.execute('ROLLBACK') if $sqlite-open || $pg-open;
+            try $db.execute('ROLLBACK') if $lock-transaction-open || $ddl-transaction-open;
             .rethrow;
         }
     }
@@ -979,8 +938,8 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
                 %(id => .<id>, name => .<name>, state => 'draft')
             }).Array;
         }
-        $db.execute('COMMIT') if $sqlite-open;
-        $sqlite-open = False;
+        $db.execute('COMMIT') if $lock-transaction-open;
+        $lock-transaction-open = False;
         return $report ?? %report !! @status.Array;
     }
     my @pending = $rollback
@@ -996,9 +955,9 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
         self!error("Rollback is unavailable for {%m<id>}: {%m<drivers>{$dialect}<down-reason>}")
             if $rollback && !%m<drivers>{$dialect}<reversible>;
         self!preflight($db, $dialect, %m, @history, $rollback);
-        my $transaction = $dialect eq any(<Pg DuckDB>);
+        my $transaction = $db.migration-transactional-ddl;
         $db.execute('BEGIN') if $transaction;
-        $pg-open = $transaction;
+        $ddl-transaction-open = $transaction;
         my $row = @rows.first(*.id eq %m<id>);
         my %values = id => %m<id>, predecessor => %m<predecessor>,
             up-checksum => %m<up-checksum>, down-checksum => %m<down-checksum>,
@@ -1053,7 +1012,7 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
                     self!validate-alterations($db, $dialect, $actual, $target, :statement($sql));
                 }
                 my $rebuilt = False;
-                if $dialect eq 'DuckDB' && !%m<imported> {
+                if $db.migration-rebuild-nullability && !%m<imported> {
                     my $target = Red::Migration::Snapshot.load(%m<path>.add("$dialect/schema.rakuconf"));
                     for $target.tables -> $table {
                         for $table.columns.grep({ !.nullable }) -> $column {
@@ -1071,7 +1030,7 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
                 $file-record.completed-statements = %instruction<statement>;
                 $file-record.state = %instruction<statement> == %totals{$file-name} ?? 'applied' !! 'running';
                 $file-record.^save;
-                if $dialect eq 'MySQL' {
+                if $db.migration-nontransactional-ddl {
                     $row.completed-statements = $completed; $row.^save;
                 }
             }
@@ -1081,13 +1040,13 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
             else { $row.applied-at = DateTime.now.Str }
             $row.^save;
             $db.execute('COMMIT') if $transaction;
-            $pg-open = False;
+            $ddl-transaction-open = False;
             CATCH {
                 default {
                     my $reason = .message;
                     try $db.execute('ROLLBACK') if $transaction;
-                    $pg-open = False;
-                    if $dialect eq 'MySQL' {
+                    $ddl-transaction-open = False;
+                    if $db.migration-nontransactional-ddl {
                         if $file-record.defined { $file-record.state = 'failed'; $file-record.^save }
                         $row.state = 'failed';
                         $row.completed-statements = $completed;
@@ -1098,11 +1057,11 @@ method !run(Str $connection, Bool :$rollback = False, Bool :$inspect = False,
             }
         }
     }
-    $db.execute('COMMIT') if $sqlite-open;
-    $sqlite-open = False;
+    $db.execute('COMMIT') if $lock-transaction-open;
+    $lock-transaction-open = False;
     @pending.elems
 }
-#| Reconcile a manually repaired MySQL execution without executing migration SQL.
+#| Reconcile a manually repaired nontransactional execution without executing migration SQL.
 method resolve(Str $id, Str :$as!, Str :$reason!, Str :$connection = 'default' --> Hash) {
     CATCH {
         when X::Red::Migration { .rethrow }
@@ -1117,16 +1076,16 @@ method resolve(Str $id, Str :$as!, Str :$reason!, Str :$connection = 'default' -
             if self!entries.grep({ (.<state> // '') eq 'draft' });
         my $locked = False;
         my $db = self!connection($connection);
-        self!error('Explicit reconciliation is supported only for MySQL')
-            unless self!dialect($db) eq 'MySQL';
+        self!error('Explicit reconciliation requires nontransactional DDL')
+            unless $db.migration-nontransactional-ddl;
         my $*RED-DB = $db;
         my $*RED-TRANSACTION-RUNNING = True;
-        my @history = self!scripts(self!history, 'MySQL');
+        my @history = self!scripts(self!history, self!dialect($db));
         my $index = @history.first(*.<id> eq $id, :k);
         self!error("Unknown migration: $id") unless $index.defined;
         my %migration = @history[$index];
-        self!lock($db, 'MySQL');
-        LEAVE self!unlock($db, 'MySQL') if $locked;
+        self!lock($db, self!dialect($db));
+        LEAVE self!unlock($db, self!dialect($db)) if $locked;
         $locked = True;
         my @tables = $db.schema-reader.tables-names.List;
         self!error('Migration execution records are not initialized')
@@ -1160,7 +1119,7 @@ method resolve(Str $id, Str :$as!, Str :$reason!, Str :$connection = 'default' -
         self!error('Invalid observed migration statement count')
             unless 0 <= $row.completed-statements <= %migration{"{$row.direction}-instructions"}.elems;
         my @prefix = @history[^($index + ($as eq 'applied' ?? 1 !! 0))];
-        my $verification = self!verify-prefix($db, 'MySQL', @prefix);
+        my $verification = self!verify-prefix($db, self!dialect($db), @prefix);
         my %before = <id predecessor up-checksum down-checksum state direction applied-at reverted-at completed-statements>
             .map({ $_ => $row."$_"() });
         my @before-files = @files.map(-> $file {
@@ -1226,10 +1185,7 @@ method !rebuild(Str $connection, Callable :$confirm, Bool :$reset = False) {
     my $db = self!connection($connection);
     my $dialect = self!dialect($db);
     my $session;
-    if $dialect eq 'Pg' && $db.dbh.^name eq 'DB::Pg' {
-        $session = $db.dbh.db;
-        $db = $db.new-connection($session);
-    }
+    ($db, $session) = $db.migration-session;
     LEAVE $session.finish if $session.defined;
     my $*RED-DB = $db;
     my $locked = False;
@@ -1267,7 +1223,7 @@ method !rebuild(Str $connection, Callable :$confirm, Bool :$reset = False) {
     %wanted{$_} = True for <red_migrations red_migration_files red_migration_resolutions>;
     self!lock($db, $dialect);
     $locked = True;
-    $transaction-open = $dialect eq 'SQLite';
+    $transaction-open = $db.migration-lock-transaction;
     my @existing = $db.schema-reader.tables-names.grep({ .defined && $_ ne 'sqlite_sequence' }).List;
     my %dependencies;
     for @existing -> $table {
@@ -1297,21 +1253,14 @@ method !rebuild(Str $connection, Callable :$confirm, Bool :$reset = False) {
         |@tables.grep({ %bookkeeping{$_}:exists }));
     self!error('Cancelled; no tables were removed')
         if $confirm.defined && !$confirm(@tables.Array);
-    if $dialect eq any(<Pg DuckDB>) {
+    if $db.migration-transactional-ddl {
         self!execute($db, 'BEGIN');
         $transaction-open = True;
     }
-    my @sequences;
-    if $dialect eq 'DuckDB' {
-        for @tables -> $table {
-            for $db.schema-reader.table-definition($table).columns.grep(*.auto-increment) -> $column {
-                @sequences.push: 'red_seq_' ~ $table ~ '_' ~ $column.name;
-            }
-        }
-    }
+    my @extra = $db.migration-extra-drop-statements(@tables);
     self!execute($db, 'DROP TABLE ' ~ $db.table-name-wrapper($_)) for @tables;
-    self!execute($db, 'DROP SEQUENCE IF EXISTS ' ~ $db.table-name-wrapper($_)) for @sequences;
-    unless $reset && $dialect eq 'SQLite' {
+    self!execute($db, $_) for @extra;
+    unless $reset && $db.migration-lock-transaction {
         self!execute($db, 'COMMIT') if $transaction-open;
         $transaction-open = False;
     }
@@ -1347,24 +1296,7 @@ method plan(Str :$connection = 'default', Bool :$allow-destructive = True, Bool 
     for $target.tables -> $table {
         next unless $table.name eq any(@existing);
         my $found = $db.schema-reader.table-definition($table.name);
-        if $dialect eq 'Pg' {
-            my %automatic;
-            my $statement = $db.execute(q:to/SQL/, $table.name);
-                SELECT column_name, column_default, is_identity
-                FROM information_schema.columns
-                WHERE table_schema = current_schema() AND table_name = $1
-                SQL
-            loop {
-                my $row := $statement.row;
-                last if $row =:= IterationEnd || !$row;
-                %automatic{$row<column_name>} = $row<is_identity> eq 'YES'
-                    || ($row<column_default> // '').starts-with('nextval(');
-            }
-            $statement.finish-transaction;
-            $found = $found.clone(:columns($found.columns.map({
-                .clone(:auto-increment(so %automatic{.name}))
-            }).Array));
-        }
+        $found = $db.migration-normalize-table($found);
         # Index catalog APIs normalize expressions and driver-specific syntax.
         my $model = self!models.first(*.^table eq $table.name);
         my @catalog = $db.indexes-for-table($table.name);
@@ -1377,7 +1309,7 @@ method plan(Str :$connection = 'default', Bool :$allow-destructive = True, Bool 
                 @indexes.push: $table.indexes.first(*.<name> eq $index.name);
             }
         }
-        self!error("Existing CHECK/EXCLUDE constraints require an explicit migration: {$table.name}")
+        self!error("Existing schema constraints require an explicit migration: {$table.name}")
             if $table.checks && !$validation;
         @tables.push: $found.clone(:@indexes,
             :checks($validation ?? $table.checks !! $found.checks),
@@ -1396,10 +1328,7 @@ method sync(Str :$connection = 'default', Bool :$allow-destructive = False) {
     self!error('Run synchronization outside an existing Red transaction') if $*RED-TRANSACTION-RUNNING;
     my $db = self!connection($connection);
     my $session;
-    if self!dialect($db) eq 'Pg' && $db.dbh.^name eq 'DB::Pg' {
-        $session = $db.dbh.db;
-        $db = $db.new-connection($session);
-    }
+    ($db, $session) = $db.migration-session;
     LEAVE $session.finish if $session.defined;
     my $*RED-DB = $db;
     # Share one connection even when its configuration uses a lazy factory.
@@ -1410,8 +1339,8 @@ method sync(Str :$connection = 'default', Bool :$allow-destructive = False) {
     self!lock($db, $dialect);
     $locked = True;
     LEAVE { self!unlock($db, $dialect) if $locked }
-    my $transaction = $dialect ne 'MySQL';
-    $db.execute('BEGIN') if $dialect eq any(<Pg DuckDB>);
+    my $transaction = ($db.migration-lock-transaction || $db.migration-transactional-ddl);
+    $db.execute('BEGIN') if $db.migration-transactional-ddl;
     CATCH {
         default {
             try $db.execute('ROLLBACK') if $transaction;
@@ -1477,11 +1406,10 @@ method test(Str :$driver, :@command = [], Bool :$keep = False, Callable :$fixtur
                         .grep(*.chars).unique.join(',');
                     %*ENV<RED_MIGRATION_TEST> = $context.Str;
                     %*ENV<RED_DATABASE> = ($dialect, |%parameters.pairs.map({ .key ~ '=' ~ .value })).join(' ');
-                    # DuckDB permits one writer process per database. Release the
-                    # parent handle while the validation child owns the file.
-                    if $dialect eq 'DuckDB' { $db.close; $db.dbh.close }
+                    # Release exclusive file handles before running the validation child.
+                    $db.migration-close if $db.migration-release-for-child;
                     my $child = run |@command;
-                    if $dialect eq 'DuckDB' {
+                    if $db.migration-release-for-child {
                         $reopened = database($dialect, |%parameters);
                         $manager = self.WHAT.new(:config(
                             $!config.clone(:connections{ default => $reopened })));

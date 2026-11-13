@@ -227,7 +227,25 @@ method as(Str $name, :$nullable = True) {
     self.clone: attr-name => $name, :$name, id => False, :$nullable, attr => Attribute
 }
 
+#| Normalize portable generated primary keys before attributes and columns are composed.
+method normalize-column-options(%options --> Hash:D) {
+    my %normalized = %options;
+    if (%normalized<type> // '').lc eq 'serial' {
+        %normalized<type>:delete;
+        %normalized<id> = True;
+        %normalized<auto-increment> = True;
+        %normalized<nullable> = False;
+    }
+    %normalized.Hash
+}
+
 submethod TWEAK(:$unique) {
+    if $!type.defined && $!type.lc eq 'serial' {
+        $!type = Str;
+        $!id = True;
+        $!auto-increment = True;
+        $!nullable = False;
+    }
     if $!attr.type.^find_method: "red-type-db-methods" {
         self does $!attr.type.red-type-db-methods
     }

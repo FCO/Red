@@ -96,28 +96,13 @@ class X::Red::Driver is X::Red {
     has Str $.driver = $*RED-DB.^name;
 }
 
-class X::Red::Driver::Pg::NotInstalled is X::Red::Driver {
+class X::Red::Driver::NotInstalled is X::Red::Driver {
     has Exception $.cause is required;
 
     method message {
-        qq:to/END/
-        PostgreSQL support is provided by the separate Red::Driver::Pg distribution.
-        Red could not load Red::Driver::Pg while evaluating database "Pg".
-        Since the Pg driver was removed from the core Red distribution, upgrading
-        Red does not install or update PostgreSQL support automatically.
-
-        To fix this, install the driver with:
-
-            zef install Red::Driver::Pg
-
-        Then restart your Raku program and run database "Pg" again. Existing
-        database "Pg" calls do not need to change after the driver is installed.
-        If the driver is already installed, check its dependencies and the original
-        loading error below.
-
-        Original loading error:
-        {$!cause.message}
-        END
+        "Red could not load {$.driver}. Install it with: zef install {$.driver}. "
+            ~ "Existing database calls do not need to change. "
+            ~ "If installed, check its dependencies. Original loading error: {$!cause.message}"
     }
 }
 

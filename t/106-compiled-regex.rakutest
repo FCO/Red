@@ -25,24 +25,6 @@ unless HAS-RAKUAST {
     exit;
 }
 
-sub pattern(Str $source) {
-    Red::Compiler::Regex.new.translate($source.AST.statements[0].expression)
-}
-
-is pattern(q[/^ 'Ana' $/]), '\AAna\Z', 'String anchors';
-is pattern(q[/:i a/]), '(?i)a', 'Leading ignorecase';
-is pattern(q[rx:i/a/]), '(?i)a', 'Quoted regex adverb';
-is pattern(q[/\d \w \s ./]), '[[:digit:]][[:alnum:]_][[:space:]].', 'Common classes';
-is pattern(q[/[a|b]+/]), '(?:(?:(?:a|b)))+', 'Group, alternatives and repetition';
-is pattern(q[/a ** 2..4/]), '(?:a){2,4}', 'Bounded repetition';
-is pattern(q[/a ** 3/]), '(?:a){3,3}', 'Exact repetition';
-is pattern(q[/<[a..c _]>/]), '(?:a|b|c|_)', 'Explicit ASCII class';
-is pattern(q[/'a.b$'/]), 'a\.b\$', 'Regex metacharacters in literals are escaped';
-for q[/a { die 'must not execute' }/], q[/<{ 'a' }>/], q[/a :i b/], q[/a+:/], q[rx:r/a+/] -> $source {
-    throws-like { pattern($source) }, X::Red::Compiler::Unsupported,
-        "Reject unsupported syntax: $source";
-}
-
 model CompiledRegexRow {
     has UInt $.id is serial;
     has Str $.name is column;
@@ -60,7 +42,7 @@ model CompiledRegexRow {
     };
     my $sqlite = Red::Driver::SQLite.CREATE;
     my $ast = Red::AST::RegexMatch.checked(
-        ast-value('Ana'), pattern(q[/^ 'Ana'/]));
+        ast-value('Ana'), '\AAna');
     my $sql = do { try $pg.translate($ast) } if $pg;
     if $sql {
         ok $sql.key.contains(' ~ '), 'PostgreSQL operator';

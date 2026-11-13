@@ -110,29 +110,8 @@ sub export-source($*RED-DB, @models --> Str) {
     @source.join("\n") ~ "\n"
 }
 
-# PostgreSQL sequences do not advance for explicit IDs. SQLite and MySQL do so natively.
 sub advance-sequences($db, @models) {
-    return unless $db.driver-name.split('::').tail eq 'Pg';
-    for @models -> $model {
-        for $model.^columns.grep(*.column.auto-increment) -> $attribute {
-            my $column = $attribute.column;
-            my $sequence = $db.execute('SELECT pg_get_serial_sequence($1, $2) AS sequence',
-                $db.table-name-wrapper($model.^table), $column.name).row<sequence>;
-            next unless $sequence.defined;
-            my $maximum = $db.execute('SELECT MAX(' ~ $db.table-name-wrapper($column.name)
-                ~ ') AS maximum FROM ' ~ $db.table-name-wrapper($model.^table)).row<maximum>;
-            next unless $maximum.defined;
-            my %identifier = $db.execute('SELECT n.nspname AS schema_name, c.relname AS sequence_name '
-                ~ 'FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace '
-                ~ 'WHERE c.oid = CAST($1 AS regclass)', $sequence).row;
-            my $qualified = <schema_name sequence_name>.map({
-                $db.table-name-wrapper(%identifier{$_})
-            }).join('.');
-            my $current = $db.execute('SELECT last_value FROM ' ~ $qualified).row<last_value>;
-            $db.execute('SELECT setval(CAST($1 AS regclass), $2, true)', $sequence, $maximum)
-                if $maximum >= $current;
-        }
-    }
+    $db.advance-sequences(@models);
 }
 
 sub apply-file($*RED-DB, Str $path, @models) {

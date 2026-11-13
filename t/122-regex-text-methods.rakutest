@@ -45,7 +45,7 @@ for @scalar.kv -> $index, $case {
             "Scalar text operation $index executes in SQL";
     } else {
         throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported,
-            :fatal(*.so), :reason(*.contains('only implemented for PostgreSQL')),
+            :fatal(*.so), :reason(*.contains('Regex capture text is unsupported')),
             'Scalar extraction retains its explicit backend restriction';
     }
 }

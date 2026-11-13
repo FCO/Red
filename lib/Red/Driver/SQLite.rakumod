@@ -1,3 +1,4 @@
+use X::Red::Migration;
 use DBIish;
 use Red::AST::RegexMatch;
 use Red::Driver::SQLite::Regex;
@@ -130,7 +131,7 @@ method check-regex-support {
 multi method translate(Red::AST::RegexMatch $_, $context?) {
     self.check-regex-support;
     X::Red::Compiler::Unsupported.new(:fatal,
-        :reason('SQLite requires a structured regex, not a PostgreSQL pattern')).throw
+        :reason('SQLite requires a structured regex, not a rendered native pattern')).throw
         unless .pattern ~~ Red::Regex;
     my $translated = self.translate(.value, .value ~~ Red::AST::Value ?? 'bind' !! $context);
     my $subject = "CAST({$translated.key} AS TEXT)" => $translated.value;
@@ -408,4 +409,36 @@ multi method map-exception(X::DBDish::DBError $x where { .?code == 1 and .native
             :driver<SQLite>,
             :orig-exception($x),
             :table($<table>.Str)
+}
+
+method database-client(--> Hash) {
+    my $file = $!database // ':memory:';
+    X::Red::Migration.new(:reason(
+        'A separate SQLite client cannot connect to an in-memory database')).throw
+        if $file eq ':memory:' || $file eq '' || $file.starts-with('file:');
+    %(command => ['sqlite3', $file.Str], environment => {})
+}
+
+method migration-auto-column($column, Str $table --> List:D) {
+    ('INTEGER', ' PRIMARY KEY AUTOINCREMENT')
+}
+method migration-finish-unexecuted(--> Bool:D) { True }
+method migration-lock(Bool :$read-only = False) {
+    self.execute('PRAGMA foreign_keys = ON') unless $read-only;
+    my $statement = self.prepare($read-only ?? 'BEGIN' !! 'BEGIN IMMEDIATE');
+    LEAVE { try $statement.statement.finish }
+    $statement.execute;
+}
+method migration-provision(IO::Path $folder, Str $name, %server --> Hash:D) {
+    %(parameters => %(database => $folder.add('test.sqlite').Str), created => False)
+}
+
+method migration-lock-transaction(--> Bool:D) { True }
+method migration-alter-column(Str $table, $before, $column, Str $definition --> Array:D) {
+    self.migration-error("SQLite table reconstruction is not implemented: {$table}.{$column.name}")
+}
+
+method migration-string-literal(Str $value --> Str:D) {
+    my $hex = $value.encode('utf8').map(*.fmt('%02x')).join;
+    "CAST(X'$hex' AS TEXT)"
 }

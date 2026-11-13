@@ -6,7 +6,7 @@ use X::Red::Exceptions;
 
 unit module Red::AST::Native;
 
-#| A PostgreSQL operator, available to queries and DDL without raw SQL values.
+#| A native SQL operator, available to queries and DDL without raw SQL values.
 class Operator does Red::AST {
     has Str $.operator is required;
     has Red::AST $.left is required;
@@ -17,30 +17,12 @@ class Operator does Red::AST {
     method find-column-name { |$!left.find-column-name, |$!right.find-column-name }
 }
 
-#| A PostgreSQL range constructor with SQL expression arguments.
-class Range does Red::AST {
-    has Str $.range-type = 'numrange';
-    has Red::AST @.values;
-    method returns { Str }
-    method args { |@!values }
-    method find-column-name { @!values.map(*.find-column-name).flat }
-}
-
 sub sql-operator(Str:D $operator, $left, $right --> Red::AST) is export {
     X::Red::Index.new(:reason("Unsupported native operator: $operator")).throw
-        unless $operator eq any('@>', '<@', '&&', '~', '~*', '!~', '!~*',
-            '=', '<>', '<', '<=', '>', '>=');
+        unless $operator ~~ /^ <[!%&*+.\/:<=>?@^|~\-]>+ $/
+            && !$operator.contains('--') && !$operator.contains('/*')
+            && !$operator.contains('*/');
     Operator.new(:$operator, :left(ast-value($left)), :right(ast-value($right)))
-}
-
-sub sql-range($lower, $upper, Str :$bounds = '[)', Str :$type = 'numrange' --> Red::AST)
-    is export {
-    X::Red::Index.new(:reason('Invalid PostgreSQL range constructor')).throw
-        unless $type eq any(<numrange int4range int8range tsrange tstzrange daterange>)
-            && $bounds eq any('[)', '[]', '(]', '()');
-    Range.new(:range-type($type), :values[
-        ast-value($lower), ast-value($upper), ast-value($bounds)
-    ])
 }
 
 # These constructors deliberately avoid Boolean optimizations that assume NULL

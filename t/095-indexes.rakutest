@@ -241,8 +241,8 @@ subtest 'adding uniqueness and reporting duplicate existing data', {
 };
 
 subtest 'catalog SQL normalization preserves meaning', {
-    is canonical-index-key('LOWER("email")'), canonical-index-key('lower((email)::text)'),
-        'normalize PostgreSQL implicit text casts';
+    isnt canonical-index-key('LOWER("email")'), canonical-index-key('lower((email)::text)'),
+        'generic normalization preserves backend-specific casts';
     isnt canonical-index-key(q[lower(email) || '::text']),
         canonical-index-key(q[lower(email) || '']), 'preserve cast-like string literals';
     isnt canonical-index-key(q[lower(email) || 'A']),

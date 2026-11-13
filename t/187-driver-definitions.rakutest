@@ -1,0 +1,39 @@
+use Test;
+use Red;
+use Red::Attr::Index;
+use Red::AST::Constraints;
+use Red::AST::DriverExtension;
+use Red::AST::Native;
+use Red::Index;
+use Red::Regex;
+use JSON::Fast;
+
+multi trait_mod:<is>(Attribute $attr, :&custom-constraint! --> Empty) {
+    $attr does Red::Attr::Index;
+    $attr.configure-index(&custom-constraint, :kind<custom>,
+        :constraint-builder(-> $declaration, $model {
+            Red::AST::Check.new(:name<custom_value_check>,
+                :expression(schema-predicate($declaration.index-expression, $model)))
+        }));
+}
+
+model ExtendedDefinition {
+    has Int $.id is serial;
+    has Int $.value is column;
+    has $!positive is custom-constraint{ .value > 0 };
+}
+
+my $*RED-DB = database 'SQLite';
+lives-ok { schema(ExtendedDefinition).create }, 'A driver-defined declaration uses the generic builder';
+lives-ok { ExtendedDefinition.^create(:value(1)) }, 'The extension generates a working constraint';
+dies-ok { ExtendedDefinition.^create(:value(-1)) }, 'The generated constraint is enforced';
+ok !(Red::AST::Native.WHO<Range>:exists), 'Core does not define backend range ASTs';
+ok !(Red::AST.WHO<Exclude>:exists), 'Core does not define backend exclusion ASTs';
+my %provides = from-json('META6.json'.IO.slurp)<provides>;
+nok %provides.keys.grep(/^ 'Red::Driver::' [Pg|MySQL|DuckDB] [ '::' | $ ]/).elems,
+    'Core manifest contains no external driver definitions';
+my $regex = Red::Regex.new(:tree(('literal', 'a').List));
+dies-ok { $regex.render }, 'Rendering requires the caller to select a dialect';
+is $*RED-DB.type-for-sql('serial'), 'UInt',
+    'Serial remains a portable generated-integer abstraction';
+done-testing;

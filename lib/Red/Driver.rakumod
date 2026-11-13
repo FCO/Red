@@ -1,3 +1,5 @@
+use Red::Driver::Migrations;
+use X::Red::Migration;
 use Red::AST;
 use Red::QueryPlan;
 use Red::Column;
@@ -15,7 +17,7 @@ use Red::AST::ReleaseSavepoint;
 =head2 Red::Driver
 
 #| Base role for a Red::Driver::*
-unit role Red::Driver;
+unit role Red::Driver does Red::Driver::Migrations;
 
 has Supplier $!supplier .= new;
 #| Supply of events of that driver
@@ -104,8 +106,8 @@ multi method default-type-for(Red::Column $ --> Str:D)  { ... }
 #| Prepares a DB statement
 multi method prepare(Red::AST $query) {
     note $query if $*RED-DEBUG-AST;
-    do for |self.translate: self.optimize: $query -> Pair \data {
-        my ($sql, @bind) := do given data { .key, .value }
+    do for |self.translate: self.optimize: $query -> Pair:D $data {
+        my ($sql, @bind) := ($data.key, $data.value);
         next unless $sql;
         do unless $*RED-DRY-RUN {
             my $stt = self.prepare: $sql;
@@ -174,3 +176,22 @@ multi method debug($sql, @binds) {
         note "BIND: @binds.raku()";
     }
 }
+
+#| Build the native client invocation for this backend.
+method database-client(--> Hash) {
+    X::Red::Migration.new(:reason('Native database client is unsupported')).throw
+}
+
+#| Synchronize generated identifiers after inserting explicit values.
+method advance-sequences(@models) { Nil }
+
+method normalize-index-expression($ast) { $ast }
+method normalize-index-tokens(@tokens) { @tokens }
+
+#| Release an executed cursor before ending its transaction.
+method finish-statement($statement, Bool :$executed = False) {
+    $statement.?finish if $executed
+}
+
+#| Physical integer spelling for the portable serial column abstraction.
+multi method type-by-name("serial" --> Str:D) { self.default-type-for-type(Int) }

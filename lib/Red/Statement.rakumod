@@ -15,9 +15,8 @@ method guarded-by(Mu:D $guard) {
     $statement
 }
 
-# Finish active DBIish cursors before returning a session or closing a savepoint.
-# Before execute, a Pg statement holds the session itself: do not finish that.
-method finish-transaction { $!statement.?finish if $!executed }
+# Release resources through the driver before closing a transaction scope.
+method finish-transaction { $!driver.finish-statement($!statement, :executed($!executed)) }
 
 # How to execute a query must be implemented
 method stt-exec($, *@) { ... }

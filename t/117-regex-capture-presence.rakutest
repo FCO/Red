@@ -54,7 +54,7 @@ for @queries.kv -> $index, $case {
     } else {
         my $*RED-FALLBACK = True;
         throws-like { $case[0]().elems }, X::Red::Compiler::Unsupported, :fatal(*.so),
-            :reason(*.contains('only implemented for PostgreSQL')),
+            :reason(*.contains('Regex capture text is unsupported')),
             "Backend rejects scalar capture presence $index without row fallback";
     }
 }

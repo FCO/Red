@@ -69,7 +69,7 @@ method load(::?CLASS:U: Distribution:D $distribution --> ::?CLASS) {
         my %sql;
         my %sql-files;
         for %migration<drivers>.kv -> $driver, $directions {
-            reject("Unsupported migration driver: $driver") unless $driver eq any(<SQLite Pg MySQL DuckDB>);
+            reject("Invalid migration driver: $driver") unless $driver ~~ /^ <[A..Za..z_]> <[A..Za..z_0..9]>* $/;
             reject("Invalid SQL metadata: $id/$driver") unless $directions ~~ Associative;
             for <up down> -> $direction {
                 my $definition = $directions{$direction};

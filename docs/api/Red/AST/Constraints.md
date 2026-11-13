@@ -13,8 +13,4 @@ class Red::AST::Check
 
 A named row-level CHECK, optionally selected for one driver.
 
-class Red::AST::Exclude
------------------------
-
-A PostgreSQL exclusion constraint with ordered expression/operator pairs.
-
+Exclusion constraints are provided by `Red::Driver::Pg::Schema`.

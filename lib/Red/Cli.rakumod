@@ -10,44 +10,7 @@ use X::Red::Migration;
 
 #| Build native client arguments without exposing passwords in the process arguments.
 sub database-client($db --> Hash) is export {
-    my $driver = $db.driver-name.split('::').tail;
-    # Drivers currently retain constructor parameters as attributes, including private ones.
-    my %parameters;
-    for $db.^attributes -> $attribute {
-        %parameters{$attribute.name.substr(2)} = $attribute.get_value($db);
-    }
-    my @command;
-    my %environment;
-    given $driver {
-        when 'SQLite' {
-            my $file = %parameters<database> // ':memory:';
-            X::Red::Migration.new(:reason(
-                'A separate SQLite client cannot connect to an in-memory database')).throw
-                if $file eq ':memory:' || $file eq '' || $file.starts-with('file:');
-            @command = 'sqlite3', $file.Str;
-        }
-        when 'Pg' {
-            @command = 'psql';
-            for <host port user dbname password> Z <PGHOST PGPORT PGUSER PGDATABASE PGPASSWORD>
-                    -> ($parameter, $variable) {
-                %environment{$variable} = %parameters{$parameter}.Str
-                    if %parameters{$parameter}.defined;
-            }
-        }
-        when 'MySQL' {
-            @command = 'mysql';
-            for <host port user database> -> $parameter {
-                @command.push("--$parameter=" ~ %parameters{$parameter})
-                    if %parameters{$parameter}.defined;
-            }
-            %environment<MYSQL_PWD> = %parameters<password>.Str
-                if %parameters<password>.defined;
-        }
-        default {
-            X::Red::Migration.new(:reason("Unsupported database client: $driver")).throw;
-        }
-    }
-    %(command => @command.Array, environment => %environment.Hash)
+    $db.database-client
 }
 
 
@@ -167,7 +130,7 @@ multi generate-code(
                     |(:$schema-class with $schema-class)
             ;
             with $schema {
-                $no-use++ if $schema-class
+                $no-use = True if $schema-class
             } else {
                 $fh.close unless $path eq "-";
             }

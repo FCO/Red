@@ -47,7 +47,7 @@ sub scenario($db, $context, %parameters) {
     my $manager = Red::Migration::Manager.new(:$config);
     if $driver ne 'MySQL' {
         throws-like { $manager.resolve('unknown', :as<applied>, :reason<manual>) },
-            X::Red::Migration, reason => /'only for MySQL'/, 'native reconciliation is MySQL-only';
+            X::Red::Migration, reason => /'requires nontransactional DDL'/, 'native reconciliation is MySQL-only';
         ok !('red_migration_resolutions' eq any($db.schema-reader.tables-names.List)),
             'unsupported driver creates no audit table';
         return True;

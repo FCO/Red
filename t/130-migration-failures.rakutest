@@ -38,18 +38,22 @@ if $dialect eq 'MySQL' {
     $file.spurt($original);
     is $manager.apply, 1, 'can retry after repairing an unapplied script';
 }
-is statements(q:to/SQL/).elems, 2, 'PostgreSQL dollar quotes retain embedded semicolons';
-SELECT $tag$a;b$tag$;
+is statements(q:to/SQL/).elems, 2, 'Quoted SQL literals retain embedded semicolons';
+SELECT 'a;b';
 SELECT 'c'';d';
 SQL
 throws-like { statements('CREATE TRIGGER x BEGIN SELECT 1; END;') },
     X::Red::Migration, 'rejects unsupported stored programs before execution';
 throws-like { statements('/*! SET autocommit=1 */ SELECT 1;') },
     X::Red::Migration, 'rejects executable MySQL comments';
-is statements('SELECT 5 # 3;', :dialect<Pg>)[0], 'SELECT 5 # 3',
-    'preserves PostgreSQL hash operators';
-is statements('SELECT 1--1;', :dialect<MySQL>)[0], 'SELECT 1--1',
-    'preserves MySQL adjacent minus operators';
-is statements("# comment;\nSELECT 1;", :dialect<MySQL>).elems, 1,
-    'recognizes MySQL hash comments';
+if $dialect eq 'Pg' {
+    is statements('SELECT 5 # 3;', :$dialect)[0], 'SELECT 5 # 3',
+        'preserves PostgreSQL hash operators';
+}
+if $dialect eq 'MySQL' {
+    is statements('SELECT 1--1;', :$dialect)[0], 'SELECT 1--1',
+        'preserves MySQL adjacent minus operators';
+    is statements("# comment;\nSELECT 1;", :$dialect).elems, 1,
+        'recognizes MySQL hash comments';
+}
 done-testing;

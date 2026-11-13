@@ -19,7 +19,7 @@ sub index-error(Str $reason) is export {
     X::Red::Index.new(:$reason).throw
 }
 
-sub evaluate-index(Callable $expression, $context) {
+sub evaluate-index(Callable $expression, $context) is export {
     CATCH {
         when X::Red::Index { .rethrow }
         default { index-error("Cannot resolve index expression: {.message}") }
@@ -27,7 +27,7 @@ sub evaluate-index(Callable $expression, $context) {
     $expression($context)
 }
 
-sub schema-predicate(Callable $expression, Mu:U $model --> Red::AST) {
+sub schema-predicate(Callable $expression, Mu:U $model --> Red::AST) is export {
     CATCH {
         when X::Red::Index { .rethrow }
         default { index-error("Cannot resolve schema predicate: {.message}") }
@@ -95,23 +95,11 @@ sub index-expression($value, Mu:U $model --> Red::AST) is export {
             }).Array;
         }
     }
-    # PostgreSQL records the implicit conversion of integer constants adjacent
-    # to numeric casts. Emit it explicitly so DDL and catalog identities agree.
-    if $value ~~ Red::AST::Infix {
-        for <left right>, <right left> -> ($side, $other) {
-            my $cast = %changes{$side};
-            my $literal = %changes{$other};
-            if $cast ~~ Red::AST::Cast && $cast.type.lc eq any(<num numeric>)
-                && $literal ~~ Red::AST::Value && $literal.type =:= Int {
-                %changes{$other} = Red::AST::Cast.new($literal, $cast.type);
-            }
-        }
-    }
     $value.clone: |%changes
 }
 
 sub index-name(Str $table, Str $logical, Bool $unique,
-    Str :$suffix = ($unique ?? 'uidx' !! 'idx') --> Str) {
+    Str :$suffix = ($unique ?? 'uidx' !! 'idx') --> Str) is export {
     my $name = "{$table}_{kebab-to-snake-case($logical)}_$suffix";
     # A shared 63-byte bound is portable across the supported databases.
     return $name if $name.encode('utf8').bytes <= 63;
@@ -124,7 +112,7 @@ sub index-name(Str $table, Str $logical, Bool $unique,
     $prefix ~ '_' ~ $hash.fmt('%08x')
 }
 
-sub schema-options($attr, Mu:U $model, Int $count --> Hash) {
+sub schema-options($attr, Mu:U $model, Int $count --> Hash) is export {
     my %options = $attr.schema-options;
     my Str $using = (%options<using> // '').lc;
     my Str $driver = %options<driver> // '';
@@ -155,7 +143,7 @@ sub schema-options($attr, Mu:U $model, Int $count --> Hash) {
     %( :$using, :$driver, :opclasses(@opclasses.Array), :$predicate )
 }
 
-#| Named CHECK and EXCLUDE definitions share expression lowering with indexes.
+#| Named CHECKs and driver extensions share expression lowering with indexes.
 sub model-schema-constraints(Mu:U $model --> Array) is export {
     my $*RED-INTERNAL = True;
     my @constraints;
@@ -163,7 +151,7 @@ sub model-schema-constraints(Mu:U $model --> Array) is export {
         index-error('A schema declaration cannot also be a column') if $attr ~~ Red::Attr::Column;
         my $kind = $attr.index-kind;
         my $name = index-name($model.^table, $attr.name.substr(2), False,
-            :suffix($kind eq 'check' ?? 'check' !! 'excl'));
+            :suffix($kind));
         if $kind eq 'check' {
             my %options = schema-options($attr, $model, 0);
             index-error('CHECK accepts only an expression and :driver')
@@ -171,20 +159,9 @@ sub model-schema-constraints(Mu:U $model --> Array) is export {
             @constraints.push: Red::AST::Check.new(:$name, :driver(%options<driver>),
                 :expression(schema-predicate($attr.index-expression, $model)));
         } else {
-            my $result = evaluate-index($attr.index-expression, $model);
-            my @pairs = $result ~~ Positional ?? $result.list !! ($result,);
-            index-error('EXCLUDE requires expression/operator pairs')
-                unless @pairs && @pairs.all ~~ Pair;
-            my @operators = @pairs.map(*.value);
-            index-error('Unsupported exclusion operator')
-                unless @operators.map({ $_ ~~ Str && $_ eq any(
-                    '=', '<>', '&&', '@>', '<@', '-|-', '<<', '>>', '&<', '&>'
-                ) }).all;
-            my %options = schema-options($attr, $model, @pairs.elems);
-            my @opclasses = |(%options<opclasses>:delete);
-            my @keys = @pairs.map({ index-expression(.key, $model) });
-            @constraints.push: Red::AST::Exclude.new(:$name, |%options,
-                :@keys, :@operators, :@opclasses);
+            my &builder = $attr.constraint-builder;
+            index-error("No constraint builder for {$attr.index-kind}") unless &builder.defined;
+            @constraints.push: builder($attr, $model);
         }
     }
     @constraints
@@ -259,7 +236,7 @@ sub model-indexes(Mu:U $model --> Array) is export {
 }
 
 #| Compare catalog spelling without altering literals, grouping or identifier case.
-sub canonical-index-key(Str $sql --> Str) is export {
+sub canonical-index-key(Str $sql, :&normalize-tokens = -> @tokens { @tokens } --> Str) is export {
     my @tokens;
     my @chars = $sql.comb;
     while @chars {
@@ -294,24 +271,8 @@ sub canonical-index-key(Str $sql --> Str) is export {
             @tokens.push: $char;
         }
     }
-    # PostgreSQL inserts text casts in text functions. Do not erase a standalone
-    # cast: an index on id::text is different from an index on integer id.
-    my @text-context;
-    my Int $i = 0;
-    while $i < @tokens.elems - 1 {
-        if @tokens[$i] eq '(' {
-            @text-context.push: $i > 0 && @tokens[$i - 1] eq any(
-                <lower upper length char_length substring substr trim btrim ltrim rtrim replace strpos>
-            );
-        } elsif @tokens[$i] eq ')' {
-            @text-context.pop;
-        }
-        if @tokens[$i] eq '::' && @tokens[$i + 1] eq 'text' && @text-context.grep(*.Bool) {
-            @tokens.splice($i, 2);
-        } else {
-            $i++;
-        }
-    }
+    @tokens = normalize-tokens(@tokens);
+    my Int $i;
     # Remove redundant wrapping of an atom, preserving function-call parentheses.
     $i = 0;
     while $i < @tokens.elems - 2 {

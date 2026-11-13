@@ -196,14 +196,6 @@ subtest 'Ratcheted atoms and token/rule declarations' => {
 };
 
 subtest 'Dialect capabilities fail before execution' => {
-    my $scoped = Red::Compiler::Regex.new.compile(q[/a :i b/].AST.statements[0].expression);
-    throws-like { $scoped.render(:dialect<Pg>) }, X::Red::Compiler::Unsupported,
-        'PostgreSQL rejects scoped modes';
-    is $scoped.render(:dialect<MySQL>), 'a(?i:b)', 'MySQL supports scoped modes';
-    my $large = Red::Compiler::Regex.new.compile(q[/a ** 256/].AST.statements[0].expression);
-    ok $large.render(:dialect<Pg>).chars,
-        'PostgreSQL lowers repetition bounds exceeding 255';
-    is $large.render(:dialect<MySQL>), '(?:a){256,256}', 'MySQL retains larger bounds';
     for q[/a { die 'must not run' }/], q[/<custom-rule>/], q[/(a)+ $0/], q[/(a) & a $0/],
         q[/<alpha>+ $<alpha>/], q[/<alpha> <alpha> $<alpha>/],
         q[/<.alpha> $<alpha>/], q[/<name=alpha> <name=digit>/], q[/<name=alpha>+ $<name>/],

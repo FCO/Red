@@ -1,6 +1,11 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Keep serial portable: normalize :type<serial> to a generated non-null primary key.
+    - Move PostgreSQL range and exclusion definitions and traits into Red::Driver::Pg::Schema.
+    - Require an explicit regex dialect; keep backend-specific migration SQL in each driver.
+    - Delegate backend-specific regex, migrations, native clients and fixture handling to drivers.
+    - Keep SQLite bundled; external drivers provide their own backend implementations.
 
 0.2.10  2026-11-07T04:54:14Z
     - Expose migration apply --to to stop at a specific migration ID.

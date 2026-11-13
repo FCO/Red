@@ -141,17 +141,6 @@ multi trait_mod:<is>(Attribute $attr, :$check! (&expression, *%options) --> Empt
     $attr.configure-index(&expression, :kind<check>, |%options);
 }
 
-multi trait_mod:<is>(Attribute $attr, :&exclude! --> Empty) is export {
-    $attr does Red::Attr::Index;
-    $attr.configure-index(&exclude, :kind<exclude>, :using<gist>);
-}
-
-multi trait_mod:<is>(Attribute $attr, :$exclude! (&expression, *%options) --> Empty) is export {
-    validate-schema-options(%options);
-    $attr does Red::Attr::Index;
-    $attr.configure-index(&expression, :kind<exclude>, :using<gist>, |%options);
-}
-
 =head3 is id
 
 #| This trait marks an attribute (column) as SQL PRIMARY KEY.
@@ -170,10 +159,11 @@ multi trait_mod:<is>(Attribute $attr, Bool :$serial! where $_ == True --> Empty)
 =head3 is column
 
 multi trait_mod:<is>(Red::Attr::Column $attr, :%column! --> Empty) is export {
+    my %options = Red::Column.normalize-column-options(%column);
     if %column<references>:exists && (%column{<model-name model-type>.none}:exists) {
         die "On Red:api<2> references must declaire :model-name (or :model-type) and the references block must receive the model as reference"
     }
-    $attr.args{$_} = %column{$_} for %column.keys
+    $attr.args{$_} = %options{$_} for %options.keys
 }
 
 #| A generic trait used for customizing a column. It accepts a hash of Bool keys.
@@ -186,7 +176,7 @@ multi trait_mod:<is>(Attribute $attr, :%column! --> Empty) is export {
     if %column<references>:exists && (%column{<model-name model-type>.none}:exists) {
         die "On Red:api<2> references must declaire :model-name (or :model-type) and the references block must receive the model as reference"
     }
-    $attr does Red::Attr::Column(%column);
+    $attr does Red::Attr::Column(Red::Column.normalize-column-options(%column));
 }
 
 multi trait_mod:<is>(Attribute $attr, :&referencing! --> Empty) is export {

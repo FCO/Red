@@ -1,3 +1,4 @@
+use Red::AST::DriverExtension;
 use Red::AST::RegexMatch;
 use Red::AST::RegexCapture;
 use Red::AST::RegexChars;
@@ -238,7 +239,6 @@ method create-schema(%models where .values.all ~~ Red::Model) {
         model.^emit: $data
     }
 
-    # TODO: Fix for Pg with fk multi column
     for %models.kv -> Str() $name, Red::Model \model {
         my @fks = model.^columns>>.column.grep({ .ref.defined });
         if @fks {
@@ -282,7 +282,7 @@ method index-catalog-rows($statement --> Seq) {
 }
 
 method index-key(Red::AST $key --> Str) {
-    my $translated = self.translate($key, 'index');
+    my $translated = self.translate(self.normalize-index-expression($key), 'index');
     index-error('Index DDL cannot contain bound parameters') if $translated.value.elems;
     $translated.key
 }
@@ -352,9 +352,9 @@ multi method translate(Red::AST::Check $_, $context?) {
     "CONSTRAINT {self.table-name-wrapper(.name)} CHECK ({self.index-key(.expression)})" => []
 }
 
-multi method translate(Red::AST::Exclude $_, $context?) {
+multi method translate(Red::AST::Constraint $_, $context?) {
     return '' => [] unless self.schema-definition-applies($_);
-    index-error("EXCLUDE is unsupported on {self.driver-name}")
+    index-error("Constraint is unsupported on {self.driver-name}")
 }
 
 multi method translate(Red::AST::BoundFilter::Predicate $predicate, $context?) {
@@ -383,49 +383,21 @@ multi method translate(Red::AST::RegexChars $_, $context?) {
 }
 
 multi method translate(Red::AST::RegexCapture $_, $context?) {
-    my $whole = .selection ~~ Str && .selection eq '$/';
-    unless $whole && self.driver-name.starts-with('Red::Driver::MySQL') {
-        my $kind = $whole ?? 'whole regex text' !! 'scalar regex capture text';
-        my $drivers = $whole ?? 'PostgreSQL and MySQL' !! 'PostgreSQL';
-        X::Red::Compiler::Unsupported.new(:fatal,
-            :reason("Reading $kind is only implemented for $drivers")).throw;
-    }
-    my $regex = .match.pattern;
     X::Red::Compiler::Unsupported.new(:fatal,
-        :reason('Reading whole matches requires a structured regex')).throw
-        unless $regex ~~ Red::Regex;
-    my Bool $boundary = False;
-    $regex.walk(-> $part { $boundary = True if $part[0] eq 'match-boundary' });
-    X::Red::Compiler::Unsupported.new(:fatal,
-        :reason('Whole match reads with Match boundary markers are not implemented')).throw
-        if $boundary;
-    my $subject = self.translate(.match.value,
-        .match.value ~~ Red::AST::Value ?? 'bind' !! $context);
-    my $pattern = self.translate(ast-value($regex.render(:dialect<MySQL>)), 'bind');
-    # Keep a Unicode text result while comparing case and trailing spaces exactly.
-    "(CONVERT(REGEXP_SUBSTR({$subject.key}, {$pattern.key}, 1, 1, 'cn') USING utf8mb4)"
-        ~ ' COLLATE utf8mb4_0900_bin)' => [|$subject.value, |$pattern.value]
+        :reason("Regex capture text is unsupported by {self.driver-name}")).throw
 }
 
 multi method translate(Red::AST::RegexMatch $_, $context?) {
-    # The MySQL driver is an external distribution using this shared role.
     X::Red::Compiler::Unsupported.new(:fatal,
-        :reason("Compiled SQL regex is not supported by {self.driver-name}")).throw
-        unless self.driver-name.starts-with('Red::Driver::MySQL');
-    X::Red::Compiler::Unsupported.new(:fatal,
-        :reason('MySQL requires a structured regex, not a PostgreSQL pattern')).throw
-        unless .pattern ~~ Red::Regex;
-    my $subject = self.translate(.value, .value ~~ Red::AST::Value ?? 'bind' !! $context);
-    my $pattern = self.translate(ast-value(.pattern.render(:dialect<MySQL>)), 'bind');
-    "REGEXP_LIKE({$subject.key}, {$pattern.key}, 'cn')" => [|$subject.value, |$pattern.value]
+        :reason("Compiled SQL regex is unsupported by {self.driver-name}")).throw
 }
 
 multi method translate(Red::AST::Native::Operator $_, $context?) {
-    index-error("Native operator {.operator} requires PostgreSQL")
+    index-error("Native operator {.operator} is unsupported by {self.driver-name}")
 }
 
-multi method translate(Red::AST::Native::Range $_, $context?) {
-    index-error('SQL range constructors require PostgreSQL')
+multi method translate(Red::AST::DriverExtension $_, $context?) {
+    index-error("Driver AST extensions are unsupported by {self.driver-name}")
 }
 
 proto method translate(Red::AST, $? --> Pair) {*}
@@ -1331,6 +1303,7 @@ multi method type-for-sql("text"     --> "Str"     ) {}
 multi method type-for-sql("varchar"  --> "Str"     ) {}
 multi method type-for-sql("interval" --> "Duration") {}
 multi method type-for-sql("integer"  --> "Int"     ) {}
+# Portable generated-integer type; SQL spelling is chosen by the concrete driver.
 multi method type-for-sql("serial"   --> "UInt"    ) {}
 multi method type-for-sql("boolean"  --> "Bool"    ) {}
 multi method type-for-sql("json"     --> "Json"    ) {}

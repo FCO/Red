@@ -9,8 +9,8 @@ sub require-driver(Str $driver-name) {
     require ::($driver-name);
 
     CATCH {
-        when $driver-name eq 'Red::Driver::Pg' {
-            X::Red::Driver::Pg::NotInstalled.new(:cause($_)).throw;
+        default {
+            X::Red::Driver::NotInstalled.new(:driver($driver-name), :cause($_)).throw;
         }
     }
 }

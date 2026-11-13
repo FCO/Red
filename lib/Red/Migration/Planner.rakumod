@@ -58,17 +58,7 @@ method !column($col, Bool :$single-pk = False, Str :$table = '' --> Str) {
     if $col.auto-increment {
         self!error('Automatic IDs must be a single integer primary key')
             unless $single-pk && $col.pk && $type.lc ~~ /int|serial/;
-        given $!dialect {
-            when 'SQLite' { $type = 'INTEGER'; $extra = ' PRIMARY KEY AUTOINCREMENT' }
-            when 'Pg' { $type = $type.lc.contains('big') ?? 'BIGSERIAL' !! 'SERIAL'; $extra = ' PRIMARY KEY' }
-            when 'MySQL' { $extra = ' PRIMARY KEY AUTO_INCREMENT' }
-            when 'DuckDB' {
-                self!error('Automatic DuckDB IDs require a table name') unless $table.chars;
-                $type = 'BIGINT';
-                my $sequence = self!q('red_seq_' ~ $table ~ '_' ~ $col.name).subst("'", "''", :g);
-                $extra = " PRIMARY KEY DEFAULT nextval('$sequence')";
-            }
-        }
+        ($type, $extra) = $!driver.migration-auto-column($col, $table);
     } elsif $single-pk && $col.pk { $extra = ' PRIMARY KEY' }
     self!q($col.name) ~ " $type" ~ ($col.nullable ?? '' !! ' NOT NULL') ~ $extra
         ~ ($col.unique ?? ' UNIQUE' !! '')
@@ -124,11 +114,7 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
         unless $table.defined {
             self!error('New tables contain a dependency cycle or reference an absent table');
         }
-        if $!dialect eq 'DuckDB' {
-            for %new{$table}.columns.grep(*.auto-increment) -> $column {
-                @sql.push: 'CREATE SEQUENCE ' ~ self!q('red_seq_' ~ $table ~ '_' ~ $column.name);
-            }
-        }
+        @sql.append: $!driver.migration-create-table-prefix(%new{$table});
         @sql.push: self!create(%new{$table});
         @sql.append: %new{$table}.indexes.map(*.<sql>);
         %done{$table} = %new{$table};
@@ -153,7 +139,6 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
                     if $a.indexes.elems || $col.pk || $before.pk || $col.unique || $before.unique
                         || $col.auto-increment || $before.auto-increment
                         || $col.references<table>.defined || $before.references<table>.defined;
-                self!error("SQLite table reconstruction is not implemented: $name.$column") if $!dialect eq 'SQLite';
                 if $before.type.lc ne $col.type.lc {
                     my $x = $before.type.lc.match(/^ 'varchar(' (\d+) ')' $/);
                     my $y = $col.type.lc.match(/^ 'varchar(' (\d+) ')' $/);
@@ -161,15 +146,8 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
                         unless $x && $y && +$y[0] >= +$x[0];
                 }
                 my $prefix = 'ALTER TABLE ' ~ self!q($name);
-                if $!dialect eq 'MySQL' {
-                    @sql.push: "$prefix MODIFY COLUMN " ~ self!column($col);
-                } else {
-                    @sql.push: "$prefix ALTER COLUMN " ~ self!q($column) ~ ' TYPE ' ~ $col.type
-                        if $before.type ne $col.type;
-                    @sql.push: "$prefix ALTER COLUMN " ~ self!q($column)
-                        ~ ($col.nullable ?? ' DROP NOT NULL' !! ' SET NOT NULL')
-                        if $before.nullable != $col.nullable;
-                }
+                @sql.append: $!driver.migration-alter-column($name, $before, $col,
+                    self!column($col));
             }
         }
         for %ac.keys.grep({ !(%bc{$_}:exists) }).sort -> $column {
@@ -188,8 +166,7 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
         my %bi = $b.indexes.map({ .<name> => .<sql> });
         for %ai.keys.sort -> $index {
             next if (%bi{$index}:exists) && %bi{$index} eq %ai{$index};
-            @sql.push: 'DROP INDEX ' ~ self!q($index)
-                ~ ($!dialect eq 'MySQL' ?? ' ON ' ~ self!q($name) !! '');
+            @sql.push: $!driver.migration-drop-index($name, $index);
         }
         for %bi.keys.sort -> $index {
             @sql.push: %bi{$index} unless (%ai{$index}:exists) && %ai{$index} eq %bi{$index};
@@ -205,11 +182,7 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
         };
         self!error('Table removal has dependent tables; use an explicit migration') unless $name.defined;
         @sql.push: 'DROP TABLE ' ~ self!q($name);
-        if $!dialect eq 'DuckDB' {
-            for %old{$name}.columns.grep(*.auto-increment) -> $column {
-                @sql.push: 'DROP SEQUENCE ' ~ self!q('red_seq_' ~ $name ~ '_' ~ $column.name);
-            }
-        }
+        @sql.append: $!driver.migration-drop-table-suffix(%old{$name});
         %done{$name}:delete;
         @drop = @drop.grep(* ne $name);
     }

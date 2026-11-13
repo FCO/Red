@@ -2,32 +2,17 @@ use Test;
 use Red;
 use Red::Cli;
 
-class PgSettings {
-    has Str $!host = 'db.example';
-    has Int $!port = 5433;
-    has Str $!user = 'reader';
-    has Str $!dbname = 'project';
-    has Str $!password = 'secret';
-    method driver-name { 'Red::Driver::Pg' }
+class UnknownSettings {
+    method driver-name { 'Red::Driver::PreviouslyUnknown' }
+    method database-client {
+        %(command => ['custom-client', '--project'], environment => %(CUSTOM_TOKEN => 'secret'))
+    }
 }
-class MySQLSettings {
-    has Str $!host = 'db.example';
-    has Int $!port = 3307;
-    has Str $!user = 'reader';
-    has Str $!database = 'project';
-    has Str $!password = 'secret';
-    method driver-name { 'Red::Driver::MySQL' }
-}
-my %pg = database-client(PgSettings.new);
-is-deeply %pg<command>, ['psql'], 'PostgreSQL starts psql';
-is-deeply %pg<environment>, %(
-    PGHOST => 'db.example', PGPORT => '5433', PGUSER => 'reader',
-    PGDATABASE => 'project', PGPASSWORD => 'secret'), 'PostgreSQL connection environment';
-my %mysql = database-client(MySQLSettings.new);
-is-deeply %mysql<command>,
-    ['mysql', '--host=db.example', '--port=3307', '--user=reader', '--database=project'],
-    'MySQL connection arguments';
-is %mysql<environment><MYSQL_PWD>, 'secret', 'MySQL password stays outside arguments';
+my %custom = database-client(UnknownSettings.new);
+is-deeply %custom<command>, ['custom-client', '--project'],
+    'client selection delegates to an unknown backend';
+is-deeply %custom<environment>, %(CUSTOM_TOKEN => 'secret'),
+    'backend controls connection environment';
 throws-like { database-client(database('SQLite')) }, X::Red::Migration,
     reason => /'in-memory'/, 'in-memory databases cannot be opened in another process';
 

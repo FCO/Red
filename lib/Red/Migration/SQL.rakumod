@@ -1,4 +1,5 @@
 use X::Red::Migration;
+use Red::Driver::Migrations;
 =head2 Red::Migration::SQL
 
 unit module Red::Migration::SQL;
@@ -6,9 +7,16 @@ unit module Red::Migration::SQL;
 # Split statements rather than lines. Stored programs require a database-aware
 # execution protocol and are rejected until that protocol is implemented.
 #| Split SQL into ordered executable statements while respecting quoted strings, comments and
-#| PostgreSQL dollar quoting. Reject transaction commands, client directives and stored-program
+#| driver-enabled dollar quoting. Reject transaction commands, client directives and stored-program
 #| protocols the migration executor cannot safely handle.
 sub statements(Str $source, Str :$dialect = 'SQL' --> Array) is export {
+    my %options = Red::Driver::Migrations.migration-sql-options;
+    if $dialect ne 'SQL' {
+        X::Red::Migration.new(:reason("Invalid SQL dialect: $dialect")).throw
+            unless $dialect ~~ /^ <[A..Za..z_]> <[A..Za..z_0..9]>* $/;
+        require ::("Red::Driver::$dialect");
+        %options = ::("Red::Driver::$dialect").migration-sql-options;
+    }
     my @out;
     my $buffer = '';
     my $quote = '';
@@ -40,20 +48,20 @@ sub statements(Str $source, Str :$dialect = 'SQL' --> Array) is export {
             } elsif $c eq '\\' {
                 X::Red::Migration.new(:reason('Backslash SQL string escapes are ambiguous; use doubled quotes')).throw;
             }
-        } elsif ($pair eq '--' && ($dialect ne 'MySQL'
+        } elsif ($pair eq '--' && (!%options<dash-comment-whitespace>
                 || $source.substr($i + 2, 1) eq ''
                 || $source.substr($i + 2, 1) ~~ /\s/))
-                || ($dialect eq 'MySQL' && $c eq '#') {
+                || (%options<hash-comment> && $c eq '#') {
             $line-comment = True;
             $buffer ~= ' ';
         } elsif $pair eq '/*' {
-            X::Red::Migration.new(:reason('MySQL executable comments are unsupported')).throw
+            X::Red::Migration.new(:reason('Executable SQL comments are unsupported')).throw
                 if $source.substr($i + 2, 1) eq '!'
-                    || ($dialect eq 'MySQL' && $source.substr($i + 2, 1) eq '+');
+                    || (%options<reject-hint-comment> && $source.substr($i + 2, 1) eq '+');
             $depth = 1; $i++; $buffer ~= ' ';
         } elsif $c eq any("'", '"', '`') {
             $quote = $c; $buffer ~= $c;
-        } elsif $c eq '$' && $source.substr($i) ~~ /^ ('$' <[A..Za..z_0..9]>* '$') / {
+        } elsif %options<dollar-quotes> && $c eq '$' && $source.substr($i) ~~ /^ ('$' <[A..Za..z_0..9]>* '$') / {
             $dollar = ~$0; $buffer ~= $dollar; $i += $dollar.chars - 1;
         } elsif $c eq ';' {
             @out.push($buffer.trim) if $buffer.trim.chars;

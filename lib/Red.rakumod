@@ -671,6 +671,10 @@ Red is a *WiP* ORM for Raku.
 =item C<is nullable>
 =item C<is handling>
 
+C<is serial> and C<is column{ :type<serial> }> both declare a non-null generated
+primary key. C<serial> is a portable Red type: each driver chooses its equivalent
+integer type and identifier generator, including on engines without a native SERIAL type.
+
 =head3 features:
 
 =head4 relationships
@@ -868,6 +872,9 @@ collections retain their normal regex behavior. See C<docs/regex-support.md>
 for the driver matrix and remaining work.
 
 =head4 PostgreSQL ranges, regex and exclusion constraints
+
+Range constructors and the C<is exclude> trait are supplied by the separate driver.
+Import them explicitly with C<use Red::Driver::Pg::Schema;>.
 
 C<sql-operator> builds an AST for PostgreSQL range and regex operators such as
 C<< @> >>, C<< <@ >>, C<&&> and C<~*>. Values are bound in queries and quoted as

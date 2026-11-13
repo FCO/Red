@@ -66,20 +66,5 @@ subtest 'Large repeats preserve external capture references' => {
     }
 };
 
-subtest 'Explicit lowering resource and capture diagnostics' => {
-    my $capture = ['capture', 0, ['literal', 'a']];
-    my $unsafe = Red::Regex.new(:tree(('sequence',
-        ['repeat', $capture, 256, 256, False], ['backreference', (0,).List]).List));
-    throws-like { $unsafe.render(:dialect<Pg>) }, X::Red::Compiler::Unsupported,
-        :fatal(*.so), 'Direct AST users cannot duplicate referenced physical captures';
-    my $deep = Red::Regex.new(:tree(('repeat', ['literal', 'a'],
-        255 ** 18, 255 ** 18, False).List));
-    throws-like { $deep.render(:dialect<Pg>) }, X::Red::Compiler::Unsupported,
-        :fatal(*.so), 'Excessive nesting is a compiler diagnostic';
-    my $wide = Red::Regex.new(:tree(('repeat', ['literal', 'a' x 40000],
-        256, 256, False).List));
-    throws-like { $wide.render(:dialect<Pg>) }, X::Red::Compiler::Unsupported,
-        :fatal(*.so), 'Excessive expanded pattern text is a compiler diagnostic';
-};
 
 done-testing;

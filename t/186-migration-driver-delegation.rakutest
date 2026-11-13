@@ -1,0 +1,24 @@
+use Test;
+use lib 't/lib';
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+
+my $db = database 'ContractMigration';
+my $*RED-DB = $db;
+model DelegatedMigration is table<delegated_migration> {
+    has Int $.id is serial;
+    has Str $.value is column;
+}
+my $directory = $*TMPDIR.add("red-driver-contract-{$*PID}-{100000.rand.Int}");
+LEAVE remove-tree($directory) if $directory.d;
+my $manager = Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+    :models[DelegatedMigration], :drivers<ContractMigration>, :$directory,
+    :connections{ default => $db })));
+lives-ok { $manager.prepare('delegated') }, 'offline preparation accepts an unknown driver';
+is $manager.apply, 1, 'driver capabilities control migration transactions and IDs';
+is DelegatedMigration.^create(:value<first>).id, 1, 'automatic ID uses driver implementation';
+is $manager.plan.elems, 0, 'live plan recognizes the delegated schema';
+is $manager.rollback, 1, 'rollback uses driver locking and transactions';
+done-testing;

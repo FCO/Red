@@ -107,7 +107,7 @@ sub intermediate-schema($before, $after --> Red::Migration::Snapshot) is export 
 
 #| Encode a supported scalar as a dialect-safe SQL literal. Handle NULL, Booleans and finite
 #| numbers; use UTF-8 hexadecimal expressions for strings containing backslashes or NUL.
-sub sql-value($value, Str $dialect --> Str) {
+sub sql-value($value, $driver --> Str) {
     return 'NULL' unless $value.defined;
     return $value ?? 'TRUE' !! 'FALSE' if $value ~~ Bool;
     if $value ~~ Numeric {
@@ -116,10 +116,7 @@ sub sql-value($value, Str $dialect --> Str) {
     }
     fail("Unsupported migration literal: {$value.^name}") unless $value ~~ Str;
     if $value.contains('\\') || $value.contains("\0") {
-        my $hex = $value.encode('utf8').map(*.fmt('%02x')).join;
-        return "convert_from(decode('$hex', 'hex'), 'UTF8')" if $dialect eq 'Pg';
-        return "CONVERT(X'$hex' USING utf8mb4)" if $dialect eq 'MySQL';
-        return "CAST(X'$hex' AS TEXT)";
+        return $driver.migration-string-literal($value);
     }
     "'{$value.subst("'", "''", :g)}'"
 }
@@ -153,7 +150,7 @@ class Compiler {
     #| Wrap a scalar with its safely encoded SQL representation while retaining its Red expression
     #| type.
     method literal($value) {
-        Literal.new(:$value, :sql(sql-value($value, $!dialect)))
+        Literal.new(:$value, :sql(sql-value($value, $!driver)))
     }
     #| Recognize supported Boolean conditions, including comparison, definedness and SQL membership
     #| or LIKE expressions.

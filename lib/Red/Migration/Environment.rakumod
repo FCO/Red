@@ -29,6 +29,8 @@ sub provision-database(Str $driver, %server, &body, %environment, Bool :$keep) {
     %*ENV<RED_MIGRATION_TEST>:delete;
     my $name = 'red_migration_test_' ~ UUID.new.Str.subst('-', '', :g).lc;
     my $folder = $*TMPDIR.add($name);
+    require ::("Red::Driver::$driver");
+    my $backend = ::("Red::Driver::$driver");
     $folder.mkdir;
     my $admin;
     my $temporary;
@@ -38,16 +40,12 @@ sub provision-database(Str $driver, %server, &body, %environment, Bool :$keep) {
     my Exception $body-error;
     CATCH { default { $body-error = $_; .rethrow } }
     LEAVE {
-        if $driver eq 'DuckDB' && $temporary.defined { $temporary.close; $temporary.dbh.close }
+        if $temporary.defined { $temporary.migration-close }
         if !$keep && $folder.defined && $folder.d {
             my Exception $cleanup-error;
             if $created {
                 try {
-                    if $driver eq 'Pg' {
-                        $admin.execute('DROP DATABASE ' ~ $admin.table-name-wrapper($name) ~ ' WITH (FORCE)');
-                    } elsif $driver eq 'MySQL' {
-                        $admin.execute('DROP DATABASE ' ~ $admin.table-name-wrapper($name));
-                    }
+                    $backend.migration-drop-temporary($admin, $name);
                     CATCH { default { $cleanup-error = $_ } }
                 }
             }
@@ -59,20 +57,10 @@ sub provision-database(Str $driver, %server, &body, %environment, Bool :$keep) {
             remove-tree($folder);
         }
     }
-    if $driver eq any(<SQLite DuckDB>) {
-        %parameters = database => $folder.add($driver eq 'DuckDB' ?? 'test.duckdb' !! 'test.sqlite').Str;
-    } elsif $driver eq any(<Pg MySQL>) {
-        X::Red::Migration.new(:reason("Configure a test server for $driver")).throw unless %server;
-        my %admin = %server;
-        if $driver eq 'Pg' { %admin<dbname> //= 'postgres' }
-        else { %admin<database> //= 'mysql' }
-        $admin = database $driver, |%admin;
-        $admin.execute('CREATE DATABASE ' ~ $admin.table-name-wrapper($name));
-        $created = True;
-        %parameters{$driver eq 'Pg' ?? 'dbname' !! 'database'} = $name;
-    } else {
-        X::Red::Migration.new(:reason("Unsupported temporary driver: $driver")).throw;
-    }
+    my %provision = $backend.migration-provision($folder, $name, %server);
+    %parameters = %provision<parameters>;
+    $admin = %provision<admin>;
+    $created = so %provision<created>;
     my $context = $folder.add('connection.json');
     $context.spurt(to-json(%( :$driver, :%parameters )));
     $context.chmod(0o600);

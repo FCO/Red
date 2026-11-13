@@ -22,16 +22,6 @@ model PartialRule {
     has $!pg-active-label is unique-index({ .label }, :where{ .active == 1 }, :driver<Pg>);
 }
 
-model RangeTrack {
-    has UInt $.id is serial;
-    has Int $.track-id is column;
-    has Str $.percent-range is column{ :type<numrange> };
-    has $!range-valid is check(
-        { sql-operator('@>', sql-range(0, 1, :bounds<[]>), .percent-range) }, :driver<Pg>);
-    has $!no-overlap is exclude(
-        { .track-id => '=', .percent-range => '&&' }, :using<gist>, :driver<Pg>);
-}
-
 model UnsupportedMethod {
     has UInt $.id is serial;
     has Str $.label is column;
@@ -159,12 +149,7 @@ subtest 'constraints are preflighted before schema creation', {
         throws-like { schema(UnsupportedCheck).create }, X::Red::Index,
             'No automatic weakening of an unsupported CHECK';
     }
-    lives-ok { $sqlite.translate(RangeTrack.^schema-constraints.head) },
-        'Explicitly Pg-only CHECK can be skipped';
-    is $sqlite.translate(RangeTrack.^schema-constraints.tail).key, '',
-        'Explicitly Pg-only exclusion can be skipped';
-    throws-like { $sqlite.translate(RangeTrack.^schema-constraints.tail.clone(:driver(''))) },
-        X::Red::Index, 'An unguarded exclusion requires support';
+
 };
 
 subtest 'partial unique indexes keep their predicate and identity', {
@@ -204,45 +189,11 @@ subtest 'native operators bind values in queries', {
     }
     throws-like { sql-operator('; DROP TABLE x', SchemaRules.label, 'x') }, X::Red::Index,
         'Operator tokens are validated';
-    throws-like { sql-range(0, 1, :type<bad>) }, X::Red::Index, 'Range types are validated';
-};
+    throws-like { sql-operator('/*', SchemaRules.label, 'x') }, X::Red::Index,
+        'Operator tokens cannot introduce SQL comments';
+    lives-ok { sql-operator('@@', SchemaRules.label, 'x') },
+        'Core accepts a driver-defined operator';
 
-subtest 'PostgreSQL ranges, exclusion and GIN catalog', {
-    if $backend ne 'Pg' {
-        skip 'PostgreSQL integration', 1;
-    } else {
-        schema(RangeTrack).drop.create;
-        my $first = RangeTrack.^create: :track-id(10), :percent-range('[0.1,0.4)');
-        lives-ok { RangeTrack.^create: :track-id(10), :percent-range('[0.4,0.6)') },
-            'Touching half-open intervals are allowed';
-        lives-ok { RangeTrack.^create: :track-id(11), :percent-range('[0.2,0.3)') },
-            'Different tracks can overlap';
-        dies-ok { RangeTrack.^create: :track-id(10), :percent-range('[0.2,0.3)') },
-            'Overlapping intervals on the same track are excluded';
-        dies-ok { RangeTrack.^create: :track-id(10), :percent-range('[0.7,1.1)') },
-            'Range CHECK rejects values outside [0,1]';
-        is RangeTrack.^all.grep({ sql-operator('&&', .percent-range,
-            sql-range(0.2, 0.3)) }).elems, 2, 'Range operators work in queries';
-        is SchemaRules.^all.grep({ sql-operator('~*', .label, '^alpha$') }).elems, 1,
-            'Case-insensitive regex works in queries';
-        my $index = SchemaRules.^indexes.first(*.using eq 'gin');
-        my $found = $*RED-DB.indexes-for-table(SchemaRules.^table)
-            .first({ .<name> eq $index.name });
-        is $found<method>, 'gin', 'Catalog records the access method';
-        ok $*RED-DB.index-definition-matches($index, $found), 'GIN opclass matches';
-        nok $*RED-DB.index-definition-matches($index.clone(:using<btree>), $found),
-            'B-tree and GIN are not equivalent';
-        lives-ok { SchemaRules.^create-indexes }, 'GIN creation remains idempotent';
-        schema(PgOperatorClasses).drop.create;
-        lives-ok { PgOperatorClasses.^create-indexes },
-            'Explicit default and per-key operator classes are idempotent';
-        my $mixed = PgOperatorClasses.^indexes.first(*.logical-name eq 'mixed-classes');
-        my $catalog = $*RED-DB.indexes-for-table(PgOperatorClasses.^table)
-            .first({ .<name> eq $mixed.name });
-        my @opclasses = '', 'text_ops';
-        nok $*RED-DB.index-definition-matches($mixed.clone(:@opclasses), $catalog),
-            'Different operator classes are not equivalent';
-    }
 };
 
 subtest 'predicate parser respects quoted WHERE and parentheses', {

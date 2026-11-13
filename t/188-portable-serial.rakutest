@@ -1,0 +1,72 @@
+use Test;
+use Red;
+use Red::Column;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::Storage;
+
+model TraitSerial {
+    has Int $.id is serial;
+    has Str $.label is column;
+}
+model TypeSerial {
+    has Int $.id is column{ :type<serial> };
+    has Str $.label is column;
+}
+model UpperSerial {
+    has Int $.id is column{ :type<SERIAL>, :nullable, :!id, :!auto-increment };
+    has Str $.label is column;
+}
+model CombinedSerial {
+    has Int $.id is serial is column{ :type<serial> };
+    has Str $.label is column;
+}
+
+my @connection = (%*ENV<RED_DATABASE> // 'SQLite').words;
+my $backend = @connection.shift;
+my $*RED-DB = database $backend, |@connection.map({
+    my ($key, $value) = .split('=', 2);
+    $key => val($value)
+}).Hash;
+my @models = TraitSerial, TypeSerial, UpperSerial, CombinedSerial;
+my $schema = schema(|@models);
+$schema.drop.create;
+LEAVE $schema.drop;
+for @models -> $model {
+    subtest "Portable serial declaration on {$model.^name}: $backend" => {
+        my $column = $model.^columns.first(*.name eq '$!id').column;
+        ok $column.id, 'serial declares a primary key';
+        ok $column.auto-increment, 'serial declares generated identifiers';
+        nok $column.nullable, 'serial is not nullable';
+        my $first = $model.^create(:label<first>);
+        my $second = $model.^create(:label<second>);
+        ok $first.id.defined && $second.id > $first.id, 'omitted IDs are generated and increase';
+        throws-like { $model.^create(:id($first.id), :label<duplicate>) },
+            X::Red::Driver::Mapped::Unique, 'the primary key rejects duplicate IDs';
+    }
+}
+
+is $*RED-DB.type-for-sql('serial'), 'UInt', 'serial has a portable Raku type mapping';
+my $physical = $*RED-DB.type-by-name('serial');
+ok $physical.chars, 'the driver supplies a physical SQL spelling';
+unless $backend eq 'Pg' {
+    isnt $physical.lc, 'serial', 'a backend without native serial uses its integer equivalent';
+}
+my $attribute = TypeSerial.^columns.first(*.name eq '$!id');
+my $direct = Red::Column.new(:attr($attribute), :type<serial>);
+ok $direct.id && $direct.auto-increment && !$direct.nullable,
+    'direct column construction also normalizes logical serial';
+
+$schema.drop;
+my $directory = $*TMPDIR.add("red-portable-serial-{$*PID}-{100000.rand.Int}");
+LEAVE remove-tree($directory) if $directory.e;
+my $manager = Red::Migration::Manager.new(:config(Red::Migration::Configuration.new(
+    :models(@models), :drivers[$backend], :$directory, :connections{ default => $*RED-DB })));
+lives-ok { $manager.prepare('serial-keys') }, 'migration preparation accepts both serial forms';
+is $manager.apply, 1, 'migrations create generated primary keys through the driver';
+for @models -> $model {
+    ok $model.^create(:label<migrated>).id.defined,
+        "Migration-created {$model.^name} generates an ID";
+}
+is $manager.rollback, 1, 'the serial migration is reversible';
+done-testing;
