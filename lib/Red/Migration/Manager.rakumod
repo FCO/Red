@@ -1,5 +1,6 @@
 use Red;
 use Red::Migration::Configuration;
+use Red::Migration::Driver;
 use Red::Migration::Snapshot;
 use Red::Migration::Planner;
 use Red::Migration::Applied;
@@ -481,12 +482,11 @@ method !load(IO() $path) {
 method !driver(Str $name) {
     self!error("Invalid migration driver: $name") unless $name ~~ /^ <[A..Za..z_]> <[A..Za..z_0..9]>* $/;
     try {
-        require ::("Red::Driver::$name");
+        return Translation.new(:backend(migration-driver($name)));
         CATCH {
             default { self!error("Cannot load migration driver $name: {.message}") }
         }
     }
-    Translation.new(:backend(::("Red::Driver::$name")))
 }
 #| Resolve a configured connection or lazy factory. A disposable test context overrides the normal
 #| target.

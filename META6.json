@@ -145,6 +145,7 @@
     "Red::Migration::Configuration": "lib/Red/Migration/Configuration.rakumod",
     "Red::Migration::Data": "lib/Red/Migration/Data.rakumod",
     "Red::Migration::Dependencies": "lib/Red/Migration/Dependencies.rakumod",
+    "Red::Migration::Driver": "lib/Red/Migration/Driver.rakumod",
     "Red::Migration::Environment": "lib/Red/Migration/Environment.rakumod",
     "Red::Migration::File": "lib/Red/Migration/File.rakumod",
     "Red::Migration::Import": "lib/Red/Migration/Import.rakumod",

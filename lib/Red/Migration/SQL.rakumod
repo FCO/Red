@@ -1,5 +1,6 @@
 use X::Red::Migration;
 use Red::Driver::Migrations;
+use Red::Migration::Driver;
 =head2 Red::Migration::SQL
 
 unit module Red::Migration::SQL;
@@ -14,8 +15,7 @@ sub statements(Str $source, Str :$dialect = 'SQL' --> Array) is export {
     if $dialect ne 'SQL' {
         X::Red::Migration.new(:reason("Invalid SQL dialect: $dialect")).throw
             unless $dialect ~~ /^ <[A..Za..z_]> <[A..Za..z_0..9]>* $/;
-        require ::("Red::Driver::$dialect");
-        %options = ::("Red::Driver::$dialect").migration-sql-options;
+        %options = migration-driver($dialect).migration-sql-options;
     }
     my @out;
     my $buffer = '';

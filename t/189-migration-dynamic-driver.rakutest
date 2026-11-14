@@ -1,0 +1,43 @@
+use Test;
+use Red;
+use Red::Migration::Configuration;
+use Red::Migration::Manager;
+use Red::Migration::SQL;
+use Red::Migration::Storage;
+
+# Each child starts without database() or a static import of a concrete driver.
+# Repeat in a fresh process to exercise both initial and cached module loading.
+if !@*ARGS {
+    for ^2 -> $pass {
+        my $process = run $*EXECUTABLE, '-Ilib', '-It/lib', $?FILE, 'child', :out, :err;
+        my $output = $process.out.slurp-rest;
+        my $errors = $process.err.slurp-rest;
+        is $process.exitcode, 0, "dynamic offline loading in fresh process {$pass + 1}"
+            or diag $output ~ $errors;
+        is $errors, '', 'dynamic loading emits no warnings';
+    }
+    done-testing;
+}
+else {
+    model DynamicMigration is table<dynamic_migration> { has Int $.id is serial }
+    my $directory = $*TMPDIR.add("red-dynamic-driver-{$*PID}-{100000.rand.Int}");
+    LEAVE remove-tree($directory) if $directory.d;
+    my $config = Red::Migration::Configuration.new(:models[DynamicMigration],
+        :drivers<SQLite>, :$directory,
+        :connections{ default => { die 'Offline migration must not open connections' } });
+    my $manager = Red::Migration::Manager.new(:$config);
+    my $initial = $manager.prepare('initial');
+    ok $initial.add('SQLite/up/001-schema.sql').f, 'dynamically loads SQLite for preparation';
+    is-deeply statements('SELECT 1;', :dialect<SQLite>), ['SELECT 1'],
+        'SQL parser dynamically loads dialect options';
+    my $external = Red::Migration::Manager.new(
+        :config($config.clone(:drivers<SQLite OfflineMigration>,
+            :directory($directory.add('external')))));
+    my $prepared = $external.prepare('external');
+    ok $prepared.add('OfflineMigration/up/001-schema.sql').f,
+        'loads an external driver without constructing it';
+    is-deeply statements('SELECT 1;', :dialect<OfflineMigration>), ['SELECT 1'],
+        'SQL parser accepts an external dialect';
+    ok !$external.prepare('unchanged').defined, 'preparation can reuse both loaded drivers';
+    done-testing;
+}
