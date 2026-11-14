@@ -13,4 +13,3 @@ class Red::AST::Check
 
 A named row-level CHECK, optionally selected for one driver.
 
-Exclusion constraints are provided by `Red::Driver::Pg::Schema`.

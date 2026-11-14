@@ -36,7 +36,8 @@ Capture configured model schemas, indexes and constraints for this dialect. Reje
 ```raku
 method column(
     $col,
-    Bool :$single-pk = Bool::False
+    Bool :$single-pk = Bool::False,
+    Str :$table = ""
 ) returns Str
 ```
 

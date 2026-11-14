@@ -69,7 +69,7 @@ Build the schema available while data statements run. Keep existing columns and 
 ```raku
 sub sql-value(
     $value,
-    Str $dialect
+    $driver
 ) returns Str
 ```
 

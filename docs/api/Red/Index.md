@@ -27,13 +27,14 @@ sub model-schema-constraints(
 ) returns Array
 ```
 
-Named CHECK and EXCLUDE definitions share expression lowering with indexes.
+Named CHECKs and driver extensions share expression lowering with indexes.
 
 ### sub canonical-index-key
 
 ```raku
 sub canonical-index-key(
-    Str $sql
+    Str $sql,
+    :&normalize-tokens = -> @tokens { #`(Block|5146893008136) ... }
 ) returns Str
 ```
 

@@ -524,6 +524,8 @@ Red is a *WiP* ORM for Raku.
 
   * `is handling`
 
+`is serial` and `is column{ :type<serial> }` both declare a non-null generated primary key. `serial` is a portable Red type: each driver chooses its equivalent integer type and identifier generator, including on engines without a native SERIAL type.
+
 ### features:
 
 #### relationships
@@ -640,6 +642,8 @@ Matching uses database character/collation semantics, so normalization, grapheme
 Unsupported regex syntax and unavailable driver features throw a fatal `X::Red::Compiler::Unsupported` diagnostic, even if `$*RED-FALLBACK` is enabled. Code blocks, executable regex interpolation, recursive grammars and unsupported capture behavior are never silently replaced with in-memory filtering. Ordinary Raku collections retain their normal regex behavior. See `docs/regex-support.md` for the driver matrix and remaining work.
 
 #### PostgreSQL ranges, regex and exclusion constraints
+
+Range constructors and the `is exclude` trait are supplied by the separate driver. Import them explicitly with `use Red::Driver::Pg::Schema;`.
 
 `sql-operator` builds an AST for PostgreSQL range and regex operators such as `@> `, `<@ `, `&&` and `~*`. Values are bound in queries and quoted as literals in schema DDL. `sql-range` builds a native range constructor, defaulting to `numrange` with `[)` bounds. Its `:type` can also select `int4range`, `int8range`, `tsrange`, `tstzrange` or `daterange`.
 

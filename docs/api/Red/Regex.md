@@ -3,6 +3,18 @@ class Red::Regex
 
 A data-only regex tree. Drivers decide which operations their engine supports.
 
+### method render-info
+
+```raku
+method render-info(
+    Str:D :$dialect!,
+    :@capture-ids = Code.new,
+    Bool :$whole = Bool::False
+) returns Hash:D
+```
+
+Compatibility entry point: rendering belongs to the selected driver distribution.
+
 ### method literal-filter
 
 ```raku

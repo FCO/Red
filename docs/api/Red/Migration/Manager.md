@@ -266,7 +266,7 @@ method lock(
 ) returns Mu
 ```
 
-Acquire the dialect-specific migration lock. SQLite opens a transaction; PostgreSQL and MySQL use database-scoped advisory or named locks.
+Acquire the lock implemented by the selected driver.
 
 ### method unlock
 
@@ -335,7 +335,7 @@ method resolve(
 ) returns Hash
 ```
 
-Reconcile a manually repaired MySQL execution without executing migration SQL.
+Reconcile a manually repaired nontransactional execution without executing migration SQL.
 
 ### method apply
 

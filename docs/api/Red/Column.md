@@ -74,6 +74,16 @@ method as(
 
 Returns a clone using a different name
 
+### method normalize-column-options
+
+```raku
+method normalize-column-options(
+    %options
+) returns Hash:D
+```
+
+Normalize portable generated primary keys before attributes and columns are composed.
+
 ### method defined
 
 ```raku

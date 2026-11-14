@@ -212,3 +212,42 @@ method optimize(
 
 Optimize AST
 
+### method database-client
+
+```raku
+method database-client() returns Hash
+```
+
+Build the native client invocation for this backend.
+
+### method advance-sequences
+
+```raku
+method advance-sequences(
+    @models
+) returns Mu
+```
+
+Synchronize generated identifiers after inserting explicit values.
+
+### method finish-statement
+
+```raku
+method finish-statement(
+    $statement,
+    Bool :$executed = Bool::False
+) returns Mu
+```
+
+Release an executed cursor before ending its transaction.
+
+### method type-by-name
+
+```raku
+method type-by-name(
+    "serial"
+) returns Str:D
+```
+
+Physical integer spelling for the portable serial column abstraction.
+
