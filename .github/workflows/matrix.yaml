@@ -30,6 +30,10 @@ jobs:
         with:
           raku-version: ${{ matrix.raku-version }}
       - run: raku -V
+      # Run before installing dependencies: subprocesses must see zef's staging repos.
+      - name: Test fresh staged installation
+        if: matrix.raku-version == '2026.09'
+        run: zef install --verbose .
       - name: Install dependencies
         run: |
           zef install --/test --test-depends --deps-only .
@@ -37,9 +41,6 @@ jobs:
       # Includes installed chains, diamonds, crash recovery and reconciliation flows.
       - name: Run tests (SQLite, including five-level migrations)
         run: prove6 -lj8 t
-      - name: Test staged installation
-        if: matrix.raku-version == '2026.09'
-        run: zef install --dry .
 
   mysql:
     name: MySQL (RakuAST=${{ matrix.rakuast }})

@@ -1,4 +1,7 @@
 use Test;
+use lib $?FILE.IO.parent.add('lib').Str;
+use TestRepositories;
+inherit-test-repositories;
 use Red;
 my $root = $*TMPDIR.add("red-migration-cli-{$*PID}-{100000.rand.Int}");
 $root.mkdir;

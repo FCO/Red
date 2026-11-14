@@ -1,6 +1,7 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Preserve staged dependency repositories in test subprocesses during a fresh zef install.
 
 0.2.11  2026-11-14T18:36:02Z
     - Keep serial portable: normalize :type<serial> to a generated non-null primary key.

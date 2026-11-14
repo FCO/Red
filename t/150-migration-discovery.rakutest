@@ -1,4 +1,7 @@
 use Test;
+use lib $?FILE.IO.parent.add('lib').Str;
+use TestRepositories;
+inherit-test-repositories;
 use JSON::Fast;
 use nqp;
 use Red::Migration::Dependencies;
