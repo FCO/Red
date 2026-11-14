@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.11  2026-11-14T18:36:02Z
     - Keep serial portable: normalize :type<serial> to a generated non-null primary key.
     - Move PostgreSQL range and exclusion definitions and traits into Red::Driver::Pg::Schema.
     - Require an explicit regex dialect; keep backend-specific migration SQL in each driver.
