@@ -133,7 +133,7 @@ sub publish-bundle(
     IO(Any) $project,
     IO(Any) $stage,
     IO(Any) $metadata,
-    Callable :$checkpoint = -> Str $phase { #`(Block|2297180034968) ... }
+    Callable :$checkpoint = -> Str $phase { #`(Block|4874160936856) ... }
 ) returns Mu
 ```
 
