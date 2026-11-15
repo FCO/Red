@@ -869,7 +869,9 @@ multi method translate(Red::AST::Infix $_, $context?) {
 
     my $left = .left ~~ Red::AST::Infix && !.bind-left ?? "($lstr)" !! $lstr;
     my $right = .right ~~ Red::AST::Infix && !.bind-right ?? "($rstr)" !! $rstr;
-    "$left { .op } $right" => [|@lbind, |@rbind]
+    # Raku / is fractional even when both SQL operands have integer types.
+    my $numerator = $_ ~~ Red::AST::Div ?? "(1.0 * $left)" !! $left;
+    "$numerator { .op } $right" => [|@lbind, |@rbind]
 }
 
 multi method translate(Red::AST::OR $_, $context?) {

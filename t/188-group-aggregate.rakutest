@@ -1,0 +1,115 @@
+use Test;
+use Red;
+use X::Red::Exceptions;
+
+model AggregateSensor {
+    has Str $.device is column{ :nullable };
+    has Int $.value is column{ :nullable };
+}
+
+my @conf = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @conf.shift;
+my $*RED-DB = database $driver, |%(@conf.map({
+    do given .split('=') { .[0] => val .[1] }
+}));
+my $*RED-FALLBACK = False;
+my @queries;
+$*RED-DB does role {
+    multi method prepare(Str $query) {
+        @queries.push($query);
+        callsame
+    }
+};
+schema(AggregateSensor).drop;
+AggregateSensor.^create-table;
+for ('b', 9), ('a', -2), ('a', 3), ('a', 7) -> ($device, $value) {
+    AggregateSensor.^create(:$device, :$value);
+}
+AggregateSensor.^create(:device(Str), :value(100));
+
+sub grouped($source) {
+    $source.classify(*.device)
+        .map(-> (:key($device), :value($rows)) {
+            my $count = $rows.elems;
+            my $values = $rows.map(*.value);
+            [$device, $count, $values.sum / $count, $values.min, $values.max]
+        })
+        .sort(*[0])
+}
+
+@queries = ();
+my $query = grouped(AggregateSensor.^all);
+isa-ok $query, Red::ResultSeq, 'Group projection remains a SQL result sequence';
+is @queries.elems, 0, 'Building the query performs no reads';
+my @rows = $query.Array;
+is @queries.elems, 1, 'Whole pipeline executes one SQL statement';
+is @rows.elems, 2, 'Undefined keys are excluded as in associative iteration';
+is-deeply @rows[0][0, 1, 3, 4].Array, ['a', 3, -2, 7], 'First group statistics';
+ok abs(@rows[0][2] - 8/3) < 1e-9, 'Integer inputs retain fractional division';
+is-deeply @rows[1][0, 1, 3, 4].Array, ['b', 1, 9, 9], 'Singleton group statistics';
+is @rows[1][2], 9, 'Singleton mean';
+like @queries[0], /:i 'GROUP BY'/, 'Grouping runs in SQL';
+like @queries[0], /:i 'ORDER BY'/, 'Sorting runs in SQL';
+for <COUNT SUM MIN MAX> -> $function {
+    ok @queries[0].contains($function ~ '('), "$function runs in SQL";
+}
+
+@queries = ();
+is-deeply grouped(AggregateSensor.^all.grep(*.value > 200)).Array, [], 'Empty input';
+is @queries.elems, 1, 'Empty input still uses one statement';
+
+AggregateSensor.^create(:device<c>, :value(Int));
+@queries = ();
+my @nullable = grouped(AggregateSensor.^all.grep(*.device eq 'c')).Array;
+is @nullable[0][1], 1, 'COUNT counts rows including null values';
+ok !@nullable[0][2].defined, 'SQL null aggregate propagates through the division';
+is @queries.elems, 1, 'Nullable values do not cause extra reads';
+
+{
+    my $*RED-FALLBACK = True;
+    is-deeply AggregateSensor.^all.grep(*.device eq 'b').classify(*.device)
+        .map({ .value.Array.elems }).Array, [1], 'Unsupported callback retains associative fallback';
+}
+@queries = ();
+throws-like {
+    AggregateSensor.^all.classify(*.device).map({ .value.Array.elems }).Array
+}, X::Red::Projection, 'Strict mode rejects unsupported group projections';
+is @queries.elems, 0, 'Rejected projection does not read source rows';
+throws-like {
+    AggregateSensor.^all.classify(*.device).map({ .value.map(*.value).elems }).Array
+}, X::Red::Projection, 'Inherited scalar elems cannot leak a constant into SQL';
+throws-like {
+    grouped(AggregateSensor.^all.sort(*.value).head(2)).Array
+}, X::Red::Projection, 'Pagination is rejected until grouped source rebinding is supported';
+
+@queries = ();
+my @numeric = AggregateSensor.^all.classify(*.value)
+    .map(-> (:key($value), :value($rows)) { [$value, $rows.elems] })
+    .sort(*[0]).Array;
+is-deeply @numeric.map(*[0]).Array, ['-2', '100', '3', '7', '9'],
+    'Numeric associative keys stay strings and sort lexically';
+is @queries.elems, 1, 'Numeric keys use one query';
+
+{
+    my $*RED-FALLBACK = True;
+    my @nested = AggregateSensor.^all.grep(*.device eq 'b')
+        .classify({ .device, .value }).map({ .key }).Array;
+    is-deeply @nested, ['b'], 'Nested classify keeps associative behavior';
+    my @reduced = AggregateSensor.^all.grep(*.device eq 'b')
+        .classify(*.device, :reduce{ .elems }).map({ .value }).Array;
+    is-deeply @reduced, [1], 'Reduced classify keeps associative behavior';
+}
+
+if $driver eq 'DuckDB' {
+    my $csv = $*TMPDIR.add("red-group-{$*PID}-{(2**32).rand.Int}.csv");
+    LEAVE $csv.unlink if $csv.e;
+    $csv.spurt("device,value\nb,9\na,-2\na,3.5\na,7.5\n");
+    my \T = $*RED-DB.read-csv($csv.Str, :name<AggregateCsvSensor>);
+    @queries = ();
+    my @csv-rows = grouped(T.^all).Array;
+    is @queries.elems, 1, 'CSV chain uses one query after schema discovery';
+    is @csv-rows[0][0], 'a', 'CSV aggregation sorts devices in SQL';
+    ok abs(@csv-rows[0][2] - 3) < 1e-9, 'Fractional CSV values aggregate in SQL';
+}
+
+done-testing;

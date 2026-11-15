@@ -520,6 +520,31 @@ But if the options are on the database.
 
 ## classify
 
+To aggregate every group in the database, project the key and aggregate values:
+
+```raku
+say Sensor.^all.classify(*.device)
+    .map(-> (:key($device), :value($rows)) {
+        my $count = $rows.elems;
+        my $values = $rows.map(*.value);
+        [$device, $count, $values.sum / $count, $values.min, $values.max]
+    })
+    .sort(*[0])
+    .Array;
+```
+
+This executes one SQL statement with `GROUP BY`, `COUNT`, `SUM`, `MIN`, `MAX`,
+and `ORDER BY`. Only the aggregate rows are returned to Raku. Integer group
+keys remain strings, as in associative iteration. Undefined keys are excluded.
+Aggregates follow SQL null semantics: `COUNT(*)` includes rows with null values,
+while the value aggregates ignore nulls and return null for an all-null group.
+
+This optimization supports a single grouping level over an unprojected,
+unpaginated source, string or integer keys, numeric value projections without
+custom inflators, and no `:reduce` callback.
+Callbacks that require group enumeration use the existing fallback policy;
+set `$*RED-FALLBACK = False` to reject them instead.
+
 If you need to classify your rows based in something and only get one category by time.
 
 ```raku
