@@ -5,6 +5,17 @@ Red::ResultAssociative
 
 Lazy Associative class from Red queries (.classify)
 
+### method map
+
+```raku
+method map(
+    &projection,
+    :$red-ast
+) returns Mu
+```
+
+Project group keys and aggregates in SQL without enumerating the groups.
+
 ### method of
 
 ```raku
