@@ -38,6 +38,7 @@ use Red::Event;
 use Red::PrepareCode;
 use Red::Index;
 use Red::Attr::Index;
+use Red::GlobalEvents;
 
 =head2 MetamodelX::Red::Model
 
@@ -119,6 +120,11 @@ multi method emit(Mu $model, $data, Exception :$error, Red::Model :$origin, Call
         |(:$origin with $origin), |($materialize-origin.defined ?? :$materialize-origin !! Empty);
     self.emit($model, $event, :$synchronous)
 }
+
+#| Models marked with C<is global-notifiable> publish inserts through the driver.
+method global-notifiable(Mu:U --> Bool:D) { False }
+method global-notification-columns(Mu:U --> Array:D) { [] }
+method global-notification-ids(Mu:U --> Array:D) { [] }
 
 #| Returns a list of columns names.of the model.
 method column-names(|) { @!columns>>.column>>.name }
@@ -599,6 +605,7 @@ multi method create-table(\model where { .HOW !~~ MetamodelX::Red::View | Metamo
     get-RED-DB.execute: |$data;
     self.emit: model, $data;
     model.^create-indexes if model.^indexes.grep({ !.inline });
+    get-RED-DB.install-global-event-triggers: [model] if model.^global-notifiable;
     CATCH {
         default {
             self.emit: model, $data, :error($_);
@@ -797,7 +804,11 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
         my &materialize-origin = -> { materialize-row(driver => $BASE-DB) };
         {
             my $*RED-DB = $BASE-DB;
-            self.emit: model, $insert-ast, :&materialize-origin, :synchronous;
+            my $global = model.^global-notifiable
+                && Red::GlobalEvents::supports($BASE-DB);
+            Red::GlobalEvents::warn-unsupported(model, $BASE-DB)
+                if model.^global-notifiable && !$global;
+            self.emit: model, $insert-ast, :&materialize-origin, :synchronous unless $global;
         }
 
         .return with $no;

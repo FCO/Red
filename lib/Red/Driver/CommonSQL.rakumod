@@ -55,6 +55,7 @@ use Red::AST::Ordering;
 use Red::Utils;
 use Red::LockType;
 use MetamodelX::Red::VirtualView;
+use Red::GlobalEvents;
 
 use UUID;
 unit role Red::Driver::CommonSQL does Red::Driver;
@@ -236,7 +237,8 @@ method create-schema(%models where .values.all ~~ Red::Model) {
             :@constraints,
         ;
         self.execute: $data;
-        model.^emit: $data
+        model.^emit: $data;
+        self.install-global-event-triggers: [model] if model.^global-notifiable;
     }
 
     for %models.kv -> Str() $name, Red::Model \model {

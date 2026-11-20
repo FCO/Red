@@ -32,6 +32,8 @@ method source(--> Str) {
         @args.push: '.constraints = ' ~ literal($table.constraints.sort(*.join('|')).Array, 2) ~ ';'
             if $table.^can('constraints');
         @args.push: '.indexes = ' ~ literal($table.indexes.sort(*.<name>).Array, 2) ~ ';';
+        @args.push: '.global-event-triggers = '
+            ~ literal($table.global-event-triggers.sort(*.<name>).Array, 2) ~ ';';
         @args.push: '.checks = ' ~ literal($table.checks.sort.Array, 2) ~ ';';
         @args.push: '.portable-indexes = ' ~ literal($table.portable-indexes.Array, 2) ~ ';';
         @args.push: '.portable-checks = ' ~ literal($table.portable-checks.Array, 2) ~ ';';

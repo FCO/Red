@@ -1,5 +1,6 @@
 use Red;
 use Red::Migration::Snapshot;
+use Red::GlobalEvents;
 use X::Red::Migration;
 =head2 Red::Migration::Planner
 
@@ -42,8 +43,18 @@ method capture(@models --> Red::Migration::Snapshot) {
             self!error('Constraint DDL cannot contain bind parameters') if @bind;
             $sql
         };
+        my @global-event-triggers = $model.^global-notifiable
+            ?? do {
+                Red::GlobalEvents::warn-unsupported($model, $!driver)
+                    unless $!driver.supports-global-events;
+                $!driver.global-event-triggers($model)
+                    .map({ %(name => .key, sql => .value) })
+                    .sort(*.<name>).Array
+            }
+            !! [];
         $table.clone(:indexes(@indexes.sort(*.<name>).Array), :checks(@checks.sort.Array),
-            :constraints($table.constraints.sort(*.join('|')).Array))
+            :constraints($table.constraints.sort(*.join('|')).Array),
+            :global-event-triggers(@global-event-triggers))
     };
     self!error('Duplicate table names in migration configuration')
         unless @tables.map(*.name).unique.elems == @tables.elems;
@@ -117,6 +128,7 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
         @sql.append: $!driver.migration-create-table-prefix(%new{$table});
         @sql.push: self!create(%new{$table});
         @sql.append: %new{$table}.indexes.map(*.<sql>);
+        @sql.append: %new{$table}.global-event-triggers.map(*.<sql>);
         %done{$table} = %new{$table};
         @create = @create.grep(* ne $table);
     }
@@ -170,6 +182,16 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
         }
         for %bi.keys.sort -> $index {
             @sql.push: %bi{$index} unless (%ai{$index}:exists) && %ai{$index} eq %bi{$index};
+        }
+        my %at = $a.global-event-triggers.map({ .<name> => .<sql> });
+        my %bt = $b.global-event-triggers.map({ .<name> => .<sql> });
+        for %at.keys.sort -> $name {
+            next if (%bt{$name}:exists) && %bt{$name} eq %at{$name};
+            my $drop = $!driver.migration-drop-global-event-trigger($b.name, $name);
+            @sql.push: $drop if $drop;
+        }
+        for %bt.keys.sort -> $name {
+            @sql.push: %bt{$name} unless (%at{$name}:exists) && %at{$name} eq %bt{$name};
         }
     }
     my @drop = %old.keys.grep({ !(%new{$_}:exists) }).sort;

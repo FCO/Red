@@ -975,3 +975,45 @@ Insert events are emitted after `.^create` commits its transaction. A rollback c
 by an exception therefore does not publish a live value; inserts made inside an outer
 transaction that later rolls back are still visible, since the outer transaction owns
 the commit.
+
+### Global events across nodes
+
+Mark a model with `is global-notifiable` when live supplies must see inserts made by
+other processes or nodes:
+
+```raku
+model Person is global-notifiable {
+    has Int $.id is serial;
+    has Str $.name is column;
+}
+
+my $*RED-DB = database 'Pg', :dbname<my_app>, :user<my_user>;
+schema(Person).create;
+
+react whenever Person.^all.Supply -> $person {
+    say $person.name;
+}
+```
+
+The driver publishes a notification after each committed insert on the shared
+`red_events` channel. The payload is `{"v":1,"model":"Person","ids":{"id":42}}`; the
+listener resolves `Person` and rebuilds the row with `Person.^find(:id(42))` before
+emitting it through `Red.events`. The local `.^create` event is suppressed for marked
+models when the backend supports notifications, so a row is never emitted twice.
+
+Listeners start automatically after `schema(...).create` commits, and lazily when a
+marked model's `.Supply` is built. Nodes that only tap `Red.events` can start one
+explicitly:
+
+```raku
+Red.start-global-events(:with($*RED-DB));
+```
+
+If the current driver does not implement global events, Red warns once per model and
+keeps the original local event behavior. `Red::Driver::Pg` implements the hooks using
+PostgreSQL `AFTER INSERT` triggers and `LISTEN`/`NOTIFY`; its listener requires the
+`epoll` module available to `DB::Pg`. Because PostgreSQL delivers notifications at
+commit, marked models also avoid the outer-transaction rollback caveat above.
+
+Trigger definitions are stored in migration snapshots under `global-event-triggers`,
+so schema versions capture and diff the notification DDL too.

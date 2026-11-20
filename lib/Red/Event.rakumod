@@ -17,3 +17,7 @@ has Red::Model   $.origin;
 has Callable     $.materialize-origin;
 has Exception    $.error;
 has              %.metadata;
+#| True when the event came from another node through the driver's notification backend.
+has Bool         $.global = False;
+#| Id attribute names carried by a global notification.
+has              %.ids;

@@ -1,0 +1,160 @@
+use Test;
+use Red;
+use Red::Driver::SQLite;
+use Red::Event;
+use Red::AST::Insert;
+use Red::Migration::Planner;
+use Red::Migration::Snapshot;
+
+#| SQLite subclass that pretends to have a NOTIFY/LISTEN backend. The DDL is a
+#| harmless SELECT so the fake can run on the real in-memory SQLite connection.
+my class GlobalDriver is Red::Driver::SQLite {
+    has @.installed;
+    has &.listener is rw;
+
+    method supports-global-events(--> Bool:D) { True }
+
+    method global-event-triggers(Mu:U $model --> Array:D) {
+        ['fake_notify_' ~ $model.^table => 'SELECT 1']
+    }
+
+    method install-global-event-triggers(@models) {
+        @!installed.append: @models.map(*.^name);
+        for @models -> Mu \model {
+            self.execute(.value) for self.global-event-triggers(model);
+        }
+        self
+    }
+
+    method listen-global-events(@models, &on-event) {
+        &!listener = &on-event;
+        'fake-listener'
+    }
+
+    method migration-drop-global-event-trigger(Str $table, Str $name --> Str:D) {
+        "SELECT 2 -- $table.$name"
+    }
+
+    method notify(Mu:U $model, %ids) {
+        &!listener.(%(model => $model.^name, ids => %ids));
+    }
+}
+
+my $*RED-DB = GlobalDriver.new;
+$*RED-DB.auto-register;
+
+model LocalItem {
+    has UInt $.id   is serial;
+    has Str  $.name is column;
+}
+
+model GlobalItem is global-notifiable {
+    has UInt $.id   is serial;
+    has Str  $.name is column;
+}
+
+schema(LocalItem, GlobalItem).drop;
+LocalItem.^create-table;
+GlobalItem.^create-table;
+
+ok GlobalItem.^global-notifiable, 'trait marks the model as global-notifiable';
+nok LocalItem.^global-notifiable, 'unmarked models keep local events';
+ok $*RED-DB.installed.grep(* eq 'GlobalItem'), 'trigger installed for the marked model';
+is $*RED-DB.installed.grep(* eq 'LocalItem').elems, 0, 'no trigger for unmarked model';
+
+# 1. local events are unchanged for unmarked models and suppressed for marked ones
+{
+    my @inserts;
+    my $tap = Red.events.tap(-> Red::Event $event {
+        @inserts.push($event) if $event.data ~~ Red::AST::Insert;
+    });
+    LEAVE $tap.close;
+
+    LocalItem.^create(:name<local>);
+    is @inserts.elems, 1, 'unmarked model emits the local insert event';
+
+    GlobalItem.^create(:name<direct>);
+    is @inserts.elems, 1, 'marked model does not emit a local insert event';
+}
+
+# 2. a notification is converted into a global Red::Event
+{
+    Red.start-global-events(:with($*RED-DB));
+    my @global;
+    my $tap = Red.events.tap(-> Red::Event $event {
+        @global.push($event) if $event.global;
+    });
+    LEAVE $tap.close;
+
+    $*RED-DB.notify(GlobalItem, { id => 1 });
+    is @global.elems, 1, 'notification produced one global event';
+    ok @global[0].model === GlobalItem, 'event carries the model type';
+    is @global[0].ids<id>, 1, 'event carries the id';
+    isa-ok @global[0].materialize-origin.(), GlobalItem, 'origin is materialized with ^find';
+}
+
+# 3. ResultSeq.Supply emits rows fetched from remote notifications
+{
+    my @values;
+    my $tap = GlobalItem.^all.Supply.tap(-> $item { @values.push($item.name) });
+    LEAVE $tap.close;
+    is @values.elems, 1, 'snapshot is emitted on tap';
+
+    my $remote = GlobalItem.^create(:name<remote>);
+    $*RED-DB.notify(GlobalItem, { id => $remote.id });
+
+    my $ready = Promise.new;
+    start {
+        while @values.elems < 2 && $ready.status !~~ Kept {
+            sleep 0.02
+        }
+        $ready.keep(True)
+    }
+    await Promise.anyof($ready, Promise.in(5));
+    is @values.elems, 2, 'remote notification produced a live value';
+    is @values[1], 'remote', 'live value was fetched from the database';
+}
+
+# 4. migrations capture and diff trigger DDL
+{
+    my $planner = Red::Migration::Planner.new(:driver($*RED-DB), :dialect<SQLite>);
+    my $snapshot = $planner.capture([GlobalItem]);
+    is $snapshot.tables[0].global-event-triggers.elems, 1,
+        'snapshot captures notification triggers';
+
+    my $path = $*TMPDIR.add("red-global-{$*PID}-{100000.rand.Int}.rakuconf");
+    LEAVE $path.unlink if $path.e;
+    $path.spurt: $snapshot.source;
+    is Red::Migration::Snapshot.load($path).source, $snapshot.source,
+        'snapshot round-trips trigger DDL';
+
+    my @sql = $planner.diff(Red::Migration::Snapshot.new, $snapshot);
+    ok @sql.grep(* eq 'SELECT 1'), 'creating a table includes the trigger DDL';
+
+    my $without = $snapshot.tables[0].clone(:global-event-triggers([]));
+    my @removed = $planner.diff($snapshot,
+        Red::Migration::Snapshot.new(:tables[$without]));
+    ok @removed.grep(*.contains('fake_notify_global_item')),
+        'removing the trigger is emitted by the driver hook';
+}
+
+# 5. unsupported backends fall back to local events with a warning
+{
+    my $sqlite = Red::Driver::SQLite.new;
+    $sqlite.auto-register;
+    my $*RED-DB = $sqlite;
+    model FallbackItem is global-notifiable {
+        has UInt $.id   is serial;
+        has Str  $.name is column;
+    }
+    FallbackItem.^create-table;
+    my @inserts;
+    my $tap = Red.events.tap(-> Red::Event $event {
+        @inserts.push($event) if $event.data ~~ Red::AST::Insert;
+    });
+    LEAVE $tap.close;
+    FallbackItem.^create(:name<fallback>);
+    is @inserts.elems, 1, 'unsupported backend keeps emitting local events';
+}
+
+done-testing;

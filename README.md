@@ -1,3 +1,13 @@
+### method start-global-events
+
+```raku
+method start-global-events(
+    Mu :$with = Code.new
+) returns Mu
+```
+
+Start listening for global-notifiable events on a driver.
+
 [![Build Status](https://github.com/FCO/Red/workflows/test/badge.svg)](https://github.com/FCO/Red/actions) [![SparrowCI](https://ci.sparrowhub.io/project/gh-FCO-Red/badge)](https://ci.sparrowhub.io)
 
 Red

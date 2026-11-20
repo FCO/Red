@@ -8,6 +8,7 @@ has Str  $.model-name = try { snake-to-camel-case $!name };
 has      @.columns;
 has      @.constraints;
 has      @.indexes;
+has      @.global-event-triggers;
 has Str  @.checks;
 has @.portable-indexes;
 has @.portable-checks;

@@ -20,3 +20,5 @@ tags
 .prepare.lock
 
 .*.migration.lock
+
+.nimala

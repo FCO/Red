@@ -17,6 +17,7 @@ use Red::AST::Optimizer::AND;
 use Red::AST::Optimizer::OR;
 use Red::AST::Optimizer::Case;
 use Red::Class;
+use Red::GlobalEvents;
 use Red::DB;
 use Red::Schema;
 use Red::Formatter;
@@ -24,11 +25,15 @@ use Red::AST::Infixes;
 use Red::AST::Native;
 use Red::Compiler::RakuAST;
 
-class Red:ver<0.2.14>:api<2> {
+class Red:ver<0.2.15>:api<2> {
     our %experimentals;
     our @experimental-roles;
     method events   { Red::Class.instance.events }
     method emit(|c) { get-RED-DB.emit: |c        }
+    #| Start listening for global-notifiable events on a driver.
+    method start-global-events(Mu :$with = get-RED-DB) {
+        Red::GlobalEvents::start-global-events(:$with)
+    }
     method experimentals { %experimentals }
     method ping {
         do for (%GLOBAL::RED-DEFAULT-DRIVERS || :default(get-RED-DB)).kv -> $key, $conn {
@@ -42,8 +47,9 @@ class Red:ver<0.2.14>:api<2> {
         Red::Operators::EXPORT::ALL::,
         Red::Schema::EXPORT::ALL::,
         Red::AST::Native::EXPORT::ALL::,
-        ‘&database’ => &database,
+        '&database' => &database,
         '&red-compile' => &red-compile,
+        '&start-global-events' => &Red::GlobalEvents::start-global-events,
         |@experimentals.map(-> $feature { |experimental( $feature ) })
     }
 }

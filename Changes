@@ -1,6 +1,14 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add is global-notifiable models for cross-process live events through driver
+      notification backends, with local-event fallback when unsupported.
+    - Add driver hooks for global event triggers, LISTEN startup, and migration DDL.
+    - Deliver NOTIFY payloads as global Red::Event objects and materialize rows through
+      ResultSeq.Supply with ^find.
+    - Capture notification trigger SQL in migration snapshots and diffs.
+    - Start notification listeners after schema creation commits and materialize rows
+      through a stable driver outside transaction scopes.
 
 0.2.14  2026-11-20T04:47:01Z
     - Add ResultSeq.Supply, emitting the current query rows followed by future inserts.

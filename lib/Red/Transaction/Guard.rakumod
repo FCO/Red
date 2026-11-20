@@ -89,6 +89,9 @@ submethod TWEAK {
 #| Internal driver used by ORM operations in this scope.
 method scoped-driver { $!scoped-driver }
 
+#| Original driver that owns the physical connection.
+method driver { $!driver }
+
 method driver-name { $!driver.^name }
 
 #| Identity of the physical transaction shared by nested scopes.

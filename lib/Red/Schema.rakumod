@@ -1,5 +1,6 @@
 use Red::Do;
 use Red::DB;
+use Red::GlobalEvents;
 use Red::Runtime::Configuration;
 unit class Red::Schema;
 
@@ -77,6 +78,10 @@ method create(:$where) {
     red-do (:$where with $where), :transaction, {
         |.create-schema(%!models);
     }
+    my $driver = get-RED-DB;
+    Red::GlobalEvents::ensure-global-listener(
+        $driver, [%!models.values.grep(*.^global-notifiable)]
+    );
     self
 }
 

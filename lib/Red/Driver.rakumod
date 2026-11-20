@@ -13,11 +13,12 @@ use Red::AST::RollbackTransaction;
 use Red::AST::Savepoint;
 use Red::AST::RollbackToSavepoint;
 use Red::AST::ReleaseSavepoint;
+use Red::Driver::Events;
 
 =head2 Red::Driver
 
 #| Base role for a Red::Driver::*
-unit role Red::Driver does Red::Driver::Migrations;
+unit role Red::Driver does Red::Driver::Migrations does Red::Driver::Events;
 
 has Supplier $!supplier .= new;
 #| Supply of events of that driver

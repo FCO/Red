@@ -6,6 +6,8 @@ use Red::Phaser;
 use X::Red::Exceptions;
 use MetamodelX::Red::VirtualView;
 use MetamodelX::Red::View;
+use MetamodelX::Red::GlobalNotifiable;
+use Red::GlobalEvents;
 unit module Red::Traits;
 
 sub validate-schema-options(%options) {
@@ -16,6 +18,17 @@ sub validate-schema-options(%options) {
 }
 
 =head2 Red::Traits
+
+=head3 is global-notifiable
+
+#| Inserts on this model are published through the driver's notification backend,
+#| making C<ResultSeq.Supply> live across processes and nodes.
+multi trait_mod:<is>(Mu:U $model, Bool :$global-notifiable! --> Empty) is export {
+    if $global-notifiable {
+        $model.HOW does MetamodelX::Red::GlobalNotifiable;
+        Red::GlobalEvents::register-model($model);
+    }
+}
 
 =head3 is view
 

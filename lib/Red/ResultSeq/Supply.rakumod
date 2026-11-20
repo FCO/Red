@@ -5,6 +5,7 @@ use Red::Class;
 use Red::Event;
 use Red::Model;
 use Red::QueryPlan;
+use Red::GlobalEvents;
 
 =head2 Red::ResultSeq::Supply
 
@@ -36,7 +37,7 @@ sub source-model(\rs) {
 #| Returns the model associated with an insert event.
 sub event-model(Red::Event $event) {
     return $event.origin.WHAT if $event.origin.defined;
-    return $event.model if $event.model.defined;
+    return $event.model if $event.model.defined || $event.global;
     $event.data.into
 }
 
@@ -66,7 +67,7 @@ sub build-live(\rs, $driver --> Supply) {
     my $source = Red::Class.instance.events
         .grep(-> Red::Event $event {
             !$event.error.defined
-                && $event.data ~~ Red::AST::Insert
+                && ($event.data ~~ Red::AST::Insert || $event.global)
                 && do {
                     my \insert-model = event-model($event);
                     (insert-model === model || insert-model === model.^orig)
@@ -92,6 +93,10 @@ sub live-supply-for(\rs, Red::AST $ast, $driver --> Supply) is export {
     my $key = $base-key.defined
         ?? $base-key
         !! 'unsafe|' ~ $ast.WHICH.Str ~ '|' ~ ($UNSAFE-COUNTER⚛++);
+
+    my \model = source-model(rs);
+    Red::GlobalEvents::ensure-global-listener($driver, [model])
+        if model.^global-notifiable && $driver.defined;
 
     $LOCK.protect: {
         %LIVE-SUPPLIES{$key} //= build-live(rs, $driver)
