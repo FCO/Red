@@ -1,6 +1,6 @@
 use Red;
 use Red::Migration::Snapshot;
-use Red::GlobalEvents;
+need Red::GlobalEvents;
 use X::Red::Migration;
 =head2 Red::Migration::Planner
 

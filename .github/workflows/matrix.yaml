@@ -126,7 +126,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: FCO/Red-Driver-Pg
-          ref: 6615b55d109db7ea7ca3469364080e873f1bf9a5
+          ref: d582b26164a77bec17a9a60fb8376dd8ba0f10a4
           path: .ci/pg-driver
       - uses: Raku/setup-raku@v1
         with:

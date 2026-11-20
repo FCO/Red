@@ -6,7 +6,7 @@ RUN apt-get update && apt-get install -y git curl neovim libpq-dev postgresql-cl
 WORKDIR /opt/red
 COPY META6.json README.md ./
 RUN zef install --/test Cro::HTTP App::Prove6 DB::Pg UUID Configuration
-ARG PG_DRIVER_REVISION=6615b55d109db7ea7ca3469364080e873f1bf9a5
+ARG PG_DRIVER_REVISION=d582b26164a77bec17a9a60fb8376dd8ba0f10a4
 RUN curl -fsSL --retry 3 "https://codeload.github.com/FCO/Red-Driver-Pg/tar.gz/${PG_DRIVER_REVISION}" -o /tmp/pg.tar.gz \
     && mkdir /tmp/pg && tar -xzf /tmp/pg.tar.gz -C /tmp/pg --strip-components=1
 COPY lib lib
