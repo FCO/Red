@@ -15,3 +15,7 @@ Database driver's name
 
 Database driver type name
 
+### has Callable $.materialize-origin
+
+Lazily resolves the row returned by the database (with generated ids).
+

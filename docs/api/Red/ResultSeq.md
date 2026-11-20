@@ -26,6 +26,10 @@ method of() returns Mu
 
 The type of the ResultSeq
 
+### has Positional @.live-ops
+
+Closures applied by .Supply to objects created after the snapshot.
+
 ### method Seq
 
 ```raku
@@ -33,6 +37,14 @@ method Seq() returns Mu
 ```
 
 Returns a Seq with the result of the SQL query
+
+### method Supply
+
+```raku
+method Supply() returns Supply
+```
+
+Returns a Supply with the current rows and the future rows matching this query.
 
 ### method cross-product
 
@@ -144,7 +156,7 @@ Sets the query to return the rows in a randomic order (does not run the query)
 ```raku
 method classify(
     &func,
-    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|3513761059176) ... },
+    :&as = -> ;; $_? is raw = OUTER::<$_> { #`(Block|5443812149104) ... },
     :&reduce
 ) returns Red::ResultAssociative
 ```

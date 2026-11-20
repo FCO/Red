@@ -300,6 +300,7 @@ multi method save(
     $obj,
     Bool :$insert! where { ... },
     Bool :$from-create,
+    Red::AST::Insert :$insert-ast,
     :$with where { ... }
 ) returns Mu
 ```

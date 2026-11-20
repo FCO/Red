@@ -113,6 +113,7 @@ API Pages
 - [Red::Regex::Unicode](api/Red/Regex/Unicode)
 - [Red::ResultAssociative](api/Red/ResultAssociative)
 - [Red::ResultSeq](api/Red/ResultSeq)
+- [Red::ResultSeq::Supply](api/Red/ResultSeq/Supply)
 - [Red::ResultSeqSeq](api/Red/ResultSeqSeq)
 - [Red::Runtime::Configuration](api/Red/Runtime/Configuration)
 - [Red::Schema](api/Red/Schema)

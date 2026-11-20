@@ -17,6 +17,14 @@ method driver-name() returns Mu
 
 Public backend name, independent of internal transaction wrappers.
 
+### method connection-id
+
+```raku
+method connection-id() returns Str:D
+```
+
+Stable identity shared by a driver and the connection clones created by C<begin>.
+
 ### method begin
 
 ```raku
