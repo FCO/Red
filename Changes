@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.15  2026-11-20T16:20:36Z
     - Add is global-notifiable models for cross-process live events through driver
       notification backends, with local-event fallback when unsupported.
     - Add driver hooks for global event triggers, LISTEN startup, and migration DDL.
