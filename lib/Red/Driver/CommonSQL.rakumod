@@ -872,7 +872,8 @@ multi method translate(Red::AST::Infix $_, $context?) {
     my $left = .left ~~ Red::AST::Infix && !.bind-left ?? "($lstr)" !! $lstr;
     my $right = .right ~~ Red::AST::Infix && !.bind-right ?? "($rstr)" !! $rstr;
     # Raku / is fractional even when both SQL operands have integer types.
-    my $numerator = $_ ~~ Red::AST::Div ?? "(1.0 * $left)" !! $left;
+    # Exponent notation also avoids MySQL's limited-scale DECIMAL division.
+    my $numerator = $_ ~~ Red::AST::Div ?? "(1e0 * $left)" !! $left;
     "$numerator { .op } $right" => [|@lbind, |@rbind]
 }
 
