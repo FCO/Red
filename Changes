@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.14  2026-11-20T04:47:01Z
     - Add ResultSeq.Supply, emitting the current query rows followed by future inserts.
     - Emit insert events after ^create commits and avoid reentrant queries in event callbacks.
     - Match insert events to drivers by stable connection identity across transaction clones.
