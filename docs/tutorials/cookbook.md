@@ -957,11 +957,14 @@ react whenever $supply -> $person {
 }
 ```
 
-The snapshot is produced by lazily iterating the query (`.Seq`), emitting one row at a
-time; the live part is derived from `Red.events`. `grep`, `map`, `head`, and `skip` are
-reapplied to new instances, so the live values respect the same filters and projections
-as the snapshot. Live supplies are shared between `ResultSeq`s with the same AST, binds
-and driver. Duplicate values at the snapshot/live boundary are removed with `squish`.
+The snapshot and future inserts form one continuous stream. Each subscription applies
+`grep`, `map`, `head`, and `skip` in their original order, with independent state.
+For example, `head(2)` emits at most two values including the snapshot, and `skip(1)`
+skips only the first value of the combined stream. Equal projected values from
+different rows are preserved. Raw insert sources are shared by model and driver;
+query callbacks and counters are private to each subscription. Inserts overlapping
+the snapshot are deduplicated by the complete source-row primary key, before mapping.
+Without a complete key, events are preserved rather than deduplicated by value.
 
 Insert events carry a lazy materializer built by `.^create`: the row is fetched from the
 database (with its generated ids) only when a `Supply` is actually tapped, so the live

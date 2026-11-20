@@ -1,6 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Fix ResultSeq.Supply projection duplicates and per-subscription head/skip state.
+    - Share raw insert sources without sharing query callbacks or captured parameters.
+    - Deduplicate overlapping snapshot inserts by source-row identity.
 
 0.2.15  2026-11-20T16:20:36Z
     - Add is global-notifiable models for cross-process live events through driver

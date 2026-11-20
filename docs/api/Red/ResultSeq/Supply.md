@@ -14,7 +14,7 @@ sub supply-identity(
 ) returns Mu
 ```
 
-Identity used to remove the duplicate emitted at the snapshot/live boundary.
+Complete source identity used only at the snapshot/live boundary.
 
 ### sub source-model
 
@@ -55,7 +55,7 @@ sub build-live(
 ) returns Supply
 ```
 
-Builds the pipeline that turns insert events into query results.
+Materializes raw insert events; query operations remain private to each tap.
 
 ### sub live-supply-for
 
@@ -67,5 +67,5 @@ sub live-supply-for(
 ) returns Supply
 ```
 
-Returns the live Supply for this AST, binds and driver, creating it if needed.
+Returns the raw insert Supply shared by source model and driver.
 

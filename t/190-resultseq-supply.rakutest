@@ -2,6 +2,8 @@ use Test;
 use Red;
 use Red::ResultSeq::Supply;
 use Red::AST::Insert;
+use Red::Compiler::Template;
+use Red::Compiler::Emitter;
 
 model SupplyItem {
     has UInt $.id    is serial;
@@ -95,7 +97,7 @@ sub wait-ready(Hash $collected) {
     my $b = live-supply-for($rs2, $rs2.ast, $*RED-DB);
     my $c = live-supply-for($rs3, $rs3.ast, $*RED-DB);
     is $a.WHICH, $b.WHICH, 'same AST and binds share the live Supply';
-    nok $a.WHICH eq $c.WHICH, 'different binds do not share the live Supply';
+    is $a.WHICH, $c.WHICH, 'raw event source is shared independently of binds';
 }
 
 # 6. updates e deletes não geram novos valores
@@ -133,7 +135,7 @@ sub emit-insert(SupplyItem $item) {
         :origin($item);
 }
 
-# 8. squish remove duplicata adjacente na fronteira snapshot -> live
+# 8. events after the snapshot are preserved
 {
     my @values;
     my $tap = SupplyItem.^all.Supply.tap: -> $value { @values.push($value.name) };
@@ -143,14 +145,14 @@ sub emit-insert(SupplyItem $item) {
     my $last = SupplyItem.^all.tail;
     emit-insert($last);
     sleep 0.2;
-    is @values.elems, $before, 'squish drops a live event duplicating the last snapshot row';
+    is @values.elems, $before + 1, 'events after the snapshot are preserved';
 
     emit-insert($last);
     sleep 0.2;
-    is @values.elems, $before, 'squish drops consecutive duplicates on the live stream';
+    is @values.elems, $before + 2, 'consecutive live events are preserved';
 }
 
-# 9. squish mantém duplicatas não adjacentes
+# 9. non-adjacent events are preserved
 {
     my @values;
     my $tap = SupplyItem.^all.Supply.tap: -> $value { @values.push($value.name) };
@@ -159,7 +161,7 @@ sub emit-insert(SupplyItem $item) {
 
     emit-insert(SupplyItem.^all.head);
     sleep 0.2;
-    is @values.elems, $before + 1, 'squish keeps a non-adjacent duplicate';
+    is @values.elems, $before + 1, 'a non-adjacent event is preserved';
 }
 
 # 10. callbacks de Red.events podem consultar o banco após o commit
@@ -179,4 +181,151 @@ sub emit-insert(SupplyItem $item) {
     isa-ok $found, SupplyItem, 'insert event callback can query the database';
 }
 
+{
+    my $rs = SupplyItem.^all.head(2);
+    for ^2 {
+        my @values;
+        my $tap = $rs.Supply.tap(-> $v { @values.push($v) });
+        is @values.elems, 2, 'head has fresh state for each subscription';
+        SupplyItem.^create(:name<same>, :score(1));
+        is @values.elems, 2, 'head counts snapshot toward its limit';
+        $tap.close;
+    }
+    SupplyItem.^create(:name<same>, :score(1));
+    my @names;
+    my $tap = SupplyItem.^all.map(*.name).Supply.tap(-> $v { @names.push($v) });
+    is @names.elems, SupplyItem.^all.elems, 'projection preserves equal values';
+    $tap.close;
+    my @values;
+    $tap = SupplyItem.^all.skip(1).Supply.tap(-> $v { @values.push($v) });
+    my $before = @values.elems;
+    SupplyItem.^create(:name<after-skip>, :score(1));
+    is @values.elems, $before + 1, 'skip is consumed by snapshot';
+    $tap.close;
+}
+{
+    my @expected = SupplyItem.^all.Seq.map(*.id).List;
+    my @values;
+    my $tap = SupplyItem.^all.skip(1).skip(1).head(2).Supply.tap(
+        -> $v { @values.push($v.id) });
+    is-deeply @values.List, @expected.skip(2).head(2).List,
+        'repeated skip uses each individual count';
+    $tap.close;
+    @values = ();
+    $tap = SupplyItem.^all.head(2).grep(*.score > 1000).Supply.tap(
+        -> $v { @values.push($v.id) });
+    SupplyItem.^create(:name<excluded>, :score(2000));
+    is @values.elems, 0, 'head precedes grep for snapshot and live inserts';
+    $tap.close;
+    @values = ();
+    $tap = SupplyItem.^all.head(0).Supply.tap(-> $v { @values.push($v) });
+    is @values.elems, 0, 'head zero emits nothing';
+    $tap.close;
+}
+{
+    my @rows = SupplyItem.^all.Seq.List;
+    my $source = SupplyItem.^all but role {
+        method Seq {
+            gather for @rows.kv -> $i, $row {
+                if $i == 1 {
+                    emit-insert(@rows[0]);
+                    SupplyItem.^create(:name<boundary-new>, :score(11));
+                }
+                take $row;
+            }
+        }
+    };
+    my @values;
+    my $tap = $source.Supply.tap(-> $v { @values.push($v.id) });
+    is-deeply @values.List, (|@rows.map(*.id), SupplyItem.^all.tail.id),
+        'overlapping duplicate is removed and a new insert follows the snapshot';
+    emit-insert(@rows[0]);
+    is @values.elems, @rows.elems + 2, 'same identity after boundary is preserved';
+    $tap.close;
+}
+{
+    sub compiled-query(Int $minimum) {
+        my @plan = ['op', 'Gt', ['field', ['subject'], 'score'], ['capture', 0]];
+        my $template = Red::Compiler::Template.new(:@plan,
+            :getters([-> { $minimum }]),
+            :builder(-> | { die 'Unexpected AST builder' }),
+            :validator(Red::Compiler::Emitter.validator(@plan)));
+        SupplyItem.^all.grep(-> $row { $row.score > $minimum }, :red-ast($template))
+    }
+    my @low;
+    my @high;
+    my $low = compiled-query(5).Supply.tap(-> $v { @low.push($v.id) });
+    my $high = compiled-query(5000).Supply.tap(-> $v { @high.push($v.id) });
+    my $low-before = @low.elems;
+    my $high-before = @high.elems;
+    SupplyItem.^create(:name<binds>, :score(20));
+    is @low.elems, $low-before + 1, 'first compiled filter retains its bindings';
+    is @high.elems, $high-before, 'second compiled filter remains independent';
+    $low.close;
+    SupplyItem.^create(:name<remaining>, :score(6000));
+    is @high.elems, $high-before + 1, 'closing one tap preserves another';
+    $high.close;
+}
+{
+    my @values;
+    my $query = SupplyItem.^all.grep(*.score > 0).map(*.score).sort;
+    my $tap = $query.Supply.tap(-> $v { @values.push($v) });
+    is-deeply @values.List, $query.Seq.List, 'sort after projection preserves snapshot order';
+    $tap.close;
+    @values = ();
+    $query = SupplyItem.^all.head(2).map(*.score).sort;
+    $tap = $query.Supply.tap(-> $v { @values.push($v) });
+    is-deeply @values.List, SupplyItem.^all.head(2).Seq.map(*.score).sort.List,
+        'sort flushes a finite upstream window in pipeline order';
+    $tap.close;
+}
+{
+    my $reads = 0;
+    my $event = Red::Event.new(:model(SupplyItem),
+        :data(Red::AST::Insert.new(SupplyItem.^all.head)),
+        :materialize-origin(-> { $reads++; SupplyItem.^all.head }));
+    my $tap = SupplyItem.^all.head(1).Supply.tap(-> $v { });
+    $*RED-DB.emit($event);
+    is $reads, 0, 'completed head releases its upstream tap';
+    $tap.close;
+    $tap = SupplyItem.^all.Supply.tap(-> $v { });
+    $*RED-DB.emit($event);
+    is $reads, 1, 'active tap materializes an insert';
+    $tap.close;
+    $*RED-DB.emit($event);
+    is $reads, 1, 'closed taps do not materialize inserts';
+    my $first = SupplyItem.^all.Supply.tap(-> $v { });
+    my $second = SupplyItem.^all.Supply.tap(-> $v { });
+    $*RED-DB.emit($event);
+    is $reads, 2, 'simultaneous taps share materialization of one event';
+    $first.close;
+    $second.close;
+}
+{
+    model EmptySupplyItem {
+        has UInt $.id is serial;
+        has Int $.score is column;
+    }
+    EmptySupplyItem.^create-table;
+    my @head;
+    my @skip;
+    my $head = EmptySupplyItem.^all.head(2).Supply.tap(-> $v { @head.push($v.score) });
+    my $skip = EmptySupplyItem.^all.skip(1).Supply.tap(-> $v { @skip.push($v.score) });
+    EmptySupplyItem.^create(:score(1));
+    EmptySupplyItem.^create(:score(2));
+    EmptySupplyItem.^create(:score(3));
+    is-deeply @head.List, (1, 2), 'head fills its window from an empty snapshot';
+    is-deeply @skip.List, (2, 3), 'skip consumes its count from future rows';
+    $head.close;
+    $skip.close;
+    my $error;
+    my $tap = EmptySupplyItem.^all.Supply.tap(-> $v { },
+        quit => -> $exception { $error = $exception });
+    my $expected = X::AdHoc.new(:payload<materialization failed>);
+    $*RED-DB.emit: Red::Event.new(:model(EmptySupplyItem),
+        :data(Red::AST::Insert.new(EmptySupplyItem.^all.head)),
+        :materialize-origin(-> { $expected.throw }));
+    ok $error === $expected, 'materialization error reaches the subscriber';
+    $tap.close;
+}
 done-testing;

@@ -782,6 +782,12 @@ Guards keep the reserved session usable by asynchronous work that inherits the b
 
   * `after-delete`
 
+#### live query results
+
+`.Supply` emits the initial query rows followed by future inserts. Each subscription has independent `head` and `skip` counters: `head(2)` emits at most two items in all, and `skip(1)` skips only the first item, including the snapshot. Filters and maps run in their original order. Equal projected values from distinct rows are preserved. Insert notifications overlapping the snapshot are deduplicated by the complete source-row primary key before projection.
+
+See [live query results](docs/tutorials/cookbook.md#live-query-results-with-supply) for examples and limitations.
+
 #### global events
 
 Models declared with `is global-notifiable` can receive insert events from other processes when the database driver supports global notifications. Listeners start automatically after `schema(...).create` commits or when a marked model's `.Supply` is built. Applications that only subscribe to `Red.events` can start a listener explicitly:

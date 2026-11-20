@@ -1073,6 +1073,18 @@ transaction's Promise represents only execution of its block, not guard completi
 =item C<before-delete>
 =item C<after-delete>
 
+=head4 live query results
+
+C<.Supply> emits the initial query rows followed by future inserts. Each subscription
+has independent C<head> and C<skip> counters: C<head(2)> emits at most two items in
+all, and C<skip(1)> skips only the first item, including the snapshot. Filters and
+maps run in their original order. Equal projected values from distinct rows are
+preserved. Insert notifications overlapping the snapshot are deduplicated by the
+complete source-row primary key before projection.
+
+See L<live query results|docs/tutorials/cookbook.md#live-query-results-with-supply>
+for examples and limitations.
+
 =head4 global events
 
 Models declared with C<is global-notifiable> can receive insert events from other

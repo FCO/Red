@@ -28,7 +28,7 @@ The type of the ResultSeq
 
 ### has Positional @.live-ops
 
-Closures applied by .Supply to objects created after the snapshot.
+Ordered operation descriptors instantiated separately by each .Supply tap.
 
 ### method Seq
 

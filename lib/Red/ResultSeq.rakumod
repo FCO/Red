@@ -106,8 +106,10 @@ has Red::QueryPlan::Cache $!query-plan-cache .= new;
 has Red::LockType     $.for;
 has                   @.prefetches;
 has Bool              $.prefetches-set = False;
-#| Closures applied by .Supply to objects created after the snapshot.
+#| Ordered operation descriptors instantiated separately by each .Supply tap.
 has                   @.live-ops;
+has                   $.supply-source;
+has Bool              $.supply-empty = False;
 
 multi method with { $!with }
 
@@ -135,18 +137,44 @@ method Seq is hidden-from-sql-commenting {
 
 #| Returns a Supply with the current rows and the future rows matching this query.
 method Supply(--> Supply) is hidden-from-sql-commenting {
+    return supply { } if $!supply-empty;
     my $driver = $!with // get-RED-DB;
-    my $rs = self;
-    my $live = live-supply-for($rs, $rs.ast, $driver);
-
-    # whenever is installed before the snapshot runs, so inserts arriving during
-    # it are queued by the supply block and delivered right after the snapshot.
-    supply {
-        whenever $live -> $value {
-            emit $value
+    my $source = ($!supply-source // self).with($driver);
+    my $combined = supply {
+        my %snapshot;
+        my atomicint $reading = 1;
+        my $forward = Supplier.new;
+        whenever $forward.Supply -> $entry {
+            if $entry<clear> {
+                %snapshot = ();
+            } else {
+                emit $entry<value> unless $entry<snapshot>
+                    && $entry<identity>.defined
+                    && (%snapshot{$entry<identity>}:exists);
+            }
         }
-        .emit for $rs.Seq;
-    }.squish(:as(&supply-identity))
+        my $live = live-supply-for($source, $source.ast, $driver);
+        my $tap = $live.tap(
+            -> $value {
+                $forward.emit: %(:$value, :snapshot(so ⚛$reading),
+                    :identity(supply-identity($value)));
+            },
+            quit => -> $error { $forward.quit($error) }
+        );
+        CLOSE { $tap.?close }
+        for $source.Seq -> $value {
+            my $identity = supply-identity($value);
+            %snapshot{$identity} = True if $identity.defined;
+            emit $value;
+        }
+        emit SnapshotEnd.new;
+        $reading⚛= 0;
+        $forward.emit: %(clear => True);
+    };
+    for @!live-ops -> %operation {
+        $combined = apply-supply-operation($combined, %operation);
+    }
+    $combined.grep({ $_ !~~ SnapshotEnd })
 }
 
 method do-it(*%pars) is hidden-from-sql-commenting {
@@ -558,9 +586,9 @@ method grep(&filter, :$red-ast is copy) is hidden-from-sql-commenting {
     with $*RED-GREP-FILTER {
         $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
     }
-    my &live-op = -> Supply $supply { $supply.grep(&filter) };
+    my %live-op = :kind<grep>, :callback(&filter);
     my $result = $input.where: $filter;
-    $result.clone: :live-ops(|$input.live-ops, &live-op)
+    $result.clone: :supply-source($!supply-source // self), :live-ops(|@!live-ops, %live-op)
 }
 
 #| Changes the query to return only the first row that matches the condition and run it (.grep(...).head)
@@ -652,10 +680,10 @@ method map(\SELF: &filter, :$red-ast is copy) is hidden-from-sql-commenting {
             $n.DEFINITE ?? Red::AST::OR.new($agg, $n) !! $agg
         }) !! ast-value(False))
     } else { $input }
-    my &live-op = -> Supply $supply { $supply.map(&filter) };
+    my %live-op = :kind<map>, :callback(&filter);
     my &with-live = -> $result {
         $result ~~ Red::ResultSeq
-            ?? $result.clone(:live-ops(|$input.live-ops, &live-op))
+            ?? $result.clone(:supply-source($!supply-source // self), :live-ops(|@!live-ops, %live-op))
             !! $result
     };
     return with-live(seq!create-projection(Red::Projection.from-value(Any), &filter)) unless %when;
@@ -718,7 +746,9 @@ multi method sort(&order, :$red-ast is copy --> Red::ResultSeq) is hidden-from-s
             order $input!projection-subject
         };
     }
-    $input.clone: :chain($input.chain.clone: :@order)
+    $input.clone: :chain($input.chain.clone: :@order),
+        :supply-source($!supply-source // self),
+        :live-ops(|@!live-ops, %(:kind<sort>, :callback(&order)))
 }
 
 #| Sets the query to return the rows in a randomic order (does not run the query)
@@ -788,9 +818,10 @@ multi method head is hidden-from-sql-commenting {
 multi method head(UInt(Numeric) $num) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     my $limit = min $num, $.limit;
-    my $seen = 0;
-    my &live-op = -> Supply $supply { $supply.grep({ $seen++ < $limit }) };
-    self.clone: :chain($!chain.clone: :$limit), :live-ops(|@!live-ops, &live-op)
+    my %live-op = :kind<head>, :count($num);
+    self.clone: :supply-empty($!supply-empty || $num == 0),
+        :chain($!chain.clone: :$limit), :supply-source($!supply-source // self),
+        :live-ops(|@!live-ops, %live-op)
 }
 
 method !ordered-input(Str:D $operation) {
@@ -818,7 +849,9 @@ method reverse() is hidden-from-sql-commenting {
         return self.Seq.reverse;
     }
     my @order = $input.order.map({ Red::AST::Ordering.from-expression($_).reversed });
-    $input.clone(:chain($input.chain.clone(:@order)))
+    $input.clone(:chain($input.chain.clone(:@order)),
+        :supply-source($!supply-source // self),
+        :live-ops(|@!live-ops, %(:kind<reverse>)))
 }
 
 #| Selects the last rows in their original order without executing the query.
@@ -837,7 +870,9 @@ multi method tail(UInt(Numeric) $num) is hidden-from-sql-commenting {
     my $last = $input.clone(:chain($input.chain.clone(:@order, :limit($num))));
     $last = $last!projection-input;
     @order = $last.order.map({ Red::AST::Ordering.from-expression($_).reversed });
-    $last.clone(:chain($last.chain.clone(:@order)))
+    $last.clone(:chain($last.chain.clone(:@order)),
+        :supply-source($!supply-source // self),
+        :live-ops(|@!live-ops, %(:kind<tail>, :count($num))))
 }
 
 multi method tail() is hidden-from-sql-commenting {
@@ -854,10 +889,9 @@ method skip(UInt:D $num --> Red::ResultSeq) is hidden-from-sql-commenting {
     my $limit = $.limit;
     $limit = max(0, $limit - $num) if $limit.DEFINITE;
     my $offset = ($.offset // 0) + $num;
-    my $seen = 0;
-    my &live-op = -> Supply $supply { $supply.grep({ $seen++ >= $offset }) };
+    my %live-op = :kind<skip>, :count($num);
     self.clone: :chain($!chain.clone:
-        :$offset, :$limit), :live-ops(|@!live-ops, &live-op);
+        :$offset, :$limit), :supply-source($!supply-source // self), :live-ops(|@!live-ops, %live-op);
 }
 
 # Alias for skip. It's going to be deprecated on a future version

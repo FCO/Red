@@ -4,7 +4,6 @@ use Red::AST::Value;
 use Red::Class;
 use Red::Event;
 use Red::Model;
-use Red::QueryPlan;
 use Red::GlobalEvents;
 
 =head2 Red::ResultSeq::Supply
@@ -14,12 +13,13 @@ unit module Red::ResultSeq::Supply;
 
 my %LIVE-SUPPLIES;
 my $LOCK = Lock.new;
-my atomicint $UNSAFE-COUNTER = 0;
 
-#| Identity used to remove the duplicate emitted at the snapshot/live boundary.
+#| Complete source identity used only at the snapshot/live boundary.
 sub supply-identity($value) is export {
-    my @ids = $value ~~ Red::Model ?? $value.^id-values.grep(*.defined) !! ();
-    @ids ?? @ids.map(*.raku).join('|') !! $value.WHICH.Str
+    return Str unless $value ~~ Red::Model;
+    my @ids = $value.^id-values;
+    return Str unless @ids && @ids.all.defined;
+    ($value.^orig.WHICH.Str, |@ids.map(*.raku)).raku
 }
 
 #| Returns the original model of a ResultSeq, unwrapping specialised projection models.
@@ -60,7 +60,7 @@ sub instance-from-event(Red::Event $event) {
     $instance
 }
 
-#| Builds the pipeline that turns insert events into query results.
+#| Materializes raw insert events; query operations remain private to each tap.
 sub build-live(\rs, $driver --> Supply) {
     my \model = source-model(rs);
 
@@ -74,25 +74,29 @@ sub build-live(\rs, $driver --> Supply) {
                         && $event.db.connection-id eq $driver.connection-id
                 }
         })
-        .map(&instance-from-event)
-        .grep(*.defined);
+        .map(-> Red::Event $event {
+            my $lock = Lock.new;
+            my Bool $resolved = False;
+            my $value;
+            -> {
+                $lock.protect: {
+                    unless $resolved {
+                        $value = instance-from-event($event);
+                        $resolved = True;
+                    }
+                    $value
+                }
+            }
+        }).share;
 
-    for rs.live-ops.list -> &operation {
-        $source = operation($source)
-    }
-
-    $source.share
+    # share subscribes eagerly; defer database access until an actual tap asks
+    # for the value. All taps of this event reuse the same materialized row.
+    $source.map(-> &resolve { resolve() }).grep(*.defined)
 }
 
-#| Returns the live Supply for this AST, binds and driver, creating it if needed.
+#| Returns the raw insert Supply shared by source model and driver.
 sub live-supply-for(\rs, Red::AST $ast, $driver --> Supply) is export {
-    my %description = try Red::QueryPlan.describe($ast) // {};
-    my $base-key = %description<key>.defined
-        ?? $driver.connection-id ~ '|' ~ %description<key>
-        !! Str;
-    my $key = $base-key.defined
-        ?? $base-key
-        !! 'unsafe|' ~ $ast.WHICH.Str ~ '|' ~ ($UNSAFE-COUNTER⚛++);
+    my $key = $driver.connection-id ~ '|' ~ source-model(rs).WHICH.Str;
 
     my \model = source-model(rs);
     Red::GlobalEvents::ensure-global-listener($driver, [model])
@@ -100,5 +104,71 @@ sub live-supply-for(\rs, Red::AST $ast, $driver --> Supply) is export {
 
     $LOCK.protect: {
         %LIVE-SUPPLIES{$key} //= build-live(rs, $driver)
+    }
+}
+
+# Internal boundary marker; never exposed to a caller or a query callback.
+class SnapshotEnd is export { }
+
+sub apply-supply-operation(Supply $input, %operation --> Supply) is export {
+    given %operation<kind> {
+        when 'grep' {
+            return $input.grep(-> $value {
+                $value ~~ SnapshotEnd || %operation<callback>($value)
+            });
+        }
+        when 'map' {
+            return $input.map(-> $value {
+                $value ~~ SnapshotEnd ?? $value !! %operation<callback>($value)
+            });
+        }
+        when 'head' | 'skip' {
+            return supply {
+                my $seen = 0;
+                if %operation<kind> eq 'head' && %operation<count> == 0 {
+                    done;
+                } else {
+                    whenever $input -> $value {
+                        if $value ~~ SnapshotEnd {
+                            emit $value;
+                        } elsif %operation<kind> eq 'skip' {
+                            emit $value if $seen++ >= %operation<count>;
+                        } else {
+                            emit $value;
+                            done if ++$seen >= %operation<count>;
+                        }
+                    }
+                }
+            };
+        }
+        when 'sort' | 'tail' | 'reverse' {
+            return supply {
+                my @snapshot;
+                my Bool $reading = True;
+                sub snapshot-values() {
+                    given %operation<kind> {
+                        when 'sort' { @snapshot.sort(%operation<callback>) }
+                        when 'tail' { @snapshot.tail(%operation<count>) }
+                        when 'reverse' { @snapshot.reverse }
+                    }
+                }
+                whenever $input -> $value {
+                    LAST {
+                        if $reading { emit $_ for snapshot-values() }
+                    }
+                    if $value ~~ SnapshotEnd {
+                        my @values = snapshot-values();
+                        @snapshot = ();
+                        $reading = False;
+                        emit $_ for @values;
+                        emit $value;
+                    } elsif $reading {
+                        @snapshot.push($value);
+                    } else {
+                        emit $value;
+                    }
+                }
+            };
+        }
     }
 }
