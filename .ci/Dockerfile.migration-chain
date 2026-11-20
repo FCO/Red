@@ -7,8 +7,8 @@ RUN apt-get update -qq \
     && rm -rf /var/lib/apt/lists/*
 
 # Match the driver revisions used by .github/workflows/matrix.yaml.
-ARG PG_DRIVER_REF=6615b55d109db7ea7ca3469364080e873f1bf9a5
-ARG MYSQL_DRIVER_REF=d1be6590927f552151bb033fedb738dfeedc766f
+ARG PG_DRIVER_REF=d582b26164a77bec17a9a60fb8376dd8ba0f10a4
+ARG MYSQL_DRIVER_REF=d614cc9b6fc17f3ff70faaaa6198f673430b134c
 RUN git clone https://github.com/FCO/Red-Driver-Pg.git /drivers/pg \
     && git -C /drivers/pg checkout "$PG_DRIVER_REF" \
     && git clone https://github.com/FCO/Red-Driver-MySQL.git /drivers/mysql \

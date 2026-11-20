@@ -25,5 +25,5 @@ jobs:
       # Until migrations ship in a release, install the same Red revision used by this workshop.
       - run: zef install --/test .
         working-directory: vendor/Red
-      - run: zef install --/test https://github.com/FCO/Red-Driver-Pg/archive/6615b55d109db7ea7ca3469364080e873f1bf9a5.tar.gz App::Prove6
+      - run: zef install --/test https://github.com/FCO/Red-Driver-Pg/archive/d582b26164a77bec17a9a60fb8376dd8ba0f10a4.tar.gz App::Prove6
       - run: red migration apply --test --driver=Pg -- raku -Ilib t/application.rakutest

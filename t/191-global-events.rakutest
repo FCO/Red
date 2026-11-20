@@ -20,8 +20,8 @@ my class GlobalDriver is Red::Driver::SQLite {
 
     method install-global-event-triggers(@models) {
         @!installed.append: @models.map(*.^name);
-        for @models -> Mu \model {
-            self.execute(.value) for self.global-event-triggers(model);
+        for @models -> Mu:U $model {
+            self.execute(.value) for self.global-event-triggers($model);
         }
         self
     }

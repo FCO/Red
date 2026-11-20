@@ -85,7 +85,9 @@ throws-like {
 @queries = ();
 my @numeric = AggregateSensor.^all.classify(*.value)
     .map(-> (:key($value), :value($rows)) { [$value, $rows.elems] })
-    .sort(*[0]).Array;
+    .Array;
+# Sort on the client: database collation decides the order of string keys in SQL.
+@numeric .= sort(*[0]);
 is-deeply @numeric.map(*[0]).Array, ['-2', '100', '3', '7', '9'],
     'Numeric associative keys stay strings and sort lexically';
 is @queries.elems, 1, 'Numeric keys use one query';
