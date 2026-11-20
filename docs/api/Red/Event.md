@@ -19,3 +19,11 @@ Database driver type name
 
 Lazily resolves the row returned by the database (with generated ids).
 
+### has Bool $.global
+
+True when the event came from another node through the driver's notification backend.
+
+### has Associative %.ids
+
+Id attribute names carried by a global notification.
+

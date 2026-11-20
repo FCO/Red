@@ -11,6 +11,14 @@ method scoped-driver() returns Mu
 
 Internal driver used by ORM operations in this scope.
 
+### method driver
+
+```raku
+method driver() returns Mu
+```
+
+Original driver that owns the physical connection.
+
 ### method root
 
 ```raku

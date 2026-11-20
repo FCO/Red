@@ -1,6 +1,16 @@
 MetamodelX::Red::Model
 ----------------------
 
+### method global-notifiable
+
+```raku
+method global-notifiable(
+    Mu:U $
+) returns Bool
+```
+
+Models marked with C<is global-notifiable> publish inserts through the driver.
+
 ### method column-names
 
 ```raku

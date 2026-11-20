@@ -1,6 +1,19 @@
 Red::Traits
 -----------
 
+### is global-notifiable
+
+### multi sub trait_mod:<is>
+
+```raku
+multi sub trait_mod:<is>(
+    Mu:U $model,
+    Bool :$global-notifiable!
+) returns Empty
+```
+
+Inserts on this model are published through the driver's notification backend, making C<ResultSeq.Supply> live across processes and nodes.
+
 ### is view
 
 ### multi sub trait_mod:<is>
