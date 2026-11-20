@@ -107,13 +107,17 @@ method rs-class(|) {
     })
 }
 
-multi method emit(Mu $model, Red::Event $event) {
+multi method emit(Mu $model, Red::Event $event, Bool :$synchronous = False) {
     my $driver = try get-RED-DB();
-    start try $driver.emit: $event.clone: :model($model.WHAT)
+    my &deliver = { try $driver.emit: $event.clone: :model($model.WHAT) };
+    $synchronous ?? deliver() !! start deliver()
 }
 
-multi method emit(Mu $model, $data, Exception :$error, Red::Model :$origin) {
-    self.emit: $model, Red::Event.new: :model($model.WHAT), |(:$data with $data), |(:$error with $error)
+multi method emit(Mu $model, $data, Exception :$error, Red::Model :$origin, Callable :$materialize-origin, Bool :$synchronous = False) {
+    my $event = Red::Event.new:
+        :model($model.WHAT), |(:$data with $data), |(:$error with $error),
+        |(:$origin with $origin), |($materialize-origin.defined ?? :$materialize-origin !! Empty);
+    self.emit($model, $event, :$synchronous)
 }
 
 #| Returns a list of columns names.of the model.
@@ -623,14 +627,14 @@ multi method save(Str :$with!, |c) {
 }
 
 #| Saves that object on database (create a new row)
-multi method save($obj, Bool :$insert! where * == True, Bool :$from-create, :$with where not .defined) {
+multi method save($obj, Bool :$insert! where * == True, Bool :$from-create, Red::AST::Insert :$insert-ast, :$with where not .defined) {
     self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
-    my $ast = Red::AST::Insert.new: $obj;
+    my $ast = $insert-ast // Red::AST::Insert.new: $obj;
     my $ret := get-RED-DB.execute: $ast;
     $obj.^saved-on-db;
     $obj.^populate-ids;
     self.apply-row-phasers($obj, AfterCreate) unless $from-create;
-    self.emit: $obj, $ast;
+    self.emit: $obj, $ast, :origin($obj) unless $from-create;
     CATCH {
         default {
             self.emit: $obj, $ast, :error($_);
@@ -684,11 +688,13 @@ multi method create($, Str :$with!, |c) is hidden-from-backtrace {
 #| And Lists and/or Hashes for relationships
 multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defined) is hidden-from-backtrace is rw {
     die "Cannot call .^create on a defined model." if model.DEFINITE;
-    my $RED-DB = get-RED-DB;
-    my $trans  = so $*RED-TRANSACTION-RUNNING;
+    my $BASE-DB = get-RED-DB;
+    my $RED-DB  = $BASE-DB;
+    my $trans   = so $*RED-TRANSACTION-RUNNING;
     $RED-DB   .= begin        unless $trans;
-    KEEP $RED-DB.commit       unless $trans;
-    UNDO try $RED-DB.rollback unless $trans;
+    my $committed = $trans;
+    KEEP { $RED-DB.commit unless $committed }
+    UNDO { try $RED-DB.rollback unless $committed }
     {
         my $*RED-DB = $RED-DB;
         my $*RED-TRANSACTION-RUNNING = True;
@@ -728,7 +734,8 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
         }
         my $obj = model.new: |%pars;
         self.apply-row-phasers($obj, BeforeCreate);
-        my $data := $obj.^save(:insert, :from-create).row;
+        my $insert-ast = Red::AST::Insert.new: $obj;
+        my $data := $obj.^save(:insert, :from-create, :$insert-ast).row;
         my @ids = model.^id>>.column>>.attr-name;
         my @ids-col = model.^id>>.column>>.name;
         my %cols = model.^columns.map: { .column.attr-name => .column };
@@ -749,20 +756,27 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
                 .reduce: -> $a, $b? { $b.DEFINITE ?? Red::AST::AND.new: $a, $b !! $a }
         } unless $data<>;
 
+        my $materialized;
+        my &materialize-row = -> Bool :$notify = True, :$driver = $RED-DB {
+            $materialized //= do {
+                my $*RED-DB = $driver;
+                my $*RED-NO-EVENT = !$notify;
+                if !$data.elems {
+                    model.^find: $filter
+                } else {
+                    my $row = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);
+                    $row.^saved-on-db;
+                    $row.^clean-up;
+                    $row.^populate-ids;
+                    $row
+                }
+            };
+            $materialized
+        };
+
         my $no;
         if %positionals || %has-one {
-            $no = do {
-                my $obj;
-                if !$data.elems {
-                    $obj = model.^find: $filter
-                } else {
-                    $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);
-                    $obj.^saved-on-db;
-                    $obj.^clean-up;
-                    $obj.^populate-ids;
-                }
-                $obj
-            }
+            $no = materialize-row(:!notify);
             for %positionals.kv -> $name, @val {
                 my \rs = $no."$name"();
                 rs.create: |$_ for @val;
@@ -776,26 +790,22 @@ multi method create(\model where *.DEFINITE, *%orig-pars, :$with where not .defi
             }
         }
         self.apply-row-phasers($obj, AfterCreate);
+        unless $committed {
+            $RED-DB.commit;
+            $committed = True;
+        }
+        my &materialize-origin = -> { materialize-row(driver => $BASE-DB) };
+        {
+            my $*RED-DB = $BASE-DB;
+            self.emit: model, $insert-ast, :&materialize-origin, :synchronous;
+        }
+
         .return with $no;
         return-rw Proxy.new:
                 STORE => -> | {
                     die X::Assignment::RO.new(value => $obj)
                 },
-                FETCH => {
-                    $ //= do {
-                        my $obj;
-                        my $*RED-DB = $RED-DB;
-                        if !$data.elems {
-                            $obj = model.^find: $filter
-                        } else {
-                            $obj = model.^new-from-data($data.elems ?? |$data !! |%orig-pars);
-                            $obj.^saved-on-db;
-                            $obj.^clean-up;
-                            $obj.^populate-ids;
-                        }
-                        $obj
-                    }
-                }
+                FETCH => { $ //= materialize-row(driver => $BASE-DB) }
     }
 }
 

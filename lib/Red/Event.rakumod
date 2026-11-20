@@ -13,5 +13,7 @@ has              $.data;
 has              @.bind;
 has Red::Model:U $.model;
 has Red::Model   $.origin;
+#| Lazily resolves the row returned by the database (with generated ids).
+has Callable     $.materialize-origin;
 has Exception    $.error;
 has              %.metadata;

@@ -943,3 +943,35 @@ to require SQL and receive an `X::Red::Projection` error for unsupported product
 Composite results cannot be created, saved, or deleted as a whole; individual models
 retain their ordinary persistence methods. Products containing only ordinary collections
 retain native Raku behavior.
+
+## Live query results with Supply
+
+`ResultSeq.Supply` emits the rows matching the query when tapped, then keeps emitting
+rows created afterwards:
+
+```raku
+my $supply = Person.^all.grep(*.name.starts-with('A')).Supply;
+
+react whenever $supply -> $person {
+    say $person.name;
+}
+```
+
+The snapshot is produced by lazily iterating the query (`.Seq`), emitting one row at a
+time; the live part is derived from `Red.events`. `grep`, `map`, `head`, and `skip` are
+reapplied to new instances, so the live values respect the same filters and projections
+as the snapshot. Live supplies are shared between `ResultSeq`s with the same AST, binds
+and driver. Duplicate values at the snapshot/live boundary are removed with `squish`.
+
+Insert events carry a lazy materializer built by `.^create`: the row is fetched from the
+database (with its generated ids) only when a `Supply` is actually tapped, so the live
+values are the objects returned by the database rather than the ones sent to it. No
+extra query runs when nobody is listening.
+
+Only inserts are streamed in this version: updates and deletes do not emit values.
+`sort`, `tail`, `pick`, queries with grouping, and operations that cannot be applied to
+single instances are not reflected in the live part (the snapshot still honours them).
+Insert events are emitted after `.^create` commits its transaction. A rollback caused
+by an exception therefore does not publish a live value; inserts made inside an outer
+transaction that later rolls back are still visible, since the outer transaction owns
+the commit.

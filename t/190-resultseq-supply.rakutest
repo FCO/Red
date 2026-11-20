@@ -1,0 +1,182 @@
+use Test;
+use Red;
+use Red::ResultSeq::Supply;
+use Red::AST::Insert;
+
+model SupplyItem {
+    has UInt $.id    is serial;
+    has Str  $.name  is column;
+    has Int  $.score is rw is column;
+}
+
+my @conf   = (%*ENV<RED_DATABASE> // 'SQLite').split(' ');
+my $driver = @conf.shift;
+my $*RED-DB = database $driver, |%(@conf.map({
+    do given .split('=') { .[0] => val .[1] }
+}));
+
+schema(SupplyItem).drop;
+SupplyItem.^create-table;
+SupplyItem.^create(:name<a>, :score(1));
+SupplyItem.^create(:name<b>, :score(2));
+
+sub collect(Supply $supply, Int:D :$expected! --> Hash) {
+    my @values;
+    my $ready = Promise.new;
+    my Bool $kept = False;
+    my $tap = $supply.tap(-> $value {
+        @values.push($value);
+        unless $kept {
+            if @values.elems >= $expected {
+                $kept = True;
+                $ready.keep(@values);
+            }
+        }
+    });
+    { :@values, :$ready, :$tap }
+}
+
+sub wait-ready(Hash $collected) {
+    await Promise.anyof($collected<ready>, Promise.in(10));
+    is $collected<ready>.status, Kept, 'live values arrived';
+}
+
+# 1. snapshot atual
+{
+    my $c = collect(SupplyItem.^all.Supply, :expected(2));
+    LEAVE $c<tap>.close;
+    is $c<values>.elems, 2, 'snapshot is emitted on tap';
+    is-deeply $c<values>.map(*.name).sort.List, <a b>.List, 'snapshot contains current rows';
+}
+
+# 2. inserts futuros
+{
+    my $c = collect(SupplyItem.^all.Supply, :expected(3));
+    LEAVE $c<tap>.close;
+    is $c<values>.elems, 2, 'snapshot comes first';
+    SupplyItem.^create(:name<c>, :score(3));
+    wait-ready($c);
+    is-deeply $c<values>.map(*.name).sort.List, <a b c>.List, 'new row is emitted live';
+}
+
+# 3. grep é aplicado ao fluxo vivo
+{
+    my $high = SupplyItem.^all.grep: *.score > 1;
+    my $c = collect($high.Supply, :expected(3));
+    LEAVE $c<tap>.close;
+    is-deeply $c<values>.map(*.name).sort.List, <b c>.List, 'grep filters the snapshot';
+    SupplyItem.^create(:name<d>, :score(5));
+    wait-ready($c);
+    is-deeply $c<values>.map(*.name).sort.List, <b c d>.List, 'grep filters live inserts';
+    SupplyItem.^create(:name<e>, :score(0));
+    sleep 0.3;
+    is $c<values>.elems, 3, 'live inserts failing the filter are dropped';
+}
+
+# 4. map é aplicado ao fluxo vivo
+{
+    my $before = SupplyItem.^all.elems;
+    my $names = SupplyItem.^all.map: *.name;
+    my $c = collect($names.Supply, :expected($before + 1));
+    LEAVE $c<tap>.close;
+    is $c<values>.elems, $before, 'map snapshot emitted';
+    ok $c<values>.all ~~ Str, 'map snapshot values are projected';
+    SupplyItem.^create(:name<f>, :score(6));
+    wait-ready($c);
+    ok $c<values>.grep(* eq 'f').elems == 1, 'map projects live inserts';
+}
+
+# 5. cache compartilhado por AST + binds + driver
+{
+    my $rs1 = SupplyItem.^all.grep: *.score > 0;
+    my $rs2 = SupplyItem.^all.grep: *.score > 0;
+    my $rs3 = SupplyItem.^all.grep: *.score > 7;
+    my $a = live-supply-for($rs1, $rs1.ast, $*RED-DB);
+    my $b = live-supply-for($rs2, $rs2.ast, $*RED-DB);
+    my $c = live-supply-for($rs3, $rs3.ast, $*RED-DB);
+    is $a.WHICH, $b.WHICH, 'same AST and binds share the live Supply';
+    nok $a.WHICH eq $c.WHICH, 'different binds do not share the live Supply';
+}
+
+# 6. updates e deletes não geram novos valores
+{
+    my $before = SupplyItem.^all.elems;
+    my $c = collect(SupplyItem.^all.Supply, :expected($before + 1));
+    LEAVE $c<tap>.close;
+    my $item = SupplyItem.^all.head;
+    $item.score = 99;
+    $item.^save;
+    $item.^delete;
+    sleep 0.3;
+    is $c<values>.elems, $before, 'updates and deletes do not emit values';
+}
+
+# 7. ordem: snapshot primeiro, inserts depois, na ordem de criação
+{
+    my @values;
+    my $tap = SupplyItem.^all.Supply.tap: -> $value { @values.push($value.name) };
+    LEAVE $tap.close;
+    is-deeply @values.List, <b c d e f>.List, 'snapshot is emitted first';
+
+    for <g h> -> $name {
+        SupplyItem.^create(:$name, :score(9));
+        sleep 0.1;
+    }
+    sleep 0.2;
+    is-deeply @values.List, <b c d e f g h>.List, 'inserts follow the snapshot in order';
+}
+
+sub emit-insert(SupplyItem $item) {
+    $*RED-DB.emit: Red::Event.new:
+        :data(Red::AST::Insert.new($item)),
+        :model(SupplyItem),
+        :origin($item);
+}
+
+# 8. squish remove duplicata adjacente na fronteira snapshot -> live
+{
+    my @values;
+    my $tap = SupplyItem.^all.Supply.tap: -> $value { @values.push($value.name) };
+    LEAVE $tap.close;
+    my $before = @values.elems;
+
+    my $last = SupplyItem.^all.tail;
+    emit-insert($last);
+    sleep 0.2;
+    is @values.elems, $before, 'squish drops a live event duplicating the last snapshot row';
+
+    emit-insert($last);
+    sleep 0.2;
+    is @values.elems, $before, 'squish drops consecutive duplicates on the live stream';
+}
+
+# 9. squish mantém duplicatas não adjacentes
+{
+    my @values;
+    my $tap = SupplyItem.^all.Supply.tap: -> $value { @values.push($value.name) };
+    LEAVE $tap.close;
+    my $before = @values.elems;
+
+    emit-insert(SupplyItem.^all.head);
+    sleep 0.2;
+    is @values.elems, $before + 1, 'squish keeps a non-adjacent duplicate';
+}
+
+# 10. callbacks de Red.events podem consultar o banco após o commit
+{
+    my $found;
+    my $ready = Promise.new;
+    my $tap = Red.events.tap(-> $event {
+        if $event.data ~~ Red::AST::Insert && $ready.status !~~ Kept {
+            $found = try SupplyItem.^all.head;
+            $ready.keep(True);
+        }
+    });
+    LEAVE $tap.close;
+    SupplyItem.^create(:name<callback>, :score(10));
+    await Promise.anyof($ready, Promise.in(10));
+    is $ready.status, Kept, 'insert event callback ran';
+    isa-ok $found, SupplyItem, 'insert event callback can query the database';
+}
+
+done-testing;

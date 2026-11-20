@@ -1,6 +1,9 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Add ResultSeq.Supply, emitting the current query rows followed by future inserts.
+    - Emit insert events after ^create commits and avoid reentrant queries in event callbacks.
+    - Match insert events to drivers by stable connection identity across transaction clones.
 
 0.2.13  2026-11-15T23:21:06Z
     - Compile classify/map group projections with elems, sum, min and max into one SQL statement.

@@ -40,10 +40,10 @@ submethod TWEAK(|) {
 
     @st-handler>>.execute unless $*RED-DRY-RUN;
     $!st-handler = @st-handler.tail;
-    $!of.^emit: $ast;
+    $!of.^emit: $ast unless $*RED-NO-EVENT;
     CATCH {
         default {
-            $!of.^emit: $ast, :error($_);
+            $!of.^emit: $ast, :error($_) unless $*RED-NO-EVENT;
             proceed
         }
     }

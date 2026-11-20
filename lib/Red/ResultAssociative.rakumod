@@ -46,6 +46,9 @@ my class GroupValues does GroupSymbol {
     method max {
         Red::AST::Function.new(:func<MAX>, :args[$!expression], :returns($!expression.returns))
     }
+    method avg {
+        Red::AST::Function.new(:func<AVG>, :args[$!expression], :returns($!expression.returns))
+    }
 }
 
 my class GroupRows does GroupSymbol {
@@ -101,7 +104,7 @@ method map(&projection, :$red-ast) {
         sub validate(Red::AST $expression) {
             return if $expression eqv $!key-of;
             return if $expression ~~ Red::AST::Function
-                && $expression.func.uc eq any(<COUNT SUM MIN MAX>);
+                && $expression.func.uc eq any(<COUNT SUM MIN MAX AVG>);
             X::Red::Projection.new(:reason('Ungrouped columns require an aggregate')).throw
                 if $expression ~~ Red::Column;
             validate($_) for $expression.args.grep(Red::AST);

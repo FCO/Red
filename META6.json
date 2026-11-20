@@ -173,6 +173,7 @@
     "Red::ResultAssociative": "lib/Red/ResultAssociative.rakumod",
     "Red::ResultSeq": "lib/Red/ResultSeq.rakumod",
     "Red::ResultSeq::Iterator": "lib/Red/ResultSeq/Iterator.rakumod",
+    "Red::ResultSeq::Supply": "lib/Red/ResultSeq/Supply.rakumod",
     "Red::ResultSeqMethods": "lib/Red/ResultSeqMethods.rakumod",
     "Red::ResultSeqSeq": "lib/Red/ResultSeqSeq.rakumod",
     "Red::Runtime::Configuration": "lib/Red/Runtime/Configuration.rakumod",

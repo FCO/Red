@@ -26,6 +26,19 @@ has Supply   $.events    = $!supplier.Supply;
 #| Public backend name, independent of internal transaction wrappers.
 method driver-name { self.^name }
 
+#| Stable identity shared by a driver and the connection clones created by C<begin>.
+method connection-id(--> Str:D) {
+    my $delegate = self.^can('driver') ?? (try self.driver) !! Nil;
+    return $delegate.connection-id if $delegate ~~ Red::Driver;
+
+    my @volatile = <dbh supplier events table-formatter>;
+    self.^name ~ '|' ~ self.^attributes
+        .grep({ !@volatile.first(.name.substr(2)).defined })
+        .map({ .name.substr(2) ~ '=' ~ .get_value(self).raku })
+        .sort
+        .join('|')
+}
+
 method new-connection {
     self.WHAT.new: |self.^attributes.map({ .name.substr(2) => .get_value: self }).Hash
 }

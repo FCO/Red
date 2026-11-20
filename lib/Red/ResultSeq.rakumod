@@ -37,6 +37,7 @@ use Red::AST::ProjectionField;
 use Red::AST::Ordering;
 use Red::AST::ProductSource;
 use MetamodelX::Red::VirtualView;
+use Red::ResultSeq::Supply;
 
 =head2 Red::ResultSeq
 
@@ -105,6 +106,8 @@ has Red::QueryPlan::Cache $!query-plan-cache .= new;
 has Red::LockType     $.for;
 has                   @.prefetches;
 has Bool              $.prefetches-set = False;
+#| Closures applied by .Supply to objects created after the snapshot.
+has                   @.live-ops;
 
 multi method with { $!with }
 
@@ -128,6 +131,22 @@ method Seq is hidden-from-sql-commenting {
         self.create-comment-to-caller;
         Seq.new: self.iterator
     }
+}
+
+#| Returns a Supply with the current rows and the future rows matching this query.
+method Supply(--> Supply) is hidden-from-sql-commenting {
+    my $driver = $!with // get-RED-DB;
+    my $rs = self;
+    my $live = live-supply-for($rs, $rs.ast, $driver);
+
+    # whenever is installed before the snapshot runs, so inserts arriving during
+    # it are queued by the supply block and delivered right after the snapshot.
+    supply {
+        whenever $live -> $value {
+            emit $value
+        }
+        .emit for $rs.Seq;
+    }.squish(:as(&supply-identity))
 }
 
 method do-it(*%pars) is hidden-from-sql-commenting {
@@ -539,7 +558,9 @@ method grep(&filter, :$red-ast is copy) is hidden-from-sql-commenting {
     with $*RED-GREP-FILTER {
         $filter = Red::AST::AND.new: ($_ ~~ Red::AST ?? $_ !! .&ast-value), $filter
     }
-    $input.where: $filter;
+    my &live-op = -> Supply $supply { $supply.grep(&filter) };
+    my $result = $input.where: $filter;
+    $result.clone: :live-ops(|$input.live-ops, &live-op)
 }
 
 #| Changes the query to return only the first row that matches the condition and run it (.grep(...).head)
@@ -631,11 +652,17 @@ method map(\SELF: &filter, :$red-ast is copy) is hidden-from-sql-commenting {
             $n.DEFINITE ?? Red::AST::OR.new($agg, $n) !! $agg
         }) !! ast-value(False))
     } else { $input }
-    return seq!create-projection(Red::Projection.from-value(Any), &filter) unless %when;
+    my &live-op = -> Supply $supply { $supply.map(&filter) };
+    my &with-live = -> $result {
+        $result ~~ Red::ResultSeq
+            ?? $result.clone(:live-ops(|$input.live-ops, &live-op))
+            !! $result
+    };
+    return with-live(seq!create-projection(Red::Projection.from-value(Any), &filter)) unless %when;
     if @updates.elems == @!update.elems {
         my $model-return = %when.elems == 1 && %when.values.head ~~ Red::AST::Value
             && %when.values.head.type ~~ Red::Model;
-        return seq!create-projection(Red::Projection.from-branches(%when), &filter)
+        return with-live(seq!create-projection(Red::Projection.from-branches(%when), &filter))
             unless $model-return && !$!chain.projection.DEFINITE;
     } else {
         X::Red::Projection.new(:reason("Projected values cannot be updated")).throw
@@ -644,9 +671,11 @@ method map(\SELF: &filter, :$red-ast is copy) is hidden-from-sql-commenting {
     my $mutable-seq = seq.clone(:update(@updates));
     my \ast = Red::AST::Case.new(:%when);
     #die "Map returning Red::Model is NYI" if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
-    return $mutable-seq.create-map: ast.value, :&filter if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
-    return $mutable-seq.create-map: ast.value, :&filter if ast ~~ Red::AST::Value and ast.type ~~ Positional;
-    $mutable-seq.create-map: ast, :&filter
+    return with-live($mutable-seq.create-map(ast.value, :&filter))
+        if ast ~~ Red::AST::Value and ast.type ~~ Red::Model;
+    return with-live($mutable-seq.create-map(ast.value, :&filter))
+        if ast ~~ Red::AST::Value and ast.type ~~ Positional;
+    with-live($mutable-seq.create-map(ast, :&filter))
 }
 #method flatmap(&filter) {
 #    treat-map :flat, $.filter, filter(self.of), &filter
@@ -758,7 +787,10 @@ multi method head is hidden-from-sql-commenting {
 #| Returns a ResultSeq that gets the first N rows returned by the query
 multi method head(UInt(Numeric) $num) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
-    self.clone: :chain($!chain.clone: :limit(min $num, $.limit))
+    my $limit = min $num, $.limit;
+    my $seen = 0;
+    my &live-op = -> Supply $supply { $supply.grep({ $seen++ < $limit }) };
+    self.clone: :chain($!chain.clone: :$limit), :live-ops(|@!live-ops, &live-op)
 }
 
 method !ordered-input(Str:D $operation) {
@@ -821,8 +853,11 @@ method skip(UInt:D $num --> Red::ResultSeq) is hidden-from-sql-commenting {
     self.create-comment-to-caller;
     my $limit = $.limit;
     $limit = max(0, $limit - $num) if $limit.DEFINITE;
+    my $offset = ($.offset // 0) + $num;
+    my $seen = 0;
+    my &live-op = -> Supply $supply { $supply.grep({ $seen++ >= $offset }) };
     self.clone: :chain($!chain.clone:
-        :offset(($.offset // 0) + $num), :$limit);
+        :$offset, :$limit), :live-ops(|@!live-ops, &live-op);
 }
 
 # Alias for skip. It's going to be deprecated on a future version
