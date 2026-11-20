@@ -30,7 +30,6 @@ class Red:ver<0.2.15>:api<2> {
     our @experimental-roles;
     method events   { Red::Class.instance.events }
     method emit(|c) { get-RED-DB.emit: |c        }
-    #| Start listening for global-notifiable events on a driver.
     method start-global-events(Mu :$with = get-RED-DB) {
         Red::GlobalEvents::start-global-events(:$with)
     }
@@ -1073,6 +1072,22 @@ transaction's Promise represents only execution of its block, not guard completi
 =item C<after-update>
 =item C<before-delete>
 =item C<after-delete>
+
+=head4 global events
+
+Models declared with C<is global-notifiable> can receive insert events from other
+processes when the database driver supports global notifications. Listeners start
+automatically after C<schema(...).create> commits or when a marked model's C<.Supply>
+is built. Applications that only subscribe to C<Red.events> can start a listener
+explicitly:
+
+=begin code :lang<raku>
+Red.start-global-events(:with($*RED-DB));
+=end code
+
+The C<:with> argument defaults to the current Red database. See
+L<global events across nodes|docs/tutorials/cookbook.md#global-events-across-nodes>
+for model setup and driver requirements.
 
 =head4 Temporary table
 

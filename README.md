@@ -1,13 +1,3 @@
-### method start-global-events
-
-```raku
-method start-global-events(
-    Mu :$with = Code.new
-) returns Mu
-```
-
-Start listening for global-notifiable events on a driver.
-
 [![Build Status](https://github.com/FCO/Red/workflows/test/badge.svg)](https://github.com/FCO/Red/actions) [![SparrowCI](https://ci.sparrowhub.io/project/gh-FCO-Red/badge)](https://ci.sparrowhub.io)
 
 Red
@@ -791,6 +781,16 @@ Guards keep the reserved session usable by asynchronous work that inherits the b
   * `before-delete`
 
   * `after-delete`
+
+#### global events
+
+Models declared with `is global-notifiable` can receive insert events from other processes when the database driver supports global notifications. Listeners start automatically after `schema(...).create` commits or when a marked model's `.Supply` is built. Applications that only subscribe to `Red.events` can start a listener explicitly:
+
+```raku
+Red.start-global-events(:with($*RED-DB));
+```
+
+The `:with` argument defaults to the current Red database. See [global events across nodes](docs/tutorials/cookbook.md#global-events-across-nodes) for model setup and driver requirements.
 
 #### Temporary table
 
