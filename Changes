@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.16  2026-11-21T01:18:36Z
     - Fix ResultSeq.Supply projection duplicates and per-subscription head/skip state.
     - Share raw insert sources without sharing query callbacks or captured parameters.
     - Deduplicate overlapping snapshot inserts by source-row identity.
