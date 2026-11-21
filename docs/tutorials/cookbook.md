@@ -43,7 +43,7 @@ it's pre-fetched when the `$post` is gotten from the database.
 And to list all posts from a given Person:
 
 ```raku
-.name.say for $person.posts
+.title.say for $person.posts
 ```
 
 ### Create with childs
@@ -51,7 +51,7 @@ And to list all posts from a given Person:
 If you want to create a Person with several Posts (the model is defined on the previous example):
 
 ```raku
-Person.new:
+Person.^create:
   :name<Author1>,
   :posts[
     { :title("First post title") , :body("A very long body to the first blog post")  },
@@ -291,6 +291,8 @@ If I have a table of sentences in different languages and another table linking 
 want to find the translations.
 
 ```raku
+model Link { ... }
+
 model Sentence {
     has UInt $.id          is serial;
     has Str  $.lang        is column;
@@ -317,6 +319,13 @@ model Link {
     has      $.to-sentence   is relationship(*.id-to  , :model<Sentence>);
     has      $.from-sentence is relationship(*.id-from, :model<Sentence>);
 }
+
+schema(Sentence, Link).create;
+my $english = Sentence.^create(:lang<english>, :sentence<hi>);
+my $portuguese = Sentence.^create(:lang<portuguese>, :sentence<oi>);
+my $spanish = Sentence.^create(:lang<spanish>, :sentence<hola>);
+Link.^create(:from-sentence($english), :to-sentence($portuguese));
+Link.^create(:from-sentence($portuguese), :to-sentence($spanish));
 
 say Sentence.translate("hi", :from<english>, :to<portuguese>).sentence;
 my @portuguese := Sentence.^all.grep: *.lang eq "portuguese";
@@ -367,13 +376,18 @@ my $a = Post.^create: :title<bla>, :post-tags[{ :tag{ :name<a> } }];
 
 .say for $a.tags;
 .say for Tag.^all.head.posts;
-.say for Post.tags;
+.say for Post.^all.Seq.map(*.tags).flat;
 ```
 
 ## Custom join
 
 If there is something you'd like to relationate but that's not a relationship. Something you'll probably do only once but that's not a relationship from the model.
 You can use a custom join with `ResultSeq.join-model`.
+
+With the RakuAST frontend, enable `CHECK red-compile;` after importing Red to
+translate string interpolation to SQL. Without the optional compiler, native
+RakuAST string interpolation bypasses Red’s overloaded concatenation operator.
+The legacy frontend supports this example through symbolic evaluation.
 
 ```raku
 use Red:api<2>;
@@ -392,7 +406,7 @@ my $*RED-DEBUG = True;
 .say for A.^all.grep(*.A2 > 3).join-model(B, *.A1 == *.B1).map({ "{ A.A2 } -> { .B2 }" })
 ```
 
-That would run:
+For example (random input values and generated SQL aliases vary):
 
 ```
 SQL : SELECT
@@ -441,6 +455,8 @@ model Seller {
     }
 }
 
+schema(Login, Buyer, Seller).create;
+
 my $comprador = Buyer.^create:  :name<Comprador>;
 my $vendedor  = Seller.^create: :name<Vendedor>;
 
@@ -480,6 +496,8 @@ model Seller {
     has Login @.logins is relationship{ $^a.id == $^b.source-id && $^b.source eq "seller" }
 }
 
+schema(Login, Buyer, Seller).create;
+
 my $comprador = Buyer.^create:  :name<Comprador>;
 my $vendedor  = Seller.^create: :name<Vendedor>;
 
@@ -515,7 +533,9 @@ If you want to filter rows where a column can be one of multiple values.
 But if the options are on the database.
 
 ```raku
-.say for MyModel.^all.grep: *.text ⊂ TextOptions.^all.grep: *.id > 15
+.say for MyModel.^all.grep({
+    .text ⊂ TextOptions.^all.grep(*.id > 15).map(*.text)
+});
 ```
 
 ## classify
@@ -680,7 +700,7 @@ Red.events.tap: &dd
 
 and it will print `Red::Event`s like:
 
-```raku
+```text
 Red::Event.new(
   bind        => [],
   model       => MyModel,
@@ -809,7 +829,7 @@ an Array, or a List, and containers can be nested. Subsequent `map`, `grep`, and
 my $values = MyModel.^all
     .map({ .col1 + .col2 })
     .grep(* > 3)
-    .map({ "something: $_" });
+    .map({ 'something: ' ~ $_ });
 
 my $records = MyModel.^all.map({
     %(col1 => .col1, something-else => .col2 ~ .col3)

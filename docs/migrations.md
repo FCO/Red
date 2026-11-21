@@ -250,13 +250,18 @@ connection. Invalid configuration and missing default connections produce errors
 For example, a test can install a connection before invoking application code:
 
 ```raku
+use Red:api<2>;
+use Red::Migration::Configuration;
+use MyApp::Task;
+
 set-config -> {
     config {
         .drivers = ['SQLite'];
         .models = ['MyApp::Task'];
         .connections = %(default => { database 'SQLite' });
     }
-}
+};
+schema().create;
 MyApp::Task.^create(:title<Isolated>); # Uses the test override automatically.
 ```
 

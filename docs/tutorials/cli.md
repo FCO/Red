@@ -29,13 +29,16 @@ red-defaults "SQLite", :database("example.db");
 .say for Person.^all;
 ```
 
-- prepare-database
+- migration prepare-database
 
 Receives database connection and a list of models and create those on that database. If passed the option `--populate` calls the `.^populate` metamethod on those models.
 
 ```
-$ raku -I../Red ../Red/bin/red prepare-database --models=Ad --populate --driver=SQLite
+$ red migration prepare-database --models=Ad --populate --driver=SQLite
 ```
+
+The `Ad` module must be available in Raku's module search path. For a local
+`lib/` directory, set `RAKULIB=lib` before running the command.
 
 - migration-plan - WiP
 - generate-code - WiP

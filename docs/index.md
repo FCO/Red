@@ -10,8 +10,11 @@ If you are looking for tutorials, you can visit:
 * [Relationships tutorial](tutorials/relationship.md)
 * [Operators](api/Red/Operators)
 * [Red CLI](tutorials/cli.md)
-* Working with PostgreSQL
-* Working with SQLite
+* [Working with PostgreSQL](tutorials/postgresql.md)
+* [Working with SQLite](tutorials/sqlite.md)
+* [Working with MySQL](tutorials/mysql.md)
+* [Working with DuckDB](tutorials/duckdb.md)
+* [Available drivers](drivers.md)
 * [Special Variables](tutorials/vars.md)
 * [Red Cookbook](tutorials/cookbook.md)
 * [Experimental](tutorials/experimental.md)
@@ -31,8 +34,8 @@ More examples can be found at the project [Wiki](https://github.com/FCO/Red/wiki
 #### For developers
 
 * [Red architecture](tutorials/architecture)
-* How to create a new driver
-* How to create a new cache
+* [How to create a new driver](tutorials/new-driver.md)
+* [How to create a new cache](tutorials/new-cache.md)
 * [Test coverage report](https://fco.github.io/Red/coverage/report.html)
 
 #### How to contribute to documentation
@@ -59,7 +62,7 @@ sub prefix:<Σ>( *@number-list ) is export {
 }
 ```
 
-Then execute `perl6 tools/make-docs.p6` to generate documentation
+Then execute `raku -Ilib tools/make-docs.raku` to generate documentation
 pages with your symbols included.
 
 If you want to add a tutorial, write it as Markdown and add to `docs`
@@ -71,7 +74,7 @@ Depending on what it is, the documentation might be generated or not.
 
 * Try to run a search in the repository for a line you want to change, for example, `grep -R "bad typo" .`
 * If you see more than two files, try to narrow your search pattern
-* If you see two files found, most likely one will be corresponding to sources or generated Markdown documentation. Please, patch the documentation in sources and, after re-generating pages with `tools/make-docs.p6` script, send a PR.
+* If you see two files found, most likely one will be corresponding to sources or generated Markdown documentation. Please, patch the documentation in sources and, after re-generating pages with `tools/make-docs.raku` script, send a PR.
 * If you see a single file found, Markdown file with a tutorial or this introduction text, please, patch it and send a PR.
 * When not sure, please, create a ticket at [Red bugtracker](https://github.com/FCO/Red/issues)
 

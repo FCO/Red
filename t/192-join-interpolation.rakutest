@@ -1,0 +1,45 @@
+use Test;
+use Red:api<2>;
+
+my constant HAS-RAKUAST = $*CU.^name eq 'RakuAST::CompUnit';
+CHECK red-compile if HAS-RAKUAST;
+
+my $*RED-DB = database 'SQLite';
+my $*RED-FALLBACK = False;
+
+model InterpolationA is table<interpolation_a> {
+    has Int $.id is serial;
+    has Int $.join-key is column;
+    has Int $.value is column;
+}
+
+model InterpolationB is table<interpolation_b> {
+    has Int $.id is serial;
+    has Int $.join-key is column;
+    has Int $.value is column;
+}
+
+schema(InterpolationA, InterpolationB).create;
+InterpolationA.^create(:join-key(1), :value(4));
+InterpolationA.^create(:join-key(2), :value(2));
+InterpolationB.^create(:join-key(1), :value(7));
+InterpolationB.^create(:join-key(1), :value(9));
+InterpolationB.^create(:join-key(2), :value(8));
+
+my $interpolated = InterpolationA.^all.grep(*.value > 3)
+    .join-model(InterpolationB, *.join-key == *.join-key)
+    .map({ "{ InterpolationA.value } -> { .value }" });
+my $concatenated = InterpolationA.^all.grep(*.value > 3)
+    .join-model(InterpolationB, *.join-key == *.join-key)
+    .map({ InterpolationA.value ~ ' -> ' ~ .value });
+
+isa-ok $interpolated, Red::ResultSeq, 'Interpolation remains a SQL query';
+is-deeply $interpolated.List.sort.List, ('4 -> 7', '4 -> 9'),
+    'Interpolation preserves the left model, joined model and filter';
+is-deeply $concatenated.List.sort.List, ('4 -> 7', '4 -> 9'),
+    'Explicit concatenation produces the same values';
+is $*RED-DB.translate($interpolated.ast).key,
+    $*RED-DB.translate($concatenated.ast).key,
+    'Interpolation and concatenation produce the same SQL';
+
+done-testing;

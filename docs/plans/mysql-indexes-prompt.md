@@ -25,7 +25,7 @@ model Contact {
     has Str $.tag is column{ :indexed };
     has Str $.label is column{ :indexed('label-search', { .lc }) };
     has $.email-search is index{ .email.lc };
-    has $.account-email is unique-index{ .account-id, .email.lc };
+    has $.account-email-key is unique-index{ .account-id, .email.lc };
 }
 ```
 

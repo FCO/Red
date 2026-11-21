@@ -5,24 +5,33 @@
 This is the variable where [Red](https://github.com/FCO/Red) stores the database connection.
 
 ```perl6
-use Red;
+use Red:api<2>;
 my $*RED-DB = database "SQLite";
+
+model Model {
+    has Int $.id is id;
+}
 ```
 
 You should use [`red-do()`](https://fco.github.io/Red/api/Red/Do.html) and/or [`red-defaults()`](https://fco.github.io/Red/api/Red/Do.html) instead.
 
+Each section below starts from a fresh copy of this setup. For the insert examples,
+run `Model.^create-table` before enabling the debug variable. Debug output goes to
+standard error; the excerpts show the relevant lines, and transaction or query
+traces may add more lines.
+
 ## `$*RED-DEBUG`
 
-When this variable is set to a true-ish value [Red](https://github.com/FCO/Red) will print the generated `SQL`s to `$*OUT`.
+When this variable is set to a true-ish value [Red](https://github.com/FCO/Red) will print the generated `SQL`s to `$*ERR`.
 
 ```perl6
 my $*RED-DEBUG = True;
 Model.^create-table;
 ```
 
-Output
-```
-SQL : CREATE TABLE model(
+Output excerpt
+```text
+SQL : CREATE TABLE "model" (
    id integer NOT NULL primary key 
 )
 BIND: []
@@ -30,29 +39,29 @@ BIND: []
 
 ## `$*RED-DEBUG-RESPONSE`
 
-When this variable is set to a true-ish value [Red](https://github.com/FCO/Red) will print the response from the SQL query to `$*OUT`.
+When this variable is set to a true-ish value [Red](https://github.com/FCO/Red) will print the response from the SQL query to `$*ERR`.
 
 ```perl6
 my $*RED-DEBUG-RESPONSE = True;
 Model.^create: :42id
 ```
 
-Output
-```
+Output excerpt
+```text
 {id => 42}
 ```
 
 ## `$*RED-DEBUG-AST`
 
-When this variable is set to a true-ish value [Red](https://github.com/FCO/Red) will print the generated `AST` to `$*OUT`.
+When this variable is set to a true-ish value [Red](https://github.com/FCO/Red) will print the generated `AST` to `$*ERR`.
 
 ```perl6
 my $*RED-DEBUG-AST = True;
 Model.^create: :42id
 ```
 
-Output
-```
+Output excerpt
+```text
 Red::AST::Insert:
     id
 ```

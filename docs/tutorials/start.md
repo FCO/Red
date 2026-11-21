@@ -10,7 +10,8 @@ For more in-depth introduction about Red architecture visit [Red architecture](/
 Simply speaking, it allows you to "hide" the layer of interaction
 with your relational database and work with Raku objects instead.
 
-Currently, PostgreSQL and SQLite3 relation databases are supported.
+Red includes SQLite support and has separate drivers for PostgreSQL, MySQL and DuckDB.
+See [available drivers](../drivers.md) for installation and backend guides.
 
 Let's start with a simple table:
 
@@ -31,6 +32,8 @@ everything what a usual class can do, but also helps you to interact with your t
 Red models use `model` keyword instead of `class`:
 
 ```raku
+use Red:api<2>;
+
 model Person {
     has Int $.id   is serial;
     has Str $.name is column is rw;
@@ -74,7 +77,7 @@ creates a table with name `person`.
 Let's insert a new record into it. In SQL it could be:
 
 ```sql
-INSERT INTO person (name) VALUES 'John';
+INSERT INTO person (name) VALUES ('John');
 ```
 
 In Red we can express it this way:
@@ -133,7 +136,7 @@ Lets add some more records:
 
 ```raku
 Person.^create(name => "Paul"); # Method call with parentheses and an arrow pair
-Person.^create: :name<Miki>;    # Semicolon form of method call is used
+Person.^create: :name<Miki>;    # Colon form of method call is used
 ```
 
 Lets begin with selecting all records of the table:
@@ -148,7 +151,7 @@ In Red, `^all` method is used:
 for Person.^all -> $person { say $person }
 ```
 
-Method `^all` returns an instance of class `Seq` that is a lazy sequence of records returned.
+Method `^all` returns a `Red::ResultSeq`, a lazy sequence of database records.
 
 ```sql
 SELECT * FROM person WHERE person.name like 'Jo%';
@@ -185,7 +188,7 @@ for Person.^all.grep({ $_.name.starts-with('Jo') && $_.id == 2}) -> $person { sa
 To get a single record, `^load` method is used. It accepts an arbitrary number of pairs
 describing the object properties for the WHERE clause of a SELECT statement. One difference
 between using `^all` and `^load` is that the `^load` method returns either a value or a `Nil`
-if there are no fitting records, while `^all` returns a `Seq` that might come
+if there are no fitting records, while `^all` returns a `Red::ResultSeq` that might come
 with an arbitrary number of elements. The second difference is that `^all` can express
 various SELECT statements, while `^load` is restricted to work with columns marked as PRIMARY
 and UNIQUE only.
@@ -205,7 +208,7 @@ object or on a model to delete all records:
 
 ```raku
 # DELETE FROM person WHERE person.id = 42;
-$p.^delete;
+$person.^delete;
 # DELETE FROM person;
 Person.^delete;
 ```

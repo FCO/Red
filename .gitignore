@@ -22,3 +22,6 @@ tags
 .*.migration.lock
 
 .nimala
+
+# Generated documentation validation reports
+/test-results/doc-examples/

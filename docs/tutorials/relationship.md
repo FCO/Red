@@ -16,7 +16,7 @@ that represents the related model, a Callable positional parameter that will ret
 
 ```raku
 # Person.rakumod
-use Red:ver<2>;
+use Red:api<2>;
 
 model Person {
   has UInt $!id    is serial;
@@ -27,7 +27,7 @@ model Person {
 
 ```raku
 # Book.rakumod
-use Red:ver<2>;
+use Red:api<2>;
 
 model Book {
   has UInt $!id        is serial;
@@ -53,7 +53,7 @@ $author.books.create: :name<Benjamin>;
 As mentioned, `@.books` is a `ResultSeq`, so it accepts any of its methods, eg:
 
 ```raku
-$author.books.grep(*.starts-with: "Ben").elems
+$author.books.grep(*.name.starts-with("Ben")).elems
 ```
 
 For getting the number of books written by "Chico Buarque" that starts with "Ben".
