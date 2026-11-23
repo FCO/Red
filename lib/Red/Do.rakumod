@@ -1,4 +1,5 @@
 use Red::Database;
+use Red::RowSecurity::Context;
 use Red::Driver;
 use X::Red::Exceptions;
 use Red::Class;
@@ -81,14 +82,18 @@ sub red-tap(Str() $name, &func, :$red-db = $*RED-DB) is export {
     }
 }
 
-sub run-red-do($*RED-DB, &block) {
+sub run-red-do($*RED-DB, &block, $context) {
+    my $*RED-ROW-CONTEXT = $context;
     # TODO: test if its connected and reconnect if it's not
     block $*RED-DB
 }
 
-proto red-do(|) {
+proto red-do(|c) {
+    my $context = c.hash<context>:exists
+        ?? capture-row-context(c.hash<context>) !! row-security-context();
     my %red-supplies := %*RED-SUPPLIES // {};
     {
+        my $*RED-ROW-CONTEXT = $context;
         my %*RED-SUPPLIES := %red-supplies;
         {*}
     }
@@ -96,7 +101,7 @@ proto red-do(|) {
 
 #| Receives a block and optionally a connection name.
 #| Runs the block with the connection with that name
-multi red-do(*@blocks where .all ~~ Callable, Str :$with = "default", :$async) is export {
+multi red-do(*@blocks where .all ~~ Callable, Str :$with = "default", :$async, :%context) is export {
     X::Red::Do::DriverNotDefined.new(:driver($with)).throw unless %GLOBAL::RED-DEFAULT-DRIVERS{$with}:exists;
     my @ret = do for @blocks {
         my Str $*RED-DO-WITH = $with;
@@ -113,20 +118,22 @@ multi red-do(*@blocks where .all ~~ Callable, Str :$with = "default", :$async) i
 #| Receives a block and optionally a connection name.
 #| Runs the block with the connection with that name
 #| synchronously
-multi red-do(&block, Red::Driver:D :$with, :$async where not *) is export {
-    run-red-do $with, &block
+multi red-do(&block, Red::Driver:D :$with, :$async where not *, :%context) is export {
+    run-red-do $with, &block, row-security-context()
 }
 
-multi red-do(&block, Red::Driver:D :$with, :$async! where so *) is export {
-    start run-red-do $with, &block
+multi red-do(&block, Red::Driver:D :$with, :$async! where so *, :%context) is export {
+    my $context = row-security-context();
+    start run-red-do $with, &block, $context
 }
 
 #| Receives a block and optionally a connection name.
 #| Runs the block with the connection with that name
 #| asynchronously
-multi red-do(&block, Str:D :$with = "default", :$async! where so *) is export {
+multi red-do(&block, Str:D :$with = "default", :$async! where so *, :%context) is export {
     my Str $*RED-DO-WITH = $with;
-    start run-red-do %GLOBAL::RED-DEFAULT-DRIVERS{$with}, &block
+    my $context = row-security-context();
+    start run-red-do %GLOBAL::RED-DEFAULT-DRIVERS{$with}, &block, $context
 }
 
 sub rollback-and-rethrow(Red::Transaction::Guard:D $guard, Exception:D $cause) {
@@ -146,7 +153,8 @@ sub automatic-transaction(Red::Transaction::Guard:D $guard, &block) {
     block()
 }
 
-sub run-transaction(Red::Transaction::Guard:D $guard, @blocks, %pars, Bool $manual) {
+sub run-transaction(Red::Transaction::Guard:D $guard, @blocks, %pars, Bool $manual, $context) {
+    my $*RED-ROW-CONTEXT = $context;
     my $*RED-DB = $guard.scoped-driver;
     my $*RED-TRANSACTION-RUNNING = True;
     my $*RED-TRANSACTION-DB = $*RED-DB;
@@ -168,6 +176,7 @@ multi red-do(
     *@blocks,
     Bool :$async,
     Bool :$transaction! where so *,
+    :%context,
     *%pars where *.none.key eq "with"
 ) is export {
     X::Red::Transaction.new(:reason('Transaction blocks must be callable')).throw
@@ -186,6 +195,7 @@ multi red-do(
     my $guard = $parent.defined
         ?? $parent.child
         !! Red::Transaction::Guard.new(:driver($source.begin));
+    my $context = row-security-context();
     if $async {
         CATCH {
             default {
@@ -193,16 +203,16 @@ multi red-do(
                 .rethrow;
             }
         }
-        return start run-transaction($guard, @blocks, %pars, $manual);
+        return start run-transaction($guard, @blocks, %pars, $manual, $context);
     }
-    run-transaction($guard, @blocks, %pars, $manual)
+    run-transaction($guard, @blocks, %pars, $manual, $context)
 }
 
 #| Receives list of pairs with connection name and block
 #| or blocks (assuming the default connection) or named
 #| args where the name is the name of the connection
 #| Runs each block with the connection with that name
-multi red-do(*@blocks, Bool :$async, *%pars where *.none.key eq "with") is export {
+multi red-do(*@blocks, Bool :$async, :%context, *%pars where *.none.key eq "with") is export {
     my @ret = do for |@blocks , |%pars.pairs -> $block {
         when $block ~~ Pair {
             given $block.key -> $with {

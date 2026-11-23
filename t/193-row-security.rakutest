@@ -1,0 +1,152 @@
+use Test;
+use Red:api<2>;
+use Red::RowSecurity::Context;
+use Red::AST::Insert;
+use Red::AST::Update;
+use Red::AST::Delete;
+use Red::Driver::Cache;
+
+my $*RED-DB = database 'SQLite';
+my $*RED-FALLBACK = False;
+
+role TenantPermissions {
+    method SELECT-ALLOWED-IF(%context) { self.tenant-id == %context<tenant-id> }
+    method INSERT-ALLOWED-IF(%context) { self.tenant-id == %context<tenant-id> }
+    method UPDATE-ALLOWED-IF($new, %context) {
+        self.tenant-id == %context<tenant-id> && $new.tenant-id == self.tenant-id
+    }
+    method DELETE-ALLOWED-IF(%context) { self.tenant-id == %context<tenant-id> }
+}
+
+model SecureDocument does TenantPermissions {
+    has Int $.id is serial;
+    has Int $.tenant-id is rw is column;
+    has Str $.title is rw is column;
+}
+model SelectOnly {
+    has Int $.id is serial;
+    has Int $.tenant-id is column;
+    method SELECT-ALLOWED-IF(%context) { self.tenant-id == %context<tenant-id> }
+}
+model NullPolicy {
+    has Int $.id is serial;
+    has Int $.tenant-id is column{ :nullable };
+    method SELECT-ALLOWED-IF(%context) { self.tenant-id == %context<tenant-id> }
+}
+model InvalidPolicy {
+    has Int $.id is serial;
+    has Int $.tenant-id is column;
+    method SELECT-ALLOWED-IF(%context) { self.tenant-id + %context<tenant-id> }
+}
+model Unprotected {
+    has Int $.id is serial;
+}
+
+schema(SecureDocument, SelectOnly, NullPolicy, InvalidPolicy, Unprotected).create;
+# Text SQL is the explicit administrative escape, with no automatic filters.
+$*RED-DB.execute('INSERT INTO secure_document(tenant_id, title) VALUES (1, ?), (2, ?)',
+    'first', 'second');
+$*RED-DB.execute('INSERT INTO select_only(tenant_id) VALUES (1), (2)');
+$*RED-DB.execute('INSERT INTO null_policy(tenant_id) VALUES (NULL), (1)');
+Unprotected.^create;
+is Unprotected.^all.elems, 1, 'Models without hooks retain existing behavior';
+
+throws-like { SecureDocument.^all.List }, X::Red::RowSecurity,
+    'Protected reads require context';
+throws-like { red-do :with($*RED-DB), :context{}, { SecureDocument.^all.List } },
+    X::Red::RowSecurity, 'Missing context keys are errors';
+throws-like { red-do :with($*RED-DB), :context{ :tenant-id([]) }, { } },
+    X::Red::RowSecurity, 'Context rejects mutable references';
+
+my ($lazy, $loaded, $statement);
+red-do :with($*RED-DB), :context{ :tenant-id(1) }, {
+    is SecureDocument.^all.elems, 1, 'COUNT only sees authorized rows';
+    is SecureDocument.^all.head.title, 'first', 'Role policy filters rows';
+    is NullPolicy.^all.elems, 1, 'SQL NULL never authorizes a row';
+    throws-like { InvalidPolicy.^all.List }, X::Red::RowSecurity,
+        'Unsupported policy AST fails closed';
+    lives-ok { SelectOnly.^create(:tenant-id(1)) },
+        'A missing write hook permits the operation';
+    $lazy = SecureDocument.^all;
+    $loaded = SecureDocument.^all.head;
+    $statement = $*RED-DB.prepare(SecureDocument.^all.ast).head;
+    red-do :with($*RED-DB), {
+        is SecureDocument.^all.elems, 1, 'Nested blocks inherit context';
+    };
+    red-do :with($*RED-DB), :context{ :tenant-id(2) }, {
+        is SecureDocument.^all.head.title, 'second', 'Explicit nested context replaces the parent';
+        throws-like { $lazy.List }, X::Red::RowSecurity, 'Lazy query rejects a different context';
+        throws-like { $statement.execute }, X::Red::RowSecurity,
+            'Prepared statement rejects a different context';
+        $loaded.title = 'changed';
+        throws-like { $loaded.^save }, X::Red::RowSecurity,
+            'Loaded instances cannot be saved under a different context';
+    };
+    is SecureDocument.^all.head.title, 'first', 'Parent context is restored';
+    is await(red-do :with($*RED-DB), :async, { SecureDocument.^all.elems }), 1,
+        'Async block captures context';
+    lives-ok { $lazy.List }, 'Equivalent creation and execution contexts are accepted';
+    throws-like { SecureDocument.^create(:tenant-id(2), :title('forbidden')) },
+        X::Red::RowSecurity, 'INSERT checks the candidate row';
+    my $created = SecureDocument.^create(:tenant-id(1), :title('created'));
+    is $created.title, 'created', 'Authorized INSERT succeeds';
+    $created.title = 'updated';
+    lives-ok { $created.^save }, 'Authorized UPDATE succeeds';
+    is SecureDocument.^find(:id($created.id)).title, 'updated', 'UPDATE persisted';
+    $created.tenant-id = 2;
+    throws-like { $created.^save }, X::Red::RowSecurity, 'UPDATE cannot change tenant';
+    is SecureDocument.^find(:id($created.id)).tenant-id, 1, 'Rejected UPDATE leaves the row unchanged';
+    $created.tenant-id = 1;
+    lives-ok { $created.^delete }, 'Authorized DELETE succeeds';
+    is SecureDocument.^all.elems, 1, 'Only the authorized row was deleted';
+};
+throws-like { $lazy.List }, X::Red::RowSecurity, 'Lazy query rejects execution outside context';
+is $*RED-DB.execute('SELECT count(*) AS n FROM secure_document').row<n>, 2,
+    'Failed writes rolled back without affecting other tenants';
+
+red-defaults default => $*RED-DB;
+red-do :context{ :tenant-id(1) }, {
+    is SecureDocument.^all.elems, 1, 'Named default driver receives context';
+};
+red-do :context{ :tenant-id(1) }, { is row-security-context()<tenant-id>, 1 },
+    { is row-security-context()<tenant-id>, 1 };
+red-do :context{ :tenant-id(1) }, :transaction, {
+    is SecureDocument.^all.elems, 1, 'Transaction block receives context';
+};
+
+subtest 'Concurrent requests keep separate tenant contexts and parameter values', {
+    my $begin = Promise.new;
+    my @requests = (^8).map: -> $index {
+        my $tenant = $index % 2 + 1;
+        start {
+            await $begin;
+            # Native connection handles must not be shared between worker threads.
+            # Both tenants exist in every database, so incorrect policies or binds
+            # still expose the wrong row and fail this test.
+            my $driver = database 'SQLite';
+            red-do :with($driver), {
+                SecureDocument.^create-table;
+                $driver.execute(
+                    'INSERT INTO secure_document(tenant_id, title) VALUES (1, ?), (2, ?)',
+                    'first', 'second');
+            };
+            my @observed;
+            red-do :with($driver), :context{ :tenant-id($tenant) }, {
+                for ^20 {
+                    @observed.push: SecureDocument.^all.head.title;
+                }
+            };
+            @observed.Array
+        }
+    };
+    $begin.keep(True);
+    for @requests.kv -> $index, $request {
+        subtest "Request {$index + 1}", {
+            my $observed;
+            lives-ok { $observed = await $request }, 'The concurrent request completes';
+            is-deeply $observed, [($index % 2 ?? 'second' !! 'first') xx 20],
+                "Every read uses this request's tenant context";
+        };
+    }
+};
+done-testing;

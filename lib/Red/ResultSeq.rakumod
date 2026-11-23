@@ -1,3 +1,5 @@
+use Red::RowSecurity;
+use Red::RowSecurity::Context;
 use Red::DB;
 use Red::AST;
 use Red::Utils;
@@ -91,6 +93,8 @@ method cache is hidden-from-sql-commenting {
     List.from-iterator: self.iterator
 }
 
+has $.row-context = row-security-context();
+
 has Pair              @.update;
 has Red::AST::Comment @.comments;
 # Queries built in a transaction must not silently switch to the caller's driver
@@ -123,6 +127,7 @@ multi method with(Str $with) {
 
 method iterator(--> Red::ResultSeq::Iterator) is hidden-from-sql-commenting {
     my $*RED-INTERNAL = True;
+    assert-row-context($!row-context) if protected-row-query(self.ast);
     Red::ResultSeq::Iterator.new: :$.of, :$.ast, :&.post,
         :plan-cache($!query-plan-cache), |(:driver($_) with $!with)
 }
@@ -137,14 +142,19 @@ method Seq is hidden-from-sql-commenting {
 
 #| Returns a Supply with the current rows and the future rows matching this query.
 method Supply(--> Supply) is hidden-from-sql-commenting {
+    my $protected = protected-row-query(self.ast);
+    assert-row-context($!row-context) if $protected;
+    my $context = $!row-context;
     return supply { } if $!supply-empty;
     my $driver = $!with // get-RED-DB;
     my $source = ($!supply-source // self).with($driver);
     my $combined = supply {
+        my $*RED-ROW-CONTEXT = $context;
         my %snapshot;
         my atomicint $reading = 1;
         my $forward = Supplier.new;
         whenever $forward.Supply -> $entry {
+            my $*RED-ROW-CONTEXT = $context;
             if $entry<clear> {
                 %snapshot = ();
             } else {
@@ -156,6 +166,7 @@ method Supply(--> Supply) is hidden-from-sql-commenting {
         my $live = live-supply-for($source, $source.ast, $driver);
         my $tap = $live.tap(
             -> $value {
+                my $*RED-ROW-CONTEXT = $context;
                 $forward.emit: %(:$value, :snapshot(so ⚛$reading),
                     :identity(supply-identity($value)));
             },
@@ -172,7 +183,15 @@ method Supply(--> Supply) is hidden-from-sql-commenting {
         $forward.emit: %(clear => True);
     };
     for @!live-ops -> %operation {
-        $combined = apply-supply-operation($combined, %operation);
+        my %scoped-operation = %operation;
+        if $protected && %operation<callback>.defined {
+            my &callback = %operation<callback>;
+            %scoped-operation<callback> = -> |arguments {
+                my $*RED-ROW-CONTEXT = $context;
+                callback(|arguments)
+            };
+        }
+        $combined = apply-supply-operation($combined, %scoped-operation);
     }
     $combined.grep({ $_ !~~ SnapshotEnd })
 }
@@ -996,6 +1015,7 @@ method delete(::?CLASS:D:) is hidden-from-sql-commenting {
     X::Red::Projection.new(:reason("Projected values cannot be deleted")).throw
         if $!chain.projection.DEFINITE || $!chain.source.DEFINITE;
     self.create-comment-to-caller;
+    assert-row-context($!row-context) if row-protected($.of);
     my $*RED-INTERNAL = True;
     my $iter = Red::ResultSeq::Iterator.new: :$.of, :ast(Red::AST::Delete.new: $.of, $.filter), :&.post, |(:driver($_) with $!with);
 
@@ -1010,6 +1030,7 @@ method save(::?CLASS:D:) is hidden-from-sql-commenting {
     X::Red::Projection.new(:reason("Projected values cannot be saved")).throw
         if $!chain.projection.DEFINITE || $!chain.source.DEFINITE;
     self.create-comment-to-caller;
+    assert-row-context($!row-context) if protected-row-query(self.ast);
     my @*UPDATE;
     die "You should use a map updating value(s) before saving" unless $.of.^can: "orig-result-seq";
     $.of.orig-result-seq.of.^apply-row-phasers(BeforeUpdate);

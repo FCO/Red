@@ -1,0 +1,99 @@
+use Test;
+use Red:api<2>;
+use Red::RowSecurity::Context;
+
+my $*RED-DB = database 'SQLite';
+my $*RED-FALLBACK = False;
+model DynamicContextRow {
+    has Int $.id is serial;
+    has Int $.tenant is column;
+    has Str $.title is rw is column;
+    method SELECT-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+    method INSERT-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+    method UPDATE-ALLOWED-IF($new, %context) {
+        self.tenant == %context<tenant> && $new.tenant == self.tenant
+    }
+    method DELETE-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+}
+DynamicContextRow.^create-table;
+$*RED-DB.execute('INSERT INTO dynamic_context_row(tenant,title) VALUES (1,?), (2,?)',
+    'first', 'second');
+throws-like { DynamicContextRow.^all.List }, X::Red::RowSecurity,
+    'Protected operations still reject an absent context';
+
+my ($lazy, $loaded, $statement);
+{
+    my %*RED-CONTEXT = :tenant(1);
+    is DynamicContextRow.^all.head.title, 'first', 'Dynamic context works without red-do';
+    is DynamicContextRow.^all.elems, 1, 'Aggregates use the dynamic context';
+    $lazy = DynamicContextRow.^all;
+    $loaded = DynamicContextRow.^all.head;
+    $statement = $*RED-DB.prepare(DynamicContextRow.^all.ast).head;
+    red-do :with($*RED-DB), {
+        is DynamicContextRow.^all.head.title, 'first', 'red-do uses the dynamic default';
+        red-do :with($*RED-DB), {
+            is DynamicContextRow.^all.head.title, 'first', 'Nested blocks inherit the snapshot';
+        };
+    };
+    red-do :with($*RED-DB), :context{ :tenant(2) }, {
+        is DynamicContextRow.^all.head.title, 'second', 'Explicit context overrides the default';
+        red-do :with($*RED-DB), {
+            is DynamicContextRow.^all.head.title, 'second', 'Nested blocks inherit explicit context';
+        };
+    };
+    throws-like { red-do :with($*RED-DB), :context{}, { DynamicContextRow.^all.List } },
+        X::Red::RowSecurity, 'An explicit empty context does not merge with the default';
+    is DynamicContextRow.^all.head.title, 'first', 'Leaving red-do restores the dynamic default';
+    {
+        my %*RED-CONTEXT = :tenant(2);
+        is DynamicContextRow.^all.head.title, 'second', 'A nested dynamic binding selects its tenant';
+    }
+    is DynamicContextRow.^all.head.title, 'first', 'Leaving a dynamic binding restores its parent';
+    lives-ok { $lazy.List }, 'An equivalent dynamic context can execute a captured query';
+    %*RED-CONTEXT<tenant> = 2;
+    throws-like { $lazy.List }, X::Red::RowSecurity, 'Queries capture values instead of the mutable hash';
+    throws-like { $statement.execute }, X::Red::RowSecurity,
+        'Prepared statements reject a changed dynamic context';
+    $loaded.title = 'forbidden';
+    throws-like { $loaded.^save }, X::Red::RowSecurity,
+        'Loaded instances reject persistence under a changed dynamic context';
+    is DynamicContextRow.^all.head.title, 'second', 'New queries use updated dynamic values';
+    %*RED-CONTEXT<tenant> = 1;
+    red-do :with($*RED-DB), {
+        %*RED-CONTEXT<tenant> = 2;
+        is DynamicContextRow.^all.head.title, 'first', 'red-do keeps its immutable entry snapshot';
+    };
+    is DynamicContextRow.^all.head.title, 'second', 'The default is read again outside red-do';
+    %*RED-CONTEXT<tenant> = 1;
+    my $begin = Promise.new;
+    my $request = red-do :with($*RED-DB), :async, {
+        await $begin;
+        DynamicContextRow.^all.head.title
+    };
+    %*RED-CONTEXT<tenant> = 2;
+    $begin.keep(True);
+    is await($request), 'first', 'Async red-do captures the default before scheduling';
+}
+throws-like { $lazy.List }, X::Red::RowSecurity, 'A captured query cannot escape its dynamic scope';
+{
+    my %*RED-CONTEXT = :tenant(1);
+    my $row = DynamicContextRow.^create(:tenant(1), :title('created'));
+    is $row.title, 'created', 'INSERT uses dynamic context without red-do';
+    throws-like { DynamicContextRow.^create(:tenant(2), :title('forbidden')) },
+        X::Red::RowSecurity, 'Dynamic context rejects forbidden INSERT';
+    $row.title = 'updated';
+    lives-ok { $row.^save }, 'UPDATE uses dynamic context without red-do';
+    lives-ok { $row.^delete }, 'DELETE uses dynamic context without red-do';
+    red-do :context{ :tenant(1) }, :transaction, {
+        is DynamicContextRow.^all.elems, 1, 'Explicit context still works in transactions';
+    };
+    red-do :transaction, {
+        is DynamicContextRow.^all.elems, 1, 'Transactions inherit the dynamic default';
+    };
+}
+{
+    my %*RED-CONTEXT = :tenant([]);
+    throws-like { DynamicContextRow.^all.List }, X::Red::RowSecurity,
+        'The dynamic default also rejects mutable context values';
+}
+done-testing;

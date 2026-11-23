@@ -1,0 +1,46 @@
+use Test;
+use Red:api<2>;
+use Red::RowSecurity;
+use Red::RowSecurity::PostgreSQL;
+
+my $*RED-DB = database 'SQLite';
+model HiddenRow {
+    has Int $.id is serial;
+    has Str $.title is rw is column;
+    method SELECT-ALLOWED-IF(|) { False }
+}
+model NoInsertRow {
+    has Int $.id is serial;
+    has Str $.title is rw is column;
+    method INSERT-ALLOWED-IF(|) { False }
+}
+schema(HiddenRow, NoInsertRow).create;
+my $row;
+lives-ok { $row = HiddenRow.^create(:title('first')) },
+    'Missing INSERT policy permits creation without context';
+is HiddenRow.^all.elems, 0, 'Explicit False SELECT hides every row without context';
+$row.title = 'updated';
+lives-ok { $row.^save }, 'Missing UPDATE policy permits saving without context';
+is $*RED-DB.execute('SELECT title FROM hidden_row').row<title>, 'updated',
+    'Unrestricted UPDATE persists the new value';
+lives-ok { $row.^delete }, 'Missing DELETE policy permits deletion without context';
+is $*RED-DB.execute('SELECT COUNT(*) AS total FROM hidden_row').row<total>, 0,
+    'Unrestricted DELETE removes the row';
+throws-like { NoInsertRow.^create(:title('blocked')) }, X::Red::RowSecurity,
+    'Explicit False INSERT rejects creation without context';
+$*RED-DB.execute('INSERT INTO no_insert_row(title) VALUES (?)', 'visible');
+is NoInsertRow.^all.head.title, 'visible', 'Missing SELECT policy permits reading without context';
+my %policies = row-policy-descriptors(HiddenRow);
+is-deeply %policies<select>, ['value', False], 'Native SELECT descriptor denies explicitly';
+for <insert update delete> -> $operation {
+    is-deeply %policies{$operation}, ['value', True],
+        "Native $operation descriptor permits a missing policy";
+}
+my @sql = native-policy-sql($*RED-DB, HiddenRow.^table, %policies);
+ok @sql.first({ .contains('FOR SELECT') && .contains('USING (FALSE)') }),
+    'PostgreSQL SELECT policy preserves explicit denial';
+for <INSERT UPDATE DELETE> -> $operation {
+    ok @sql.first({ .contains("FOR $operation ") && .contains('(TRUE)') }),
+        "PostgreSQL $operation policy permits a missing hook";
+}
+done-testing;

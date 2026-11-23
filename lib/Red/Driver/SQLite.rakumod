@@ -1,3 +1,4 @@
+use Red::RowSecurity::Context;
 use X::Red::Migration;
 use DBIish;
 use Red::AST::RegexMatch;
@@ -31,6 +32,34 @@ unit class Red::Driver::SQLite does Red::Driver::CommonSQL;
 has $.database = q<:memory:>;
 has Bool $.use-experimental-regex = False;
 has DBDish::SQLite::Connection $!dbh;
+
+method row-security-source-fields($model --> Str:D) { '*, _rowid_ AS _rowid_' }
+
+method row-security-capabilities(--> Map:D) { Map.new(:filter(True), :atomic-write(True)) }
+
+# Reject database side effects that the fallback cannot authorize atomically.
+method check-row-security-write($model) {
+    my $table = $model.^table;
+    my $trigger = self.execute(
+        "SELECT 1 AS found FROM sqlite_master WHERE type = 'trigger' "
+            ~ "UNION ALL SELECT 1 AS found FROM sqlite_temp_master WHERE type = 'trigger' LIMIT 1"
+    ).row;
+    row-security-error('Protected SQLite writes do not support triggers') if $trigger;
+    my $definition = self.execute(
+        "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", $table).row;
+    row-security-error('Protected SQLite writes require an ordinary persistent table')
+        unless $definition && $definition<sql> && $definition<sql> !~~ /:i 'VIRTUAL'/;
+    # FK cascades can write protected rows outside the submitted operation.
+    my $tables = self.execute("SELECT name FROM sqlite_master WHERE type = 'table'");
+    while my $row = $tables.row {
+        my $foreign-keys = self.execute('SELECT * FROM pragma_foreign_key_list(?)', $row<name>);
+        while my $key = $foreign-keys.row {
+            row-security-error('Protected SQLite writes do not support cascading foreign keys')
+                if $key<table> eq $table && ($key<on_update> ne 'NO ACTION'
+                    || $key<on_delete> ne 'NO ACTION');
+        }
+    }
+}
 
 method schema-reader { Red::Driver::SQLite::SchemaReader }
 method supports-partial-indexes { True }
@@ -441,4 +470,17 @@ method migration-alter-column(Str $table, $before, $column, Str $definition --> 
 method migration-string-literal(Str $value --> Str:D) {
     my $hex = $value.encode('utf8').map(*.fmt('%02x')).join;
     "CAST(X'$hex' AS TEXT)"
+}
+
+#| Create a persistent SQLite database without replacing an existing file.
+method create-database(Str:D $name) {
+    X::Red::Administration.new(:reason('A persistent SQLite filename is required')).throw
+        if !$name.chars || $name eq ':memory:' || $name.starts-with('file:');
+    X::Red::Administration.new(:reason("Database already exists: $name")).throw if $name.IO.e;
+    my $reservation = $name.IO.open(:w, :create, :exclusive);
+    $reservation.close;
+    my $handle = DBIish.connect('SQLite', :database($name));
+    LEAVE $handle.dispose if $handle.defined;
+    $handle.execute('VACUUM');
+    True
 }

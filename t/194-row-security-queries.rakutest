@@ -1,0 +1,123 @@
+use Test;
+use Red:api<2>;
+use Red::RowSecurity;
+use Red::AST::Infixes;
+use Red::RowSecurity::PostgreSQL;
+use Red::Migration::Planner;
+use Red::Migration::Snapshot;
+
+my $*RED-DB = database 'SQLite';
+my $*RED-FALLBACK = False;
+role TenantPolicy {
+    method SELECT-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+    method INSERT-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+    method UPDATE-ALLOWED-IF($new, %context) {
+        self.tenant == %context<tenant> && $new.tenant == self.tenant
+    }
+    method DELETE-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+}
+model SecurityParent {
+    has Int $.id is id;
+    has @.children is relationship(*.parent-id, :model<SecurityChild>);
+}
+model SecurityChild does TenantPolicy {
+    has Int $.id is serial;
+    has Int $.parent-id is referencing( *.id, :model(SecurityParent) );
+    has SecurityParent $.parent is relationship{ .parent-id };
+    has Int $.tenant is rw is column;
+    has Int $.amount is rw is column;
+}
+model SecurityOverride does TenantPolicy {
+    has Int $.id is serial;
+    has Int $.tenant is column;
+    method SELECT-ALLOWED-IF(%context) { self.tenant != %context<tenant> }
+}
+model SecurityInherited is SecurityOverride { }
+model SecurityWhereOnly does TenantPolicy {
+    has Int $.id is serial;
+    has Int $.tenant is column;
+}
+model SecurityBoolean {
+    has Int $.id is serial;
+    has Int $.tenant is column;
+    method SELECT-ALLOWED-IF(%context) {
+        self.tenant == %context<tenant> || (self.tenant == %context<shared> && %context<enabled>)
+    }
+}
+schema(SecurityParent, SecurityChild, SecurityOverride, SecurityInherited, SecurityBoolean).create;
+$*RED-DB.execute('INSERT INTO security_parent(id) VALUES (1), (2), (3)');
+$*RED-DB.execute('INSERT INTO security_child(parent_id, tenant, amount) VALUES (1,1,10),(1,2,20),(2,2,30)');
+$*RED-DB.execute('INSERT INTO security_override(tenant) VALUES (1),(2)');
+$*RED-DB.execute('INSERT INTO security_inherited(tenant) VALUES (1),(2)');
+$*RED-DB.execute('INSERT INTO security_boolean(tenant) VALUES (1),(2),(3)');
+
+red-do :with($*RED-DB), :context{ :tenant(1), :shared(2), :enabled(True) }, {
+    is SecurityOverride.^all.head.tenant, 2, 'A local override replaces the role policy';
+
+    is SecurityBoolean.^all.elems, 2, 'Boolean combinations compile to SQL';
+    is SecurityInherited.^all.head.tenant, 2, 'Inherited hooks apply to subclass rows';
+    my $alias = SecurityChild.^alias('secured_alias');
+    is $alias.^all.elems, 1, 'Aliased sources retain the policy';
+    is SecurityChild.^all.map(*.amount).sum, 10, 'Aggregates filter before reducing';
+    my $joined = SecurityParent.^all.join-model(SecurityChild, *.id == *.parent-id);
+    is $joined.elems, 1, 'Joins filter protected sources';
+    is SecurityParent.^all.join-model(SecurityChild, *.id == *.parent-id, :left).elems,
+        3, 'Left joins preserve rows whose protected right side is hidden';
+    is (SecurityChild.^all.prefetch(False) X SecurityParent.^all).elems, 3,
+        'Cross products filter each independent source';
+    is SecurityChild.^all.union(SecurityChild.^all).List.elems, 1,
+        'Union operands retain their policies';
+    is SecurityParent.^all.prefetch(:children).head.children.elems, 1,
+        'Prefetched relationships retain their policies';
+    is SecurityParent.^find(:id(1)).children.elems, 1, 'Relationships filter protected rows';
+    my $*RED-INTERNAL = True;
+    my $nested = SecurityParent.^all.where(Red::AST::In.new(
+        SecurityParent.id, SecurityChild.^all.grep(*.amount > 0).map(*.parent-id).ast));
+    lives-ok { $nested.List }, 'Nested SELECT policies compile without losing scope';
+    my $all = SecurityChild.^all;
+    throws-like { $all.map({ .amount = 99 }).save.List }, X::Red::RowSecurity,
+        'A forbidden batch rolls back the whole UPDATE';
+    is $*RED-DB.execute('SELECT sum(amount) AS n FROM security_child').row<n>, 60,
+        'No row changed after batch rejection';
+    lives-ok { SecurityChild.^all.grep(*.tenant == 1).map({ .amount = 11 }).save.List },
+        'An authorized batch UPDATE succeeds';
+    is SecurityChild.^all.head.amount, 11, 'Batch UPDATE persisted';
+    throws-like { SecurityChild.^all.delete.List }, X::Red::RowSecurity,
+        'A forbidden batch DELETE rolls back completely';
+    is $*RED-DB.execute('SELECT count(*) AS n FROM security_child').row<n>, 3,
+        'No row disappeared after batch rejection';
+};
+
+my $planner = Red::Migration::Planner.new(:driver($*RED-DB), :dialect<SQLite>);
+my $snapshot = $planner.capture([SecurityOverride]);
+ok $snapshot.tables.head.row-policies<select>, 'Snapshots capture a portable policy';
+my $path = $*TMPDIR.add("red-row-policies-{$*PID}.raku");
+LEAVE $path.unlink if $path.defined && $path.e;
+$path.spurt($snapshot.source);
+my $loaded = Red::Migration::Snapshot.load($path);
+is-deeply $loaded.tables.head.row-policies, $snapshot.tables.head.row-policies,
+    'Policy snapshots round-trip without application models or context';
+my %policies = row-policy-descriptors(SecurityChild);
+my $sql = native-policy-sql($*RED-DB, 'security_child', %policies).join("\n");
+like $sql, /'ENABLE ROW LEVEL SECURITY'/, 'Native schema enables RLS';
+like $sql, /'FORCE ROW LEVEL SECURITY'/, 'Native schema forces RLS for table owners';
+like $sql, /'WITH CHECK'/, 'Native schema includes candidate checks';
+unlike $sql, /'red_security_new'/, 'Native policies never refer to an unavailable old/new alias';
+
+red-do :with($*RED-DB), :context{ :tenant(1) }, {
+    $*RED-DB.execute('CREATE TRIGGER security_side_effect AFTER UPDATE ON security_child BEGIN SELECT 1; END');
+    LEAVE $*RED-DB.execute('DROP TRIGGER security_side_effect');
+    my $row = SecurityChild.^all.head;
+    $row.amount = 5;
+    throws-like { $row.^save }, X::Red::RowSecurity,
+        'Protected writes with triggers fail closed';
+};
+my $isolated = database 'SQLite';
+lives-ok { schema(SecurityWhereOnly).create(:where($isolated)) },
+    'Schema creation accepts an explicit driver';
+red-do :with($isolated), :context{ :tenant(1) }, {
+    is SecurityWhereOnly.^all.elems, 0, 'The protected table was created on the selected driver';
+};
+is $*RED-DB.execute(q[SELECT count(*) AS n FROM sqlite_master WHERE name = 'security_where_only']).row<n>,
+    0, 'Explicit schema creation does not create the table on the caller driver';
+done-testing;

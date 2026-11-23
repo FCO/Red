@@ -3,6 +3,9 @@ use Red::AST::RegexMatch;
 use Red::AST::RegexCapture;
 use Red::AST::RegexChars;
 use Red::AST::ProductSource;
+use Red::AST::RowParameter;
+use Red::RowSecurity;
+use Red::RowSecurity::Context;
 use Red::AST;
 use Red::Model;
 use Red::Column;
@@ -230,6 +233,7 @@ method create-schema(%models where .values.all ~~ Red::Model) {
             }
         }
         my $data = Red::AST::CreateTable.new:
+            :model(model),
             :name(model.^table),
             :temp(model.^temp),
             :columns(model.^columns.map: *.column),
@@ -489,23 +493,33 @@ multi method translate(Red::AST::AddForeignKeyOnTable $ast, $context?) {
     }
 }
 
+method translate-compound-select($ast) {
+    sub compile() {
+        my @bind;
+        my @selects = $ast.selects.map({
+            my $part = self.translate($_, 'multi-select');
+            @bind.append: $part.value;
+            $part.key
+        });
+        @selects.join("\n" ~ self.translate($ast, 'multi-select-op').key ~ "\n") => @bind
+    }
+    return compile() if DYNAMIC::<$*bind-counter>.DEFINITE;
+    {
+        my Int $*bind-counter = 0;
+        compile()
+    }
+}
+
 multi method translate(Red::AST::Union $ast, $context?) {
-    $ast.selects.map({
-        self.translate( $_, "multi-select" ).key
-    })
-            .join("\n{
-        self.translate($ast, "multi-select-op").key
-    }\n") => []
+    self.translate-compound-select($ast)
 }
 
 multi method translate(Red::AST::Intersect $ast, $context?) {
-    $ast.selects.map({ self.translate( $_, "multi-select").key })
-            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
+    self.translate-compound-select($ast)
 }
 
 multi method translate(Red::AST::Minus $ast, $context?) {
-    $ast.selects.map({ self.translate( $_, "multi-select" ).key })
-            .join("\n{ self.translate($ast, "multi-select-op").key }\n") => []
+    self.translate-compound-select($ast)
 }
 
 multi method translate(Red::AST::Union $ast, "multi-select-op") { "UNION" => [] }
@@ -534,8 +548,22 @@ method product-value(Red::AST::Value:D $value) {
     $sql => [self.wildcard-value($value)]
 }
 
+multi method translate(Red::AST::RowParameter $parameter, $context?) {
+    self.wildcard => [self.wildcard-value($parameter.value)]
+}
+
 multi method translate(Red::AST::ProductSource $source, $context?) {
     if $source.model ~~ Red::Model {
+        if row-protected($source.model) {
+            row-security-error('Protected product source has no policy')
+                unless $source.row-policy.DEFINITE;
+            my $policy = self.translate($source.row-policy, 'where');
+            return '(SELECT ' ~ self.row-security-source-fields($source.model)
+                ~ ' FROM ' ~ self.table-name-wrapper($source.model.^table)
+                ~ ' AS ' ~ self.table-name-wrapper($source.model.^as)
+                ~ ' WHERE ' ~ $policy.key ~ ') AS '
+                ~ self.table-name-wrapper($source.alias) => $policy.value;
+        }
         return self.table-name-wrapper($source.model.^table) ~ ' AS '
             ~ self.table-name-wrapper($source.alias) => [];
     }
@@ -585,12 +613,33 @@ multi method agg-prefetch($_) {
 multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
     my role ColClass [Mu:U \c] { method class { c } };
     my @bind;
+    sub source-table($model) {
+        my $table = self.table-name-wrapper($model.^table);
+        my $policy = $ast.row-policies{$model.^as};
+        if row-protected($model) && !$policy.DEFINITE {
+            # Prefetch can create fresh aliases during SQL generation. Compile their
+            # predicates in that scope too; its relationship model was scanned earlier.
+            $policy = row-predicate($model, 'SELECT');
+        }
+        return $table unless $policy.DEFINITE;
+        # The inner alias matches the policy columns. Filtering inside each source
+        # preserves the NULL-extended side of an outer join.
+        my $translated = self.translate($policy, 'where');
+        @bind.append: $translated.value;
+        '(SELECT ' ~ self.row-security-source-fields($model) ~ ' FROM ' ~ $table ~ ' AS ' ~ self.table-name-wrapper($model.^as)
+            ~ ' WHERE ' ~ $translated.key ~ ')'
+    }
     my $sel = do given $ast.of {
         when Red::Model {
             my $class = $_;
             .^columns.map({
+                my $column = .column;
+                if !($column.model === $class)
+                    && $class.^mro.grep({ $_ === $column.model }).elems {
+                    $column = $column.clone(:model($class));
+                }
                 my ($s, @b) := do given self.translate:
-                        (.column but ColClass[$class]), "select" { .key, .value }
+                        ($column but ColClass[$class]), "select" { .key, .value }
                 @bind.push: |@b;
                 $s
             }).join: ", ";
@@ -673,10 +722,10 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                 } elsif .HOW ~~ MetamodelX::Red::VirtualView {
                     "( { .sql } ) as { .^table }"
                 } else {
-                    self.table-name-wrapper: .^table
+                    source-table($_)
                 }
             }{
-                do if !$source-root && !$product-root && .^table ne .^as {
+                do if !$source-root && !$product-root && (.^table ne .^as || row-protected($_)) {
                     " as {
                         .^as
                     }"
@@ -693,14 +742,14 @@ multi method translate(Red::AST::Select $ast, $context?, :$gambi) {
                                 { self.agg-prefetch: $_ }
                             FROM
                                 {
-                                    self.table-name-wrapper: .^table
+                                    source-table($_)
                                 }
                             GROUP BY
                                 { .^rel.name }
                         )
                         EOS
                     } else {
-                        self.table-name-wrapper: .^table
+                        source-table($_)
                     }
                 }{
                     " as {

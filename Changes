@@ -1,6 +1,18 @@
 Revision history for Red
 
 {{$NEXT}}
+    - Allow direct administrative connections with --driver and --connect-* options.
+    - Add --save and --save-as to save created databases and users as named connections.
+    - Delegate database, user, and role creation commands to backend drivers.
+    - Filter protected live supplies using independent captured subscriber contexts.
+    - Recover MySQL INSERT results without applying a separate SELECT policy.
+    - Allow row operations without a policy; explicit hooks restrict their own operation.
+    - Add method-based row security policies, immutable red-do contexts, and typed errors.
+    - Use %*RED-CONTEXT as the default row context, including outside red-do.
+    - Install PostgreSQL RLS atomically through all structured table creation paths.
+    - Filter protected SQL sources and validate SQLite writes atomically.
+    - Capture portable policies in migration snapshots and generate PostgreSQL RLS DDL.
+    - Reject context changes across lazy queries, prepared statements, and persistence.
 
 0.2.16  2026-11-21T01:18:36Z
     - Fix ResultSeq.Supply projection duplicates and per-subscription head/skip state.

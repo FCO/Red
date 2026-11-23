@@ -3,6 +3,16 @@ use nqp;
 
 class X::Red is Exception {}
 
+class X::Red::Administration is X::Red {
+    has Str $.reason is required;
+    method message { $!reason }
+}
+
+class X::Red::RowSecurity is X::Red {
+    has Str $.reason = 'Row security policy rejected the operation';
+    method message { $!reason }
+}
+
 #| Internal signal for a template that cannot bind to the current projection.
 class X::Red::Compiler::Unsupported is Exception {
     has Bool $.fatal = False;

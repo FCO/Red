@@ -28,8 +28,15 @@ method describe(Red::AST:D $ast --> Hash:D) {
         # After a cache veto, keep finding bindings and comments but stop encoding keys.
         unless $value.DEFINITE {
             return '' unless $safe;
-            return 'model:' ~ $value.WHICH.Str ~ ':' ~ $value.^table ~ ':' ~ $value.^as
-                if $value ~~ $model-type && $value.HOW.^can('table');
+            if $value ~~ $model-type && $value.HOW.^can('table') {
+                my $origin = $value.HOW.^can('orig') ?? $value.^orig !! $value;
+                my $policies = <SELECT INSERT UPDATE DELETE>.map({
+                    my $method = $origin.^lookup($_ ~ '-ALLOWED-IF');
+                    $method.DEFINITE ?? $method.WHICH.Str !! ''
+                }).join('|');
+                return 'model:' ~ $value.WHICH.Str ~ ':' ~ $value.^table ~ ':' ~ $value.^as
+                    ~ '|policies:' ~ $policies;
+            }
             return 'U:' ~ $value.WHICH.Str;
         }
         my $type = $value.WHAT;
@@ -72,6 +79,7 @@ method describe(Red::AST:D $ast --> Hash:D) {
             %active{$id} = True;
             my @parts = $value.^attributes.map(-> $attr {
                 my $part = $attr.get_value($value);
+                next if $attr.name eq '%!row-policies' && !$part.elems;
                 if $attr.name eq '@!comments' {
                     @comments.append: $part.list;
                     next;

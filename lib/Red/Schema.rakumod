@@ -75,7 +75,8 @@ method drop {
 }
 
 method create(:$where) {
-    red-do (:$where with $where), :transaction, {
+    return red-do :with($where), { self.create } if $where.DEFINITE;
+    red-do :transaction, {
         |.create-schema(%!models);
     }
     my $driver = get-RED-DB;

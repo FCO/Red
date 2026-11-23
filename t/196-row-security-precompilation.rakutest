@@ -1,0 +1,47 @@
+use Test;
+
+my $directory = $*TMPDIR.add("red-row-security-precompile-{$*PID}-{1000000.rand.Int}");
+$directory.mkdir;
+sub remove-tree(IO::Path:D $path) {
+    if $path.d && !$path.l {
+        remove-tree($_) for $path.dir;
+        $path.rmdir;
+    } else {
+        $path.unlink;
+    }
+}
+LEAVE remove-tree($directory);
+
+$directory.add('RowSecurityPrecompileFixture.rakumod').spurt(q:to/FIXTURE/);
+use Red:api<2>;
+unit module RowSecurityPrecompileFixture;
+model PrecompileSecureRow is export is table<precompile_secure_row> {
+    has Int $.id is serial;
+    has Int $.tenant is column;
+    method SELECT-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+}
+FIXTURE
+my $body = q:to/BODY/;
+use RowSecurityPrecompileFixture;
+my $*RED-DB = database 'SQLite';
+PrecompileSecureRow.^create-table;
+$*RED-DB.execute('INSERT INTO precompile_secure_row(tenant) VALUES (1), (2)');
+red-do :with($*RED-DB), :context{ :tenant(1) }, {
+    say PrecompileSecureRow.^all.elems;
+};
+BODY
+my $after = $directory.add('driver-after-fixture.raku');
+$after.spurt("use Red:api<2>;\n" ~ $body);
+my $before = $directory.add('driver-before-fixture.raku');
+$before.spurt("use Red:api<2>;\nuse Red::Driver::SQLite;\n" ~ $body);
+my $library = $?FILE.IO.parent.parent.add('lib').absolute;
+for ($after, $after, $before, $after).kv -> $index, $script {
+    my $process = run $*EXECUTABLE, '-I' ~ $library, '-I' ~ $directory, $script,
+        :out, :err;
+    my $output = $process.out.slurp-rest;
+    my $error = $process.err.slurp-rest;
+    is $process.exitcode, 0, "Precompiled fixture/driver load order {$index + 1} succeeds";
+    is $output.trim, '1', 'The reloaded policy still isolates tenants';
+    diag $error if $process.exitcode;
+}
+done-testing;

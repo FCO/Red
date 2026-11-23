@@ -1,4 +1,5 @@
 use Red::Statement;
+use Red::RowSecurity::Context;
 use X::Red::Exceptions;
 
 #| Explicit lifetime control for a transaction or one of its savepoints.
@@ -200,13 +201,17 @@ method do(&block) {
 
 #| Reserves participation before scheduling a block; returns its Promise.
 method start(&block) {
+    my $context = row-security-context();
     my $guard = self;
     $guard.retain;
     {
         CATCH {
             default { cleanup-and-rethrow({ $guard.release }, $_) }
         }
-        start { $guard!invoke(&block) }
+        start {
+            my $*RED-ROW-CONTEXT = $context;
+            $guard!invoke(&block)
+        }
     }
 }
 

@@ -1,0 +1,100 @@
+use Test;
+use Red:api<2>;
+use Red::RowSecurity;
+use Red::RowSecurity::PostgreSQL;
+
+unless %*ENV<ROW_BACKEND>:exists {
+    plan :skip-all('Set ROW_BACKEND to run isolated backend row security tests');
+    exit;
+}
+my $kind = %*ENV<ROW_BACKEND>;
+my $host = %*ENV<ROW_HOST> // '127.0.0.1';
+my $database = %*ENV<ROW_DATABASE> // 'redrows';
+my $password = %*ENV<ROW_PASSWORD> // 'red-row-test';
+my $admin = do given $kind {
+    when 'Pg' { database 'Pg', :$host, :dbname($database),
+        :user<postgres>, :$password }
+    when 'MySQL' { database 'MySQL', :$host, :$database,
+        :user<root>, :$password }
+    default { database 'DuckDB' }
+};
+my $*RED-DB = $admin;
+my $*RED-FALLBACK = False;
+role Policy {
+    method SELECT-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+    method INSERT-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+    method UPDATE-ALLOWED-IF($new, %context) {
+        self.tenant == %context<tenant> && $new.tenant == self.tenant
+    }
+    method DELETE-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+}
+model BackendRow does Policy {
+    has Int $.id is serial;
+    has Int $.tenant is rw is column;
+    has Int $.amount is rw is column;
+}
+$admin.execute('DROP TABLE IF EXISTS backend_row');
+BackendRow.^create-table;
+$admin.execute('INSERT INTO backend_row(tenant,amount) VALUES (1,10),(2,20)');
+if $kind eq 'Pg' {
+    $admin.execute(q[DO $$ BEGIN CREATE ROLE redrowuser LOGIN PASSWORD 'red-row-test';
+        EXCEPTION WHEN duplicate_object THEN NULL; END $$]);
+    $admin.execute('GRANT SELECT, INSERT, UPDATE, DELETE ON backend_row TO redrowuser');
+    $admin.execute('GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO redrowuser');
+    $*RED-DB = database 'Pg', :$host, :dbname($database),
+        :user<redrowuser>, :$password;
+}
+throws-like { BackendRow.^all.elems }, X::Red::RowSecurity, "$kind rejects missing context";
+{
+    my %*RED-CONTEXT = :tenant(1);
+    is BackendRow.^all.elems, 1, "$kind reads the dynamic context without red-do";
+    my $captured = BackendRow.^all;
+    my $row = BackendRow.^create(:tenant(1), :amount(91));
+    is $row.amount, 91, "$kind INSERT uses the dynamic context";
+    $row.amount = 92;
+    lives-ok { $row.^save }, "$kind UPDATE uses the dynamic context";
+    lives-ok { $row.^delete }, "$kind DELETE uses the dynamic context";
+    %*RED-CONTEXT<tenant> = 2;
+    is BackendRow.^all.head.amount, 20, "$kind observes a new dynamic default";
+    throws-like { $captured.List }, X::Red::RowSecurity,
+        "$kind rejects a lazy query captured under another dynamic context";
+}
+
+red-do :with($*RED-DB), :context{ :tenant(1) }, {
+    is BackendRow.^all.elems, 1, "$kind isolates tenant reads";
+    is BackendRow.^all.head.amount, 10, "$kind returns the authorized row";
+    my $row = BackendRow.^create(:tenant(1), :amount(30));
+    is $row.amount, 30, "$kind allows authorized INSERT";
+    throws-like { BackendRow.^create(:tenant(2), :amount(40)) }, X::Red::RowSecurity,
+        "$kind rejects forbidden INSERT";
+    $row.amount = 31;
+    lives-ok { $row.^save }, "$kind allows authorized UPDATE";
+    $row.tenant = 2;
+    throws-like { $row.^save }, X::Red::RowSecurity, "$kind rejects tenant changes";
+    $row.tenant = 1;
+    is BackendRow.^find(:id($row.id)).amount, 31, "$kind rejected UPDATE is atomic";
+    lives-ok { $row.^delete }, "$kind allows authorized DELETE";
+    is BackendRow.^all.elems, 1, "$kind restores the original authorized set";
+};
+red-do :with($*RED-DB), :context{ :tenant(2) }, {
+    is BackendRow.^all.head.amount, 20, "$kind keeps the other tenant unchanged";
+};
+if $kind eq 'Pg' {
+    red-do :with($admin), :context{ :tenant(1) }, {
+        throws-like { BackendRow.^all.elems }, X::Red::RowSecurity,
+            'PostgreSQL rejects superuser application connections';
+    };
+    my %policies = row-policy-descriptors(BackendRow);
+    my $name = native-policy-name('select', %policies);
+    $admin.execute("ALTER POLICY $name ON backend_row USING (true)");
+    red-do :with($*RED-DB), :context{ :tenant(1) }, {
+        throws-like { BackendRow.^all.elems }, X::Red::RowSecurity,
+            'PostgreSQL rejects altered native policy definitions';
+    };
+    $admin.execute("DROP POLICY $name ON backend_row");
+    red-do :with($*RED-DB), :context{ :tenant(1) }, {
+        throws-like { BackendRow.^all.elems }, X::Red::RowSecurity,
+            'PostgreSQL rejects absent native policy without fallback';
+    };
+}
+done-testing;

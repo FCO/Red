@@ -1,0 +1,62 @@
+use Test;
+use Red:api<2>;
+use Red::RowSecurity::Context;
+
+my @configuration = (%*ENV<RED_DATABASE> // %*ENV<ROW_SUPPLY_BACKEND> // 'SQLite').split(' ');
+my $backend = @configuration.shift;
+my $*RED-DB = database $backend, |%(@configuration.map({
+    do given .split('=', 2) { .[0] => val .[1] }
+}));
+model PrivateLiveRow {
+    has Int $.id is serial;
+    has Int $.tenant is column;
+    has Str $.title is column;
+    method SELECT-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+}
+schema(PrivateLiveRow).drop.create;
+PrivateLiveRow.^create(:tenant(1), :title('first'));
+PrivateLiveRow.^create(:tenant(2), :title('second'));
+my (@one, @two, @errors, @callback-contexts);
+my ($first, $second);
+{
+    my %*RED-CONTEXT = :tenant(1);
+    $first = PrivateLiveRow.^all.map(-> $row {
+        @callback-contexts.push: row-security-context()<tenant>;
+        $row.title
+    }).Supply;
+}
+{
+    my %*RED-CONTEXT = :tenant(2);
+    $second = PrivateLiveRow.^all.Supply;
+}
+@callback-contexts = ();
+my $tap-one = $first.tap(-> $value { @one.push($value) },
+    quit => -> $error { @errors.push($error.message) });
+my $tap-two = $second.tap(-> $value { @two.push($value.title) },
+    quit => -> $error { @errors.push($error.message) });
+LEAVE $tap-one.?close;
+LEAVE $tap-two.?close;
+is-deeply @one.Array, ['first'], 'Snapshot uses the captured first subscriber context';
+is-deeply @two.Array, ['second'], 'Snapshot isolates the second subscriber context';
+lives-ok {
+    await start {
+        my %*RED-CONTEXT = :tenant(99);
+        PrivateLiveRow.^create(:tenant(2), :title('second-live'));
+        PrivateLiveRow.^create(:tenant(1), :title('first-live'));
+        PrivateLiveRow.^create(:tenant(99), :title('hidden'));
+    }
+}, 'Events from a different thread and context can be processed';
+is-deeply @errors.Array, [], 'Live policy evaluation raises no callback errors';
+is-deeply @one.Array, ['first', 'first-live'], 'First subscriber receives only authorized inserts';
+is-deeply @two.Array, ['second', 'second-live'], 'Second subscriber receives only authorized inserts';
+is-deeply @callback-contexts.Array, [1, 1], 'Map callbacks run under subscriber context';
+my $tap-again = $first.tap(-> $value { }, quit => -> $error { @errors.push($error.message) });
+$tap-again.close;
+is-deeply @errors.Array, [], 'A second tap retains the captured context';
+throws-like {
+    my %*RED-CONTEXT = :tenant(1);
+    my $query = PrivateLiveRow.^all;
+    %*RED-CONTEXT<tenant> = 2;
+    $query.Supply;
+}, X::Red::RowSecurity, 'Supply rejects queries created under a different context';
+done-testing;

@@ -6,6 +6,7 @@ use Red::AST::TableComment;
 #| Represents a create table
 unit class Red::AST::CreateTable does Red::AST;
 
+has Mu:U                    $.model;
 has Str                     $.name;
 has Bool                    $.temp;
 has Red::Column             @.columns;

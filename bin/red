@@ -1,5 +1,6 @@
 #!/usr/bin/env raku
 use Red::Cli;
+use X::Red::Exceptions;
 use Red::Do;
 use Red::Database;
 use Red::Migration::Configuration;
@@ -275,4 +276,98 @@ multi MAIN('fixture', 'save', Str $name, Str :$config = 'red.rakuconf', Bool :$f
 multi MAIN('fixture', 'apply', Str $name, Str :$config = 'red.rakuconf') {
     use Red::Fixture;
     fixture-command('apply', $name, :$config);
+}
+
+sub administration-connection(Str $config, Str $connection --> Red::Driver:D) {
+    my $settings = Red::Migration::Configuration.load($config.IO);
+    my $db = $settings.connections{$connection};
+    $db = $db() if $db ~~ Callable;
+    X::Red::Administration.new(:reason("Unknown configured connection: $connection")).throw
+        unless $db ~~ Red::Driver:D;
+    $db
+}
+
+sub direct-administration-options(%options --> Hash) {
+    my %parameters;
+    for %options.keys.grep(*.starts-with('connect-')) -> $key {
+        my $value = %options{$key}:delete;
+        %parameters{$key.substr(8)} = $key eq 'connect-port' ?? $value.Int !! $value;
+    }
+    %parameters
+}
+
+# Prepare the edit before performing administration, so duplicate names fail first.
+sub saved-administration-config(Str $config, Str $connection, Str $save-as,
+                                Str $kind, Str $name, %options, Red::Driver:D $db,
+                                Str $driver, %parameters --> Str) {
+    return '' unless $save-as.defined;
+    my $settings = $config.IO.e
+        ?? Red::Migration::Configuration.load($config.IO)
+        !! Red::Migration::Configuration.new;
+    X::Red::Administration.new(:reason("Configured connection already exists: $save-as")).throw
+        if $settings.connections{$save-as}:exists;
+    my $key = $kind eq 'user' ?? 'user'
+        !! ($db.^attributes.first(*.name eq '$!dbname').defined ?? 'dbname' !! 'database');
+    my %overrides = $key => $name;
+    %overrides<password> = %options<password>
+        if $kind eq 'user' && (%options<password>:exists);
+    my $source = $config.IO.e ?? $config.IO.slurp
+        !! "use Red;\nuse Red::Migration::Configuration;\nRed::Migration::Configuration.new\n";
+    my $factory = $driver.defined
+        ?? 'database(' ~ $driver.raku ~ ', |' ~ %parameters.raku ~ ')'
+        !! '$red-saved-config.connections{' ~ $connection.raku ~ '}';
+    "use Red::Database;\nmy \$red-saved-config = do \{\n$source\n};\n"
+        ~ '$red-saved-config' ~ '.connections{' ~ $save-as.raku ~ '} = { ' ~ "\n"
+        ~ '    my $db = ' ~ $factory ~ ";\n"
+        ~ '    $db = $db() if $db ~~ Callable;' ~ "\n"
+        ~ '    my %args = $db.^attributes.grep({ .name.substr(2) ne any(<dbh supplier events>) })'
+        ~ '.map({ .name.substr(2) => .get_value($db) }).Hash;' ~ "\n"
+        ~ '    %args{.key} = .value for ' ~ %overrides.raku ~ '.pairs;' ~ "\n"
+        ~ '    $db.WHAT.new(|%args)' ~ "\n};\n"
+        ~ '$red-saved-config' ~ "\n"
+}
+
+#| Create a database through the configured administrative connection.
+multi MAIN('create-database', Str $name, Str :$config = 'red.rakuconf',
+           Str :$connection, Str :$driver, Bool :$save = False, Str :$save-as, *%options) {
+    X::Red::Administration.new(:reason('Choose either --driver or --connection')).throw
+        if $driver.defined && $connection.defined;
+    my %parameters = direct-administration-options(%options);
+    X::Red::Administration.new(:reason('--connect-* options require --driver')).throw
+        if %parameters && !$driver.defined;
+    my $source-connection = $connection // 'default';
+    my $db = $driver.defined ?? database($driver, |%parameters)
+        !! administration-connection($config, $source-connection);
+    my $saved-name = $save-as // ($save ?? $name !! Str);
+    my $saved = saved-administration-config($config, $source-connection, $saved-name,
+        'database', $name, %options, $db, $driver, %parameters);
+    $db.create-database($name, |%options);
+    $config.IO.spurt($saved) if $saved-name.defined;
+    say "Database created: $name";
+}
+
+#| Create a user through the configured administrative connection.
+multi MAIN('create-user', Str $name, Str :$config = 'red.rakuconf',
+           Str :$connection, Str :$driver, Bool :$save = False, Str :$save-as, *%options) {
+    X::Red::Administration.new(:reason('Choose either --driver or --connection')).throw
+        if $driver.defined && $connection.defined;
+    my %parameters = direct-administration-options(%options);
+    X::Red::Administration.new(:reason('--connect-* options require --driver')).throw
+        if %parameters && !$driver.defined;
+    my $source-connection = $connection // 'default';
+    my $db = $driver.defined ?? database($driver, |%parameters)
+        !! administration-connection($config, $source-connection);
+    my $saved-name = $save-as // ($save ?? $name !! Str);
+    my $saved = saved-administration-config($config, $source-connection, $saved-name,
+        'user', $name, %options, $db, $driver, %parameters);
+    $db.create-user($name, |%options);
+    $config.IO.spurt($saved) if $saved-name.defined;
+    say "User created: $name";
+}
+
+#| Create a role through the configured administrative connection.
+multi MAIN('create-role', Str $name, Str :$config = 'red.rakuconf',
+           Str :$connection = 'default', *%options) {
+    administration-connection($config, $connection).create-role($name, |%options);
+    say "Role created: $name";
 }

@@ -1,4 +1,5 @@
 use Red;
+use Red::RowSecurity;
 use Red::Migration::Snapshot;
 need Red::GlobalEvents;
 use X::Red::Migration;
@@ -52,7 +53,10 @@ method capture(@models --> Red::Migration::Snapshot) {
                     .sort(*.<name>).Array
             }
             !! [];
-        $table.clone(:indexes(@indexes.sort(*.<name>).Array), :checks(@checks.sort.Array),
+        my %row-policies = row-policy-descriptors($model);
+        my @row-security-sql = %row-policies
+            ?? $!driver.row-security-schema($model, %row-policies) !! [];
+        $table.clone(:row-policies(%row-policies), :@row-security-sql, :indexes(@indexes.sort(*.<name>).Array), :checks(@checks.sort.Array),
             :constraints($table.constraints.sort(*.join('|')).Array),
             :global-event-triggers(@global-event-triggers))
     };
@@ -129,6 +133,7 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
         @sql.push: self!create(%new{$table});
         @sql.append: %new{$table}.indexes.map(*.<sql>);
         @sql.append: %new{$table}.global-event-triggers.map(*.<sql>);
+        @sql.append: %new{$table}.row-security-sql;
         %done{$table} = %new{$table};
         @create = @create.grep(* ne $table);
     }
@@ -182,6 +187,9 @@ method diff(Red::Migration::Snapshot $old, Red::Migration::Snapshot $new,
         }
         for %bi.keys.sort -> $index {
             @sql.push: %bi{$index} unless (%ai{$index}:exists) && %ai{$index} eq %bi{$index};
+        }
+        unless $a.row-policies eqv $b.row-policies {
+            @sql.append: $!driver.row-security-schema-change($a, $b);
         }
         my %at = $a.global-event-triggers.map({ .<name> => .<sql> });
         my %bt = $b.global-event-triggers.map({ .<name> => .<sql> });

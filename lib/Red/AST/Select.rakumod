@@ -9,6 +9,8 @@ use Red::LockType;
 #| Represents a Select
 unit class Red::AST::Select does Red::AST;
 
+has Red::AST            %.row-policies;
+
 has Mu:U                $.of;
 has Red::AST            @.fields;
 has Red::AST            $.filter;

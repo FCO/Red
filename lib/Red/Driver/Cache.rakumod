@@ -1,4 +1,5 @@
 use v6.d;
+use Red::RowSecurity;
 use Red::Database;
 use Red::Driver;
 use Red::AST;
@@ -51,6 +52,22 @@ multi method set-on-cache(Red::AST, @) { ... }
 
 has Red::Driver  $.driver is required;
 
+method begin { self.clone(:driver($!driver.begin)) }
+method commit { $!driver.commit; self }
+method rollback { $!driver.rollback; self }
+
+method row-security-capabilities { $!driver.row-security-capabilities }
+
+method row-security-source-fields($model) { $!driver.row-security-source-fields($model) }
+method row-security-transaction-active { $!driver.row-security-transaction-active }
+method prepare-row-security(@models) { $!driver.prepare-row-security(@models) }
+method lock-row-security-write($query) { $!driver.lock-row-security-write($query) }
+method row-security-check-suffix { $!driver.row-security-check-suffix }
+method row-security-schema(|c) { $!driver.row-security-schema(|c) }
+method row-security-schema-change(|c) { $!driver.row-security-schema-change(|c) }
+
+method check-row-security-write($model) { $!driver.check-row-security-write($model) }
+
 method check-regex-support { $!driver.?check-regex-support }
 
 multi method default-type-for(Red::Column $a --> Str:D) { $!driver.default-type-for($a)      }
@@ -88,6 +105,7 @@ my class Statement does Red::Statement {
 }
 
 multi method prepare(Red::AST::Select $ast ) {
+    return $!driver.prepare($ast) if protected-row-query($ast);
     CATCH {
         default {
             return $!driver.prepare: $ast
@@ -103,3 +121,7 @@ multi method prepare(Red::AST::Select $ast ) {
     }
 }
 
+
+method create-database(|arguments) { $!driver.create-database(|arguments) }
+method create-user(|arguments) { $!driver.create-user(|arguments) }
+method create-role(|arguments) { $!driver.create-role(|arguments) }

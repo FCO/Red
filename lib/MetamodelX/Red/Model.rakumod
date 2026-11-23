@@ -426,7 +426,7 @@ method alias(|c (
             method as(|)          { self.table-formatter: $rname }
             method orig(|)        { rtype }
             method join-type(|)   { join-type }
-            method tables(|)      { [ |base.^tables, alias ] }
+            method tables(|)      { [ |(base.^tables if base ~~ Red::Model), alias ] }
             method join-on(|)     {
                 my $*RED-INTERNAL = True;
                 do given rel {
@@ -586,6 +586,7 @@ multi method create-table(\model where { .HOW !~~ MetamodelX::Red::View | Metamo
     get-RED-DB.translate($_) for model.^indexes;
     get-RED-DB.translate($_) for model.^schema-constraints;
     my $data = Red::AST::CreateTable.new:
+            :model(model),
             :name(model.^table),
             :temp(model.^temp),
             :columns(model.^columns.map(*.column.clone: :class(model))),
@@ -635,6 +636,7 @@ multi method save(Str :$with!, |c) {
 
 #| Saves that object on database (create a new row)
 multi method save($obj, Bool :$insert! where * == True, Bool :$from-create, Red::AST::Insert :$insert-ast, :$with where not .defined) {
+    $obj.^check-row-context;
     self.apply-row-phasers($obj, BeforeCreate) unless $from-create;
     my $ast = $insert-ast // Red::AST::Insert.new: $obj;
     my $ret := get-RED-DB.execute: $ast;
@@ -654,6 +656,7 @@ multi method save($obj, Bool :$insert! where * == True, Bool :$from-create, Red:
 
 #| Saves that object on database (update the row)
 multi method save($obj, Bool :$update! where * == True, :$with where not .defined) {
+    $obj.^check-row-context;
     self.apply-row-phasers($obj, BeforeUpdate);
     $obj.^sync-collection-dirty;
     my $ast = Red::AST::Update.new: $obj;
@@ -834,6 +837,7 @@ multi method delete(Str :$with!, |c) {
 multi method delete(\model, :$with where not .defined) {
     my $origin = model.clone;
     self.apply-row-phasers(model, BeforeDelete);
+    model.^check-row-context if model.DEFINITE;
     my $ast = Red::AST::Delete.new: model;
     get-RED-DB.execute: $ast;
     self.emit: model, $ast, :$origin;

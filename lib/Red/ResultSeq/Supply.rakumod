@@ -5,6 +5,8 @@ use Red::Class;
 use Red::Event;
 use Red::Model;
 use Red::GlobalEvents;
+use Red::RowSecurity;
+use Red::RowSecurity::Context;
 
 =head2 Red::ResultSeq::Supply
 
@@ -94,8 +96,45 @@ sub build-live(\rs, $driver --> Supply) {
     $source.map(-> &resolve { resolve() }).grep(*.defined)
 }
 
+# Protected subscribers resolve each event through their own secured SQL query.
+# Never share materialized rows or producer contexts across subscribers.
+sub protected-live(\rs, $driver, Map:D $context --> Supply) {
+    my \model = source-model(rs);
+    row-security-error('Protected live sources require row identity') unless model.^id;
+    Red::GlobalEvents::ensure-global-listener($driver, [model])
+        if model.^global-notifiable && $driver.defined;
+    Red::Class.instance.events.grep(-> Red::Event $event {
+        !$event.error.defined
+            && ($event.data ~~ Red::AST::Insert || $event.global)
+            && do {
+                my \insert-model = event-model($event);
+                (insert-model === model || insert-model === model.^orig)
+                    && $event.db.connection-id eq $driver.connection-id
+            }
+    }).map(-> Red::Event $event {
+        my $*RED-ROW-CONTEXT = $context;
+        my $*RED-DB = $driver;
+        my %ids;
+        if $event.global {
+            %ids = $event.ids;
+        } else {
+            my $instance = instance-from-event($event);
+            return Nil unless $instance.defined;
+            %ids = $instance.^id.map({
+                .column.attr-name => .get_value($instance)
+            }).Hash;
+        }
+        row-security-error('Protected live event is missing row identity')
+            unless model.^id.map({ (%ids{.column.attr-name}:exists)
+                && %ids{.column.attr-name}.defined }).all;
+        rs.where(model.^id-filter(|%ids)).with($driver).head
+    }).grep(*.defined)
+}
+
 #| Returns the raw insert Supply shared by source model and driver.
 sub live-supply-for(\rs, Red::AST $ast, $driver --> Supply) is export {
+    return protected-live(rs, $driver, row-security-context())
+        if protected-row-query($ast);
     my $key = $driver.connection-id ~ '|' ~ source-model(rs).WHICH.Str;
 
     my \model = source-model(rs);

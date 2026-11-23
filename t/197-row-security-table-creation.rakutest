@@ -1,0 +1,104 @@
+use Test;
+use Red:api<2>;
+use Red::AST::CreateTable;
+use Red::Migration::Planner;
+use Red::Migration::Snapshot;
+
+unless (%*ENV<ROW_BACKEND> // '') eq 'Pg' {
+    plan :skip-all('Set ROW_BACKEND=Pg for native RLS creation integration tests');
+    exit;
+}
+my $*RED-DB = database 'Pg', :host(%*ENV<ROW_HOST> // '127.0.0.1'),
+    :dbname(%*ENV<ROW_DATABASE> // 'redrows'), :user<postgres>,
+    :password(%*ENV<ROW_PASSWORD> // 'red-row-test');
+my $admin = $*RED-DB;
+role CreationPolicy {
+    method SELECT-ALLOWED-IF(%context) { self.tenant == %context<tenant> }
+}
+model RlsViaModel does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsViaWith does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsViaWhere does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsViaTransaction does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsViaSchema does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsViaDriver does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsViaAst does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsViaPreparedAst does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsViaMigration does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsViaSync does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsRolledBack does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+model RlsOuterRollback does CreationPolicy { has Int $.id is serial; has Int $.tenant is column }
+my @models = RlsViaModel, RlsViaWith, RlsViaWhere, RlsViaTransaction, RlsViaSchema, RlsViaDriver, RlsViaAst,
+    RlsViaPreparedAst, RlsViaMigration, RlsViaSync, RlsRolledBack, RlsOuterRollback;
+$admin.execute('DROP TABLE IF EXISTS ' ~ $admin.table-name-wrapper(.^table) ~ ' CASCADE')
+    for @models;
+
+sub check-native($model, Str:D $label) {
+    my $table = $admin.table-name-wrapper($model.^table);
+    my $state := $admin.execute(q:to/SQL/, $table).row;
+        SELECT relrowsecurity AS enabled, relforcerowsecurity AS forced,
+               (SELECT count(*) FROM pg_policy WHERE polrelid = c.oid) AS policies
+        FROM pg_class c WHERE oid = to_regclass($1)
+        SQL
+    if $state =:= IterationEnd || !$state {
+        flunk "$label created the target table";
+        return;
+    }
+    ok $state<enabled> && $state<forced>, "$label enables and forces native RLS";
+    is $state<policies>, 4, "$label installs all operation policies";
+}
+sub create-ast($model, Bool :$metadata = True) {
+    Red::AST::CreateTable.new(:name($model.^table), :columns($model.^columns.map(*.column)),
+        |(:model($model) if $metadata))
+}
+
+RlsViaModel.^create-table;
+check-native(RlsViaModel, '.^create-table');
+ok !RlsViaModel.^create-table(:unless-exists), 'Existing table creation remains idempotent';
+check-native(RlsViaModel, '.^create-table :unless-exists');
+RlsViaWith.^create-table(:with($admin));
+check-native(RlsViaWith, '.^create-table :with');
+schema(RlsViaSchema).create;
+check-native(RlsViaSchema, 'schema.create');
+schema(RlsViaWhere).create(:where($admin));
+check-native(RlsViaWhere, 'schema.create :where');
+my $transaction = $admin.begin;
+RlsViaTransaction.^create-table(:with($transaction));
+$transaction.commit;
+check-native(RlsViaTransaction, 'Explicit driver transaction');
+$admin.create-schema(%(RlsViaDriver.^name => RlsViaDriver));
+check-native(RlsViaDriver, 'driver.create-schema');
+$admin.execute(create-ast(RlsViaAst));
+check-native(RlsViaAst, 'CREATE TABLE AST execution');
+my @statements = $admin.prepare(create-ast(RlsViaPreparedAst, :!metadata));
+.execute for @statements;
+check-native(RlsViaPreparedAst, 'Prepared CREATE TABLE AST with inferred model');
+
+my $planner = Red::Migration::Planner.new(:driver($admin), :dialect<Pg>);
+my @sql = $planner.diff(Red::Migration::Snapshot.new,
+    $planner.capture([RlsViaMigration]));
+red-do :transaction, {
+    for @sql { $*RED-DB.execute($_) }
+    True
+};
+check-native(RlsViaMigration, 'Migration schema plan');
+schema(RlsViaSync).update;
+check-native(RlsViaSync, 'schema.update creation');
+lives-ok { schema(RlsViaSync).update }, 'Schema synchronization can reconcile existing policies';
+check-native(RlsViaSync, 'Repeated schema.update');
+
+my $failing = $admin.new-connection;
+$failing does role {
+    method row-security-schema(|c) { [|callsame, 'SELECT 1 / 0'] }
+};
+dies-ok { RlsRolledBack.^create-table(:with($failing)) }, 'A policy DDL failure rejects creation';
+ok $admin.execute(q[SELECT to_regclass('rls_rolled_back') IS NULL AS absent]).row<absent>,
+    'The table rolls back together with failed policy installation';
+dies-ok {
+    red-do :transaction, {
+        RlsOuterRollback.^create-table;
+        die 'rollback outer transaction';
+    }
+}, 'Protected table creation participates in the caller transaction';
+ok $admin.execute(q[SELECT to_regclass('rls_outer_rollback') IS NULL AS absent]).row<absent>,
+    'Outer rollback removes both the table and its policies';
+done-testing;

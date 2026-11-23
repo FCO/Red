@@ -1,0 +1,181 @@
+use Test;
+use lib $?FILE.IO.parent.add('lib').Str;
+use TestRepositories;
+inherit-test-repositories;
+use Red;
+use X::Red::Exceptions;
+use JSON::Fast;
+use Red::Driver::Cache;
+
+my $root = $*TMPDIR.add("red-administration-{$*PID}-{100000.rand.Int}");
+$root.mkdir;
+LEAVE {
+    if $root.add('Red/Driver').d {
+        .unlink for $root.add('Red/Driver').dir;
+        $root.add('Red/Driver').rmdir;
+        $root.add('Red').rmdir;
+    }
+    .unlink for $root.dir;
+    $root.rmdir;
+}
+my $db = database('SQLite');
+my $file = $root.add('database with spaces.sqlite');
+ok $db.create-database($file.Str), 'SQLite creates a database';
+is $file.slurp(:bin).subbuf(0, 16).decode, "SQLite format 3\0",
+    'created database has a valid SQLite header';
+throws-like { $db.create-database($file.Str) }, X::Red::Administration,
+    reason => /'already exists'/, 'existing database is preserved';
+throws-like { $db.create-database(':memory:') }, X::Red::Administration,
+    'persistent creation rejects in-memory databases';
+throws-like { $db.create-user('reader', :password('secret')) }, X::Red::Administration,
+    reason => /'User creation is unsupported'/, 'SQLite rejects users explicitly';
+throws-like { $db.create-role('reader') }, X::Red::Administration,
+    reason => /'Role creation is unsupported'/, 'SQLite rejects roles explicitly';
+
+my $cached = cache('Memory', $db);
+ok $cached.create-database($root.add('cached.sqlite').Str),
+    'cache delegates database creation';
+throws-like { $cached.create-user('reader', :password('secret')) },
+    X::Red::Administration, reason => /'SQLite'/, 'cache delegates unsupported user creation';
+throws-like { $cached.create-role('reader') }, X::Red::Administration,
+    reason => /'SQLite'/, 'cache delegates unsupported role creation';
+
+my $config = $root.add('red.rakuconf');
+my $record = $root.add('calls.json');
+my $module = $root.add('CustomAdmin.rakumod');
+$module.spurt(q:to/MODULE/.subst('RECORD', $record.Str.raku, :g));
+use Red::Driver::CommonSQL;
+use JSON::Fast;
+unit class CustomAdmin does Red::Driver::CommonSQL;
+has Str $.user;
+has Str $.password;
+method schema-reader { }
+multi method prepare(Str $sql) { }
+method create-database(Str:D $name, *%options) {
+    RECORD.IO.spurt(to-json(['database', $name, %options]));
+}
+method create-user(Str:D $name, *%options) {
+    RECORD.IO.spurt(to-json(['user', $name, %options]));
+}
+method create-role(Str:D $name, *%options) {
+    RECORD.IO.spurt(to-json(['role', $name, %options]));
+}
+MODULE
+$config.spurt(q:to/CONFIG/);
+use Red;
+use CustomAdmin;
+use Red::Migration::Configuration;
+Red::Migration::Configuration.new(:connections{ admin => { CustomAdmin.new } })
+CONFIG
+for <database user role> -> $kind {
+    my $process = run $*EXECUTABLE, '-Ilib', '-I' ~ $root.Str, 'bin/red', "create-$kind",
+        'name with "quotes"', "--config=$config", '--connection=admin',
+        '--backend-option=custom', :out, :err;
+    my $output = $process.out.slurp-rest;
+    my $error = $process.err.slurp-rest;
+    is $process.exitcode, 0, "$kind command succeeds: $error";
+    is-deeply from-json($record.slurp),
+        [$kind, 'name with "quotes"', { backend-option => 'custom' }],
+        "$kind command delegates names and backend options";
+    like $output, /'created'/, "$kind command reports success";
+}
+my $save-user = run $*EXECUTABLE, '-Ilib', '-I' ~ $root.Str, 'bin/red', 'create-user',
+    'saved user', "--config=$config", '--connection=admin', '--password=secret',
+    '--save-as=reader', :out, :err;
+$save-user.out.slurp-rest;
+is $save-user.exitcode, 0, "user connection saved: {$save-user.err.slurp-rest}";
+my $read-user = run $*EXECUTABLE, '-Ilib', '-I' ~ $root.Str, '-e',
+    'use Red::Migration::Configuration; my $c = Red::Migration::Configuration.load(@*ARGS[0]); '
+    ~ 'my $db = $c.connections<reader>(); say $db.user; say $db.password',
+    $config.Str, :out, :err;
+is $read-user.out.slurp-rest, "saved user\nsecret\n", 'saved user and password round trip';
+is $read-user.exitcode, 0, "saved user configuration loads: {$read-user.err.slurp-rest}";
+
+my $unknown = run $*EXECUTABLE, '-Ilib', '-I' ~ $root.Str, 'bin/red', 'create-database', 'example',
+    "--config=$config", '--connection=missing', :out, :err;
+$unknown.out.slurp-rest;
+like $unknown.err.slurp-rest, /'Unknown configured connection: missing'/,
+    'unknown administrative connection is identified';
+isnt $unknown.exitcode, 0, 'unknown connection fails';
+
+my $sqlite-config = $root.add('sqlite.rakuconf');
+$sqlite-config.spurt(q:to/SQLITE/);
+use Red;
+use Red::Migration::Configuration;
+config { .connections = %(admin => { database 'SQLite' }) }
+SQLITE
+my $new-db = $root.add('saved.sqlite');
+my $save = run $*EXECUTABLE, '-Ilib', 'bin/red', 'create-database', $new-db.Str,
+    "--config=$sqlite-config", '--connection=admin', '--save-as=application', :out, :err;
+$save.out.slurp-rest;
+is $save.exitcode, 0, "database saved as connection: {$save.err.slurp-rest}";
+my $read = run $*EXECUTABLE, '-Ilib', '-e',
+    'use Red::Migration::Configuration; my $c = Red::Migration::Configuration.load(@*ARGS[0]); '
+    ~ 'say $c.connections<application>().database; say $c.connections<admin>().database',
+    $sqlite-config.Str, :out, :err;
+is $read.out.slurp-rest, "$new-db\n:memory:\n", 'saved connection uses new database and preserves admin';
+is $read.exitcode, 0, "saved configuration loads: {$read.err.slurp-rest}";
+my $before = $sqlite-config.slurp;
+my $duplicate-db = $root.add('duplicate.sqlite');
+my $duplicate = run $*EXECUTABLE, '-Ilib', 'bin/red', 'create-database', $duplicate-db.Str,
+    "--config=$sqlite-config", '--connection=admin', '--save-as=application', :out, :err;
+$duplicate.out.slurp-rest;
+$duplicate.err.slurp-rest;
+isnt $duplicate.exitcode, 0, 'duplicate connection name fails';
+ok !$duplicate-db.e, 'duplicate is rejected before creating database';
+is $sqlite-config.slurp, $before, 'duplicate preserves configuration';
+
+for <database user> -> $kind {
+    my $process = run $*EXECUTABLE, '-Ilib', '-I' ~ $root.Str, 'bin/red', "create-$kind",
+        "saved-$kind", "--config=$config", '--connection=admin', '--save', :out, :err;
+    $process.out.slurp-rest;
+    is $process.exitcode, 0, "$kind saves with resource name: {$process.err.slurp-rest}";
+    is-deeply from-json($record.slurp), [$kind, "saved-$kind", {}],
+        'save flag is consumed by CLI';
+    my $check = run $*EXECUTABLE, '-Ilib', '-I' ~ $root.Str, '-e',
+        'use Red::Migration::Configuration; '
+        ~ 'my $c = Red::Migration::Configuration.load(@*ARGS[0]); '
+        ~ 'say $c.connections{@*ARGS[1]}:exists', $config.Str, "saved-$kind", :out, :err;
+    is $check.out.slurp-rest, "True\n", "$kind connection uses resource name";
+    is $check.exitcode, 0, "configuration loads: {$check.err.slurp-rest}";
+}
+
+my $direct-config = $root.add('direct.rakuconf');
+my $direct-db = $root.add('direct.sqlite');
+my $direct = run $*EXECUTABLE, '-Ilib', 'bin/red', 'create-database', $direct-db.Str,
+    '--driver=SQLite', "--config=$direct-config", :out, :err;
+$direct.out.slurp-rest;
+is $direct.exitcode, 0, "direct creation without configuration: {$direct.err.slurp-rest}";
+ok $direct-db.e, 'direct command creates database';
+ok !$direct-config.e, 'direct creation does not save by default';
+my $direct-saved-db = $root.add('direct-saved.sqlite');
+my $direct-save = run $*EXECUTABLE, '-Ilib', 'bin/red', 'create-database', $direct-saved-db.Str,
+    '--driver=SQLite', '--connect-database=:memory:', "--config=$direct-config",
+    '--save-as=direct', :out, :err;
+$direct-save.out.slurp-rest;
+is $direct-save.exitcode, 0, "direct creation saves new configuration: {$direct-save.err.slurp-rest}";
+my $direct-read = run $*EXECUTABLE, '-Ilib', '-e',
+    'use Red::Migration::Configuration; my $c = Red::Migration::Configuration.load(@*ARGS[0]); '
+    ~ 'say $c.connections<direct>().database', $direct-config.Str, :out, :err;
+is $direct-read.out.slurp-rest, "$direct-saved-db\n", 'direct saved connection targets new database';
+is $direct-read.exitcode, 0, "direct configuration loads: {$direct-read.err.slurp-rest}";
+my $driver-directory = $root.add('Red/Driver');
+$driver-directory.mkdir(:parents);
+$driver-directory.add('TestAdmin.rakumod').spurt(
+    'use Red::Driver; use CustomAdmin; unit class Red::Driver::TestAdmin is CustomAdmin;');
+my $direct-user = run $*EXECUTABLE, '-Ilib', '-I' ~ $root.Str, 'bin/red', 'create-user',
+    'direct-user', '--driver=TestAdmin', '--connect-user=administrator',
+    '--connect-password=admin-secret', '--password=user-secret',
+    "--config=$direct-config", '--save', :out, :err;
+$direct-user.out.slurp-rest;
+is $direct-user.exitcode, 0, "direct user creation: {$direct-user.err.slurp-rest}";
+is-deeply from-json($record.slurp), ['user', 'direct-user', { password => 'user-secret' }],
+    'connection credentials are separate from user creation options';
+my $direct-user-read = run $*EXECUTABLE, '-Ilib', '-I' ~ $root.Str, '-e',
+    'use Red::Migration::Configuration; my $c = Red::Migration::Configuration.load(@*ARGS[0]); '
+    ~ 'my $db = $c.connections<direct-user>(); say $db.user; say $db.password',
+    $direct-config.Str, :out, :err;
+is $direct-user-read.out.slurp-rest, "direct-user\nuser-secret\n", 'direct saved user overrides admin credentials';
+is $direct-user-read.exitcode, 0, "direct user configuration loads: {$direct-user-read.err.slurp-rest}";
+
+done-testing;

@@ -9,6 +9,8 @@ has      @.columns;
 has      @.constraints;
 has      @.indexes;
 has      @.global-event-triggers;
+has      %.row-policies;
+has Str  @.row-security-sql;
 has Str  @.checks;
 has @.portable-indexes;
 has @.portable-checks;

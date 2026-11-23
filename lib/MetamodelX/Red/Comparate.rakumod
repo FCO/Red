@@ -17,12 +17,14 @@ method add-comparate-methods(::T Mu:U \type, Red::Attr::Column $attr --> Empty) 
                 die "Cannot look up attributes in a { type.^name } type object" without $*RED-INTERNAL;
                 Proxy.new:
                 FETCH => -> $ {
-                    my $column = (type.^columns.first(*.name eq $attr.name) // $attr).column;
+                    my $column = (self.^columns.first(*.name eq $attr.name) // $attr).column;
+                    $column = $column.clone(:model(self), :class(self)) unless self === type;
                     $column.computation ~~ Red::AST::Reference
                         ?? $column.computation.clone(:origin($column)) !! $column
                 },
                 STORE => -> $, $value {
-                    my $column = (type.^columns.first(*.name eq $attr.name) // $attr).column;
+                    my $column = (self.^columns.first(*.name eq $attr.name) // $attr).column;
+                    $column = $column.clone(:model(self), :class(self)) unless self === type;
                     my &deflator = $column.deflate;
                     my $val = do given $value {
                         when Red::AST { $_ }
@@ -36,7 +38,8 @@ method add-comparate-methods(::T Mu:U \type, Red::Attr::Column $attr --> Empty) 
         } else {
             type.^add_multi_method: $attr.name.substr(2), method (T:U:) {
                 die "Cannot look up attributes in a { type.^name } type object" without $*RED-INTERNAL;
-                my $column = (type.^columns.first(*.name eq $attr.name) // $attr).column;
+                my $column = (self.^columns.first(*.name eq $attr.name) // $attr).column;
+                $column = $column.clone(:model(self), :class(self)) unless self === type;
                 $column.computation ~~ Red::AST::Reference
                     ?? $column.computation.clone(:origin($column)) !! $column
             }

@@ -1,3 +1,4 @@
+use Red::RowSecurity;
 use Red::DB;
 use Red::AST;
 use Red::Driver;
@@ -17,7 +18,14 @@ submethod TWEAK(|) {
     note $ast if $*RED-DEBUG-AST;
     my $enabled = DYNAMIC::<$*RED-QUERY-PLAN-CACHE>;
     my @st-handler;
-    if !$!driver.supports-query-plans {
+    if protected-row-query($ast) && $ast ~~ ::('Red::AST::Update') | ::('Red::AST::Delete') {
+        $!st-handler = $!driver.execute($ast);
+        $!of.^emit: $ast unless $*RED-NO-EVENT;
+        return;
+    }
+    if protected-row-query($ast) {
+        @st-handler = $!driver.prepare($ast);
+    } elsif !$!driver.supports-query-plans {
         @st-handler = $!driver.prepare($!driver.optimize($ast));
     } elsif $enabled.WHAT === Bool && !$enabled {
         @st-handler = $!driver.prepare($ast);
