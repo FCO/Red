@@ -1,4 +1,4 @@
-class submethod BUILD (Red::Driver::SQLite $:: DBDish::SQLite::Connection :$!dbh, Str :$!database = ":memory:", Bool :$!use-experimental-regex = Bool::False, *%_) { #`(Submethod|4106584532576) ... }
+class submethod BUILD (Red::Driver::SQLite $:: DBDish::SQLite::Connection :$!dbh, Str :$!database = ":memory:", Bool :$!use-experimental-regex = Bool::False, *%_) { #`(Submethod|6110614058072) ... }
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 Data accepted by the SQLite driver constructor: dbh     : DBDish::SQLite object database: File name or C<:memory:> to a in memory DB (default) use-experimental-regex: Enable experimental SQL regex translation (default False)
@@ -29,4 +29,14 @@ method sqlite-json-contains(
 ```
 
 Implements recursive JSON containment, with unordered array matching as in JSONB.
+
+### method create-database
+
+```raku
+method create-database(
+    Str:D $name
+) returns Mu
+```
+
+Create a persistent SQLite database without replacing an existing file.
 

@@ -59,6 +59,8 @@ API Pages
 - [Red::AST::ReleaseSavepoint](api/Red/AST/ReleaseSavepoint)
 - [Red::AST::RollbackToSavepoint](api/Red/AST/RollbackToSavepoint)
 - [Red::AST::RollbackTransaction](api/Red/AST/RollbackTransaction)
+- [Red::AST::RowContext](api/Red/AST/RowContext)
+- [Red::AST::RowParameter](api/Red/AST/RowParameter)
 - [Red::AST::Savepoint](api/Red/AST/Savepoint)
 - [Red::AST::Select](api/Red/AST/Select)
 - [Red::AST::StringFuncs](api/Red/AST/StringFuncs)

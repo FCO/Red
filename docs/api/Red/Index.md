@@ -34,7 +34,7 @@ Named CHECKs and driver extensions share expression lowering with indexes.
 ```raku
 sub canonical-index-key(
     Str $sql,
-    :&normalize-tokens = -> @tokens { #`(Block|5135612949800) ... }
+    :&normalize-tokens = -> @tokens { #`(Block|5884282557944) ... }
 ) returns Str
 ```
 

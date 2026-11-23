@@ -46,7 +46,8 @@ Sets the default connections to be used. The key is the name of the connection a
 multi sub red-do(
     *@blocks where { ... },
     Str :$with = "default",
-    :$async
+    :$async,
+    :%context
 ) returns Mu
 ```
 
@@ -58,7 +59,8 @@ Receives a block and optionally a connection name. Runs the block with the conne
 multi sub red-do(
     &block,
     Red::Driver:D :$with,
-    :$async where { ... }
+    :$async where { ... },
+    :%context
 ) returns Mu
 ```
 
@@ -70,7 +72,8 @@ Receives a block and optionally a connection name. Runs the block with the conne
 multi sub red-do(
     &block,
     Str:D :$with = "default",
-    :$async! where { ... }
+    :$async! where { ... },
+    :%context
 ) returns Mu
 ```
 
@@ -83,6 +86,7 @@ multi sub red-do(
     *@blocks,
     Bool :$async,
     Bool :$transaction! where { ... },
+    :%context,
     *%pars where { ... }
 ) returns Mu
 ```
@@ -95,6 +99,7 @@ Runs nested transactions as savepoints on the current transaction's connection.
 multi sub red-do(
     *@blocks,
     Bool :$async,
+    :%context,
     *%pars where { ... }
 ) returns Mu
 ```

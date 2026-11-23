@@ -259,3 +259,36 @@ method type-by-name(
 
 Physical integer spelling for the portable serial column abstraction.
 
+### method create-database
+
+```raku
+method create-database(
+    Str:D $name,
+    *%options
+) returns Mu
+```
+
+Create a database using backend-specific options.
+
+### method create-user
+
+```raku
+method create-user(
+    Str:D $name,
+    *%options
+) returns Mu
+```
+
+Create a login using backend-specific options.
+
+### method create-role
+
+```raku
+method create-role(
+    Str:D $name,
+    *%options
+) returns Mu
+```
+
+Create a role using backend-specific options.
+
