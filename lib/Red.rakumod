@@ -25,7 +25,7 @@ use Red::AST::Infixes;
 use Red::AST::Native;
 use Red::Compiler::RakuAST;
 
-class Red:ver<0.2.16>:api<2> {
+class Red:ver<0.2.17>:api<2> {
     our %experimentals;
     our @experimental-roles;
     method events   { Red::Class.instance.events }

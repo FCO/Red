@@ -1,6 +1,8 @@
 Revision history for Red
 
 {{$NEXT}}
+
+0.2.17  2026-11-24T02:01:49Z
     - Allow direct administrative connections with --driver and --connect-* options.
     - Add --save and --save-as to save created databases and users as named connections.
     - Delegate database, user, and role creation commands to backend drivers.
