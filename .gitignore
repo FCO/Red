@@ -23,5 +23,8 @@ tags
 
 .nimala
 
+/.ci/mysql-driver/
+/.ci/pg-driver/
+
 # Generated documentation validation reports
 /test-results/doc-examples/
