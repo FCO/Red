@@ -35,9 +35,13 @@ $after.spurt("use Red:api<2>;\n" ~ $body);
 my $before = $directory.add('driver-before-fixture.raku');
 $before.spurt("use Red:api<2>;\nuse Red::Driver::SQLite;\n" ~ $body);
 my $library = $?FILE.IO.parent.parent.add('lib').absolute;
+my @libraries = $*REPO.repo-chain.grep({
+    $_ ~~ CompUnit::Repository::FileSystem || $_ ~~ CompUnit::Repository::Installation
+}).map(*.path-spec).unique;
 for ($after, $after, $before, $after).kv -> $index, $script {
-    my $process = run $*EXECUTABLE, '-I' ~ $library, '-I' ~ $directory, $script,
-        :out, :err;
+    my @include = "-I$library", "-I$directory";
+    @include.append(@libraries.map({ "-I$_" }));
+    my $process = run $*EXECUTABLE, |@include, $script, :out, :err;
     my $output = $process.out.slurp-rest;
     my $error = $process.err.slurp-rest;
     is $process.exitcode, 0, "Precompiled fixture/driver load order {$index + 1} succeeds";
